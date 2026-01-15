@@ -1,0 +1,193 @@
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --info-color: #0dcaf0;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+    font-weight: 600;
+}
+
+.stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    background-color: var(--primary-color);
+}
+
+.stat-card.success::before {
+    background-color: var(--success-color);
+}
+
+.stat-card.warning::before {
+    background-color: var(--warning-color);
+}
+
+.stat-card.danger::before {
+    background-color: var(--danger-color);
+}
+
+.stat-card.info::before {
+    background-color: var(--info-color);
+}
+
+.z-score-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.z-score-normal {
+    background-color: var(--success-color);
+}
+
+.z-score-moderate {
+    background-color: var(--warning-color);
+}
+
+.z-score-severe {
+    background-color: var(--danger-color);
+}
+
+.immunization-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.immunization-complete {
+    background-color: var(--success-color);
+}
+
+.immunization-due {
+    background-color: var(--warning-color);
+}
+
+.immunization-overdue {
+    background-color: var(--danger-color);
+}
+
+.immunization-upcoming {
+    background-color: var(--info-color);
+}
+
+.child-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.growth-chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.nav-tabs .nav-link {
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link.active {
+    font-weight: 600;
+}
+
+.btn-health {
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-weight: 500;
+}
+
+.alert-health {
+    border-radius: 10px;
+    border-left: 4px solid;
+}
+
+.alert-health-info {
+    border-left-color: var(--info-color);
+}
+
+.alert-health-warning {
+    border-left-color: var(--warning-color);
+}
+
+.alert-health-danger {
+    border-left-color: var(--danger-color);
+}
+
+.alert-health-success {
+    border-left-color: var(--success-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stat-card {
+        margin-bottom: 15px;
+    }
+    
+    .growth-chart-container {
+        height: 250px;
+    }
+}
+
+/* Loading spinner */
+.spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
