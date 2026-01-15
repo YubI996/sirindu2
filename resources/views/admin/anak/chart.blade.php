@@ -15,7 +15,7 @@ Chart Data Anak
 <!-- <div class="container">
     <canvas id="myChart" height="100px"></canvas>
 </div> -->
-<input type="hidden" value="{{$anak->id}}" id="id-anak">
+<input type="hidden" value="{{$anak->hashid}}" id="id-anak">
 <div class="row">
        <div class="col-md-10 col-md-offset-1">
            <div class="panel panel-default">

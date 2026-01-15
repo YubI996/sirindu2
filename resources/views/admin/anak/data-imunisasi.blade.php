@@ -21,7 +21,7 @@ Data Imunisasi Dasar Lengkap
     </ul>
 </div>
 @endif
-<form method="post" action="{{route('admin.updateImunisasi',$data->id)}}">
+<form method="post" action="{{route('admin.updateImunisasi',$data->hashid)}}">
     @csrf
     <input type="hidden" name="_method" value="PUT">
     <div class="row">

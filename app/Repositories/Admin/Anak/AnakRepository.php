@@ -7,6 +7,7 @@ use App\Models\Anak;
 use App\Models\User;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
+use App\Models\JenisVaksin;
 use GuzzleHttp\Promise\Create;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -222,5 +223,92 @@ class AnakRepository implements AnakRepositoryInterface
             'ddtka' => $request->ddtka,
             'id_user' => Auth::user()->id,
         ]);
+    }
+
+    // ==================== ENHANCED IMUNISASI METHODS ====================
+
+    public function getImunisasiByAnak($idAnak)
+    {
+        return Imunisasi::with(['jenisVaksin', 'petugas'])
+            ->where('id_anak', $idAnak)
+            ->orderBy('tanggal_pemberian', 'desc')
+            ->get();
+    }
+
+    public function getJenisVaksin()
+    {
+        return JenisVaksin::aktif()->orderBy('kategori')->orderBy('usia_pemberian_min')->get();
+    }
+
+    public function storeImunisasiDetail($request)
+    {
+        return Imunisasi::create([
+            'id_anak' => $request->id_anak,
+            'id_jenis_vaksin' => $request->id_jenis_vaksin,
+            'dosis' => $request->dosis ?? 1,
+            'tanggal_pemberian' => $request->tanggal_pemberian,
+            'tanggal_selanjutnya' => $request->tanggal_selanjutnya,
+            'batch_number' => $request->batch_number,
+            'lokasi_pemberian' => $request->lokasi_pemberian,
+            'id_petugas' => Auth::user()->id,
+            'status' => 'sudah',
+            'reaksi_kipi' => $request->reaksi_kipi,
+            'catatan' => $request->catatan,
+        ]);
+    }
+
+    public function updateImunisasiDetail($request, $id)
+    {
+        $imunisasi = Imunisasi::find($id);
+        $imunisasi->update([
+            'id_jenis_vaksin' => $request->id_jenis_vaksin,
+            'dosis' => $request->dosis ?? 1,
+            'tanggal_pemberian' => $request->tanggal_pemberian,
+            'tanggal_selanjutnya' => $request->tanggal_selanjutnya,
+            'batch_number' => $request->batch_number,
+            'lokasi_pemberian' => $request->lokasi_pemberian,
+            'status' => $request->status ?? 'sudah',
+            'reaksi_kipi' => $request->reaksi_kipi,
+            'catatan' => $request->catatan,
+        ]);
+        return $imunisasi;
+    }
+
+    public function deleteImunisasiDetail($id)
+    {
+        $imunisasi = Imunisasi::find($id);
+        return $imunisasi->delete();
+    }
+
+    public function getJadwalImunisasi($idAnak)
+    {
+        $anak = Anak::find($idAnak);
+        $tglLahir = $anak->tgl_lahir;
+        $jenisVaksin = JenisVaksin::aktif()->get();
+        $imunisasiDiberikan = Imunisasi::where('id_anak', $idAnak)->get()->keyBy('id_jenis_vaksin');
+
+        $jadwal = [];
+        foreach ($jenisVaksin as $vaksin) {
+            $tanggalMin = date('Y-m-d', strtotime($tglLahir . ' + ' . $vaksin->usia_pemberian_min . ' days'));
+            $tanggalMax = date('Y-m-d', strtotime($tglLahir . ' + ' . $vaksin->usia_pemberian_max . ' days'));
+            $sudahDiberikan = isset($imunisasiDiberikan[$vaksin->id]);
+
+            $status = 'belum';
+            if ($sudahDiberikan) {
+                $status = 'sudah';
+            } elseif (date('Y-m-d') > $tanggalMax) {
+                $status = 'terlambat';
+            }
+
+            $jadwal[] = [
+                'vaksin' => $vaksin,
+                'tanggal_min' => $tanggalMin,
+                'tanggal_max' => $tanggalMax,
+                'status' => $status,
+                'imunisasi' => $sudahDiberikan ? $imunisasiDiberikan[$vaksin->id] : null,
+            ];
+        }
+
+        return $jadwal;
     }
 }

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(php artisan route:list:*)",
+      "Bash(php artisan optimize:*)",
+      "Bash(composer update:*)",
+      "Bash(composer show:*)",
+      "Bash(php artisan optimize:clear:*)",
+      "Bash(php artisan:*)",
+      "Bash(git merge:*)",
+      "Bash(composer require:*)",
+      "Bash(php:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

@@ -21,7 +21,7 @@ Edit Anak
     </ul>
 </div>
 @endif
-<form method="post" action="{{route('admin.updateAnak',$anak->id)}}">
+<form method="post" action="{{route('admin.updateAnak',$anak->hashid)}}">
     @csrf
     <input type="hidden" name="_method" value="PUT">
     <div class="row">

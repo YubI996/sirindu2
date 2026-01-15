@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -75,9 +76,15 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-anak/{id}', [App\Http\Controllers\AdminController::class, 'dataAnak'])->name('admin.dataAnak');
     Route::post('store-data-anak', [App\Http\Controllers\AdminController::class, 'storeDataAnak'])->name('admin.storeDataAnak');
     Route::put('update-data-anak/{id}', [App\Http\Controllers\AdminController::class, 'updateDataAnak'])->name('admin.updateDataAnak');
-    //Data Imunisasi Anak Route List
+    //Data Imunisasi Anak Route List (Legacy - Imunisasi Dasar)
     Route::get('data-imunisasi-anak/{id}', [App\Http\Controllers\AdminController::class, 'dataImunisasi'])->name('admin.dataImunisasi');
     Route::put('update-data-imunisasi-anak/{id}', [App\Http\Controllers\AdminController::class, 'updateImunisasi'])->name('admin.updateImunisasi');
+    //Data Imunisasi Lengkap (Enhanced)
+    Route::get('imunisasi-lengkap/{id}', [App\Http\Controllers\AdminController::class, 'imunisasiLengkap'])->name('admin.imunisasiLengkap');
+    Route::get('jadwal-imunisasi/{id}', [App\Http\Controllers\AdminController::class, 'jadwalImunisasi'])->name('admin.jadwalImunisasi');
+    Route::post('store-imunisasi', [App\Http\Controllers\AdminController::class, 'storeImunisasiDetail'])->name('admin.storeImunisasiDetail');
+    Route::put('update-imunisasi-detail/{id}', [App\Http\Controllers\AdminController::class, 'updateImunisasiDetail'])->name('admin.updateImunisasiDetail');
+    Route::delete('delete-imunisasi/{id}', [App\Http\Controllers\AdminController::class, 'deleteImunisasiDetail'])->name('admin.deleteImunisasiDetail');
     //Data Export Anak
     Route::get('export', [App\Http\Controllers\AdminController::class, 'exportView'])->name('admin.exportView');
     Route::post('formViewExport', [App\Http\Controllers\AdminController::class, 'formViewExport'])->name('admin.formViewExport');
@@ -88,4 +95,29 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-ibu', [App\Http\Controllers\AdminController::class, 'ibu'])->name('admin.ibu');
     //Ibu Hamil Route List
     Route::get('data-ibu-hamil', [App\Http\Controllers\AdminController::class, 'ibuHamil'])->name('admin.ibuHamil');
+});
+
+/*------------------------------------------
+--------------------------------------------
+Claude Dummy Routes (for view testing)
+--------------------------------------------
+--------------------------------------------*/
+Route::prefix('claude/')->group(function () {
+    Route::get('dashboard', [App\Http\Controllers\DummyController::class, 'dashboard'])->name('claude.dashboard');
+
+    // Children routes
+    Route::get('children', [App\Http\Controllers\DummyController::class, 'childrenIndex'])->name('children.index');
+    Route::get('children/{id}', [App\Http\Controllers\DummyController::class, 'showChild'])->name('children.show');
+    Route::get('children/{id}/edit', [App\Http\Controllers\DummyController::class, 'editChild'])->name('children.edit');
+
+    // Growth routes
+    Route::get('growth', [App\Http\Controllers\DummyController::class, 'growthIndex'])->name('growth.index');
+    Route::get('growth/create/{id}', [App\Http\Controllers\DummyController::class, 'createGrowth'])->name('growth.create');
+
+    // Immunizations routes
+    Route::get('immunizations', [App\Http\Controllers\DummyController::class, 'immunizationsIndex'])->name('immunizations.index');
+    Route::get('immunizations/create/{id}', [App\Http\Controllers\DummyController::class, 'createImmunization'])->name('immunizations.create');
+
+    // Visits routes
+    Route::get('visits/create/{id}', [App\Http\Controllers\DummyController::class, 'createVisit'])->name('visits.create');
 });

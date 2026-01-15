@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         $this->call(PosyanduTableSeeder::class);
         $this->call(RtTableSeeder::class);
         $this->call(JenisTabelSeeder::class);
-        
+        $this->call(JenisVaksinSeeder::class);
+
     }
 }

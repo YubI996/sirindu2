@@ -11,6 +11,7 @@ use App\Http\Requests\Admin\Anak\updateAnakRequest;
 use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
+use App\Models\JenisVaksin;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Posyandu;
@@ -70,18 +71,20 @@ ANAK
                    Edit
                 </button>
                 <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="' . route('admin.editAnak', $data->id) . '">Edit Data Anak</a>
-                    <a class="dropdown-item" href="' . route('admin.chartAnak', $data->id) . '">Grafik Data Anak</a>
-                    <a class="dropdown-item" href="' . route('admin.showAnak', $data->id) . '">Show Data Anak</a>
-                    <a class="dropdown-item" href="' . route('admin.dataAnak', $data->id) . '">Tambah Data Berkala Anak</a>
-                    <a class="dropdown-item" href="' . route('admin.dataImunisasi', $data->id) . '">Data Imunisasi Anak</a>
+                    <a class="dropdown-item" href="' . route('admin.editAnak', $data->hashid) . '">Edit Data Anak</a>
+                    <a class="dropdown-item" href="' . route('admin.chartAnak', $data->hashid) . '">Grafik Data Anak</a>
+                    <a class="dropdown-item" href="' . route('admin.showAnak', $data->hashid) . '">Show Data Anak</a>
+                    <a class="dropdown-item" href="' . route('admin.dataAnak', $data->hashid) . '">Tambah Data Berkala Anak</a>
+                    <a class="dropdown-item" href="' . route('admin.imunisasiLengkap', $data->hashid) . '">Data Imunisasi Lengkap</a>
+                    <a class="dropdown-item" href="' . route('admin.jadwalImunisasi', $data->hashid) . '">Jadwal Imunisasi</a>
+                    <a class="dropdown-item" href="' . route('admin.dataImunisasi', $data->hashid) . '">Imunisasi Dasar (Legacy)</a>
                 </div>
                 </div>
                 ';
                 return $btn;
             })
             ->editColumn('delete', function ($data) {
-                $btn = ' <button onclick="deleteItemAnak(this)" class="btn btn-danger" data-id=' . $data->id . '>Delete</button>';
+                $btn = ' <button onclick="deleteItemAnak(this)" class="btn btn-danger" data-id="' . $data->hashid . '">Delete</button>';
                 return $btn;
             })
             ->rawColumns(['edit'])
@@ -123,21 +126,22 @@ ANAK
 
     public function editAnak($id)
     {
-        $anak = Anak::find($id);
+        $anak = Anak::findByHashIdOrFail($id);
         $kec = Kecamatan::all();
         $kel = Kelurahan::all();
-        $dt = DataAnak::where('id_anak', $id)->first();
-        $dataAnak = DataAnak::where('id_anak', $id)->get();
+        $dt = DataAnak::where('id_anak', $anak->id)->first();
+        $dataAnak = DataAnak::where('id_anak', $anak->id)->get();
         return view('admin.anak.edit', compact('anak', 'kec', 'kel', 'dt', 'dataAnak'));
     }
 
     public function updateAnak(Request $request, $id)
     {
         try {
-            $anak = $this->anakRepository->updateAnak($request, $id);
+            $anak = Anak::findByHashIdOrFail($id);
+            $this->anakRepository->updateAnak($request, $anak->id);
             Alert::success('Anak', 'Berhasil Mengubah Data');
             return redirect()->route('admin.anak');
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
             Alert::error('Anak', 'Gagal Mengubah Data');
             return redirect()->route('admin.anak');
         }
@@ -157,11 +161,11 @@ ANAK
 
     public function showAnak($id)
     {
-        $anak = Anak::find($id);
+        $anak = Anak::findByHashIdOrFail($id);
         $dataAnak = DB::table('anak')
             ->join('data_anak', 'anak.id', '=', 'data_anak.id_anak')
             ->select('jk','tgl_kunjungan', 'bln', 'posisi', 'tb', 'bb')
-            ->where('data_anak.id_anak', $id)
+            ->where('data_anak.id_anak', $anak->id)
             ->get();
         $no = 0;
         foreach ($dataAnak as $key => $data) {
@@ -228,6 +232,28 @@ ANAK
                     'jk' => $jk,
                     'jenis_tbl' => 5,
                 ])->get();
+
+            // Check if z_score data exists
+            if ($imt_u->isEmpty() || $bb_u->isEmpty() || $tb_u->isEmpty() || $bt_tb->isEmpty()) {
+                $s1 = "Data Z-Score tidak tersedia";
+                $s2 = "Data Z-Score tidak tersedia";
+                $s3 = "Data Z-Score tidak tersedia";
+                $s4 = "Data Z-Score tidak tersedia";
+                $hasil[$no] = [
+                    'no' => $no,
+                    'tgl_kunjungan' => $tgl_kunjungan,
+                    'bln' => $umur,
+                    'bmi' => $bmi,
+                    'berat' => $berat,
+                    'tinggi' => $tinggi,
+                    's1' => $s1,
+                    's2' => $s2,
+                    's3' => $s3,
+                    's4' => $s4,
+                    'err' => $err ?? "Data referensi Z-Score belum tersedia",
+                ];
+                continue;
+            }
 
             if ($umur <= 60) {
                 if ($bmi < $imt_u[0]->a1) {
@@ -334,28 +360,30 @@ ANAK
 
     public function chartAnak($id)
     {
-        $anak = Anak::find($id);
+        $anak = Anak::findByHashIdOrFail($id);
         return view('admin.anak.chart', compact('anak'));
     }
 
     public function getChartAnak($id)
     {
+        $anak = Anak::findByHashIdOrFail($id);
+
         $tbAnak = DB::table('anak')
             ->join('data_anak', 'anak.id', '=', 'data_anak.id_anak')
             ->select('tb')
-            ->where('data_anak.id_anak', $id)
+            ->where('data_anak.id_anak', $anak->id)
             ->get();
 
         $blnAnak = DB::table('anak')
             ->join('data_anak', 'anak.id', '=', 'data_anak.id_anak')
             ->select('bln')
-            ->where('data_anak.id_anak', $id)
+            ->where('data_anak.id_anak', $anak->id)
             ->get();
 
         $bbAnak = DB::table('anak')
             ->join('data_anak', 'anak.id', '=', 'data_anak.id_anak')
             ->select('bb')
-            ->where('data_anak.id_anak', $id)
+            ->where('data_anak.id_anak', $anak->id)
             ->get();
 
         return response()->json([
@@ -368,7 +396,8 @@ ANAK
 
     public function destroyAnak($id)
     {
-        $this->anakRepository->destroyAnak($id);
+        $anak = Anak::findByHashIdOrFail($id);
+        $this->anakRepository->destroyAnak($anak->id);
         return response()->json([
             'success' => true
         ]);
@@ -376,9 +405,8 @@ ANAK
 
     public function dataAnak($id)
     {
-        $anak = Anak::find($id);
-        $query = DB::table('data_anak')->where('id_anak', $id)->max('bln');
-        // $query === NULL ? $bulanSekarang = 0 : $bulanSekarang = $query + 1;
+        $anak = Anak::findByHashIdOrFail($id);
+        $query = DB::table('data_anak')->where('id_anak', $anak->id)->max('bln');
         $bulanSekarang = $query + 1;
         return view('admin.anak.data-anak', compact('anak', 'bulanSekarang'));
     }
@@ -386,12 +414,14 @@ ANAK
     public function storeDataAnak(Request $request)
     {
         try {
+            $anak = Anak::findByHashIdOrFail($request->id_anak_hash);
+            $request->merge(['id_anak' => $anak->id]);
             $this->anakRepository->storeDataAnak($request);
-            return redirect()->route('admin.anak');
             Alert::success('Data Anak', 'Berhasil Menambahkan Data');
-        } catch (Throwable $e) {
             return redirect()->route('admin.anak');
-            Alert::error('Data Anak', 'Berhasil Menambahkan Data');
+        } catch (\Throwable $e) {
+            Alert::error('Data Anak', 'Gagal Menambahkan Data');
+            return redirect()->route('admin.anak');
         }
     }
 
@@ -409,19 +439,88 @@ ANAK
 
     public function dataImunisasi($id)
     {
-        $data = Anak::find($id);
+        $data = Anak::findByHashIdOrFail($id);
         return view('admin.anak.data-imunisasi', compact('data'));
     }
 
     public function updateImunisasi(Request $request, $id)
     {
         try {
-            $this->anakRepository->updateImunisasi($request, $id);
+            $anak = Anak::findByHashIdOrFail($id);
+            $this->anakRepository->updateImunisasi($request, $anak->id);
             Alert::success('Anak', 'Berhasil Menambahkan Data Imunisasi');
             return redirect()->route('admin.anak');
-        } catch (Throwable $e) {
-            Alert::error('Anak', 'Berhasil Menambahkan Data Imunisasi');
+        } catch (\Throwable $e) {
+            Alert::error('Anak', 'Gagal Menambahkan Data Imunisasi');
             return redirect()->route('admin.anak');
+        }
+    }
+
+    // ==================== ENHANCED IMUNISASI METHODS ====================
+
+    public function imunisasiLengkap($id)
+    {
+        $data = Anak::findByHashIdOrFail($id);
+        $imunisasiList = $this->anakRepository->getImunisasiByAnak($data->id);
+        $jenisVaksin = $this->anakRepository->getJenisVaksin();
+        return view('admin.anak.imunisasi-lengkap', compact('data', 'imunisasiList', 'jenisVaksin'));
+    }
+
+    public function jadwalImunisasi($id)
+    {
+        $data = Anak::findByHashIdOrFail($id);
+        $jadwal = $this->anakRepository->getJadwalImunisasi($data->id);
+        $jenisVaksin = $this->anakRepository->getJenisVaksin();
+        return view('admin.anak.jadwal-imunisasi', compact('data', 'jadwal', 'jenisVaksin'));
+    }
+
+    public function storeImunisasiDetail(Request $request)
+    {
+        try {
+            $anak = Anak::findByHashIdOrFail($request->id_anak_hash);
+
+            $request->merge(['id_anak' => $anak->id]);
+
+            $request->validate([
+                'id_anak' => 'required|exists:anak,id',
+                'id_jenis_vaksin' => 'required|exists:jenis_vaksin,id',
+                'tanggal_pemberian' => 'required|date',
+            ]);
+
+            $this->anakRepository->storeImunisasiDetail($request);
+            Alert::success('Imunisasi', 'Berhasil Menambahkan Data Imunisasi');
+            return redirect()->route('admin.imunisasiLengkap', $anak->hashid);
+        } catch (\Throwable $e) {
+            Alert::error('Imunisasi', 'Gagal Menambahkan Data Imunisasi: ' . $e->getMessage());
+            return redirect()->back()->withInput();
+        }
+    }
+
+    public function updateImunisasiDetail(Request $request, $id)
+    {
+        try {
+            $imunisasi = Imunisasi::findOrFail($id);
+            $anak = Anak::findOrFail($imunisasi->id_anak);
+            $this->anakRepository->updateImunisasiDetail($request, $id);
+            Alert::success('Imunisasi', 'Berhasil Mengubah Data Imunisasi');
+            return redirect()->route('admin.imunisasiLengkap', $anak->hashid);
+        } catch (\Throwable $e) {
+            Alert::error('Imunisasi', 'Gagal Mengubah Data Imunisasi: ' . $e->getMessage());
+            return redirect()->back();
+        }
+    }
+
+    public function deleteImunisasiDetail($id)
+    {
+        try {
+            $imunisasi = Imunisasi::findOrFail($id);
+            $anak = Anak::findOrFail($imunisasi->id_anak);
+            $this->anakRepository->deleteImunisasiDetail($id);
+            Alert::success('Imunisasi', 'Berhasil Menghapus Data Imunisasi');
+            return redirect()->route('admin.imunisasiLengkap', $anak->hashid);
+        } catch (\Throwable $e) {
+            Alert::error('Imunisasi', 'Gagal Menghapus Data Imunisasi');
+            return redirect()->back();
         }
     }
 

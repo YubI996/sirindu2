@@ -15,7 +15,7 @@ Data Anak
 <form method="post" action="{{route('admin.storeDataAnak')}}">
     @csrf
     <div class="row">
-        <input type="hidden" name="id_anak" value="{{$anak->id}}" class="form-control" require>
+        <input type="hidden" name="id_anak_hash" value="{{$anak->hashid}}" class="form-control" require>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Tanggal Kunjungan <font color="red">*</font> </label>
