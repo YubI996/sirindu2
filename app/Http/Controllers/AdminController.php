@@ -162,12 +162,47 @@ ANAK
     public function showAnak($id)
     {
         $anak = Anak::findByHashIdOrFail($id);
+
+        // Get location data
+        $kecamatan = Kecamatan::find($anak->id_kec);
+        $kelurahan = Kelurahan::find($anak->id_kel);
+        $rt = Rt::find($anak->id_rt);
+        $puskesmas = Puskesmas::find($anak->id_puskesmas);
+        $posyandu = Posyandu::find($anak->id_posyandu);
+
+        // Calculate age
+        $tglLahir = \Carbon\Carbon::parse($anak->tgl_lahir);
+        $now = \Carbon\Carbon::now();
+        $usia = $tglLahir->diff($now);
+        $usiaText = '';
+        if ($usia->y > 0) {
+            $usiaText .= $usia->y . ' tahun ';
+        }
+        if ($usia->m > 0) {
+            $usiaText .= $usia->m . ' bulan';
+        }
+        if (empty($usiaText)) {
+            $usiaText = $usia->d . ' hari';
+        }
+        $usiaText = trim($usiaText);
+
+        // Get immunization records
+        $imunisasi = Imunisasi::with('jenisVaksin')
+            ->where('id_anak', $anak->id)
+            ->orderBy('tanggal_pemberian', 'desc')
+            ->get();
+
         $dataAnak = DB::table('anak')
             ->join('data_anak', 'anak.id', '=', 'data_anak.id_anak')
-            ->select('jk','tgl_kunjungan', 'bln', 'posisi', 'tb', 'bb')
+            ->select('data_anak.id', 'jk', 'tgl_kunjungan', 'bln', 'posisi', 'tb', 'bb')
             ->where('data_anak.id_anak', $anak->id)
+            ->orderBy('tgl_kunjungan', 'asc')
             ->get();
+
         $no = 0;
+        $hasilx = [];
+        $latestData = null;
+
         foreach ($dataAnak as $key => $data) {
             $no++;
             $tinggi = $data->tb;
@@ -224,14 +259,6 @@ ANAK
                     'jk' => $jk,
                     'jenis_tbl' => 4,
                 ])->get();
-            $imt_u2 = DB::table('z_score')
-                ->select('id', 'm3sd as a5', 'm2sd as b5', '1sd as c5', '2sd as d5')
-                ->where([
-                    'var' => $var,
-                    'acuan' => $tinggi,
-                    'jk' => $jk,
-                    'jenis_tbl' => 5,
-                ])->get();
 
             // Check if z_score data exists
             if ($imt_u->isEmpty() || $bb_u->isEmpty() || $tb_u->isEmpty() || $bt_tb->isEmpty()) {
@@ -239,18 +266,19 @@ ANAK
                 $s2 = "Data Z-Score tidak tersedia";
                 $s3 = "Data Z-Score tidak tersedia";
                 $s4 = "Data Z-Score tidak tersedia";
-                $hasil[$no] = [
-                    'no' => $no,
-                    'tgl_kunjungan' => $tgl_kunjungan,
-                    'bln' => $umur,
-                    'bmi' => $bmi,
-                    'berat' => $berat,
-                    'tinggi' => $tinggi,
-                    's1' => $s1,
-                    's2' => $s2,
-                    's3' => $s3,
-                    's4' => $s4,
-                    'err' => $err ?? "Data referensi Z-Score belum tersedia",
+
+                $hasilx[$key] = [
+                    "no" => $no,
+                    "bln" => $umur,
+                    "tgl_kunjungan" => $tgl_kunjungan,
+                    "tinggi" => $tinggi,
+                    "berat" => $berat,
+                    "bmi" => $bmi,
+                    "imt" => $s1,
+                    "bb" => $s2,
+                    "tb" => $s3,
+                    "bt" => $s4,
+                    "err" => $err ?? "Data referensi Z-Score belum tersedia",
                 ];
                 continue;
             }
@@ -269,7 +297,7 @@ ANAK
                 } else {
                     $s1 = "Obesitas (obese)";
                 }
-            } elseif ($umur > 60) {
+            } else {
                 if ($bmi < $imt_u[0]->a1) {
                     $s1 = "Gizi buruk (severely thinness)";
                 } elseif ($bmi >= $imt_u[0]->a1 && $bmi < $imt_u[0]->b1) {
@@ -282,7 +310,6 @@ ANAK
                     $s1 = "Obesitas (obese)";
                 }
             }
-
 
             if ($berat < $bb_u[0]->a2) {
                 $s2 = "Berat badan sangat kurang (severely underweight)";
@@ -304,15 +331,6 @@ ANAK
                 $s3 = "Tinggi";
             }
 
-            if ($tinggi < $tb_u[0]->a3) {
-                $s3 = "Sangat pendek (severely stunted)";
-            } elseif ($tinggi >= $tb_u[0]->a3 && $tinggi < $tb_u[0]->b3) {
-                $s3 = "Pendek (stunted)";
-            } elseif ($tinggi >= $tb_u[0]->b3 && $tinggi <= $tb_u[0]->e3) {
-                $s3 = "Normal";
-            } else {
-                $s3 = "Tinggi";
-            }
             try {
                 if ($berat < $bt_tb[0]->a4) {
                     $s4 = "Gizi buruk (severely wasted)";
@@ -328,33 +346,39 @@ ANAK
                     $s4 = "Obesitas (obese)";
                 }
             } catch (\Exception $e) {
-                // dump('culprit : '.$key.', Error : '.$e->getMessage());
-                // $s4 = $key;
                 $s4 = "Data Tidak Valid";
-                // continue;
             }
-            // if ($berat < $bt_tb[0]->a4) {
-            //     $s4 = "Sangat Kurus";
-            // } elseif ($berat >= $bt_tb[0]->a4 && $berat < $bt_tb[0]->b4) {
-            //     $s4 = "Kurus";
-            // } elseif ($berat >= $bt_tb[0]->b4 && $berat <= $bt_tb[0]->c4) {
-            //     $s4 = "Normal";
-            // } else {
-            //     $s4 = "Gemuk";
-            // }
 
-            $hasilx[$key] = array(
+            $hasilx[$key] = [
+                "no" => $no,
                 "bln" => $umur,
                 "tgl_kunjungan" => $tgl_kunjungan,
                 "tinggi" => $tinggi,
                 "berat" => $berat,
+                "bmi" => $bmi,
                 "imt" => $s1,
                 "bb" => $s2,
                 "tb" => $s3,
-                "bt" => $s4
-            );
+                "bt" => $s4,
+                "err" => $err,
+            ];
         }
-        return view('admin.anak.show', compact('anak'))->with('hasilx', $hasilx);
+
+        // Get latest measurement for current health status
+        $latestData = !empty($hasilx) ? end($hasilx) : null;
+
+        return view('admin.anak.show', compact(
+            'anak',
+            'hasilx',
+            'latestData',
+            'kecamatan',
+            'kelurahan',
+            'rt',
+            'puskesmas',
+            'posyandu',
+            'usiaText',
+            'imunisasi'
+        ));
     }
 
 
