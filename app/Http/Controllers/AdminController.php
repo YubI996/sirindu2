@@ -174,6 +174,10 @@ ANAK
         $tglLahir = \Carbon\Carbon::parse($anak->tgl_lahir);
         $now = \Carbon\Carbon::now();
         $usia = $tglLahir->diff($now);
+
+        // Total age in months
+        $usiaBulan = ($usia->y * 12) + $usia->m;
+
         $usiaText = '';
         if ($usia->y > 0) {
             $usiaText .= $usia->y . ' tahun ';
@@ -183,6 +187,7 @@ ANAK
         }
         if (empty($usiaText)) {
             $usiaText = $usia->d . ' hari';
+            $usiaBulan = 0;
         }
         $usiaText = trim($usiaText);
 
@@ -367,6 +372,48 @@ ANAK
         // Get latest measurement for current health status
         $latestData = !empty($hasilx) ? end($hasilx) : null;
 
+        // Get Z-Score reference data for charts
+        $zScoreRef = [];
+        if (!empty($hasilx)) {
+            $ages = array_column($hasilx, 'bln');
+            $minAge = min($ages);
+            $maxAge = max($ages);
+
+            // BB/U (Weight for Age) - jenis_tbl = 2
+            $bbURef = DB::table('z_score')
+                ->select('acuan', 'm2sd', 'm1sd', 'sd', '1sd', '2sd')
+                ->where('jenis_tbl', 2)
+                ->where('jk', $anak->jk)
+                ->whereBetween('acuan', [$minAge, $maxAge])
+                ->orderBy('acuan')
+                ->get()
+                ->keyBy('acuan');
+
+            // TB/U (Height for Age) - jenis_tbl = 3
+            $tbURef = DB::table('z_score')
+                ->select('acuan', 'var', 'm2sd', 'm1sd', 'sd', '1sd', '2sd')
+                ->where('jenis_tbl', 3)
+                ->where('jk', $anak->jk)
+                ->whereBetween('acuan', [$minAge, $maxAge])
+                ->orderBy('acuan')
+                ->get();
+
+            // IMT/U (BMI for Age) - jenis_tbl = 1
+            $imtURef = DB::table('z_score')
+                ->select('acuan', 'var', 'm2sd', 'm1sd', 'sd', '1sd', '2sd')
+                ->where('jenis_tbl', 1)
+                ->where('jk', $anak->jk)
+                ->whereBetween('acuan', [$minAge, $maxAge])
+                ->orderBy('acuan')
+                ->get();
+
+            $zScoreRef = [
+                'bb_u' => $bbURef,
+                'tb_u' => $tbURef,
+                'imt_u' => $imtURef,
+            ];
+        }
+
         return view('admin.anak.show', compact(
             'anak',
             'hasilx',
@@ -377,7 +424,9 @@ ANAK
             'puskesmas',
             'posyandu',
             'usiaText',
-            'imunisasi'
+            'usiaBulan',
+            'imunisasi',
+            'zScoreRef'
         ));
     }
 
