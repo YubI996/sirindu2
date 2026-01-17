@@ -17,11 +17,11 @@ class Anak extends Model
 
     public function kec()
     {
-        return $this->hasMany(Kecamatan::class,'id','id_kec');
+        return $this->belongsTo(Kecamatan::class, 'id_kec', 'id');
     }
     public function kel()
     {
-        return $this->hasMany(Kelurahan::class,'id','id_kel');
+        return $this->belongsTo(Kelurahan::class, 'id_kel', 'id');
     }
     public function dataAnak()
     {
