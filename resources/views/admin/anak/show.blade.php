@@ -369,7 +369,7 @@ Detail
     <header class="row mb-4">
         <div class="col-md-8">
             <div class="d-flex align-items-center">
-                <div class="child-avatar me-3" role="img" aria-label="Avatar {{ $anak->nama }}">
+                <div class="child-avatar me-4" role="img" aria-label="Avatar {{ $anak->nama }}">
                     <span aria-hidden="true">{{ strtoupper(substr($anak->nama, 0, 1)) }}</span>
                 </div>
                 <div>
@@ -380,7 +380,7 @@ Detail
                     </p>
                     <p class="text-accessible-muted mb-0">
                         <span class="sr-only">Usia:</span>
-                        {{ $usiaText }},
+                        {{ $usiaText }} ({{ $usiaBulan }} bulan),
                         @if($anak->jk == 1)
                             <span class="badge badge-gender-male">Laki-laki</span>
                         @else
@@ -442,7 +442,7 @@ Detail
                         </dd>
 
                         <dt class="col-sm-5 text-accessible-muted">Usia</dt>
-                        <dd class="col-sm-7">{{ $usiaText }}</dd>
+                        <dd class="col-sm-7">{{ $usiaText }} ({{ $usiaBulan }} bulan)</dd>
 
                         <dt class="col-sm-5 text-accessible-muted">Jenis Kelamin</dt>
                         <dd class="col-sm-7">{{ $anak->jk == 1 ? 'Laki-laki' : 'Perempuan' }}</dd>
@@ -960,59 +960,316 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Prepare data from PHP
     const labels = [@foreach($hasilx as $h)'{{ \Carbon\Carbon::parse($h["tgl_kunjungan"])->format("M Y") }}',@endforeach];
+    const ageLabels = [@foreach($hasilx as $h){{ $h['bln'] }},@endforeach];
     const weightData = [@foreach($hasilx as $h){{ $h['berat'] }},@endforeach];
     const heightData = [@foreach($hasilx as $h){{ $h['tinggi'] }},@endforeach];
     const bmiData = [@foreach($hasilx as $h){{ $h['bmi'] }},@endforeach];
 
+    // Z-Score Reference Data from WHO
+    @if(!empty($zScoreRef))
+    const zScoreBBU = {
+        @foreach($hasilx as $h)
+            @php $age = $h['bln']; @endphp
+            @if(isset($zScoreRef['bb_u'][$age]))
+        {{ $age }}: {
+            m2sd: {{ $zScoreRef['bb_u'][$age]->m2sd ?? 'null' }},
+            m1sd: {{ $zScoreRef['bb_u'][$age]->m1sd ?? 'null' }},
+            sd: {{ $zScoreRef['bb_u'][$age]->sd ?? 'null' }},
+            p1sd: {{ $zScoreRef['bb_u'][$age]->{'1sd'} ?? 'null' }},
+            p2sd: {{ $zScoreRef['bb_u'][$age]->{'2sd'} ?? 'null' }}
+        },
+            @endif
+        @endforeach
+    };
+
+    const zScoreTBU = {
+        @foreach($zScoreRef['tb_u'] as $ref)
+        '{{ $ref->acuan }}_{{ $ref->var }}': {
+            m2sd: {{ $ref->m2sd ?? 'null' }},
+            m1sd: {{ $ref->m1sd ?? 'null' }},
+            sd: {{ $ref->sd ?? 'null' }},
+            p1sd: {{ $ref->{'1sd'} ?? 'null' }},
+            p2sd: {{ $ref->{'2sd'} ?? 'null' }}
+        },
+        @endforeach
+    };
+
+    const zScoreIMTU = {
+        @foreach($zScoreRef['imt_u'] as $ref)
+        '{{ $ref->acuan }}_{{ $ref->var }}': {
+            m2sd: {{ $ref->m2sd ?? 'null' }},
+            m1sd: {{ $ref->m1sd ?? 'null' }},
+            sd: {{ $ref->sd ?? 'null' }},
+            p1sd: {{ $ref->{'1sd'} ?? 'null' }},
+            p2sd: {{ $ref->{'2sd'} ?? 'null' }}
+        },
+        @endforeach
+    };
+    @else
+    const zScoreBBU = {};
+    const zScoreTBU = {};
+    const zScoreIMTU = {};
+    @endif
+
+    // Generate Z-Score reference lines for weight (BB/U)
+    function getWeightZScoreData() {
+        const m2sd = [], m1sd = [], median = [], p1sd = [], p2sd = [];
+        ageLabels.forEach(age => {
+            if (zScoreBBU[age]) {
+                m2sd.push(zScoreBBU[age].m2sd);
+                m1sd.push(zScoreBBU[age].m1sd);
+                median.push(zScoreBBU[age].sd);
+                p1sd.push(zScoreBBU[age].p1sd);
+                p2sd.push(zScoreBBU[age].p2sd);
+            } else {
+                m2sd.push(null);
+                m1sd.push(null);
+                median.push(null);
+                p1sd.push(null);
+                p2sd.push(null);
+            }
+        });
+        return { m2sd, m1sd, median, p1sd, p2sd };
+    }
+
+    // Generate Z-Score reference lines for height (TB/U)
+    function getHeightZScoreData() {
+        const m2sd = [], m1sd = [], median = [], p1sd = [], p2sd = [];
+        ageLabels.forEach(age => {
+            const varType = age <= 24 ? 1 : 2;
+            const key = age + '_' + varType;
+            if (zScoreTBU[key]) {
+                m2sd.push(zScoreTBU[key].m2sd);
+                m1sd.push(zScoreTBU[key].m1sd);
+                median.push(zScoreTBU[key].sd);
+                p1sd.push(zScoreTBU[key].p1sd);
+                p2sd.push(zScoreTBU[key].p2sd);
+            } else {
+                m2sd.push(null);
+                m1sd.push(null);
+                median.push(null);
+                p1sd.push(null);
+                p2sd.push(null);
+            }
+        });
+        return { m2sd, m1sd, median, p1sd, p2sd };
+    }
+
+    // Generate Z-Score reference lines for BMI (IMT/U)
+    function getBMIZScoreData() {
+        const m2sd = [], m1sd = [], median = [], p1sd = [], p2sd = [];
+        ageLabels.forEach(age => {
+            const varType = age <= 24 ? 1 : 2;
+            const key = age + '_' + varType;
+            if (zScoreIMTU[key]) {
+                m2sd.push(zScoreIMTU[key].m2sd);
+                m1sd.push(zScoreIMTU[key].m1sd);
+                median.push(zScoreIMTU[key].sd);
+                p1sd.push(zScoreIMTU[key].p1sd);
+                p2sd.push(zScoreIMTU[key].p2sd);
+            } else {
+                m2sd.push(null);
+                m1sd.push(null);
+                median.push(null);
+                p1sd.push(null);
+                p2sd.push(null);
+            }
+        });
+        return { m2sd, m1sd, median, p1sd, p2sd };
+    }
+
+    // Reference line style
+    const refLineStyle = {
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0.3,
+        fill: false,
+        borderDash: [5, 5]
+    };
+
+    const weightZScore = getWeightZScoreData();
+    const heightZScore = getHeightZScoreData();
+    const bmiZScore = getBMIZScoreData();
+
     const weightDataset = {
         labels: labels,
-        datasets: [{
-            label: 'Berat Badan (kg)',
-            data: weightData,
-            borderColor: '#0066cc',
-            backgroundColor: 'rgba(0, 102, 204, 0.12)',
-            tension: 0.3,
-            fill: true,
-            pointRadius: 6,
-            pointHoverRadius: 9,
-            pointBackgroundColor: '#0066cc',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2
-        }]
+        datasets: [
+            {
+                label: 'Berat Anak',
+                data: weightData,
+                borderColor: '#0066cc',
+                backgroundColor: 'rgba(0, 102, 204, 0.15)',
+                tension: 0.3,
+                fill: false,
+                pointRadius: 6,
+                pointHoverRadius: 9,
+                pointBackgroundColor: '#0066cc',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                borderWidth: 3,
+                order: 0
+            },
+            {
+                label: '+2 SD',
+                data: weightZScore.p2sd,
+                borderColor: '#be123c',
+                ...refLineStyle,
+                order: 1
+            },
+            {
+                label: '+1 SD',
+                data: weightZScore.p1sd,
+                borderColor: '#f59e0b',
+                ...refLineStyle,
+                order: 2
+            },
+            {
+                label: 'Median',
+                data: weightZScore.median,
+                borderColor: '#047857',
+                borderDash: [],
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false,
+                order: 3
+            },
+            {
+                label: '-1 SD',
+                data: weightZScore.m1sd,
+                borderColor: '#f59e0b',
+                ...refLineStyle,
+                order: 4
+            },
+            {
+                label: '-2 SD',
+                data: weightZScore.m2sd,
+                borderColor: '#be123c',
+                ...refLineStyle,
+                order: 5
+            }
+        ]
     };
 
     const heightDataset = {
         labels: labels,
-        datasets: [{
-            label: 'Tinggi Badan (cm)',
-            data: heightData,
-            borderColor: '#047857',
-            backgroundColor: 'rgba(4, 120, 87, 0.12)',
-            tension: 0.3,
-            fill: true,
-            pointRadius: 6,
-            pointHoverRadius: 9,
-            pointBackgroundColor: '#047857',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2
-        }]
+        datasets: [
+            {
+                label: 'Tinggi Anak',
+                data: heightData,
+                borderColor: '#047857',
+                backgroundColor: 'rgba(4, 120, 87, 0.15)',
+                tension: 0.3,
+                fill: false,
+                pointRadius: 6,
+                pointHoverRadius: 9,
+                pointBackgroundColor: '#047857',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                borderWidth: 3,
+                order: 0
+            },
+            {
+                label: '+2 SD',
+                data: heightZScore.p2sd,
+                borderColor: '#be123c',
+                ...refLineStyle,
+                order: 1
+            },
+            {
+                label: '+1 SD',
+                data: heightZScore.p1sd,
+                borderColor: '#f59e0b',
+                ...refLineStyle,
+                order: 2
+            },
+            {
+                label: 'Median',
+                data: heightZScore.median,
+                borderColor: '#0066cc',
+                borderDash: [],
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false,
+                order: 3
+            },
+            {
+                label: '-1 SD',
+                data: heightZScore.m1sd,
+                borderColor: '#f59e0b',
+                ...refLineStyle,
+                order: 4
+            },
+            {
+                label: '-2 SD',
+                data: heightZScore.m2sd,
+                borderColor: '#be123c',
+                ...refLineStyle,
+                order: 5
+            }
+        ]
     };
 
     const bmiDataset = {
         labels: labels,
-        datasets: [{
-            label: 'IMT',
-            data: bmiData,
-            borderColor: '#0891b2',
-            backgroundColor: 'rgba(8, 145, 178, 0.12)',
-            tension: 0.3,
-            fill: true,
-            pointRadius: 6,
-            pointHoverRadius: 9,
-            pointBackgroundColor: '#0891b2',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2
-        }]
+        datasets: [
+            {
+                label: 'IMT Anak',
+                data: bmiData,
+                borderColor: '#0891b2',
+                backgroundColor: 'rgba(8, 145, 178, 0.15)',
+                tension: 0.3,
+                fill: false,
+                pointRadius: 6,
+                pointHoverRadius: 9,
+                pointBackgroundColor: '#0891b2',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                borderWidth: 3,
+                order: 0
+            },
+            {
+                label: '+2 SD',
+                data: bmiZScore.p2sd,
+                borderColor: '#be123c',
+                ...refLineStyle,
+                order: 1
+            },
+            {
+                label: '+1 SD',
+                data: bmiZScore.p1sd,
+                borderColor: '#f59e0b',
+                ...refLineStyle,
+                order: 2
+            },
+            {
+                label: 'Median',
+                data: bmiZScore.median,
+                borderColor: '#047857',
+                borderDash: [],
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.3,
+                fill: false,
+                order: 3
+            },
+            {
+                label: '-1 SD',
+                data: bmiZScore.m1sd,
+                borderColor: '#f59e0b',
+                ...refLineStyle,
+                order: 4
+            },
+            {
+                label: '-2 SD',
+                data: bmiZScore.m2sd,
+                borderColor: '#be123c',
+                ...refLineStyle,
+                order: 5
+            }
+        ]
     };
 
     // Chart.js accessibility configuration
