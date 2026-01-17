@@ -164,7 +164,7 @@ Analytics
                     <div class="stat-label">Total Pengukuran</div>
                 </div>
                 <div class="stat-icon">
-                    <i class="fa fa-chart-line"></i>
+                    <i class="fa fa-line-chart"></i>
                 </div>
             </div>
         </div>
@@ -177,7 +177,7 @@ Analytics
                     <div class="stat-label">Total Imunisasi</div>
                 </div>
                 <div class="stat-icon">
-                    <i class="fa fa-syringe"></i>
+                    <i class="fa fa-medkit"></i>
                 </div>
             </div>
         </div>
