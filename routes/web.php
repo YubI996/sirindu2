@@ -56,6 +56,10 @@ All Admin Routes List
 
 Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('home', [App\Http\Controllers\AdminController::class, 'adminHome'])->name('admin.home');
+    Route::get('analytics', [App\Http\Controllers\AdminController::class, 'analyticsDashboard'])->name('admin.analytics');
+    Route::get('map', [App\Http\Controllers\AdminController::class, 'mapDashboard'])->name('admin.map');
+    Route::get('api/map-data', [App\Http\Controllers\AdminController::class, 'getMapData'])->name('admin.mapData');
+    Route::get('early-warning', [App\Http\Controllers\AdminController::class, 'earlyWarningSystem'])->name('admin.earlyWarning');
     //Anak Route List
     Route::get('data-dasar-anak', [App\Http\Controllers\AdminController::class, 'anak'])->name('admin.anak');
     Route::get('get-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'getAnak'])->name('admin.getAnak');

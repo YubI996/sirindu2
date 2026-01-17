@@ -993,6 +993,958 @@ All Admin Controller
     {
         return view('admin.dashboard.admin');
     }
+
+    /**
+     * Analytics Dashboard - Comprehensive health data visualization (Optimized for massive data)
+     */
+    public function analyticsDashboard()
+    {
+        // Use caching for expensive queries (5 minutes cache)
+        $cacheTime = 300;
+
+        // Total Statistics (fast queries)
+        $totalAnak = Anak::count();
+        $totalDataAnak = DB::table('data_anak')->count();
+        $totalImunisasi = DB::table('imunisasi')->count();
+
+        // Gender Distribution
+        $genderDistribution = DB::table('anak')
+            ->select('jk', DB::raw('count(*) as total'))
+            ->groupBy('jk')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->jk == 1 ? 'Laki-laki' : 'Perempuan' => $item->total]);
+
+        // Age Distribution (in years)
+        $ageDistribution = DB::table('anak')
+            ->selectRaw('FLOOR(DATEDIFF(CURDATE(), tgl_lahir) / 365) as age_year, count(*) as total')
+            ->whereRaw('DATEDIFF(CURDATE(), tgl_lahir) / 365 < 10')
+            ->groupBy('age_year')
+            ->orderBy('age_year')
+            ->get();
+
+        // Geographic Distribution (by Kecamatan)
+        $kecamatanDistribution = DB::table('anak')
+            ->join('kecamatan', 'anak.id_kec', '=', 'kecamatan.id')
+            ->select('kecamatan.name', DB::raw('count(*) as total'))
+            ->groupBy('kecamatan.name')
+            ->get();
+
+        // Kelurahan Distribution
+        $kelurahanDistribution = DB::table('anak')
+            ->join('kelurahan', 'anak.id_kel', '=', 'kelurahan.id')
+            ->select('kelurahan.name', DB::raw('count(*) as total'))
+            ->groupBy('kelurahan.name')
+            ->orderByDesc('total')
+            ->get();
+
+        // Posyandu Distribution (Top 15)
+        $posyanduDistribution = DB::table('anak')
+            ->join('posyandu', 'anak.id_posyandu', '=', 'posyandu.id')
+            ->select('posyandu.name', DB::raw('count(*) as total'))
+            ->groupBy('posyandu.name')
+            ->orderByDesc('total')
+            ->limit(15)
+            ->get();
+
+        // Immunization Status
+        $imunisasiStatus = DB::table('imunisasi')
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->get()
+            ->mapWithKeys(fn($item) => [$item->status => $item->total]);
+
+        // Vaccine Coverage
+        $vaccineCoverage = DB::table('imunisasi')
+            ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
+            ->select('jenis_vaksin.kode', 'jenis_vaksin.nama', DB::raw('count(*) as total'))
+            ->where('imunisasi.status', 'sudah')
+            ->groupBy('jenis_vaksin.kode', 'jenis_vaksin.nama')
+            ->orderBy('jenis_vaksin.id')
+            ->get();
+
+        // Breastfeeding (ASI) Status - Only from latest visits
+        $asiStatus = DB::table('data_anak')
+            ->select('asi', DB::raw('count(DISTINCT id_anak) as total'))
+            ->whereIn('id', function($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('data_anak')
+                    ->groupBy('id_anak');
+            })
+            ->groupBy('asi')
+            ->get()
+            ->mapWithKeys(fn($item) => [
+                $item->asi == 1 ? 'ASI Eksklusif' : ($item->asi == 0 ? 'Tidak ASI Eksklusif' : 'Tidak Diketahui') => $item->total
+            ]);
+
+        // Growth Trend (Average by Month) - Limit to 0-60 months
+        $growthTrend = DB::table('data_anak')
+            ->select('bln', DB::raw('AVG(bb) as avg_bb'), DB::raw('AVG(tb) as avg_tb'), DB::raw('COUNT(*) as count'))
+            ->whereBetween('bln', [0, 60])
+            ->groupBy('bln')
+            ->orderBy('bln')
+            ->get();
+
+        // Z-Score Status Analysis (Optimized with batch processing)
+        $zScoreAnalysis = $this->calculateZScoreAnalysisOptimized();
+
+        // Monthly Visit Trend (Last 12 months)
+        $visitTrend = DB::table('data_anak')
+            ->selectRaw("DATE_FORMAT(tgl_kunjungan, '%Y-%m') as month, COUNT(*) as total")
+            ->whereRaw("tgl_kunjungan >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)")
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // Incomplete Immunization Count (optimized - just count)
+        $incompleteImunisasiCount = $this->getIncompleteImunisasiCount();
+
+        // Recent Activities (Last 20 visits)
+        $recentActivities = DB::table('data_anak')
+            ->join('anak', 'data_anak.id_anak', '=', 'anak.id')
+            ->select('anak.nama', 'data_anak.tgl_kunjungan', 'data_anak.bb', 'data_anak.tb', 'data_anak.bln')
+            ->orderByDesc('data_anak.tgl_kunjungan')
+            ->limit(20)
+            ->get();
+
+        // RT Distribution
+        $rtDistribution = DB::table('anak')
+            ->join('rt', 'anak.id_rt', '=', 'rt.id')
+            ->select('rt.name', DB::raw('count(*) as total'))
+            ->groupBy('rt.name')
+            ->orderByDesc('total')
+            ->limit(20)
+            ->get();
+
+        return view('admin.dashboard.analytics', compact(
+            'totalAnak',
+            'totalDataAnak',
+            'totalImunisasi',
+            'genderDistribution',
+            'ageDistribution',
+            'kecamatanDistribution',
+            'kelurahanDistribution',
+            'posyanduDistribution',
+            'imunisasiStatus',
+            'vaccineCoverage',
+            'asiStatus',
+            'growthTrend',
+            'zScoreAnalysis',
+            'visitTrend',
+            'incompleteImunisasiCount',
+            'recentActivities',
+            'rtDistribution'
+        ));
+    }
+
+    /**
+     * Calculate Z-Score analysis using optimized batch processing
+     */
+    private function calculateZScoreAnalysisOptimized()
+    {
+        $results = [
+            'imt_u' => ['normal' => 0, 'kurang' => 0, 'buruk' => 0, 'lebih' => 0, 'obesitas' => 0],
+            'bb_u' => ['normal' => 0, 'kurang' => 0, 'sangat_kurang' => 0, 'lebih' => 0],
+            'tb_u' => ['normal' => 0, 'pendek' => 0, 'sangat_pendek' => 0, 'tinggi' => 0],
+        ];
+
+        // Get latest measurement for each child using subquery
+        $latestMeasurements = DB::table('data_anak as da')
+            ->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->whereIn('da.id', function($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('data_anak')
+                    ->groupBy('id_anak');
+            })
+            ->where('da.bln', '<=', 60)
+            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')
+            ->get();
+
+        // Preload all Z-Score references
+        $zScoreRefs = DB::table('z_score')
+            ->whereIn('jenis_tbl', [1, 2, 3])
+            ->get()
+            ->groupBy(function($item) {
+                return $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0);
+            });
+
+        foreach ($latestMeasurements as $m) {
+            $tb = $m->tb;
+            if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
+            elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
+            $tb = round($tb);
+            $var = $m->bln <= 24 ? 1 : 2;
+            $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
+
+            // IMT/U Classification
+            $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
+            if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
+                $ref = $zScoreRefs[$imtKey]->first();
+                if ($bmi < $ref->m3sd) $results['imt_u']['buruk']++;
+                elseif ($bmi < $ref->m2sd) $results['imt_u']['kurang']++;
+                elseif ($bmi <= $ref->{'1sd'}) $results['imt_u']['normal']++;
+                elseif ($bmi <= $ref->{'2sd'}) $results['imt_u']['lebih']++;
+                else $results['imt_u']['obesitas']++;
+            }
+
+            // BB/U Classification (var=1 for all BB/U records)
+            $bbKey = "2_{$m->jk}_{$m->bln}_1";
+            if (isset($zScoreRefs[$bbKey]) && $zScoreRefs[$bbKey]->isNotEmpty()) {
+                $ref = $zScoreRefs[$bbKey]->first();
+                if ($m->bb < $ref->m3sd) $results['bb_u']['sangat_kurang']++;
+                elseif ($m->bb < $ref->m2sd) $results['bb_u']['kurang']++;
+                elseif ($m->bb <= $ref->{'1sd'}) $results['bb_u']['normal']++;
+                else $results['bb_u']['lebih']++;
+            }
+
+            // TB/U Classification
+            $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
+            if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
+                $ref = $zScoreRefs[$tbKey]->first();
+                if ($tb < $ref->m3sd) $results['tb_u']['sangat_pendek']++;
+                elseif ($tb < $ref->m2sd) $results['tb_u']['pendek']++;
+                elseif ($tb <= $ref->{'3sd'}) $results['tb_u']['normal']++;
+                else $results['tb_u']['tinggi']++;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get count of children with incomplete basic immunization (optimized)
+     */
+    private function getIncompleteImunisasiCount()
+    {
+        $totalChildren = Anak::count();
+
+        // Count children with complete basic immunization (11 vaccines)
+        $completeCount = DB::table('imunisasi')
+            ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
+            ->where('imunisasi.status', 'sudah')
+            ->where('jenis_vaksin.kategori', 'Imunisasi Dasar')
+            ->groupBy('imunisasi.id_anak')
+            ->havingRaw('COUNT(DISTINCT jenis_vaksin.kode) >= 11')
+            ->select('imunisasi.id_anak')
+            ->get()
+            ->count();
+
+        return $totalChildren - $completeCount;
+    }
+
+    /**
+     * Geographic Map Dashboard with GeoJSON integration
+     */
+    public function mapDashboard()
+    {
+        // Get child counts per kelurahan
+        $kelurahanStats = DB::table('anak')
+            ->join('kelurahan', 'anak.id_kel', '=', 'kelurahan.id')
+            ->select('kelurahan.name as kelurahan_name', DB::raw('count(*) as total_anak'))
+            ->groupBy('kelurahan.name')
+            ->get()
+            ->keyBy('kelurahan_name');
+
+        // Get child counts per kecamatan
+        $kecamatanStats = DB::table('anak')
+            ->join('kecamatan', 'anak.id_kec', '=', 'kecamatan.id')
+            ->select('kecamatan.name as kecamatan_name', DB::raw('count(*) as total_anak'))
+            ->groupBy('kecamatan.name')
+            ->get()
+            ->keyBy('kecamatan_name');
+
+        // Get child counts per RT
+        $rtStats = DB::table('anak')
+            ->join('rt', 'anak.id_rt', '=', 'rt.id')
+            ->select('rt.name as rt_name', DB::raw('count(*) as total_anak'))
+            ->groupBy('rt.name')
+            ->get()
+            ->keyBy('rt_name');
+
+        // Get Z-Score status per kelurahan (optimized)
+        $kelurahanZScore = $this->getZScoreByKelurahanOptimized();
+
+        // Get Z-Score status per RT (optimized)
+        $rtZScore = $this->getZScoreByRTOptimized();
+
+        // Get posyandu locations with stats
+        $posyanduStats = DB::table('anak')
+            ->join('posyandu', 'anak.id_posyandu', '=', 'posyandu.id')
+            ->join('kelurahan', 'anak.id_kel', '=', 'kelurahan.id')
+            ->select(
+                'posyandu.name as posyandu_name',
+                'kelurahan.name as kelurahan_name',
+                DB::raw('count(*) as total_anak')
+            )
+            ->groupBy('posyandu.name', 'kelurahan.name')
+            ->orderByDesc('total_anak')
+            ->limit(30)
+            ->get();
+
+        // Summary stats
+        $totalAnak = Anak::count();
+        $totalKelurahan = DB::table('kelurahan')->count();
+        $totalRT = DB::table('rt')->count();
+        $kelurahanWithData = $kelurahanStats->count();
+        $rtWithData = $rtStats->count();
+
+        // Stunting summary
+        $totalStunting = collect($kelurahanZScore)->sum('stunting');
+        $totalWasting = collect($kelurahanZScore)->sum('wasting');
+
+        return view('admin.dashboard.map', compact(
+            'kelurahanStats',
+            'kecamatanStats',
+            'rtStats',
+            'kelurahanZScore',
+            'rtZScore',
+            'posyanduStats',
+            'totalAnak',
+            'totalKelurahan',
+            'totalRT',
+            'kelurahanWithData',
+            'rtWithData',
+            'totalStunting',
+            'totalWasting'
+        ));
+    }
+
+    /**
+     * API endpoint for map data
+     */
+    public function getMapData()
+    {
+        $kelurahanStats = DB::table('anak')
+            ->join('kelurahan', 'anak.id_kel', '=', 'kelurahan.id')
+            ->select('kelurahan.name as kelurahan_name', DB::raw('count(*) as total_anak'))
+            ->groupBy('kelurahan.name')
+            ->get()
+            ->keyBy('kelurahan_name');
+
+        $kecamatanStats = DB::table('anak')
+            ->join('kecamatan', 'anak.id_kec', '=', 'kecamatan.id')
+            ->select('kecamatan.name as kecamatan_name', DB::raw('count(*) as total_anak'))
+            ->groupBy('kecamatan.name')
+            ->get()
+            ->keyBy('kecamatan_name');
+
+        $zScoreStats = $this->getZScoreByKelurahan();
+
+        return response()->json([
+            'kelurahan' => $kelurahanStats,
+            'kecamatan' => $kecamatanStats,
+            'zscore' => $zScoreStats
+        ]);
+    }
+
+    /**
+     * Early Warning System Dashboard
+     */
+    public function earlyWarningSystem(Request $request)
+    {
+        $alerts = [];
+        $priorityList = [];
+
+        // Pagination parameters
+        $perPage = $request->get('per_page', 20);
+        $page = $request->get('page', 1);
+        $filter = $request->get('filter', 'all');
+
+        $children = Anak::with(['kec', 'kel'])->get();
+
+        // Vaccine schedule reference (age in months)
+        $vaccineSchedule = [
+            'HB0' => ['min' => 0, 'max' => 0, 'desc' => 'Saat lahir'],
+            'BCG' => ['min' => 0, 'max' => 1, 'desc' => '0-1 bulan'],
+            'POLIO1' => ['min' => 0, 'max' => 1, 'desc' => '0-1 bulan'],
+            'POLIO2' => ['min' => 2, 'max' => 3, 'desc' => '2-3 bulan'],
+            'POLIO3' => ['min' => 3, 'max' => 4, 'desc' => '3-4 bulan'],
+            'POLIO4' => ['min' => 4, 'max' => 5, 'desc' => '4-5 bulan'],
+            'DPT-HB-HIB1' => ['min' => 2, 'max' => 3, 'desc' => '2-3 bulan'],
+            'DPT-HB-HIB2' => ['min' => 3, 'max' => 4, 'desc' => '3-4 bulan'],
+            'DPT-HB-HIB3' => ['min' => 4, 'max' => 5, 'desc' => '4-5 bulan'],
+            'IPV' => ['min' => 4, 'max' => 5, 'desc' => '4-5 bulan'],
+            'CAMPAK' => ['min' => 9, 'max' => 12, 'desc' => '9-12 bulan'],
+        ];
+
+        // Vaccine needs per location
+        $vaccineNeedsByLocation = [];
+        $vaccineNeedsByType = [];
+
+        // Vaccine projection data structure - kebutuhan vaksin berdasarkan periode waktu
+        $vaccineProjection = [
+            '1_month' => [], // Kebutuhan 1 bulan ke depan
+            '6_months' => [], // Kebutuhan 6 bulan ke depan
+            '12_months' => [], // Kebutuhan 12 bulan ke depan
+        ];
+
+        foreach ($children as $child) {
+            $childAlerts = [];
+            $riskScore = 0;
+
+            // Get latest measurement
+            $latest = DB::table('data_anak')
+                ->where('id_anak', $child->id)
+                ->orderByDesc('tgl_kunjungan')
+                ->first();
+
+            // Get location names
+            $kecamatan = Kecamatan::find($child->id_kec);
+            $kelurahan = Kelurahan::find($child->id_kel);
+            $posyandu = Posyandu::find($child->id_posyandu);
+
+            // Calculate age
+            $usia = \Carbon\Carbon::parse($child->tgl_lahir)->diffInMonths(now());
+
+            // Skip invalid data (age > 60 months or test data)
+            if ($usia > 120) continue;
+
+            $posyanduName = $posyandu ? $posyandu->name : '-';
+            $kelurahanName = $kelurahan ? $kelurahan->name : '-';
+            $kecamatanName = $kecamatan ? $kecamatan->name : '-';
+
+            $childData = [
+                'id' => $child->id,
+                'hashid' => $child->hashid,
+                'nama' => $child->nama,
+                'usia_bulan' => $usia,
+                'jk' => $child->jk == 1 ? 'Laki-laki' : 'Perempuan',
+                'kecamatan' => $kecamatanName,
+                'kelurahan' => $kelurahanName,
+                'posyandu' => $posyanduName,
+                'alerts' => [],
+                'risk_score' => 0,
+                'risk_level' => 'normal',
+                'last_visit' => null,
+                'zscore_status' => []
+            ];
+
+            // Alert 1: No measurement data
+            if (!$latest) {
+                $childAlerts[] = [
+                    'type' => 'danger',
+                    'icon' => 'fa-exclamation-circle',
+                    'message' => 'Belum pernah dilakukan pengukuran',
+                    'category' => 'measurement'
+                ];
+                $riskScore += 30;
+            } else {
+                $childData['last_visit'] = $latest->tgl_kunjungan;
+                $daysSinceVisit = \Carbon\Carbon::parse($latest->tgl_kunjungan)->diffInDays(now());
+
+                // Alert 2: No recent measurement (> 2 months)
+                if ($daysSinceVisit > 60) {
+                    $childAlerts[] = [
+                        'type' => 'warning',
+                        'icon' => 'fa-calendar-times',
+                        'message' => 'Tidak ada kunjungan ' . round($daysSinceVisit / 30) . ' bulan terakhir',
+                        'category' => 'visit'
+                    ];
+                    $riskScore += 15;
+                }
+
+                // Calculate Z-Score status
+                if ($latest->bln <= 60) {
+                    $tb = $latest->tb;
+                    if ($latest->bln < 24 && $latest->posisi == 'H') $tb += 0.7;
+                    elseif ($latest->bln >= 24 && $latest->posisi == 'L') $tb -= 0.7;
+                    $tb = round($tb);
+                    $var = $latest->bln <= 24 ? 1 : 2;
+                    $bmi = $tb > 0 ? round(10000 * $latest->bb / pow($tb, 2), 2) : 0;
+
+                    // Get Z-Score references
+                    $imt_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 1])->first();
+                    $bb_u = DB::table('z_score')->where(['acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 2])->first();
+                    $tb_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 3])->first();
+
+                    // Check TB/U (Stunting)
+                    if ($tb_u) {
+                        if ($tb < $tb_u->m3sd) {
+                            $childAlerts[] = [
+                                'type' => 'danger',
+                                'icon' => 'fa-child',
+                                'message' => 'SANGAT PENDEK (Severely Stunted)',
+                                'category' => 'stunting'
+                            ];
+                            $childData['zscore_status']['tb_u'] = 'severely_stunted';
+                            $riskScore += 40;
+                        } elseif ($tb < $tb_u->m2sd) {
+                            $childAlerts[] = [
+                                'type' => 'warning',
+                                'icon' => 'fa-child',
+                                'message' => 'Pendek (Stunted)',
+                                'category' => 'stunting'
+                            ];
+                            $childData['zscore_status']['tb_u'] = 'stunted';
+                            $riskScore += 25;
+                        } else {
+                            $childData['zscore_status']['tb_u'] = 'normal';
+                        }
+                    }
+
+                    // Check IMT/U (Wasting/Overweight)
+                    if ($imt_u) {
+                        if ($bmi < $imt_u->m3sd) {
+                            $childAlerts[] = [
+                                'type' => 'danger',
+                                'icon' => 'fa-weight',
+                                'message' => 'GIZI BURUK (Severely Wasted)',
+                                'category' => 'wasting'
+                            ];
+                            $childData['zscore_status']['imt_u'] = 'severely_wasted';
+                            $riskScore += 40;
+                        } elseif ($bmi < $imt_u->m2sd) {
+                            $childAlerts[] = [
+                                'type' => 'warning',
+                                'icon' => 'fa-weight',
+                                'message' => 'Gizi Kurang (Wasted)',
+                                'category' => 'wasting'
+                            ];
+                            $childData['zscore_status']['imt_u'] = 'wasted';
+                            $riskScore += 25;
+                        } elseif ($bmi > $imt_u->{'3sd'}) {
+                            $childAlerts[] = [
+                                'type' => 'warning',
+                                'icon' => 'fa-hamburger',
+                                'message' => 'Obesitas',
+                                'category' => 'obesity'
+                            ];
+                            $childData['zscore_status']['imt_u'] = 'obese';
+                            $riskScore += 20;
+                        } elseif ($bmi > $imt_u->{'2sd'}) {
+                            $childAlerts[] = [
+                                'type' => 'info',
+                                'icon' => 'fa-hamburger',
+                                'message' => 'Gizi Lebih (Overweight)',
+                                'category' => 'overweight'
+                            ];
+                            $childData['zscore_status']['imt_u'] = 'overweight';
+                            $riskScore += 10;
+                        } else {
+                            $childData['zscore_status']['imt_u'] = 'normal';
+                        }
+                    }
+
+                    // Check BB/U (Underweight)
+                    if ($bb_u) {
+                        if ($latest->bb < $bb_u->m3sd) {
+                            $childAlerts[] = [
+                                'type' => 'danger',
+                                'icon' => 'fa-balance-scale',
+                                'message' => 'BB SANGAT KURANG (Severely Underweight)',
+                                'category' => 'underweight'
+                            ];
+                            $childData['zscore_status']['bb_u'] = 'severely_underweight';
+                            $riskScore += 35;
+                        } elseif ($latest->bb < $bb_u->m2sd) {
+                            $childAlerts[] = [
+                                'type' => 'warning',
+                                'icon' => 'fa-balance-scale',
+                                'message' => 'BB Kurang (Underweight)',
+                                'category' => 'underweight'
+                            ];
+                            $childData['zscore_status']['bb_u'] = 'underweight';
+                            $riskScore += 20;
+                        } else {
+                            $childData['zscore_status']['bb_u'] = 'normal';
+                        }
+                    }
+
+                    // Store measurement data
+                    $childData['bb'] = $latest->bb;
+                    $childData['tb'] = $latest->tb;
+                    $childData['bmi'] = $bmi;
+                }
+            }
+
+            // Alert 3: Incomplete immunization
+            $requiredVaccines = ['HB0', 'BCG', 'POLIO1', 'POLIO2', 'POLIO3', 'POLIO4', 'DPT-HB-HIB1', 'DPT-HB-HIB2', 'DPT-HB-HIB3', 'IPV', 'CAMPAK'];
+            $received = DB::table('imunisasi')
+                ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
+                ->where('imunisasi.id_anak', $child->id)
+                ->where('imunisasi.status', 'sudah')
+                ->pluck('jenis_vaksin.kode')
+                ->toArray();
+
+            $missing = array_diff($requiredVaccines, $received);
+            $childData['imunisasi_lengkap'] = count($requiredVaccines) - count($missing);
+            $childData['imunisasi_missing'] = $missing;
+
+            if (count($missing) > 0) {
+                $urgency = count($missing) > 5 ? 'danger' : (count($missing) > 2 ? 'warning' : 'info');
+                $childAlerts[] = [
+                    'type' => $urgency,
+                    'icon' => 'fa-syringe',
+                    'message' => count($missing) . ' vaksin belum lengkap',
+                    'category' => 'immunization'
+                ];
+                $riskScore += count($missing) * 3;
+
+                // Track vaccine needs by location
+                $locationKey = $posyanduName !== '-' ? $posyanduName : $kelurahanName;
+                if (!isset($vaccineNeedsByLocation[$locationKey])) {
+                    $vaccineNeedsByLocation[$locationKey] = [
+                        'posyandu' => $posyanduName,
+                        'kelurahan' => $kelurahanName,
+                        'kecamatan' => $kecamatanName,
+                        'vaccines' => [],
+                        'total_children' => 0,
+                        'children' => []
+                    ];
+                }
+                $vaccineNeedsByLocation[$locationKey]['total_children']++;
+                $vaccineNeedsByLocation[$locationKey]['children'][] = [
+                    'nama' => $child->nama,
+                    'usia' => $usia,
+                    'missing' => $missing
+                ];
+
+                // Track by vaccine type
+                foreach ($missing as $vaccine) {
+                    if (!isset($vaccineNeedsByLocation[$locationKey]['vaccines'][$vaccine])) {
+                        $vaccineNeedsByLocation[$locationKey]['vaccines'][$vaccine] = 0;
+                    }
+                    $vaccineNeedsByLocation[$locationKey]['vaccines'][$vaccine]++;
+
+                    // Global vaccine needs
+                    if (!isset($vaccineNeedsByType[$vaccine])) {
+                        $vaccineNeedsByType[$vaccine] = [
+                            'count' => 0,
+                            'schedule' => $vaccineSchedule[$vaccine] ?? ['min' => 0, 'max' => 60, 'desc' => '-'],
+                            'locations' => []
+                        ];
+                    }
+                    $vaccineNeedsByType[$vaccine]['count']++;
+                    if (!in_array($locationKey, $vaccineNeedsByType[$vaccine]['locations'])) {
+                        $vaccineNeedsByType[$vaccine]['locations'][] = $locationKey;
+                    }
+
+                    // Track vaccine projection by time period
+                    $schedule = $vaccineSchedule[$vaccine] ?? null;
+                    if ($schedule) {
+                        $minAge = $schedule['min'];
+                        $maxAge = $schedule['max'];
+
+                        // Determine projection periods (in months from now)
+                        $periods = [
+                            '1_month' => 1,
+                            '6_months' => 6,
+                            '12_months' => 12,
+                        ];
+
+                        foreach ($periods as $periodKey => $monthsAhead) {
+                            $futureAge = $usia + $monthsAhead;
+
+                            // Include vaccine if:
+                            // 1. Child is already at or past minimum age (overdue/due now), OR
+                            // 2. Child will reach minimum age within this period
+                            $isNeeded = ($usia >= $minAge) || ($usia < $minAge && $futureAge >= $minAge);
+
+                            if ($isNeeded) {
+                                // Initialize vaccine entry if not exists
+                                if (!isset($vaccineProjection[$periodKey][$vaccine])) {
+                                    $vaccineProjection[$periodKey][$vaccine] = [
+                                        'count' => 0,
+                                        'posyandu' => [],
+                                    ];
+                                }
+                                $vaccineProjection[$periodKey][$vaccine]['count']++;
+
+                                // Track by posyandu
+                                if (!isset($vaccineProjection[$periodKey][$vaccine]['posyandu'][$locationKey])) {
+                                    $vaccineProjection[$periodKey][$vaccine]['posyandu'][$locationKey] = 0;
+                                }
+                                $vaccineProjection[$periodKey][$vaccine]['posyandu'][$locationKey]++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Calculate risk level
+            if ($riskScore >= 50) {
+                $childData['risk_level'] = 'high';
+            } elseif ($riskScore >= 25) {
+                $childData['risk_level'] = 'medium';
+            } elseif ($riskScore > 0) {
+                $childData['risk_level'] = 'low';
+            }
+
+            $childData['alerts'] = $childAlerts;
+            $childData['risk_score'] = $riskScore;
+
+            // Add to priority list if has alerts
+            if (count($childAlerts) > 0) {
+                $priorityList[] = $childData;
+            }
+        }
+
+        // Sort by risk score (highest first)
+        usort($priorityList, fn($a, $b) => $b['risk_score'] <=> $a['risk_score']);
+
+        // Apply filter
+        $filteredList = $priorityList;
+        if ($filter !== 'all') {
+            $filteredList = array_filter($priorityList, function($c) use ($filter) {
+                switch ($filter) {
+                    case 'high': return $c['risk_level'] === 'high';
+                    case 'medium': return $c['risk_level'] === 'medium';
+                    case 'low': return $c['risk_level'] === 'low';
+                    case 'stunting': return isset($c['zscore_status']['tb_u']) && in_array($c['zscore_status']['tb_u'], ['stunted', 'severely_stunted']);
+                    case 'immunization': return count($c['imunisasi_missing']) > 0;
+                    default: return true;
+                }
+            });
+            $filteredList = array_values($filteredList);
+        }
+
+        // Generate summary statistics (before pagination)
+        $summary = [
+            'total_children' => count($children),
+            'children_with_alerts' => count($priorityList),
+            'high_risk' => count(array_filter($priorityList, fn($c) => $c['risk_level'] === 'high')),
+            'medium_risk' => count(array_filter($priorityList, fn($c) => $c['risk_level'] === 'medium')),
+            'low_risk' => count(array_filter($priorityList, fn($c) => $c['risk_level'] === 'low')),
+            'stunting_cases' => count(array_filter($priorityList, fn($c) => isset($c['zscore_status']['tb_u']) && in_array($c['zscore_status']['tb_u'], ['stunted', 'severely_stunted']))),
+            'wasting_cases' => count(array_filter($priorityList, fn($c) => isset($c['zscore_status']['imt_u']) && in_array($c['zscore_status']['imt_u'], ['wasted', 'severely_wasted']))),
+            'no_measurement' => count(array_filter($priorityList, fn($c) => $c['last_visit'] === null)),
+            'incomplete_immunization' => count(array_filter($priorityList, fn($c) => count($c['imunisasi_missing']) > 0)),
+        ];
+
+        // Paginate the filtered list
+        $totalFiltered = count($filteredList);
+        $totalPages = ceil($totalFiltered / $perPage);
+        $page = min($page, $totalPages > 0 ? $totalPages : 1);
+        $offset = ($page - 1) * $perPage;
+        $paginatedList = array_slice($filteredList, $offset, $perPage);
+
+        // Pagination data
+        $pagination = [
+            'current_page' => (int)$page,
+            'per_page' => (int)$perPage,
+            'total' => $totalFiltered,
+            'total_pages' => $totalPages,
+            'has_prev' => $page > 1,
+            'has_next' => $page < $totalPages,
+        ];
+
+        // Sort vaccine needs by location (most needs first)
+        uasort($vaccineNeedsByLocation, fn($a, $b) => $b['total_children'] <=> $a['total_children']);
+
+        // Sort vaccine needs by type (most needed first)
+        uasort($vaccineNeedsByType, fn($a, $b) => $b['count'] <=> $a['count']);
+
+        // Sort vaccine projection by count (most needed first)
+        foreach ($vaccineProjection as $period => &$vaccines) {
+            uasort($vaccines, fn($a, $b) => $b['count'] <=> $a['count']);
+        }
+
+        return view('admin.dashboard.early-warning', compact(
+            'paginatedList',
+            'priorityList',
+            'summary',
+            'pagination',
+            'filter',
+            'vaccineNeedsByLocation',
+            'vaccineNeedsByType',
+            'vaccineSchedule',
+            'vaccineProjection'
+        ));
+    }
+
+    /**
+     * Get Z-Score statistics grouped by Kelurahan
+     */
+    private function getZScoreByKelurahan()
+    {
+        $results = [];
+        $kelurahanList = DB::table('kelurahan')->get();
+
+        foreach ($kelurahanList as $kel) {
+            $children = Anak::where('id_kel', $kel->id)->get();
+            $stats = [
+                'total' => 0,
+                'normal' => 0,
+                'stunting' => 0,
+                'wasting' => 0,
+                'overweight' => 0
+            ];
+
+            foreach ($children as $child) {
+                $latest = DB::table('data_anak')
+                    ->where('id_anak', $child->id)
+                    ->orderByDesc('tgl_kunjungan')
+                    ->first();
+
+                if (!$latest || $latest->bln > 60) continue;
+
+                $stats['total']++;
+
+                $tb = $latest->tb;
+                if ($latest->bln < 24 && $latest->posisi == 'H') $tb += 0.7;
+                elseif ($latest->bln >= 24 && $latest->posisi == 'L') $tb -= 0.7;
+                $tb = round($tb);
+                $var = $latest->bln <= 24 ? 1 : 2;
+                $bmi = $tb > 0 ? round(10000 * $latest->bb / pow($tb, 2), 2) : 0;
+
+                // TB/U for stunting
+                $tb_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 3])->first();
+                if ($tb_u && $tb < $tb_u->m2sd) {
+                    $stats['stunting']++;
+                }
+
+                // IMT/U for wasting/overweight
+                $imt_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 1])->first();
+                if ($imt_u) {
+                    if ($bmi < $imt_u->m2sd) {
+                        $stats['wasting']++;
+                    } elseif ($bmi > $imt_u->{'2sd'}) {
+                        $stats['overweight']++;
+                    } else {
+                        $stats['normal']++;
+                    }
+                }
+            }
+
+            if ($stats['total'] > 0) {
+                $results[$kel->name] = $stats;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get Z-Score statistics by Kelurahan (Optimized for massive data)
+     */
+    private function getZScoreByKelurahanOptimized()
+    {
+        $results = [];
+
+        // Get latest measurements with kelurahan grouping
+        $measurements = DB::table('data_anak as da')
+            ->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->join('kelurahan as k', 'a.id_kel', '=', 'k.id')
+            ->whereIn('da.id', function($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('data_anak')
+                    ->groupBy('id_anak');
+            })
+            ->where('da.bln', '<=', 60)
+            ->select('k.name as kelurahan', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')
+            ->get()
+            ->groupBy('kelurahan');
+
+        // Preload Z-Score references
+        $zScoreRefs = DB::table('z_score')
+            ->whereIn('jenis_tbl', [1, 3])
+            ->get()
+            ->groupBy(function($item) {
+                return $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0);
+            });
+
+        foreach ($measurements as $kelName => $children) {
+            $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0];
+
+            foreach ($children as $m) {
+                $stats['total']++;
+                $tb = $m->tb;
+                if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
+                elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
+                $tb = round($tb);
+                $var = $m->bln <= 24 ? 1 : 2;
+                $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
+
+                // TB/U for stunting
+                $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
+                if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
+                    $ref = $zScoreRefs[$tbKey]->first();
+                    if ($tb < $ref->m2sd) $stats['stunting']++;
+                }
+
+                // IMT/U for wasting/overweight
+                $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
+                if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
+                    $ref = $zScoreRefs[$imtKey]->first();
+                    if ($bmi < $ref->m2sd) $stats['wasting']++;
+                    elseif ($bmi > $ref->{'2sd'}) $stats['overweight']++;
+                    else $stats['normal']++;
+                }
+            }
+
+            if ($stats['total'] > 0) {
+                $results[$kelName] = $stats;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get Z-Score statistics by RT (Optimized for massive data)
+     */
+    private function getZScoreByRTOptimized()
+    {
+        $results = [];
+
+        // Get latest measurements with RT grouping
+        $measurements = DB::table('data_anak as da')
+            ->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->join('rt as r', 'a.id_rt', '=', 'r.id')
+            ->whereIn('da.id', function($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('data_anak')
+                    ->groupBy('id_anak');
+            })
+            ->where('da.bln', '<=', 60)
+            ->select('r.name as rt_name', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')
+            ->get()
+            ->groupBy('rt_name');
+
+        // Preload Z-Score references
+        $zScoreRefs = DB::table('z_score')
+            ->whereIn('jenis_tbl', [1, 3])
+            ->get()
+            ->groupBy(function($item) {
+                return $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0);
+            });
+
+        foreach ($measurements as $rtName => $children) {
+            $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0];
+
+            foreach ($children as $m) {
+                $stats['total']++;
+                $tb = $m->tb;
+                if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
+                elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
+                $tb = round($tb);
+                $var = $m->bln <= 24 ? 1 : 2;
+                $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
+
+                // TB/U for stunting
+                $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
+                if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
+                    $ref = $zScoreRefs[$tbKey]->first();
+                    if ($tb < $ref->m2sd) $stats['stunting']++;
+                }
+
+                // IMT/U for wasting/overweight
+                $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
+                if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
+                    $ref = $zScoreRefs[$imtKey]->first();
+                    if ($bmi < $ref->m2sd) $stats['wasting']++;
+                    elseif ($bmi > $ref->{'2sd'}) $stats['overweight']++;
+                    else $stats['normal']++;
+                }
+            }
+
+            if ($stats['total'] > 0) {
+                $results[$rtName] = $stats;
+            }
+        }
+
+        return $results;
+    }
+
     /*------------------------------------------
 --------------------------------------------
 All User Controller

@@ -1,0 +1,57 @@
+{
+  "normalisasi": {
+    "Api-api": "Api-Api",
+    "API-API": "Api-Api",
+    "Berbas Tengah": "Berbas tengah",
+    "BEREBAS TENGAH": "Berbas tengah",
+    "GUNUNG TELIHAN": "Gunung Telihan",
+    "Gunung Telihan": "Gunung Telihan",
+    "Lok Tuan": "Loktuan",
+    "LOKTUAN": "Loktuan"
+  },
+  "kecamatan": {
+    "Bontang Utara": "Bontang Utara",
+    "Bontang Selatan": "Bontang Selatan",
+    "Bontang Barat": "Bontang Barat"
+  },
+  "kelurahan": {
+    "Api-Api": "Api Api",
+    "Belimbing": "Belimbing",
+    "Berbas Pantai": "Berbas Pantai",
+    "Berbas tengah": "Berbas Tengah",
+    "Bontang Baru": "Bontang Baru",
+    "Bontang Kuala": "Bontang Kuala",
+    "Bontang Lestari": "Bontang Lestari",
+    "Guntung": "Guntung",
+    "Gunung Elai": "Gunung Elai",
+    "Gunung Telihan": "Telihan",
+    "Kanaan": "Kanaan",
+    "Loktuan": "Loktuan",
+    "Satimpo": "Satimpo",
+    "Tanjung Laut": "Tanjung Laut",
+    "Tanjung Laut Indah": "Tanjung Laut Indah"
+  },
+  "rt": {
+    "kelurahan_suffix": {
+      "Api-Api": "AA",
+      "Belimbing": "BELIMBING",
+      "Berbas Pantai": "BP",
+      "Berbas tengah": "BT",
+      "Bontang Baru": "BB",
+      "Bontang Kuala": "BK",
+      "Bontang Lestari": "BL",
+      "Guntung": "GUNTUNG",
+      "Gunung Elai": "GE",
+      "Gunung Telihan": "TELIHAN",
+      "Kanaan": "KANAAN",
+      "Loktuan": "LOKTUAN",
+      "Satimpo": "STP",
+      "Tanjung Laut": "TL",
+      "Tanjung Laut Indah": "TLI"
+    },
+    "rt_name_format": "{rt_number_no_leading_zeros}{suffix}",
+    "exclude_kelurahan": [
+      "SIDRAP"
+    ]
+  }
+}

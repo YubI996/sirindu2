@@ -20,6 +20,16 @@
 				</li>
 				<li class="dropdown">
 					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-chart-pie"></span><span class="mtext">Dashboard</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.analytics')}}"><i class="fa fa-chart-bar mr-2"></i>Analytics</a></li>
+						<li><a href="{{route('admin.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
+						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
+					</ul>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
 						<span class="micon fa fa-database"></span><span class="mtext">Data</span>
 					</a>
 					<ul class="submenu">
@@ -32,6 +42,16 @@
 					<a href="{{Route('admin.home')}}" class="dropdown-toggle no-arrow">
 						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
 					</a>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-chart-pie"></span><span class="mtext">Dashboard</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.analytics')}}"><i class="fa fa-chart-bar mr-2"></i>Analytics</a></li>
+						<li><a href="{{route('admin.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
+						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
+					</ul>
 				</li>
 				<li class="dropdown">
 					<a href="javascript:;" class="dropdown-toggle">
