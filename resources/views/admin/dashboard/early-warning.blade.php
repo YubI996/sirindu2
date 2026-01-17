@@ -13,13 +13,71 @@ Proyeksi
 @endsection
 
 @section('content')
+{{-- Skip Link for Accessibility --}}
+<a href="#main-content" class="sr-only sr-only-focusable skip-link">Langsung ke konten utama</a>
 <style>
     :root {
         --primary-blue: #0066cc;
+        --primary-blue-dark: #004d99;
+        --primary-blue-light: #e6f2ff;
         --success-green: #047857;
+        --success-green-dark: #065f46;
+        --success-green-light: #d1fae5;
         --warning-amber: #b45309;
         --danger-rose: #be123c;
         --info-teal: #0891b2;
+        --text-muted: #4b5563;
+        --text-secondary: #6b7280;
+    }
+
+    /* Skip Link */
+    .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: var(--primary-blue-dark);
+        color: #fff;
+        padding: 8px 16px;
+        z-index: 9999;
+        text-decoration: none;
+    }
+    .skip-link:focus {
+        top: 0;
+    }
+
+    /* Enhanced Focus Indicators */
+    a:focus,
+    button:focus,
+    .btn:focus,
+    input:focus,
+    select:focus,
+    textarea:focus,
+    [tabindex]:focus {
+        outline: 3px solid var(--primary-blue) !important;
+        outline-offset: 2px !important;
+        box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.25) !important;
+    }
+
+    .text-accessible-muted {
+        color: var(--text-muted) !important;
+    }
+
+    .text-muted {
+        color: var(--text-muted) !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        * {
+            scroll-behavior: auto !important;
+        }
+        .alert-card,
+        .child-card,
+        .stat-box,
+        .stat-card,
+        .vaccine-card,
+        .chart-card {
+            transition: none !important;
+        }
     }
 
     .alert-card {
@@ -59,7 +117,7 @@ Proyeksi
     .stat-box.success { border-left-color: #047857; }
 
     .stat-box h2 { font-size: 2rem; font-weight: 700; margin: 0; }
-    .stat-box p { color: #6b7280; font-size: 0.875rem; margin: 0; }
+    .stat-box p { color: var(--text-muted); font-size: 0.875rem; margin: 0; }
 
     .risk-badge {
         display: inline-flex;
@@ -133,7 +191,7 @@ Proyeksi
 
     .child-info-item label {
         font-size: 0.75rem;
-        color: #6b7280;
+        color: var(--text-muted);
         margin-bottom: 0.25rem;
     }
 
@@ -159,7 +217,7 @@ Proyeksi
         border-radius: 20px;
         border: 2px solid #e5e7eb;
         background: #fff;
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 0.85rem;
         cursor: pointer;
         transition: all 0.2s;
@@ -182,7 +240,7 @@ Proyeksi
     .empty-state {
         text-align: center;
         padding: 3rem;
-        color: #6b7280;
+        color: var(--text-muted);
     }
 
     .empty-state i {
@@ -217,7 +275,7 @@ Proyeksi
     }
 
     .pagination-info {
-        color: #6b7280;
+        color: var(--text-muted);
         font-size: 0.9rem;
     }
 
@@ -232,7 +290,7 @@ Proyeksi
         border: 1px solid #e5e7eb;
         border-radius: 8px;
         background: #fff;
-        color: #374151;
+        color: #1f2937;
         cursor: pointer;
         transition: all 0.2s;
     }
@@ -274,6 +332,10 @@ Proyeksi
         background: linear-gradient(135deg, var(--info-teal) 0%, #06b6d4 100%);
         color: #fff;
         font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
     }
 
     .vaccine-card-body {
@@ -293,10 +355,10 @@ Proyeksi
     }
 
     .vaccine-table th {
-        background: #f9fafb;
+        background: var(--primary-blue-light);
         font-weight: 600;
         font-size: 0.85rem;
-        color: #374151;
+        color: var(--primary-blue-dark);
     }
 
     .vaccine-table tr:hover {
@@ -347,7 +409,7 @@ Proyeksi
         padding: 0.75rem 1.5rem;
         border: none;
         background: transparent;
-        color: #6b7280;
+        color: var(--text-muted);
         font-weight: 500;
         cursor: pointer;
         border-bottom: 3px solid transparent;
@@ -362,6 +424,55 @@ Proyeksi
     .tab-btn.active {
         color: var(--primary-blue);
         border-bottom-color: var(--primary-blue);
+    }
+
+    .badge-light {
+        background: var(--primary-blue-light);
+        color: var(--primary-blue-dark);
+        border: 1px solid rgba(0, 77, 153, 0.15);
+    }
+
+    .badge-secondary {
+        background: var(--text-muted);
+        color: #ffffff;
+    }
+
+    .alert-info {
+        background: #e0f2fe;
+        color: #0f172a;
+        border-color: #bae6fd;
+    }
+
+    /* Screen reader only class */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .sr-only-focusable:focus {
+        position: static;
+        width: auto;
+        height: auto;
+        padding: inherit;
+        margin: inherit;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+    }
+
+    a:not(.btn) {
+        color: var(--primary-blue);
+    }
+
+    a:not(.btn):hover {
+        color: var(--primary-blue-dark);
     }
 
     .tab-content {
@@ -381,6 +492,7 @@ Proyeksi
     }
 </style>
 
+<main id="main-content" role="main" aria-label="Proyeksi & Early Warning System">
 {{-- Summary Statistics --}}
 <div class="row mb-4">
     <div class="col-lg-3 col-md-6 mb-3">
@@ -440,27 +552,32 @@ Proyeksi
 {{-- Kebutuhan Vaksin Section --}}
 <div class="vaccine-card mb-4">
     <div class="vaccine-card-header">
-        <i class="fa fa-syringe mr-2"></i> Proyeksi Kebutuhan Vaksin
+        <div>
+            <i class="fa fa-syringe mr-2"></i> Proyeksi Kebutuhan Vaksin
+        </div>
+        <a href="{{ route('admin.exportVaccineNeeds') }}" class="btn btn-sm btn-light">
+            <i class="fa fa-file-excel mr-1"></i> Export Excel
+        </a>
     </div>
     <div class="vaccine-card-body">
-        <div class="tab-container">
-            <button class="tab-btn active" onclick="showProjectionTab('1month')">
+        <div class="tab-container" role="tablist" aria-label="Periode proyeksi kebutuhan vaksin">
+            <button class="tab-btn active" id="tabBtn1month" role="tab" aria-selected="true" aria-controls="tab1month" onclick="showProjectionTab('1month', this)" type="button">
                 1 Bulan Ke Depan
                 <span class="badge badge-light ml-1">{{ array_sum(array_column($vaccineProjection['1_month'] ?? [], 'count')) }}</span>
             </button>
-            <button class="tab-btn" onclick="showProjectionTab('6months')">
+            <button class="tab-btn" id="tabBtn6months" role="tab" aria-selected="false" aria-controls="tab6months" onclick="showProjectionTab('6months', this)" type="button">
                 6 Bulan Ke Depan
                 <span class="badge badge-light ml-1">{{ array_sum(array_column($vaccineProjection['6_months'] ?? [], 'count')) }}</span>
             </button>
-            <button class="tab-btn" onclick="showProjectionTab('12months')">
+            <button class="tab-btn" id="tabBtn12months" role="tab" aria-selected="false" aria-controls="tab12months" onclick="showProjectionTab('12months', this)" type="button">
                 12 Bulan Ke Depan
                 <span class="badge badge-light ml-1">{{ array_sum(array_column($vaccineProjection['12_months'] ?? [], 'count')) }}</span>
             </button>
-            <button class="tab-btn" onclick="showProjectionTab('byLocation')">Per Lokasi ({{ count($vaccineNeedsByLocation) }})</button>
+            <button class="tab-btn" id="tabBtnbyLocation" role="tab" aria-selected="false" aria-controls="tabbyLocation" onclick="showProjectionTab('byLocation', this)" type="button">Per Lokasi ({{ count($vaccineNeedsByLocation) }})</button>
         </div>
 
         {{-- Tab: 1 Bulan Ke Depan --}}
-        <div class="projection-tab-content active" id="tab1month">
+        <div class="projection-tab-content active" id="tab1month" role="tabpanel" aria-labelledby="tabBtn1month">
             <div class="alert alert-info py-2 mb-3">
                 <i class="fa fa-info-circle mr-1"></i> Proyeksi kebutuhan vaksin untuk <strong>1 bulan ke depan</strong> berdasarkan usia anak.
             </div>
@@ -506,7 +623,7 @@ Proyeksi
         </div>
 
         {{-- Tab: 6 Bulan Ke Depan --}}
-        <div class="projection-tab-content" id="tab6months">
+        <div class="projection-tab-content" id="tab6months" role="tabpanel" aria-labelledby="tabBtn6months">
             <div class="alert alert-info py-2 mb-3">
                 <i class="fa fa-info-circle mr-1"></i> Proyeksi kebutuhan vaksin untuk <strong>6 bulan ke depan</strong> berdasarkan usia anak.
             </div>
@@ -552,7 +669,7 @@ Proyeksi
         </div>
 
         {{-- Tab: 12 Bulan Ke Depan --}}
-        <div class="projection-tab-content" id="tab12months">
+        <div class="projection-tab-content" id="tab12months" role="tabpanel" aria-labelledby="tabBtn12months">
             <div class="alert alert-info py-2 mb-3">
                 <i class="fa fa-info-circle mr-1"></i> Proyeksi kebutuhan vaksin untuk <strong>12 bulan ke depan</strong> berdasarkan usia anak.
             </div>
@@ -598,7 +715,7 @@ Proyeksi
         </div>
 
         {{-- Tab: Per Lokasi --}}
-        <div class="projection-tab-content" id="tabbyLocation">
+        <div class="projection-tab-content" id="tabbyLocation" role="tabpanel" aria-labelledby="tabBtnbyLocation">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="input-group" style="max-width: 300px;">
                     <div class="input-group-prepend">
@@ -692,6 +809,10 @@ Proyeksi
     <span class="ml-2 text-muted" style="font-size: 0.85rem; font-weight: normal;">
         ({{ $pagination['total'] }} anak)
     </span>
+    <button type="button" class="btn btn-sm btn-outline-primary ml-3" data-toggle="modal" data-target="#scoreInfoModal" aria-describedby="scoreInfoHelp">
+        <i class="fa fa-info-circle mr-1"></i> Cara Skor
+    </button>
+    <span id="scoreInfoHelp" class="sr-only">Membuka penjelasan perhitungan skor prioritas</span>
 </div>
 
 <div id="childrenList">
@@ -840,20 +961,129 @@ Proyeksi
     </p>
 </div>
 @endif
+
+{{-- Score Explanation Modal --}}
+<div class="modal fade" id="scoreInfoModal" tabindex="-1" role="dialog" aria-labelledby="scoreInfoTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scoreInfoTitle">Cara Menghitung Skor Prioritas Intervensi</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Tutup">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="text-accessible-muted mb-3">
+                    Skor merupakan penjumlahan beberapa faktor risiko. Semakin tinggi skor, semakin tinggi prioritas intervensi.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Faktor Risiko</th>
+                                <th class="text-center">Skor</th>
+                                <th>Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Belum pernah dilakukan pengukuran</td>
+                                <td class="text-center">+30</td>
+                                <td>Data kunjungan belum ada.</td>
+                            </tr>
+                            <tr>
+                                <td>Tidak ada kunjungan &gt; 2 bulan</td>
+                                <td class="text-center">+15</td>
+                                <td>Berdasarkan tanggal kunjungan terakhir.</td>
+                            </tr>
+                            <tr>
+                                <td>Sangat pendek (Severely Stunted)</td>
+                                <td class="text-center">+40</td>
+                                <td>TB/U &lt; -3 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>Pendek (Stunted)</td>
+                                <td class="text-center">+25</td>
+                                <td>TB/U &lt; -2 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>Gizi buruk (Severely Wasted)</td>
+                                <td class="text-center">+40</td>
+                                <td>IMT/U &lt; -3 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>Gizi kurang (Wasted)</td>
+                                <td class="text-center">+25</td>
+                                <td>IMT/U &lt; -2 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>BB sangat kurang (Severely Underweight)</td>
+                                <td class="text-center">+35</td>
+                                <td>BB/U &lt; -3 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>BB kurang (Underweight)</td>
+                                <td class="text-center">+20</td>
+                                <td>BB/U &lt; -2 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>Gizi lebih (Overweight)</td>
+                                <td class="text-center">+10</td>
+                                <td>IMT/U &gt; +2 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>Obesitas</td>
+                                <td class="text-center">+20</td>
+                                <td>IMT/U &gt; +3 SD.</td>
+                            </tr>
+                            <tr>
+                                <td>Imunisasi belum lengkap</td>
+                                <td class="text-center">+3 / vaksin</td>
+                                <td>Setiap vaksin yang belum lengkap menambah skor.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-accessible-muted mb-0">
+                    Kategori risiko: <strong>Tinggi</strong> (skor ≥ 50), <strong>Sedang</strong> (skor 25–49), <strong>Rendah</strong> (skor 1–24).
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+</main>
 @endsection
 
 @section('scripts')
 @parent
 <script>
 // Tab switching for vaccine projection
-function showProjectionTab(tabName) {
+function showProjectionTab(tabName, buttonEl) {
     // Update button states
-    document.querySelectorAll('.vaccine-card .tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    document.querySelectorAll('.vaccine-card .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+        btn.setAttribute('tabindex', '-1');
+    });
+    if (buttonEl) {
+        buttonEl.classList.add('active');
+        buttonEl.setAttribute('aria-selected', 'true');
+        buttonEl.setAttribute('tabindex', '0');
+    }
 
     // Show/hide content
-    document.querySelectorAll('.projection-tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById('tab' + tabName).classList.add('active');
+    document.querySelectorAll('.projection-tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.setAttribute('aria-hidden', 'true');
+    });
+    const targetTab = document.getElementById('tab' + tabName);
+    if (targetTab) {
+        targetTab.classList.add('active');
+        targetTab.setAttribute('aria-hidden', 'false');
+    }
 
     // Initialize location pagination when showing location tab
     if (tabName === 'byLocation') {
@@ -862,14 +1092,29 @@ function showProjectionTab(tabName) {
 }
 
 // Legacy tab switching (kept for compatibility)
-function showTab(tabName) {
+function showTab(tabName, buttonEl) {
     // Update button states
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+        btn.setAttribute('tabindex', '-1');
+    });
+    if (buttonEl) {
+        buttonEl.classList.add('active');
+        buttonEl.setAttribute('aria-selected', 'true');
+        buttonEl.setAttribute('tabindex', '0');
+    }
 
     // Show/hide content
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.setAttribute('aria-hidden', 'true');
+    });
+    const targetTab = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+    if (targetTab) {
+        targetTab.classList.add('active');
+        targetTab.setAttribute('aria-hidden', 'false');
+    }
 
     // Initialize location pagination when showing location tab
     if (tabName === 'byLocation') {

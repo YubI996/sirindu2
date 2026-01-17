@@ -20,6 +20,7 @@ use App\Models\Rt;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\AnakExport;
+use App\Exports\VaccineNeedsExport;
 use App\Models\AllData;
 use Maatwebsite\Excel\Facades\Excel;
 use Rap2hpoutre\FastExcel\FastExcel;
@@ -1749,6 +1750,54 @@ All Admin Controller
             'vaccineSchedule',
             'vaccineProjection'
         ));
+    }
+
+    public function exportVaccineNeeds()
+    {
+        $requiredVaccines = ['HB0', 'BCG', 'POLIO1', 'POLIO2', 'POLIO3', 'POLIO4', 'DPT-HB-HIB1', 'DPT-HB-HIB2', 'DPT-HB-HIB3', 'IPV', 'CAMPAK'];
+        $rows = [];
+
+        $children = Anak::all();
+
+        foreach ($children as $child) {
+            $usia = \Carbon\Carbon::parse($child->tgl_lahir)->diffInMonths(now());
+            if ($usia > 120) {
+                continue;
+            }
+
+            $kecamatan = Kecamatan::find($child->id_kec);
+            $kelurahan = Kelurahan::find($child->id_kel);
+            $posyandu = Posyandu::find($child->id_posyandu);
+
+            $posyanduName = $posyandu ? $posyandu->name : '-';
+            $kelurahanName = $kelurahan ? $kelurahan->name : '-';
+            $kecamatanName = $kecamatan ? $kecamatan->name : '-';
+
+            $received = DB::table('imunisasi')
+                ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
+                ->where('imunisasi.id_anak', $child->id)
+                ->where('imunisasi.status', 'sudah')
+                ->pluck('jenis_vaksin.kode')
+                ->toArray();
+
+            $missing = array_values(array_diff($requiredVaccines, $received));
+            if (count($missing) === 0) {
+                continue;
+            }
+
+            $rows[] = [
+                $child->nama,
+                $usia,
+                $child->jk == 1 ? 'Laki-laki' : 'Perempuan',
+                $posyanduName,
+                $kelurahanName,
+                $kecamatanName,
+                implode(', ', $missing),
+                count($missing),
+            ];
+        }
+
+        return Excel::download(new VaccineNeedsExport($rows), 'proyeksi-kebutuhan-vaksin.xlsx');
     }
 
     /**

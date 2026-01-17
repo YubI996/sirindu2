@@ -60,6 +60,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('map', [App\Http\Controllers\AdminController::class, 'mapDashboard'])->name('admin.map');
     Route::get('api/map-data', [App\Http\Controllers\AdminController::class, 'getMapData'])->name('admin.mapData');
     Route::get('early-warning', [App\Http\Controllers\AdminController::class, 'earlyWarningSystem'])->name('admin.earlyWarning');
+    Route::get('early-warning/export-vaccine-needs', [App\Http\Controllers\AdminController::class, 'exportVaccineNeeds'])->name('admin.exportVaccineNeeds');
     //Anak Route List
     Route::get('data-dasar-anak', [App\Http\Controllers\AdminController::class, 'anak'])->name('admin.anak');
     Route::get('get-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'getAnak'])->name('admin.getAnak');
