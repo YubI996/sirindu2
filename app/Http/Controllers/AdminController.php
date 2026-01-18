@@ -1350,7 +1350,21 @@ All Admin Controller
         $page = $request->get('page', 1);
         $filter = $request->get('filter', 'all');
 
-        $children = Anak::with(['kec', 'kel'])->get();
+        // Eager load all necessary relationships to avoid N+1 queries
+        $children = Anak::with([
+            'kec',
+            'kel',
+            'posyandu',
+            'latestDataAnak',
+            'imunisasi' => function($query) {
+                $query->where('status', 'sudah')->with('jenisVaksin');
+            }
+        ])->get();
+
+        // Preload all z_score data once to avoid repeated queries
+        $zScoreCache = DB::table('z_score')->get()->keyBy(function($item) {
+            return "{$item->jenis_tbl}_{$item->jk}_{$item->acuan}_{$item->var}";
+        });
 
         // Vaccine schedule reference (age in months)
         $vaccineSchedule = [
@@ -1382,16 +1396,13 @@ All Admin Controller
             $childAlerts = [];
             $riskScore = 0;
 
-            // Get latest measurement
-            $latest = DB::table('data_anak')
-                ->where('id_anak', $child->id)
-                ->orderByDesc('tgl_kunjungan')
-                ->first();
+            // Get latest measurement from eager loaded relationship
+            $latest = $child->latestDataAnak;
 
-            // Get location names
-            $kecamatan = Kecamatan::find($child->id_kec);
-            $kelurahan = Kelurahan::find($child->id_kel);
-            $posyandu = Posyandu::find($child->id_posyandu);
+            // Get location names from eager loaded relationships
+            $kecamatan = $child->kec;
+            $kelurahan = $child->kel;
+            $posyandu = $child->posyandu;
 
             // Calculate age
             $usia = \Carbon\Carbon::parse($child->tgl_lahir)->diffInMonths(now());
@@ -1452,10 +1463,10 @@ All Admin Controller
                     $var = $latest->bln <= 24 ? 1 : 2;
                     $bmi = $tb > 0 ? round(10000 * $latest->bb / pow($tb, 2), 2) : 0;
 
-                    // Get Z-Score references
-                    $imt_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 1])->first();
-                    $bb_u = DB::table('z_score')->where(['acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 2])->first();
-                    $tb_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 3])->first();
+                    // Get Z-Score references from preloaded cache
+                    $imt_u = $zScoreCache->get("1_{$child->jk}_{$latest->bln}_{$var}");
+                    $bb_u = $zScoreCache->get("2_{$child->jk}_{$latest->bln}_0");
+                    $tb_u = $zScoreCache->get("3_{$child->jk}_{$latest->bln}_{$var}");
 
                     // Check TB/U (Stunting)
                     if ($tb_u) {
@@ -1559,12 +1570,8 @@ All Admin Controller
 
             // Alert 3: Incomplete immunization
             $requiredVaccines = ['HB0', 'BCG', 'POLIO1', 'POLIO2', 'POLIO3', 'POLIO4', 'DPT-HB-HIB1', 'DPT-HB-HIB2', 'DPT-HB-HIB3', 'IPV', 'CAMPAK'];
-            $received = DB::table('imunisasi')
-                ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
-                ->where('imunisasi.id_anak', $child->id)
-                ->where('imunisasi.status', 'sudah')
-                ->pluck('jenis_vaksin.kode')
-                ->toArray();
+            // Use eager loaded imunisasi data instead of querying
+            $received = $child->imunisasi->pluck('jenisVaksin.kode')->toArray();
 
             $missing = array_diff($requiredVaccines, $received);
             $childData['imunisasi_lengkap'] = count($requiredVaccines) - count($missing);
@@ -1757,7 +1764,15 @@ All Admin Controller
         $requiredVaccines = ['HB0', 'BCG', 'POLIO1', 'POLIO2', 'POLIO3', 'POLIO4', 'DPT-HB-HIB1', 'DPT-HB-HIB2', 'DPT-HB-HIB3', 'IPV', 'CAMPAK'];
         $rows = [];
 
-        $children = Anak::all();
+        // Eager load all relationships to avoid N+1 queries
+        $children = Anak::with([
+            'kec',
+            'kel',
+            'posyandu',
+            'imunisasi' => function($query) {
+                $query->where('status', 'sudah')->with('jenisVaksin');
+            }
+        ])->get();
 
         foreach ($children as $child) {
             $usia = \Carbon\Carbon::parse($child->tgl_lahir)->diffInMonths(now());
@@ -1765,20 +1780,13 @@ All Admin Controller
                 continue;
             }
 
-            $kecamatan = Kecamatan::find($child->id_kec);
-            $kelurahan = Kelurahan::find($child->id_kel);
-            $posyandu = Posyandu::find($child->id_posyandu);
+            // Use eager loaded relationships instead of manual find()
+            $posyanduName = $child->posyandu ? $child->posyandu->name : '-';
+            $kelurahanName = $child->kel ? $child->kel->name : '-';
+            $kecamatanName = $child->kec ? $child->kec->name : '-';
 
-            $posyanduName = $posyandu ? $posyandu->name : '-';
-            $kelurahanName = $kelurahan ? $kelurahan->name : '-';
-            $kecamatanName = $kecamatan ? $kecamatan->name : '-';
-
-            $received = DB::table('imunisasi')
-                ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
-                ->where('imunisasi.id_anak', $child->id)
-                ->where('imunisasi.status', 'sudah')
-                ->pluck('jenis_vaksin.kode')
-                ->toArray();
+            // Use eager loaded imunisasi data
+            $received = $child->imunisasi->pluck('jenisVaksin.kode')->toArray();
 
             $missing = array_values(array_diff($requiredVaccines, $received));
             if (count($missing) === 0) {
@@ -1808,8 +1816,17 @@ All Admin Controller
         $results = [];
         $kelurahanList = DB::table('kelurahan')->get();
 
+        // Preload all z_score data once
+        $zScoreCache = DB::table('z_score')->get()->keyBy(function($item) {
+            return "{$item->jenis_tbl}_{$item->jk}_{$item->acuan}_{$item->var}";
+        });
+
         foreach ($kelurahanList as $kel) {
-            $children = Anak::where('id_kel', $kel->id)->get();
+            // Eager load children with their latest data
+            $children = Anak::where('id_kel', $kel->id)
+                ->with('latestDataAnak')
+                ->get();
+
             $stats = [
                 'total' => 0,
                 'normal' => 0,
@@ -1819,10 +1836,7 @@ All Admin Controller
             ];
 
             foreach ($children as $child) {
-                $latest = DB::table('data_anak')
-                    ->where('id_anak', $child->id)
-                    ->orderByDesc('tgl_kunjungan')
-                    ->first();
+                $latest = $child->latestDataAnak;
 
                 if (!$latest || $latest->bln > 60) continue;
 
@@ -1835,14 +1849,14 @@ All Admin Controller
                 $var = $latest->bln <= 24 ? 1 : 2;
                 $bmi = $tb > 0 ? round(10000 * $latest->bb / pow($tb, 2), 2) : 0;
 
-                // TB/U for stunting
-                $tb_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 3])->first();
+                // TB/U for stunting - use preloaded cache
+                $tb_u = $zScoreCache->get("3_{$child->jk}_{$latest->bln}_{$var}");
                 if ($tb_u && $tb < $tb_u->m2sd) {
                     $stats['stunting']++;
                 }
 
-                // IMT/U for wasting/overweight
-                $imt_u = DB::table('z_score')->where(['var' => $var, 'acuan' => $latest->bln, 'jk' => $child->jk, 'jenis_tbl' => 1])->first();
+                // IMT/U for wasting/overweight - use preloaded cache
+                $imt_u = $zScoreCache->get("1_{$child->jk}_{$latest->bln}_{$var}");
                 if ($imt_u) {
                     if ($bmi < $imt_u->m2sd) {
                         $stats['wasting']++;
