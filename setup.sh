@@ -86,7 +86,16 @@ echo -e "${YELLOW}[6/7] Waiting for database to be ready...${NC}"
 sleep 20
 
 echo ""
-echo -e "${YELLOW}[7/7] Setting up Laravel...${NC}"
+echo -e "${YELLOW}[7/9] Installing PHP dependencies...${NC}"
+docker-compose exec -T app composer install --no-dev --optimize-autoloader
+
+echo ""
+echo -e "${YELLOW}[8/9] Building frontend assets...${NC}"
+docker-compose exec -T app npm install
+docker-compose exec -T app npm run production
+
+echo ""
+echo -e "${YELLOW}[9/9] Setting up Laravel...${NC}"
 
 # Generate app key
 echo "Generating application key..."
