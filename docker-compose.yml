@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sirindu-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - sirindu-network
+    depends_on:
+      - db
+
+  # Nginx Service
+  nginx:
+    image: nginx:alpine
+    container_name: sirindu-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - sirindu-network
+    depends_on:
+      - app
+
+  # MySQL Service
+  db:
+    image: mysql:8.0
+    container_name: sirindu-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-sirindu}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_USER: ${DB_USERNAME:-sirindu}
+    volumes:
+      - sirindu-db-data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - sirindu-network
+
+  # PhpMyAdmin Service (Optional - for database management)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: sirindu-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME:-sirindu}
+      PMA_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "8080:80"
+    networks:
+      - sirindu-network
+    depends_on:
+      - db
+
+# Docker Networks
+networks:
+  sirindu-network:
+    driver: bridge
+
+# Volumes
+volumes:
+  sirindu-db-data:
+    driver: local

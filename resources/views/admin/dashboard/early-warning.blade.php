@@ -514,9 +514,9 @@ Proyeksi
         </div>
     </div>
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="stat-box success">
+        <div class="stat-box success" data-toggle="tooltip" data-placement="top" title="Anak dengan pemantauan normal (tidak ada alert terdeteksi)">
             <h2>{{ $summary['total_children'] - $summary['children_with_alerts'] }}</h2>
-            <p><i class="fa fa-check-circle mr-1"></i> Anak Sehat</p>
+            <p><i class="fa fa-check-circle mr-1"></i> Monitoring Normal</p>
         </div>
     </div>
 </div>
@@ -1137,6 +1137,11 @@ let locationRows = [];
 let filteredRows = [];
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    if (typeof $ !== 'undefined' && $.fn.tooltip) {
+        $('[data-toggle="tooltip"]').tooltip();
+    }
+
     // Initialize location rows
     locationRows = Array.from(document.querySelectorAll('.location-row'));
     filteredRows = [...locationRows];

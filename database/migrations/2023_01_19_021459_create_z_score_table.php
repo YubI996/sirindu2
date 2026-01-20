@@ -27,7 +27,7 @@ return new class extends Migration
             $table->double('2sd')->default(null);
             $table->double('3sd')->default(null);
             $table->foreign('jenis_tbl')
-            ->references('id')->on('Jenis_tabel')
+            ->references('id')->on('jenis_tabel')
             ->onDelete('cascade');
            
         });
