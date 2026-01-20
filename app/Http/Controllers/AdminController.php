@@ -1464,8 +1464,10 @@ All Admin Controller
                     $bmi = $tb > 0 ? round(10000 * $latest->bb / pow($tb, 2), 2) : 0;
 
                     // Get Z-Score references from preloaded cache
+                    // Note: var=1 for age<=24 months, var=2 for age>24 months (used by IMT/U and TB/U)
+                    // BB/U (jenis_tbl=2) always has var=1 in database
                     $imt_u = $zScoreCache->get("1_{$child->jk}_{$latest->bln}_{$var}");
-                    $bb_u = $zScoreCache->get("2_{$child->jk}_{$latest->bln}_0");
+                    $bb_u = $zScoreCache->get("2_{$child->jk}_{$latest->bln}_1");
                     $tb_u = $zScoreCache->get("3_{$child->jk}_{$latest->bln}_{$var}");
 
                     // Check TB/U (Stunting)

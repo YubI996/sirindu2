@@ -424,18 +424,91 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mapping from GeoJSON names
     const mapping = @json(json_decode(file_get_contents(public_path('geojson/mapping.json')), true));
 
+    function resolveKelurahanName(name) {
+        if (!name) return name;
+
+        let normalized = name;
+
+        if (mapping.normalisasi && mapping.normalisasi[normalized]) {
+            normalized = mapping.normalisasi[normalized];
+        } else if (mapping.normalisasi) {
+            const lowerName = normalized.toLowerCase();
+            for (const key in mapping.normalisasi) {
+                if (key.toLowerCase() === lowerName) {
+                    normalized = mapping.normalisasi[key];
+                    break;
+                }
+            }
+        }
+
+        if (mapping.kelurahan && mapping.kelurahan[normalized]) {
+            return mapping.kelurahan[normalized];
+        }
+
+        if (mapping.kelurahan) {
+            const lowerName = normalized.toLowerCase();
+            for (const key in mapping.kelurahan) {
+                if (key.toLowerCase() === lowerName) {
+                    return mapping.kelurahan[key];
+                }
+            }
+        }
+
+        return normalized;
+    }
+
+    function getPropertyValue(props, keys) {
+        if (!props) return null;
+
+        for (const key of keys) {
+            if (props[key] !== undefined && props[key] !== null) {
+                return props[key];
+            }
+        }
+
+        if (!props.__lowerKeys) {
+            props.__lowerKeys = {};
+            for (const key in props) {
+                props.__lowerKeys[key.toLowerCase()] = props[key];
+            }
+        }
+
+        for (const key of keys) {
+            const lowerKey = key.toLowerCase();
+            if (props.__lowerKeys[lowerKey] !== undefined && props.__lowerKeys[lowerKey] !== null) {
+                return props.__lowerKeys[lowerKey];
+            }
+        }
+
+        return null;
+    }
+
     // Function to normalize kelurahan name for lookup
     function normalizeKelurahan(kelurahan) {
         if (!kelurahan) return null;
 
+        let normalizedKel = kelurahan;
+
+        if (mapping.normalisasi && mapping.normalisasi[normalizedKel]) {
+            normalizedKel = mapping.normalisasi[normalizedKel];
+        } else if (mapping.normalisasi) {
+            const lowerKel = normalizedKel.toLowerCase();
+            for (const key in mapping.normalisasi) {
+                if (key.toLowerCase() === lowerKel) {
+                    normalizedKel = mapping.normalisasi[key];
+                    break;
+                }
+            }
+        }
+
         // Try direct lookup first
-        if (mapping.rt && mapping.rt.kelurahan_suffix && mapping.rt.kelurahan_suffix[kelurahan]) {
-            return kelurahan;
+        if (mapping.rt && mapping.rt.kelurahan_suffix && mapping.rt.kelurahan_suffix[normalizedKel]) {
+            return normalizedKel;
         }
 
         // Try case-insensitive match
         if (mapping.rt && mapping.rt.kelurahan_suffix) {
-            const lowerKel = kelurahan.toLowerCase();
+            const lowerKel = normalizedKel.toLowerCase();
             for (const key in mapping.rt.kelurahan_suffix) {
                 if (key.toLowerCase() === lowerKel) {
                     return key;
@@ -443,7 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Try normalized match (e.g., "API-API" -> "Api-Api")
-            const normalized = kelurahan.split(/[-\s]/).map(w =>
+            const normalized = normalizedKel.split(/[-\s]/).map(w =>
                 w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
             ).join('-');
             if (mapping.rt.kelurahan_suffix[normalized]) {
@@ -451,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        return kelurahan;
+        return normalizedKel;
     }
 
     // Function to convert GeoJSON RT name to database format
@@ -481,6 +554,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         return rtNum + kelSuffix;
+    }
+
+    function getRtLookup(feature) {
+        const props = feature && feature.properties ? feature.properties : null;
+        const rtNumber = getPropertyValue(props, ['RT', 'Rt', 'rt', 'NO_RT', 'No_RT', 'no_rt', 'nomor_rt', 'rt_no', 'nama_rt', 'Nama_RT', 'NamaRt', 'namaRt', 'Name', 'NAME']);
+        const kelurahan = getPropertyValue(props, ['Kelurahan', 'KELURAHAN', 'kelurahan', 'kel_desa', 'KEL_DESA', 'Kel', 'kel']);
+
+        let dbRTName = null;
+        let displayName = null;
+
+        if (rtNumber && kelurahan) {
+            dbRTName = convertRTName(rtNumber, kelurahan);
+            const parsedRt = parseInt(rtNumber, 10);
+            displayName = 'RT ' + (isNaN(parsedRt) ? rtNumber : parsedRt) + ' ' + kelurahan;
+        } else if (rtNumber) {
+            dbRTName = String(rtNumber).trim();
+            displayName = 'RT ' + rtNumber;
+        }
+
+        return { dbRTName, displayName };
     }
 
     // Layer groups
@@ -517,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let stats, zScore, count = 0;
 
         if (type === 'kelurahan') {
-            const mappedName = mapping.kelurahan && mapping.kelurahan[name] ? mapping.kelurahan[name] : name;
+            const mappedName = resolveKelurahanName(name);
             stats = kelurahanStats[mappedName];
             zScore = kelurahanZScore[mappedName];
             count = stats ? stats.total_anak : 0;
@@ -526,15 +619,8 @@ document.addEventListener('DOMContentLoaded', function() {
             stats = kecamatanStats[cleanName];
             count = stats ? stats.total_anak : 0;
         } else if (type === 'rt') {
-            // Convert GeoJSON RT format to database format
-            let dbRTName = name;
-            if (feature && feature.properties) {
-                const rtNumber = feature.properties.RT;
-                const kelurahan = feature.properties.Kelurahan;
-                if (rtNumber && kelurahan) {
-                    dbRTName = convertRTName(rtNumber, kelurahan);
-                }
-            }
+            const rtInfo = getRtLookup(feature);
+            const dbRTName = rtInfo && rtInfo.dbRTName ? rtInfo.dbRTName : name;
             stats = rtStats[dbRTName];
             zScore = rtZScore[dbRTName];
             count = stats ? stats.total_anak : 0;
@@ -575,7 +661,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let stats, zScore;
         if (type === 'kelurahan') {
-            const mappedName = mapping.kelurahan && mapping.kelurahan[name] ? mapping.kelurahan[name] : name;
+            const mappedName = resolveKelurahanName(name);
             stats = kelurahanStats[mappedName];
             zScore = kelurahanZScore[mappedName];
         } else if (type === 'kecamatan') {
@@ -583,14 +669,10 @@ document.addEventListener('DOMContentLoaded', function() {
             stats = kecamatanStats[cleanName];
         } else if (type === 'rt') {
             // Convert GeoJSON RT format to database format for lookup
-            let dbRTName = name;
-            if (feature && feature.properties) {
-                const rtNumber = feature.properties.RT;
-                const kelurahan = feature.properties.Kelurahan;
-                if (rtNumber && kelurahan) {
-                    dbRTName = convertRTName(rtNumber, kelurahan);
-                    displayName = 'RT ' + parseInt(rtNumber, 10) + ' ' + kelurahan;
-                }
+            const rtInfo = getRtLookup(feature);
+            const dbRTName = rtInfo && rtInfo.dbRTName ? rtInfo.dbRTName : name;
+            if (rtInfo && rtInfo.displayName) {
+                displayName = rtInfo.displayName;
             }
             stats = rtStats[dbRTName];
             zScore = rtZScore[dbRTName];
@@ -622,11 +704,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // For RT, create proper display name and lookup key
         let dbRTName = name;
         if (type === 'rt' && feature.properties) {
-            const rtNumber = feature.properties.RT;
-            const kelurahan = feature.properties.Kelurahan;
-            if (rtNumber && kelurahan) {
-                dbRTName = convertRTName(rtNumber, kelurahan);
-                displayName = 'RT ' + parseInt(rtNumber, 10) + ' ' + kelurahan;
+            const rtInfo = getRtLookup(feature);
+            if (rtInfo && rtInfo.dbRTName) {
+                dbRTName = rtInfo.dbRTName;
+            }
+            if (rtInfo && rtInfo.displayName) {
+                displayName = rtInfo.displayName;
             }
         }
 
@@ -643,7 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 let stats, zScore;
 
                 if (type === 'kelurahan') {
-                    const mappedName = mapping.kelurahan && mapping.kelurahan[name] ? mapping.kelurahan[name] : name;
+                    const mappedName = resolveKelurahanName(name);
                     stats = kelurahanStats[mappedName];
                     zScore = kelurahanZScore[mappedName];
                 } else if (type === 'kecamatan') {
