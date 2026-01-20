@@ -25,5 +25,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->loadViewsFrom(__DIR__.'/../views','admin');
 
+        // Force HTTPS URL generation when behind proxy/load balancer
+        if (config('app.env') === 'production') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 }
