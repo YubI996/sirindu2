@@ -100,6 +100,51 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-ibu', [App\Http\Controllers\AdminController::class, 'ibu'])->name('admin.ibu');
     //Ibu Hamil Route List
     Route::get('data-ibu-hamil', [App\Http\Controllers\AdminController::class, 'ibuHamil'])->name('admin.ibuHamil');
+
+    /*------------------------------------------
+    Epidemiology Surveillance Routes
+    --------------------------------------------*/
+    Route::prefix('epidemiologi/')->group(function () {
+        // Dashboard & Analytics
+        Route::get('dashboard', [App\Http\Controllers\EpidemiologiController::class, 'dashboard'])
+             ->name('admin.epidemiologi.dashboard');
+        Route::get('map', [App\Http\Controllers\EpidemiologiController::class, 'mapDashboard'])
+             ->name('admin.epidemiologi.map');
+        Route::get('api/map-data', [App\Http\Controllers\EpidemiologiController::class, 'getMapData'])
+             ->name('admin.epidemiologi.mapData');
+
+        // CRUD Routes
+        Route::get('/', [App\Http\Controllers\EpidemiologiController::class, 'index'])
+             ->name('admin.epidemiologi.index');
+        Route::get('get-cases', [App\Http\Controllers\EpidemiologiController::class, 'getSurveillanceCases'])
+             ->name('admin.epidemiologi.getCases');
+        Route::get('create', [App\Http\Controllers\EpidemiologiController::class, 'create'])
+             ->name('admin.epidemiologi.create');
+        Route::post('store', [App\Http\Controllers\EpidemiologiController::class, 'store'])
+             ->name('admin.epidemiologi.store');
+        Route::get('show/{id}', [App\Http\Controllers\EpidemiologiController::class, 'show'])
+             ->name('admin.epidemiologi.show');
+        Route::get('edit/{id}', [App\Http\Controllers\EpidemiologiController::class, 'edit'])
+             ->name('admin.epidemiologi.edit');
+        Route::put('update/{id}', [App\Http\Controllers\EpidemiologiController::class, 'update'])
+             ->name('admin.epidemiologi.update');
+        Route::delete('destroy/{id}', [App\Http\Controllers\EpidemiologiController::class, 'destroy'])
+             ->name('admin.epidemiologi.destroy');
+
+        // AJAX Helpers
+        Route::get('get-kelurahan/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getKelurahan'])
+             ->name('admin.epidemiologi.getKelurahan');
+        Route::get('get-rt/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getRt'])
+             ->name('admin.epidemiologi.getRt');
+        Route::get('check-nik/{nik}', [App\Http\Controllers\EpidemiologiController::class, 'checkNik'])
+             ->name('admin.epidemiologi.checkNik');
+
+        // Exports
+        Route::post('export-excel', [App\Http\Controllers\EpidemiologiController::class, 'exportExcel'])
+             ->name('admin.epidemiologi.exportExcel');
+        Route::get('export-pdf/{id}', [App\Http\Controllers\EpidemiologiController::class, 'exportPdf'])
+             ->name('admin.epidemiologi.exportPdf');
+    });
 });
 
 /*------------------------------------------
