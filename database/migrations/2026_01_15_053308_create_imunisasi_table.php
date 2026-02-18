@@ -28,7 +28,7 @@ return new class extends Migration
         // Tabel imunisasi
         Schema::create('imunisasi', function (Blueprint $table) {
             $table->id();
-            $table->char('id_anak', 36);
+            $table->unsignedBigInteger('id_anak');
             $table->bigInteger('id_jenis_vaksin')->unsigned();
             $table->integer('dosis')->default(1);
             $table->date('tanggal_pemberian')->nullable();
