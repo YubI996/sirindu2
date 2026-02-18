@@ -257,6 +257,7 @@
 @endsection
 
 @section('scripts')
+@parent
 <script>
 $(document).ready(function() {
     // Expand all sections

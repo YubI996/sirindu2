@@ -139,6 +139,7 @@
 @endsection
 
 @section('scripts')
+@parent
 <script>
 $(document).ready(function() {
     // Initialize DataTable

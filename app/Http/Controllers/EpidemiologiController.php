@@ -10,6 +10,7 @@ use App\Models\JenisKasusEpidemiologi;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Rt;
+use App\Models\Puskesmas;
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -239,13 +240,14 @@ class EpidemiologiController extends Controller
     {
         $diseases = JenisKasusEpidemiologi::active()->orderBy('nama_penyakit')->get();
         $kecamatanList = Kecamatan::all();
+        $puskesmasList = Puskesmas::orderBy('name')->get();
 
         // Generate registration number
         $lastCase = SurveillanceCase::latest('id')->first();
         $nextNumber = $lastCase ? ($lastCase->id + 1) : 1;
         $suggestedRegNumber = 'EPI-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
 
-        return view('admin.epidemiologi.create', compact('diseases', 'kecamatanList', 'suggestedRegNumber'));
+        return view('admin.epidemiologi.create', compact('diseases', 'kecamatanList', 'puskesmasList', 'suggestedRegNumber'));
     }
 
     /**
@@ -293,12 +295,13 @@ class EpidemiologiController extends Controller
         $case = SurveillanceCase::findOrFail($id);
         $diseases = JenisKasusEpidemiologi::active()->orderBy('nama_penyakit')->get();
         $kecamatanList = Kecamatan::all();
+        $puskesmasList = Puskesmas::orderBy('name')->get();
 
         // Get kelurahan and RT for selected kecamatan
         $kelurahanList = Kelurahan::where('id_kecamatan', $case->id_kec)->get();
         $rtList = Rt::where('id_kelurahan', $case->id_kel)->get();
 
-        return view('admin.epidemiologi.edit', compact('case', 'diseases', 'kecamatanList', 'kelurahanList', 'rtList'));
+        return view('admin.epidemiologi.edit', compact('case', 'diseases', 'kecamatanList', 'puskesmasList', 'kelurahanList', 'rtList'));
     }
 
     /**

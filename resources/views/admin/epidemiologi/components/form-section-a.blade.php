@@ -144,7 +144,7 @@ $(document).ready(function() {
 
         if (id_kec) {
             $.ajax({
-                url: '/admin/epidemiologi/get-kelurahan/' + id_kec,
+                url: '{{ route("admin.epidemiologi.getKelurahan", "") }}/' + id_kec,
                 type: "GET",
                 dataType: "json",
                 success: function(data) {
@@ -163,7 +163,7 @@ $(document).ready(function() {
 
         if (id_kel) {
             $.ajax({
-                url: '/admin/epidemiologi/get-rt/' + id_kel,
+                url: '{{ route("admin.epidemiologi.getRt", "") }}/' + id_kel,
                 type: "GET",
                 dataType: "json",
                 success: function(data) {
@@ -215,7 +215,7 @@ $(document).ready(function() {
         if (nik.length === 16) {
             nikTimeout = setTimeout(function() {
                 $.ajax({
-                    url: '/admin/epidemiologi/check-nik/' + nik,
+                    url: '{{ route("admin.epidemiologi.checkNik", "") }}/' + nik,
                     type: 'GET',
                     success: function(response) {
                         if (response.exists) {

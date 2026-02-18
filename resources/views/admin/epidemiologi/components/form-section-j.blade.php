@@ -17,9 +17,15 @@
     <div class="col-md-6">
         <div class="form-group">
             <label>Fasilitas Kesehatan Pelapor</label>
-            <input type="text" name="id_faskes_pelapor" class="form-control"
-                   value="{{ old('id_faskes_pelapor', $case->id_faskes_pelapor ?? '') }}">
-            <small class="form-text text-muted">Opsional - Nama fasilitas kesehatan yang melaporkan</small>
+            <select name="id_faskes_pelapor" class="form-control">
+                <option value="">-- Pilih Puskesmas (Opsional) --</option>
+                @foreach($puskesmasList ?? [] as $puskesmas)
+                    <option value="{{ $puskesmas->id }}" {{ old('id_faskes_pelapor', $case->id_faskes_pelapor ?? '') == $puskesmas->id ? 'selected' : '' }}>
+                        {{ $puskesmas->name }}
+                    </option>
+                @endforeach
+            </select>
+            <small class="form-text text-muted">Opsional - Pilih puskesmas yang melaporkan kasus</small>
         </div>
     </div>
 </div>

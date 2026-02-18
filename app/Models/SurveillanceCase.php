@@ -136,6 +136,30 @@ class SurveillanceCase extends Model
         'jumlah_kontak_bergejala' => 'integer',
     ];
 
+    protected $appends = ['umur', 'lama_rawat'];
+
+    /**
+     * Get age (umur) calculated from tanggal_lahir
+     */
+    protected function umur(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->tanggal_lahir ? $this->tanggal_lahir->age : null,
+        );
+    }
+
+    /**
+     * Get length of stay (lama_rawat) calculated from treatment dates
+     */
+    protected function lamaRawat(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => ($this->tanggal_masuk_rawat && $this->tanggal_keluar_rawat)
+                ? $this->tanggal_masuk_rawat->diffInDays($this->tanggal_keluar_rawat)
+                : null,
+        );
+    }
+
     /**
      * Get the kecamatan (subdistrict) of the case
      */

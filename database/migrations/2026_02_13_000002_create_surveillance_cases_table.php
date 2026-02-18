@@ -22,13 +22,13 @@ return new class extends Migration
             $table->string('nik', 16);
             $table->string('nama_lengkap', 255);
             $table->date('tanggal_lahir');
-            $table->integer('umur')->storedAs('TIMESTAMPDIFF(YEAR, tanggal_lahir, CURDATE())');
+            // Age calculated via model accessor (MySQL doesn't allow CURDATE() in generated columns)
             $table->enum('kategori_umur', ['bayi', 'balita', 'anak', 'remaja', 'dewasa', 'lansia']);
             $table->enum('jenis_kelamin', ['L', 'P']);
             $table->text('alamat_lengkap');
             $table->unsignedBigInteger('id_kec');
             $table->unsignedBigInteger('id_kel');
-            $table->unsignedInteger('id_rt');
+            $table->unsignedBigInteger('id_rt');
             $table->string('no_telepon', 20)->nullable();
 
             // ===== CATEGORY B: REPORTER IDENTITY (4 fields) =====
@@ -83,7 +83,7 @@ return new class extends Migration
             $table->string('nama_faskes_rawat', 255);
             $table->date('tanggal_masuk_rawat')->nullable();
             $table->date('tanggal_keluar_rawat')->nullable();
-            $table->integer('lama_rawat')->nullable()->storedAs('DATEDIFF(tanggal_keluar_rawat, tanggal_masuk_rawat)');
+            // lama_rawat calculated via model accessor
 
             // ===== CATEGORY H: FINAL STATUS (3 fields) =====
             $table->enum('kondisi_akhir', ['sembuh', 'meninggal', 'dalam_perawatan', 'pindah', 'unknown'])->default('dalam_perawatan');
@@ -98,14 +98,14 @@ return new class extends Migration
 
             // ===== CATEGORY J: METADATA (5 fields + audit) =====
             $table->enum('status_kasus', ['suspected', 'probable', 'confirmed', 'discarded'])->default('suspected');
-            $table->unsignedBigInteger('id_petugas_input');
+            $table->char('id_petugas_input', 36);
             $table->unsignedBigInteger('id_faskes_pelapor')->nullable();
             $table->text('catatan_tambahan')->nullable();
 
             // Audit fields
             $table->timestamps();
-            $table->unsignedBigInteger('created_by');
-            $table->unsignedBigInteger('updated_by');
+            $table->char('created_by', 36);
+            $table->char('updated_by', 36);
 
             // ===== FOREIGN KEYS =====
             $table->foreign('id_kec')

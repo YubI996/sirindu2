@@ -98,7 +98,7 @@ class UpdateSurveillanceCaseRequest extends FormRequest
 
             // Category J: Metadata
             'status_kasus' => 'nullable|in:suspected,probable,confirmed,discarded',
-            'id_faskes_pelapor' => 'nullable|exists:users,id',
+            'id_faskes_pelapor' => 'nullable|integer|exists:puskesmas,id',
             'catatan_tambahan' => 'nullable|string',
         ];
     }

@@ -222,6 +222,7 @@
 @endsection
 
 @section('scripts')
+@parent
 <script>
 $(document).ready(function() {
     // Expand/Collapse all sections
