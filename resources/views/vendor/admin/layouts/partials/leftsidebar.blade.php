@@ -28,6 +28,18 @@
 						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
 					</ul>
 				</li>
+				<!-- EPIDEMIOLOGI DROPDOWN -->
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-virus"></span><span class="mtext">Epidemiologi</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}"><i class="fa fa-chart-line mr-2"></i>Dashboard Analytics</a></li>
+						<li><a href="{{route('admin.epidemiologi.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
+						<li><a href="{{route('admin.epidemiologi.index')}}"><i class="fa fa-list mr-2"></i>Daftar Kasus</a></li>
+						<li><a href="{{route('admin.epidemiologi.create')}}"><i class="fa fa-plus mr-2"></i>Tambah Kasus</a></li>
+					</ul>
+				</li>
 				<li class="dropdown">
 					<a href="javascript:;" class="dropdown-toggle">
 						<span class="micon fa fa-database"></span><span class="mtext">Data</span>
@@ -51,6 +63,18 @@
 						<li><a href="{{route('admin.analytics')}}"><i class="fa fa-chart-bar mr-2"></i>Analytics</a></li>
 						<li><a href="{{route('admin.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
+					</ul>
+				</li>
+				<!-- EPIDEMIOLOGI DROPDOWN -->
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-virus"></span><span class="mtext">Epidemiologi</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}"><i class="fa fa-chart-line mr-2"></i>Dashboard Analytics</a></li>
+						<li><a href="{{route('admin.epidemiologi.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
+						<li><a href="{{route('admin.epidemiologi.index')}}"><i class="fa fa-list mr-2"></i>Daftar Kasus</a></li>
+						<li><a href="{{route('admin.epidemiologi.create')}}"><i class="fa fa-plus mr-2"></i>Tambah Kasus</a></li>
 					</ul>
 				</li>
 				<li class="dropdown">
