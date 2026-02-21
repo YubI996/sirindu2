@@ -115,6 +115,10 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
                 'catatan_tambahan' => $request->catatan_tambahan,
                 'created_by' => Auth::id(),
                 'updated_by' => Auth::id(),
+
+                // Faskes scoping — auto-filled from authenticated user
+                'faskes_type' => Auth::user()->faskes_type,
+                'id_faskes' => Auth::user()->getFaskesId(),
             ]);
 
             return $case;
@@ -237,18 +241,23 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
 
     /**
      * Get dashboard statistics
+     *
+     * @param string|null $faskesType  'puskesmas' or 'rs' (null = all)
+     * @param int|null    $faskesId    ID of puskesmas/rs (null = all)
      */
-    public function getDashboardStats()
+    public function getDashboardStats(?string $faskesType = null, ?int $faskesId = null)
     {
+        $base = $this->scopedQuery($faskesType, $faskesId);
+
         $stats = [
-            'total_cases' => $this->model->count(),
-            'suspected_cases' => $this->model->byStatus('suspected')->count(),
-            'probable_cases' => $this->model->byStatus('probable')->count(),
-            'confirmed_cases' => $this->model->byStatus('confirmed')->count(),
-            'discarded_cases' => $this->model->byStatus('discarded')->count(),
-            'death_cases' => $this->model->byOutcome('meninggal')->count(),
-            'recovered_cases' => $this->model->byOutcome('sembuh')->count(),
-            'in_treatment_cases' => $this->model->byOutcome('dalam_perawatan')->count(),
+            'total_cases' => (clone $base)->count(),
+            'suspected_cases' => (clone $base)->byStatus('suspected')->count(),
+            'probable_cases' => (clone $base)->byStatus('probable')->count(),
+            'confirmed_cases' => (clone $base)->byStatus('confirmed')->count(),
+            'discarded_cases' => (clone $base)->byStatus('discarded')->count(),
+            'death_cases' => (clone $base)->byOutcome('meninggal')->count(),
+            'recovered_cases' => (clone $base)->byOutcome('sembuh')->count(),
+            'in_treatment_cases' => (clone $base)->byOutcome('dalam_perawatan')->count(),
         ];
 
         return $stats;
@@ -257,26 +266,26 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by geography
      */
-    public function getCasesByGeography($level = 'kecamatan')
+    public function getCasesByGeography($level = 'kecamatan', ?array $faskesScope = null)
     {
         if ($level === 'kecamatan') {
-            return $this->model
+            $query = $this->scopedQueryFromArray($faskesScope)
                 ->select('id_kec', DB::raw('count(*) as total'))
                 ->with('kecamatan:id,name')
-                ->groupBy('id_kec')
-                ->get();
+                ->groupBy('id_kec');
+            return $query->get();
         } elseif ($level === 'kelurahan') {
-            return $this->model
+            $query = $this->scopedQueryFromArray($faskesScope)
                 ->select('id_kel', DB::raw('count(*) as total'))
                 ->with('kelurahan:id,name')
-                ->groupBy('id_kel')
-                ->get();
+                ->groupBy('id_kel');
+            return $query->get();
         } elseif ($level === 'rt') {
-            return $this->model
+            $query = $this->scopedQueryFromArray($faskesScope)
                 ->select('id_rt', 'id_kel', DB::raw('count(*) as total'))
                 ->with(['rt:id,name', 'kelurahan:id,name'])
-                ->groupBy('id_rt', 'id_kel')
-                ->get();
+                ->groupBy('id_rt', 'id_kel');
+            return $query->get();
         }
 
         return collect();
@@ -285,11 +294,11 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases trend over months
      */
-    public function getCasesTrend($months = 12)
+    public function getCasesTrend($months = 12, ?array $faskesScope = null)
     {
         $startDate = Carbon::now()->subMonths($months);
 
-        return $this->model
+        return $this->scopedQueryFromArray($faskesScope)
             ->select(
                 DB::raw('YEAR(tanggal_onset) as year'),
                 DB::raw('MONTH(tanggal_onset) as month'),
@@ -305,9 +314,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by disease type
      */
-    public function getCasesByDisease()
+    public function getCasesByDisease(?array $faskesScope = null)
     {
-        return $this->model
+        return $this->scopedQueryFromArray($faskesScope)
             ->select('id_jenis_kasus', DB::raw('count(*) as total'))
             ->with('jenisKasus:id,nama_penyakit,kode_penyakit')
             ->groupBy('id_jenis_kasus')
@@ -318,12 +327,38 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by status
      */
-    public function getCasesByStatus()
+    public function getCasesByStatus(?array $faskesScope = null)
     {
-        return $this->model
+        return $this->scopedQueryFromArray($faskesScope)
             ->select('status_kasus', DB::raw('count(*) as total'))
             ->groupBy('status_kasus')
             ->get();
+    }
+
+    /**
+     * Build a base query scoped to a specific faskes (or unscoped if null).
+     */
+    private function scopedQuery(?string $faskesType, ?int $faskesId)
+    {
+        $query = $this->model->newQuery();
+
+        if ($faskesType && $faskesId) {
+            $query->where('faskes_type', $faskesType)->where('id_faskes', $faskesId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Build a scoped query from an array ['faskes_type' => ..., 'id_faskes' => ...] or null.
+     */
+    private function scopedQueryFromArray(?array $faskesScope)
+    {
+        if ($faskesScope) {
+            return $this->scopedQuery($faskesScope['faskes_type'], $faskesScope['id_faskes']);
+        }
+
+        return $this->model->newQuery();
     }
 
     /**

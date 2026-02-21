@@ -97,6 +97,10 @@ class SurveillanceCase extends Model
         'catatan_tambahan',
         'created_by',
         'updated_by',
+
+        // Faskes scoping
+        'faskes_type',
+        'id_faskes',
     ];
 
     protected $casts = [

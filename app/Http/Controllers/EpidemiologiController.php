@@ -25,7 +25,8 @@ class EpidemiologiController extends Controller
     public function __construct(SurveillanceRepository $surveillanceRepository)
     {
         $this->middleware('auth');
-        $this->middleware('is_admin');
+        // Semua user surveilans (superadmin + faskes puskesmas + faskes RS) bisa akses
+        $this->middleware('module.role:superadmin,surveilans_puskesmas,surveilans_rs');
         $this->surveillanceRepository = $surveillanceRepository;
     }
 
@@ -36,22 +37,44 @@ class EpidemiologiController extends Controller
      */
     public function dashboard()
     {
-        // Cache dashboard stats for 5 minutes
-        $stats = Cache::remember('epi_dashboard_stats', 300, function () {
-            return $this->surveillanceRepository->getDashboardStats();
-        });
+        $user = auth()->user();
 
-        // Get recent cases (last 10)
-        $recentCases = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan'])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        if ($user->isFaskesSurveilans()) {
+            // Faskes: stats dan data scoped ke faskes sendiri
+            $faskesId   = $user->getFaskesId();
+            $faskesType = $user->faskes_type; // 'puskesmas' | 'rs'
 
-        // Get cases trend data for charts
-        $trendData = $this->surveillanceRepository->getCasesTrend(12);
-        $diseaseData = $this->surveillanceRepository->getCasesByDisease();
-        $statusData = $this->surveillanceRepository->getCasesByStatus();
-        $geoData = $this->surveillanceRepository->getCasesByGeography('kecamatan');
+            $stats = Cache::remember("epi_dashboard_faskes_{$faskesType}_{$faskesId}", 300, function () use ($faskesId, $faskesType) {
+                return $this->surveillanceRepository->getDashboardStats($faskesType, $faskesId);
+            });
+
+            $recentCases = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan'])
+                ->where('faskes_type', $faskesType)
+                ->where('id_faskes', $faskesId)
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+        } else {
+            // Dinkes (superadmin): semua data
+            $stats = Cache::remember('epi_dashboard_stats', 300, function () {
+                return $this->surveillanceRepository->getDashboardStats();
+            });
+
+            $recentCases = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan'])
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
+        }
+
+        // Get trend/chart data (scoped untuk faskes)
+        $faskesScope = $user->isFaskesSurveilans()
+            ? ['faskes_type' => $user->faskes_type, 'id_faskes' => $user->getFaskesId()]
+            : null;
+
+        $trendData   = $this->surveillanceRepository->getCasesTrend(12, $faskesScope);
+        $diseaseData = $this->surveillanceRepository->getCasesByDisease($faskesScope);
+        $statusData  = $this->surveillanceRepository->getCasesByStatus($faskesScope);
+        $geoData     = $this->surveillanceRepository->getCasesByGeography('kecamatan', $faskesScope);
 
         return view('admin.epidemiologi.dashboard', compact(
             'stats',
@@ -80,6 +103,13 @@ class EpidemiologiController extends Controller
     public function getMapData(Request $request)
     {
         $query = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan', 'rt']);
+
+        // Data scoping: faskes hanya lihat data sendiri di peta
+        $user = auth()->user();
+        if ($user->isFaskesSurveilans()) {
+            $query->where('faskes_type', $user->faskes_type)
+                  ->where('id_faskes', $user->getFaskesId());
+        }
 
         // Apply filters
         if ($request->has('disease_id') && $request->disease_id != '') {
@@ -129,8 +159,9 @@ class EpidemiologiController extends Controller
     {
         $diseases = JenisKasusEpidemiologi::active()->get();
         $kecamatanList = Kecamatan::all();
+        $isFaskes = auth()->user()->isFaskesSurveilans();
 
-        return view('admin.epidemiologi.index', compact('diseases', 'kecamatanList'));
+        return view('admin.epidemiologi.index', compact('diseases', 'kecamatanList', 'isFaskes'));
     }
 
     /**
@@ -139,6 +170,13 @@ class EpidemiologiController extends Controller
     public function getSurveillanceCases(Request $request)
     {
         $query = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan', 'rt']);
+
+        // Data scoping: faskes hanya lihat kasus dari faskes sendiri
+        $user = auth()->user();
+        if ($user->isFaskesSurveilans()) {
+            $query->where('faskes_type', $user->faskes_type)
+                  ->where('id_faskes', $user->getFaskesId());
+        }
 
         return DataTables::of($query)
             ->filter(function ($query) use ($request) {
@@ -211,9 +249,14 @@ class EpidemiologiController extends Controller
                 return "<span class='badge bg-{$badge}'>{$label}</span>";
             })
             ->addColumn('action', function ($case) {
-                $showUrl = route('admin.epidemiologi.show', $case->id);
-                $editUrl = route('admin.epidemiologi.edit', $case->id);
-                $deleteUrl = route('admin.epidemiologi.destroy', $case->id);
+                $showUrl   = route('admin.epidemiologi.show', $case->id);
+                $editUrl   = route('admin.epidemiologi.edit', $case->id);
+                $isFaskes  = auth()->user()->isFaskesSurveilans();
+
+                $deleteBtn = $isFaskes ? '' :
+                    "<button type='button' class='btn btn-sm btn-danger' onclick='deleteCase({$case->id})' title='Hapus'>
+                        <i class='fa fa-trash'></i>
+                    </button>";
 
                 return "
                     <div class='btn-group' role='group'>
@@ -223,9 +266,7 @@ class EpidemiologiController extends Controller
                         <a href='{$editUrl}' class='btn btn-sm btn-warning' title='Edit'>
                             <i class='fa fa-edit'></i>
                         </a>
-                        <button type='button' class='btn btn-sm btn-danger' onclick='deleteCase({$case->id})' title='Hapus'>
-                            <i class='fa fa-trash'></i>
-                        </button>
+                        {$deleteBtn}
                     </div>
                 ";
             })
@@ -258,8 +299,7 @@ class EpidemiologiController extends Controller
         try {
             $case = $this->surveillanceRepository->storeCase($request);
 
-            // Clear dashboard cache
-            Cache::forget('epi_dashboard_stats');
+            $this->clearEpiCache();
 
             Alert::success('Berhasil', 'Kasus surveillance berhasil ditambahkan');
             return redirect()->route('admin.epidemiologi.index');
@@ -284,6 +324,8 @@ class EpidemiologiController extends Controller
             'updater'
         ])->findOrFail($id);
 
+        $this->authorizeFaskesAccess($case);
+
         return view('admin.epidemiologi.show', compact('case'));
     }
 
@@ -293,6 +335,7 @@ class EpidemiologiController extends Controller
     public function edit($id)
     {
         $case = SurveillanceCase::findOrFail($id);
+        $this->authorizeFaskesAccess($case);
         $diseases = JenisKasusEpidemiologi::active()->orderBy('nama_penyakit')->get();
         $kecamatanList = Kecamatan::all();
         $puskesmasList = Puskesmas::orderBy('name')->get();
@@ -312,8 +355,7 @@ class EpidemiologiController extends Controller
         try {
             $case = $this->surveillanceRepository->updateCase($request, $id);
 
-            // Clear dashboard cache
-            Cache::forget('epi_dashboard_stats');
+            $this->clearEpiCache();
 
             Alert::success('Berhasil', 'Kasus surveillance berhasil diperbarui');
             return redirect()->route('admin.epidemiologi.index');
@@ -324,15 +366,16 @@ class EpidemiologiController extends Controller
     }
 
     /**
-     * Delete a surveillance case
+     * Delete a surveillance case (superadmin only)
      */
     public function destroy($id)
     {
+        abort_if(auth()->user()->isFaskesSurveilans(), 403, 'Faskes tidak memiliki izin menghapus kasus.');
+
         try {
             $this->surveillanceRepository->deleteCase($id);
 
-            // Clear dashboard cache
-            Cache::forget('epi_dashboard_stats');
+            $this->clearEpiCache();
 
             return response()->json([
                 'success' => true,
@@ -388,10 +431,12 @@ class EpidemiologiController extends Controller
     // ==================== EXPORT METHODS ====================
 
     /**
-     * Export cases to Excel
+     * Export cases to Excel (superadmin only)
      */
     public function exportExcel(Request $request)
     {
+        abort_if(auth()->user()->isFaskesSurveilans(), 403, 'Faskes tidak memiliki izin export data.');
+
         try {
             // This will be implemented with Maatwebsite/Excel later
             // For now, return a simple CSV export
@@ -484,9 +529,42 @@ class EpidemiologiController extends Controller
             'petugasInput'
         ])->findOrFail($id);
 
+        $this->authorizeFaskesAccess($case);
+
         // For now, return a print-friendly view
         // Later can be enhanced with PDF library like DomPDF or wkhtmltopdf
 
         return view('admin.epidemiologi.print', compact('case'));
+    }
+
+    // ==================== PRIVATE HELPERS ====================
+
+    /**
+     * Abort 403 if faskes user tries to access a case that doesn't belong to their faskes.
+     */
+    private function authorizeFaskesAccess(SurveillanceCase $case): void
+    {
+        $user = auth()->user();
+
+        if ($user->isFaskesSurveilans()) {
+            abort_unless(
+                $case->faskes_type === $user->faskes_type && $case->id_faskes == $user->getFaskesId(),
+                403,
+                'Anda tidak memiliki izin mengakses kasus dari faskes lain.'
+            );
+        }
+    }
+
+    /**
+     * Clear all epidemiologi dashboard caches (global + per-faskes).
+     */
+    private function clearEpiCache(): void
+    {
+        Cache::forget('epi_dashboard_stats');
+
+        $user = auth()->user();
+        if ($user->faskes_type && $user->getFaskesId()) {
+            Cache::forget("epi_dashboard_faskes_{$user->faskes_type}_{$user->getFaskesId()}");
+        }
     }
 }
