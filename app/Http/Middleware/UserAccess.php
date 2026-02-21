@@ -16,11 +16,21 @@ class UserAccess
      */
     public function handle(Request $request, Closure $next, $userType)
     {
-        if(auth()->user()->type == $userType){
+        $user = auth()->user();
+
+        // New role-based system: superadmin punya akses penuh
+        if ($user->isSuperAdmin() && $userType === 'super-admin') {
             return $next($request);
-        }  
-        // return response()->json(['You do not have permission to access for this page.']);
+        }
+
+        // Map string userType to tinyInteger values (PHP 8 strict comparison)
+        $typeMap = ['super-admin' => 0, 'admin' => 1, 'user' => 2];
+        $expectedType = $typeMap[$userType] ?? null;
+
+        if ($expectedType !== null && $user->type == $expectedType) {
+            return $next($request);
+        }
+
         abort(403, 'Unauthorized action.');
-        /* return response()->view('errors.check-permission'); */
     }
 }

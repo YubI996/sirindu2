@@ -21,7 +21,7 @@ Route::get('/',[App\Http\Controllers\Auth\LoginController::class,'showLoginForm'
 
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Route /home dihapus — semua user diarahkan ke /admin/home setelah login
 
 /*------------------------------------------
 --------------------------------------------
@@ -81,10 +81,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-anak/{id}', [App\Http\Controllers\AdminController::class, 'dataAnak'])->name('admin.dataAnak');
     Route::post('store-data-anak', [App\Http\Controllers\AdminController::class, 'storeDataAnak'])->name('admin.storeDataAnak');
     Route::put('update-data-anak/{id}', [App\Http\Controllers\AdminController::class, 'updateDataAnak'])->name('admin.updateDataAnak');
-    //Data Imunisasi Anak Route List (Legacy - Imunisasi Dasar)
-    Route::get('data-imunisasi-anak/{id}', [App\Http\Controllers\AdminController::class, 'dataImunisasi'])->name('admin.dataImunisasi');
-    Route::put('update-data-imunisasi-anak/{id}', [App\Http\Controllers\AdminController::class, 'updateImunisasi'])->name('admin.updateImunisasi');
-    //Data Imunisasi Lengkap (Enhanced)
+    //Data Imunisasi Lengkap
     Route::get('imunisasi-lengkap/{id}', [App\Http\Controllers\AdminController::class, 'imunisasiLengkap'])->name('admin.imunisasiLengkap');
     Route::get('jadwal-imunisasi/{id}', [App\Http\Controllers\AdminController::class, 'jadwalImunisasi'])->name('admin.jadwalImunisasi');
     Route::post('store-imunisasi', [App\Http\Controllers\AdminController::class, 'storeImunisasiDetail'])->name('admin.storeImunisasiDetail');
@@ -140,7 +137,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.checkNik');
 
         // Exports
-        Route::post('export-excel', [App\Http\Controllers\EpidemiologiController::class, 'exportExcel'])
+        Route::get('export-excel', [App\Http\Controllers\EpidemiologiController::class, 'exportExcel'])
              ->name('admin.epidemiologi.exportExcel');
         Route::get('export-pdf/{id}', [App\Http\Controllers\EpidemiologiController::class, 'exportPdf'])
              ->name('admin.epidemiologi.exportPdf');
