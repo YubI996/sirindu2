@@ -98,14 +98,14 @@ return new class extends Migration
 
             // ===== CATEGORY J: METADATA (5 fields + audit) =====
             $table->enum('status_kasus', ['suspected', 'probable', 'confirmed', 'discarded'])->default('suspected');
-            $table->char('id_petugas_input', 36);
+            $table->unsignedBigInteger('id_petugas_input');
             $table->unsignedBigInteger('id_faskes_pelapor')->nullable();
             $table->text('catatan_tambahan')->nullable();
 
             // Audit fields
             $table->timestamps();
-            $table->char('created_by', 36);
-            $table->char('updated_by', 36);
+            $table->unsignedBigInteger('created_by');
+            $table->unsignedBigInteger('updated_by');
 
             // ===== FOREIGN KEYS =====
             $table->foreign('id_kec')

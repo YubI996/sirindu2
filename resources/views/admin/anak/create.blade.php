@@ -149,25 +149,25 @@ Anak
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Tinggi Badan Lahir <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Tinggi Badan Lahir <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="tb" class="form-control" require>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Berat Badan Lahir <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Berat Badan Lahir <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="bb" class="form-control" require>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Lingkar Lengan Atas <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Lingkar Lengan Atas <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="lla" class="form-control" require>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Lingkar Kepala <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Lingkar Kepala <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="lk" class="form-control" require>
             </div>
         </div>

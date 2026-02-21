@@ -117,8 +117,8 @@ class MassiveChildDataSeeder extends Seeder
         // Group RT by kelurahan for distribution
         $rtByKelurahan = $rtList->groupBy('id_kelurahan');
 
-        // Target: ~3000 children distributed across all kelurahan
-        $targetTotal = 3000;
+        // Target: ~40 children distributed across all kelurahan
+        $targetTotal = 40;
         $childrenPerKelurahan = ceil($targetTotal / $kelurahanList->count());
 
         $this->command->info("Target: {$targetTotal} children across {$kelurahanList->count()} kelurahan");
@@ -175,12 +175,8 @@ class MassiveChildDataSeeder extends Seeder
                 $posyanduId = $posyanduIds->random();
                 $puskesmasId = $posyanduToPuskesmas[$posyanduId] ?? null;
 
-                // Generate child ID
-                $childId = Str::uuid()->toString();
-
-                // Insert child
-                DB::table('anak')->insert([
-                    'id' => $childId,
+                // Insert child and get auto-increment ID
+                $childId = DB::table('anak')->insertGetId([
                     'no_kk' => '64' . str_pad(rand(1, 99999999999999), 14, '0', STR_PAD_LEFT),
                     'nik' => (string)$nikCounter++,
                     'nama' => $fullName,
@@ -192,7 +188,7 @@ class MassiveChildDataSeeder extends Seeder
                     'tgl_lahir' => $birthDate->format('Y-m-d'),
                     'golda' => ['A', 'B', 'AB', 'O'][rand(0, 3)],
                     'anak' => rand(1, 5),
-                    'no' => 'ANK-' . str_pad($totalCreated + 1, 6, '0', STR_PAD_LEFT),
+                    'no' => '08' . rand(10, 99) . rand(1000, 9999) . rand(1000, 9999),
                     'status' => 1,
                     'id_kec' => $kecamatanId,
                     'id_kel' => $kelurahan->id,

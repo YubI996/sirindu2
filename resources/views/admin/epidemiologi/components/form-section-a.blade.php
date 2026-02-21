@@ -4,8 +4,8 @@
         <div class="form-group">
             <label>No. Registrasi <span class="text-danger">*</span></label>
             <input type="text" name="no_registrasi" class="form-control"
-                   value="{{ old('no_registrasi', $suggestedRegNumber ?? '') }}" required>
-            <small class="form-text text-muted">Nomor registrasi unik kasus</small>
+                   value="{{ old('no_registrasi', $case->no_registrasi ?? $suggestedRegNumber ?? '') }}" readonly required>
+            <small class="form-text text-muted">Nomor registrasi otomatis</small>
         </div>
     </div>
     <div class="col-md-4">
@@ -133,7 +133,7 @@
     </div>
 </div>
 
-@push('scripts')
+@push('js')
 <script>
 $(document).ready(function() {
     // Cascading select: Kecamatan -> Kelurahan

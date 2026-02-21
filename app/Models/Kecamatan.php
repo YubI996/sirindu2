@@ -10,7 +10,7 @@ class Kecamatan extends Model
     use HasFactory;
 
     protected $table = 'kecamatan';
-    protected $fillable = [];
+    protected $fillable = ['name'];
 
     public function anak()
     {

@@ -9,5 +9,5 @@ class Puskesmas extends Model
 {
     use HasFactory;
     protected $table = 'puskesmas';
-    protected $fillable = [];
+    protected $fillable = ['id_kecamatan', 'name'];
 }

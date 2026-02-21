@@ -75,7 +75,7 @@
     </div>
 </div>
 
-@push('scripts')
+@push('js')
 <script>
 $(document).ready(function() {
     // Date validation: onset <= konsultasi <= lapor

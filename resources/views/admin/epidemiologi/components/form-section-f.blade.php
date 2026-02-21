@@ -50,7 +50,7 @@
     </div>
 </div>
 
-@push('scripts')
+@push('js')
 <script>
 $(document).ready(function() {
     // Show/hide lab fields based on status

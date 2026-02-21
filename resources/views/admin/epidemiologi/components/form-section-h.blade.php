@@ -37,7 +37,7 @@
     <i class="fa fa-info-circle"></i> <strong>Catatan:</strong> Update kondisi akhir sesuai perkembangan kasus.
 </div>
 
-@push('scripts')
+@push('js')
 <script>
 $(document).ready(function() {
     // Show/hide death cause field

@@ -854,7 +854,7 @@ Detail
                         <span aria-hidden="true" class="icon-copy dw dw-first-aid-kit mr-2"></span>
                         Riwayat Imunisasi
                     </h2>
-                    <a href="{{ route('admin.dataImunisasi', $anak->hashid) }}"
+                    <a href="{{ route('admin.imunisasiLengkap', $anak->hashid) }}"
                        class="btn btn-sm btn-light mt-2 mt-md-0"
                        aria-label="Kelola data imunisasi {{ $anak->nama }}">
                         <span aria-hidden="true" class="icon-copy dw dw-add"></span>
@@ -934,7 +934,7 @@ Detail
                     <div class="text-center py-4" role="status">
                         <span aria-hidden="true" class="icon-copy dw dw-first-aid-kit" style="font-size: 48px; color: #6c757d;"></span>
                         <p class="text-accessible-muted mt-3">Belum ada data imunisasi</p>
-                        <a href="{{ route('admin.dataImunisasi', $anak->hashid) }}"
+                        <a href="{{ route('admin.imunisasiLengkap', $anak->hashid) }}"
                            class="btn btn-primary btn-sm"
                            aria-label="Tambah data imunisasi pertama untuk {{ $anak->nama }}">
                             <span aria-hidden="true" class="icon-copy dw dw-add"></span>

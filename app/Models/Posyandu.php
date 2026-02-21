@@ -10,5 +10,5 @@ class Posyandu extends Model
     use HasFactory;
 
     protected $table = 'posyandu';
-    protected $fillable = [];
+    protected $fillable = ['id_puskesmas', 'name'];
 }

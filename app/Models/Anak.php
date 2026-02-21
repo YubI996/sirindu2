@@ -11,7 +11,6 @@ class Anak extends Model
     use HasFactory, HasHashId;
 
     protected $table = 'anak';
-    protected $keyType = 'string';
     protected $guarded = [];
     protected $appends = ['hashid'];
 

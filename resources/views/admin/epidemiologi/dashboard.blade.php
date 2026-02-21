@@ -1,188 +1,211 @@
 @extends('admin::layouts.app')
-@section('title') Admin @endsection
+@section('title') Dashboard Analytics Surveillance @endsection
 @section('title-content') Epidemiologi @endsection
 @section('item') Surveillance @endsection
 @section('item-active') Dashboard Analytics @endsection
 
 @section('content')
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">
-            <i class="fa fa-chart-line mr-2"></i>
+{{-- Skip Link for Accessibility --}}
+<a href="#main-content" class="sr-only sr-only-focusable skip-link">Langsung ke konten utama</a>
+
+<style>
+    @include('admin.epidemiologi.components.shared-styles')
+
+    /* Dashboard-specific styles */
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    .chart-container-lg {
+        position: relative;
+        height: 250px;
+        width: 100%;
+    }
+    .chart-container-tall {
+        position: relative;
+        height: 400px;
+        width: 100%;
+    }
+</style>
+
+<div class="container-fluid" id="main-content" role="main" aria-label="Dashboard Analytics Surveillance">
+    <!-- Header Section -->
+    <header class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0" style="color: var(--primary-blue-dark);">
+            <i class="fa fa-chart-line mr-2" aria-hidden="true"></i>
             Dashboard Analytics Surveillance
         </h2>
-        <div>
-            <a href="{{ route('admin.epidemiologi.map') }}" class="btn btn-success">
-                <i class="fa fa-map-marked-alt"></i> Peta Sebaran
+        <nav aria-label="Navigasi modul epidemiologi">
+            <a href="{{ route('admin.epidemiologi.map') }}" class="btn btn-outline-success" aria-label="Buka Peta Sebaran">
+                <i class="fa fa-map-marked-alt" aria-hidden="true"></i> Peta Sebaran
             </a>
-            <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-primary">
-                <i class="fa fa-list"></i> Daftar Kasus
+            <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-outline-primary" aria-label="Buka Daftar Kasus">
+                <i class="fa fa-list" aria-hidden="true"></i> Daftar Kasus
             </a>
-            <a href="{{ route('admin.epidemiologi.create') }}" class="btn btn-warning">
-                <i class="fa fa-plus"></i> Tambah Kasus
+            <a href="{{ route('admin.epidemiologi.create') }}" class="btn btn-primary" aria-label="Tambah Kasus Baru">
+                <i class="fa fa-plus" aria-hidden="true"></i> Tambah Kasus
             </a>
-        </div>
-    </div>
+        </nav>
+    </header>
 
-    <!-- Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Kasus
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total_cases'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-virus fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+    <!-- Summary Stats Cards -->
+    <section aria-labelledby="stats-section-title" class="row mb-4">
+        <h2 id="stats-section-title" class="sr-only">Ringkasan Statistik Kasus</h2>
+
+        <div class="col-xl-3 col-md-6 mb-3" role="listitem">
+            <div class="card stat-card status-info h-100">
+                <div class="card-body text-center py-4">
+                    <h3 class="h6 text-accessible-muted mb-2">Total Kasus</h3>
+                    <p class="h2 mb-1" aria-label="{{ $stats['total_cases'] }} total kasus">
+                        {{ $stats['total_cases'] }}
+                    </p>
+                    <p class="small text-accessible-muted mb-0">
+                        <i class="fa fa-virus" aria-hidden="true"></i> Semua status
+                    </p>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Suspected
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['suspected_cases'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-question-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-xl-3 col-md-6 mb-3" role="listitem">
+            <div class="card stat-card status-warning h-100">
+                <div class="card-body text-center py-4">
+                    <h3 class="h6 text-accessible-muted mb-2">Suspected</h3>
+                    <p class="h2 mb-1" aria-label="{{ $stats['suspected_cases'] }} kasus suspected">
+                        {{ $stats['suspected_cases'] }}
+                    </p>
+                    <p class="small text-accessible-muted mb-0">
+                        <i class="fa fa-question-circle" aria-hidden="true"></i> Menunggu konfirmasi
+                    </p>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Confirmed
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['confirmed_cases'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-xl-3 col-md-6 mb-3" role="listitem">
+            <div class="card stat-card status-danger h-100">
+                <div class="card-body text-center py-4">
+                    <h3 class="h6 text-accessible-muted mb-2">Confirmed</h3>
+                    <p class="h2 mb-1" aria-label="{{ $stats['confirmed_cases'] }} kasus confirmed">
+                        {{ $stats['confirmed_cases'] }}
+                    </p>
+                    <p class="small text-accessible-muted mb-0">
+                        <i class="fa fa-exclamation-triangle" aria-hidden="true"></i> Terkonfirmasi
+                    </p>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Sembuh
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['recovered_cases'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-heartbeat fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-xl-3 col-md-6 mb-3" role="listitem">
+            <div class="card stat-card status-success h-100">
+                <div class="card-body text-center py-4">
+                    <h3 class="h6 text-accessible-muted mb-2">Sembuh</h3>
+                    <p class="h2 mb-1" aria-label="{{ $stats['recovered_cases'] }} kasus sembuh">
+                        {{ $stats['recovered_cases'] }}
+                    </p>
+                    <p class="small text-accessible-muted mb-0">
+                        <i class="fa fa-heartbeat" aria-hidden="true"></i> Pulih total
+                    </p>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Charts Row 1 -->
-    <div class="row mb-4">
+    <section aria-labelledby="charts-row1-title" class="row mb-4">
+        <h2 id="charts-row1-title" class="sr-only">Grafik Distribusi Kasus</h2>
+
         <!-- Disease Distribution Chart -->
         <div class="col-lg-6 mb-3">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="m-0 font-weight-bold">
-                        <i class="fa fa-chart-pie"></i> Distribusi Kasus per Jenis Penyakit
-                    </h6>
+            <article class="card info-card h-100">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--danger-rose) 0%, #e11d48 100%) !important;">
+                    <h2 id="disease-chart-title">
+                        <i class="fa fa-chart-pie" aria-hidden="true"></i> Distribusi Kasus per Jenis Penyakit
+                    </h2>
                 </div>
                 <div class="card-body">
-                    <canvas id="diseaseChart" height="300"></canvas>
+                    <div class="chart-container">
+                        <canvas id="diseaseChart" role="img" aria-label="Grafik batang horizontal distribusi kasus per jenis penyakit"></canvas>
+                    </div>
                 </div>
-            </div>
+            </article>
         </div>
 
         <!-- Status Distribution Chart -->
         <div class="col-lg-6 mb-3">
-            <div class="card shadow">
-                <div class="card-header bg-info text-white">
-                    <h6 class="m-0 font-weight-bold">
-                        <i class="fa fa-chart-pie"></i> Distribusi Status Kasus
-                    </h6>
+            <article class="card info-card h-100">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--info-teal) 0%, #0e7490 100%) !important;">
+                    <h2 id="status-chart-title">
+                        <i class="fa fa-chart-pie" aria-hidden="true"></i> Distribusi Status Kasus
+                    </h2>
                 </div>
                 <div class="card-body">
-                    <canvas id="statusChart" height="300"></canvas>
+                    <div class="chart-container">
+                        <canvas id="statusChart" role="img" aria-label="Grafik donat distribusi status kasus"></canvas>
+                    </div>
                 </div>
-            </div>
+            </article>
         </div>
-    </div>
+    </section>
 
     <!-- Charts Row 2 -->
-    <div class="row mb-4">
+    <section aria-labelledby="charts-row2-title" class="row mb-4">
+        <h2 id="charts-row2-title" class="sr-only">Grafik Tren dan Sebaran Geografis</h2>
+
         <!-- Trend Chart -->
         <div class="col-lg-8 mb-3">
-            <div class="card shadow">
-                <div class="card-header bg-success text-white">
-                    <h6 class="m-0 font-weight-bold">
-                        <i class="fa fa-chart-line"></i> Trend Kasus Bulanan (12 Bulan Terakhir)
-                    </h6>
+            <article class="card info-card h-100">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--success-green) 0%, #059669 100%) !important;">
+                    <h2 id="trend-chart-title">
+                        <i class="fa fa-chart-line" aria-hidden="true"></i> Trend Kasus Bulanan (12 Bulan Terakhir)
+                    </h2>
                 </div>
                 <div class="card-body">
-                    <canvas id="trendChart" height="200"></canvas>
+                    <div class="chart-container-lg">
+                        <canvas id="trendChart" role="img" aria-label="Grafik garis tren kasus bulanan 12 bulan terakhir"></canvas>
+                    </div>
                 </div>
-            </div>
+            </article>
         </div>
 
         <!-- Geographic Distribution -->
         <div class="col-lg-4 mb-3">
-            <div class="card shadow">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="m-0 font-weight-bold">
-                        <i class="fa fa-map-marker-alt"></i> Top 10 Kecamatan
-                    </h6>
+            <article class="card info-card h-100">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--warning-amber) 0%, #d97706 100%) !important;">
+                    <h2 id="geo-chart-title">
+                        <i class="fa fa-map-marker-alt" aria-hidden="true"></i> Top 10 Kecamatan
+                    </h2>
                 </div>
                 <div class="card-body">
-                    <canvas id="geoChart" height="400"></canvas>
+                    <div class="chart-container-tall">
+                        <canvas id="geoChart" role="img" aria-label="Grafik batang horizontal top 10 kecamatan dengan kasus terbanyak"></canvas>
+                    </div>
                 </div>
-            </div>
+            </article>
         </div>
-    </div>
+    </section>
 
     <!-- Recent Cases Table -->
-    <div class="row">
+    <section aria-labelledby="recent-cases-title" class="row">
         <div class="col-lg-12">
-            <div class="card shadow">
-                <div class="card-header bg-secondary text-white">
-                    <h6 class="m-0 font-weight-bold">
-                        <i class="fa fa-list"></i> Kasus Terbaru (10 Terakhir)
-                    </h6>
+            <article class="card info-card">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--text-muted) 0%, #374151 100%) !important;">
+                    <h2 id="recent-cases-title">
+                        <i class="fa fa-list" aria-hidden="true"></i> Kasus Terbaru (10 Terakhir)
+                    </h2>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
+                    <div class="table-responsive" tabindex="0" aria-label="Tabel kasus terbaru, dapat digulir horizontal">
+                        <table class="table table-sm table-striped table-hover table-accessible" aria-describedby="recent-cases-title">
+                            <caption class="sr-only">Tabel 10 kasus surveillance terbaru</caption>
                             <thead>
                                 <tr>
-                                    <th>No. Reg</th>
-                                    <th>Nama</th>
-                                    <th>Penyakit</th>
-                                    <th>Lokasi</th>
-                                    <th>Tanggal Onset</th>
-                                    <th>Status</th>
-                                    <th>Aksi</th>
+                                    <th scope="col">No. Reg</th>
+                                    <th scope="col">Nama</th>
+                                    <th scope="col">Penyakit</th>
+                                    <th scope="col">Lokasi</th>
+                                    <th scope="col">Tanggal Onset</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -192,30 +215,45 @@
                                     <td>{{ $case->nama_lengkap }}</td>
                                     <td>{{ $case->jenisKasus->nama_penyakit ?? '-' }}</td>
                                     <td>{{ $case->kecamatan->name ?? '-' }} / {{ $case->kelurahan->name ?? '-' }}</td>
-                                    <td>{{ $case->tanggal_onset->format('d/m/Y') }}</td>
                                     <td>
-                                        <span class="badge badge-{{ $case->status_kasus == 'confirmed' ? 'danger' : ($case->status_kasus == 'suspected' ? 'warning' : 'secondary') }}">
+                                        <time datetime="{{ $case->tanggal_onset->format('Y-m-d') }}">
+                                            {{ $case->tanggal_onset->format('d/m/Y') }}
+                                        </time>
+                                    </td>
+                                    <td>
+                                        @php
+                                            $statusClass = match($case->status_kasus) {
+                                                'confirmed' => 'badge-accessible-danger',
+                                                'suspected' => 'badge-accessible-warning',
+                                                'probable'  => 'badge-accessible-info',
+                                                default     => 'badge-accessible-secondary',
+                                            };
+                                        @endphp
+                                        <span class="badge badge-status {{ $statusClass }}">
                                             {{ ucfirst($case->status_kasus) }}
                                         </span>
                                     </td>
                                     <td>
-                                        <a href="{{ route('admin.epidemiologi.show', $case->id) }}" class="btn btn-sm btn-info">
-                                            <i class="fa fa-eye"></i>
+                                        <a href="{{ route('admin.epidemiologi.show', $case->id) }}" class="btn btn-sm btn-outline-info" aria-label="Lihat detail kasus {{ $case->no_registrasi }}">
+                                            <i class="fa fa-eye" aria-hidden="true"></i>
                                         </a>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted">Belum ada data kasus</td>
+                                    <td colspan="7" class="text-center text-accessible-muted py-4" role="status">
+                                        <i class="fa fa-inbox fa-2x mb-2 d-block" aria-hidden="true"></i>
+                                        Belum ada data kasus
+                                    </td>
                                 </tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
                 </div>
-            </div>
+            </article>
         </div>
-    </div>
+    </section>
 </div>
 @endsection
 
@@ -224,17 +262,19 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Chart Colors
+    // WCAG AA Compliant Chart Colors
     const colors = {
-        primary: 'rgba(78, 115, 223, 0.8)',
-        success: 'rgba(28, 200, 138, 0.8)',
-        info: 'rgba(54, 185, 204, 0.8)',
-        warning: 'rgba(246, 194, 62, 0.8)',
-        danger: 'rgba(231, 74, 59, 0.8)',
-        secondary: 'rgba(133, 135, 150, 0.8)'
+        primary: 'rgba(0, 102, 204, 0.85)',    // var(--primary-blue)
+        success: 'rgba(4, 120, 87, 0.85)',      // var(--success-green)
+        info:    'rgba(8, 145, 178, 0.85)',      // var(--info-teal)
+        warning: 'rgba(180, 83, 9, 0.85)',       // var(--warning-amber)
+        danger:  'rgba(190, 18, 60, 0.85)',      // var(--danger-rose)
+        secondary: 'rgba(75, 85, 99, 0.85)',     // var(--text-muted)
+        primaryLight: 'rgba(0, 102, 204, 0.15)',
+        successLight: 'rgba(4, 120, 87, 0.15)',
     };
 
-    // 1. Disease Distribution Chart (Bar Chart)
+    // 1. Disease Distribution Chart (Horizontal Bar)
     const diseaseData = @json($diseaseData);
     const diseaseLabels = diseaseData.map(item => item.jenis_kasus ? item.jenis_kasus.nama_penyakit : 'Unknown');
     const diseaseCounts = diseaseData.map(item => item.total);
@@ -254,7 +294,8 @@ $(document).ready(function() {
                     colors.primary,
                     colors.secondary
                 ],
-                borderWidth: 1
+                borderWidth: 0,
+                borderRadius: 4
             }]
         },
         options: {
@@ -262,17 +303,10 @@ $(document).ready(function() {
             maintainAspectRatio: false,
             indexAxis: 'y',
             plugins: {
-                legend: {
-                    display: false
-                }
+                legend: { display: false }
             },
             scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
+                x: { beginAtZero: true, ticks: { precision: 0 } }
             }
         }
     });
@@ -289,10 +323,10 @@ $(document).ready(function() {
             datasets: [{
                 data: statusCounts,
                 backgroundColor: [
-                    colors.warning,  // suspected
-                    colors.info,     // probable
-                    colors.danger,   // confirmed
-                    colors.secondary // discarded
+                    colors.warning,
+                    colors.info,
+                    colors.danger,
+                    colors.secondary
                 ],
                 borderWidth: 2
             }]
@@ -301,14 +335,12 @@ $(document).ready(function() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom'
-                }
+                legend: { position: 'bottom' }
             }
         }
     });
 
-    // 3. Trend Chart (Line Chart)
+    // 3. Trend Chart (Line)
     const trendData = @json($trendData);
     const trendLabels = trendData.map(item => {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -324,7 +356,7 @@ $(document).ready(function() {
                 label: 'Jumlah Kasus',
                 data: trendCounts,
                 borderColor: colors.success,
-                backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                backgroundColor: colors.successLight,
                 fill: true,
                 tension: 0.4,
                 borderWidth: 2,
@@ -335,18 +367,9 @@ $(document).ready(function() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
+                y: { beginAtZero: true, ticks: { precision: 0 } }
             }
         }
     });
@@ -364,25 +387,17 @@ $(document).ready(function() {
                 label: 'Jumlah Kasus',
                 data: geoCounts,
                 backgroundColor: colors.warning,
-                borderWidth: 1
+                borderWidth: 0,
+                borderRadius: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             indexAxis: 'y',
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
+                x: { beginAtZero: true, ticks: { precision: 0 } }
             }
         }
     });

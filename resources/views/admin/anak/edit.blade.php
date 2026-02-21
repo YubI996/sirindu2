@@ -153,25 +153,25 @@ Edit Anak
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Tinggi Badan Lahir <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Tinggi Badan Lahir <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="tb" value="{{$dt->tb}}" class="form-control" require>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Berat Badan Lahir <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Berat Badan Lahir <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="bb" value="{{$dt->bb}}" class="form-control" require>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Lingkar Lengan Atas <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Lingkar Lengan Atas <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="lla" value="{{$dt->lla}}" class="form-control" require>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Lingkar Kepala <font color="red">* gunakan titik (.) untuk koma</font></label>
+                <label>Lingkar Kepala <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
                 <input type="text" name="lk" value="{{$dt->lk}}" class="form-control" require>
             </div>
         </div>
@@ -232,13 +232,13 @@ Edit Anak
                     <option value="H" @if($data->posisi == 'H') selected @endif>H</option>
                     <option value="L" @if($data->posisi == 'L') selected @endif>L</option>
                 </select>
-                <label>Tinggi Badan <font color="red">* titik (.) untuk koma</font></label>
+                <label>Tinggi Badan <font color="red">* titik (.) untuk angka desimal</font></label>
                 <input type="text" name="tb" value="{{$data->tb}}" class="form-control" require>
-                <label>Berat Badan <font color="red">* titik (.) untuk koma</font></label>
+                <label>Berat Badan <font color="red">* titik (.) untuk angka desimal</font></label>
                 <input type="text" name="bb" value="{{$data->bb}}" class="form-control" require>
-                <label>Lingkar Lengan Atas <font color="red">* titik (.) untuk koma</font></label>
+                <label>Lingkar Lengan Atas <font color="red">* titik (.) untuk angka desimal</font></label>
                 <input type="text" name="lla" value="{{$data->lla}}" class="form-control" require>
-                <label>Lingkar Kepala <font color="red">* titik (.) untuk koma</font></label>
+                <label>Lingkar Kepala <font color="red">* titik (.) untuk angka desimal</font></label>
                 <input type="text" name="lk" value="{{$data->lk}}" class="form-control" require>
                 <label>Asi Ekslusif</label>
                 <select name="asi" class="form-control" require>

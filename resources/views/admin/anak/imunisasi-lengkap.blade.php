@@ -97,7 +97,13 @@ Imunisasi Lengkap - {{ $data->nama }}
                         <div class="col-md-3 col-sm-12">
                             <div class="form-group">
                                 <label>Lokasi Pemberian</label>
-                                <input type="text" name="lokasi_pemberian" class="form-control" placeholder="Puskesmas/Posyandu">
+                                <select name="lokasi_pemberian" class="form-control">
+                                    <option value="">-- Pilih Lokasi --</option>
+                                    <option value="Lengan Kiri">Lengan Kiri</option>
+                                    <option value="Lengan Kanan">Lengan Kanan</option>
+                                    <option value="Paha Kiri">Paha Kiri</option>
+                                    <option value="Paha Kanan">Paha Kanan</option>
+                                </select>
                             </div>
                         </div>
                         <div class="col-md-3 col-sm-12">
@@ -240,7 +246,13 @@ Imunisasi Lengkap - {{ $data->nama }}
                                                     <div class="col-md-6">
                                                         <div class="form-group">
                                                             <label>Lokasi Pemberian</label>
-                                                            <input type="text" name="lokasi_pemberian" class="form-control" value="{{ $imunisasi->lokasi_pemberian }}">
+                                                            <select name="lokasi_pemberian" class="form-control">
+                                                                <option value="">-- Pilih Lokasi --</option>
+                                                                <option value="Lengan Kiri" {{ $imunisasi->lokasi_pemberian == 'Lengan Kiri' ? 'selected' : '' }}>Lengan Kiri</option>
+                                                                <option value="Lengan Kanan" {{ $imunisasi->lokasi_pemberian == 'Lengan Kanan' ? 'selected' : '' }}>Lengan Kanan</option>
+                                                                <option value="Paha Kiri" {{ $imunisasi->lokasi_pemberian == 'Paha Kiri' ? 'selected' : '' }}>Paha Kiri</option>
+                                                                <option value="Paha Kanan" {{ $imunisasi->lokasi_pemberian == 'Paha Kanan' ? 'selected' : '' }}>Paha Kanan</option>
+                                                            </select>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6">
@@ -292,7 +304,6 @@ Imunisasi Lengkap - {{ $data->nama }}
 <div class="row mt-3">
     <div class="col-md-12">
         <a href="{{ route('admin.anak') }}" class="btn btn-secondary">Kembali ke Daftar Anak</a>
-        <a href="{{ route('admin.dataImunisasi', $data->hashid) }}" class="btn btn-info">Imunisasi Dasar (Legacy)</a>
     </div>
 </div>
 @endsection

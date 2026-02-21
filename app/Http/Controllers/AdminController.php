@@ -78,7 +78,6 @@ ANAK
                     <a class="dropdown-item" href="' . route('admin.dataAnak', $data->hashid) . '">Tambah Data Berkala Anak</a>
                     <a class="dropdown-item" href="' . route('admin.imunisasiLengkap', $data->hashid) . '">Data Imunisasi Lengkap</a>
                     <a class="dropdown-item" href="' . route('admin.jadwalImunisasi', $data->hashid) . '">Jadwal Imunisasi</a>
-                    <a class="dropdown-item" href="' . route('admin.dataImunisasi', $data->hashid) . '">Imunisasi Dasar (Legacy)</a>
                 </div>
                 </div>
                 ';
@@ -494,6 +493,7 @@ ANAK
             Alert::success('Data Anak', 'Berhasil Menambahkan Data');
             return redirect()->route('admin.anak');
         } catch (\Throwable $e) {
+            \Log::error('storeDataAnak error: ' . $e->getMessage());
             Alert::error('Data Anak', 'Gagal Menambahkan Data');
             return redirect()->route('admin.anak');
         }
@@ -511,26 +511,7 @@ ANAK
         }
     }
 
-    public function dataImunisasi($id)
-    {
-        $data = Anak::findByHashIdOrFail($id);
-        return view('admin.anak.data-imunisasi', compact('data'));
-    }
-
-    public function updateImunisasi(Request $request, $id)
-    {
-        try {
-            $anak = Anak::findByHashIdOrFail($id);
-            $this->anakRepository->updateImunisasi($request, $anak->id);
-            Alert::success('Anak', 'Berhasil Menambahkan Data Imunisasi');
-            return redirect()->route('admin.anak');
-        } catch (\Throwable $e) {
-            Alert::error('Anak', 'Gagal Menambahkan Data Imunisasi');
-            return redirect()->route('admin.anak');
-        }
-    }
-
-    // ==================== ENHANCED IMUNISASI METHODS ====================
+    // ==================== IMUNISASI METHODS ====================
 
     public function imunisasiLengkap($id)
     {
@@ -929,16 +910,6 @@ ANAK
                     'Golongan Darah' => $data->golda,
                     'Anak Ke-' => $data->anak,
                     'Catatan' => $data->catatan,
-                    'hbo' => $data->hbo,
-                    'bcg' => $data->bcg,
-                    'polio1' => $data->polio1,
-                    'dpthb_hib1' => $data->dpthb_hib1,
-                    'polio2' => $data->polio2,
-                    'dpthb_hib2' => $data->dpthb_hib2,
-                    'polio3' => $data->polio3,
-                    'dpthb_hib3' => $data->dpthb_hib3,
-                    'polio4' => $data->polio4,
-                    'campak' => $data->campak,
                     'Kecamatan' => $data->nameKec,
                     'Kelurahan' => $data->nameKel,
                     'Puskesmas' => $data->namePuskes,

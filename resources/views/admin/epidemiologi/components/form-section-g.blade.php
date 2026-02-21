@@ -48,7 +48,7 @@
     </div>
 </div>
 
-@push('scripts')
+@push('js')
 <script>
 $(document).ready(function() {
     // Show/hide date fields based on treatment status
