@@ -27,6 +27,30 @@
         height: 400px;
         width: 100%;
     }
+    .filter-active {
+        border: 2px solid var(--primary-blue) !important;
+        box-shadow: 0 0 0 0.15rem rgba(0, 102, 204, 0.25);
+    }
+    .dashboard-loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.5;
+    }
+    .dashboard-loading::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 32px;
+        height: 32px;
+        margin: -16px 0 0 -16px;
+        border: 3px solid #e5e7eb;
+        border-top-color: var(--primary-blue);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        z-index: 10;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
 <div class="container-fluid" id="main-content" role="main" aria-label="Dashboard Analytics Surveillance">
@@ -49,17 +73,42 @@
         </nav>
     </header>
 
+    <!-- Disease Filter -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <div class="form-group mb-0">
+                        <label for="diseaseFilter" class="mb-1"><i class="fa fa-filter"></i> Filter Jenis Penyakit</label>
+                        <select id="diseaseFilter" class="form-control">
+                            <option value="">Semua Penyakit</option>
+                            @foreach($diseases as $disease)
+                                <option value="{{ $disease->id }}">{{ $disease->nama_penyakit }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="button" id="resetDiseaseFilter" class="btn btn-outline-secondary mt-md-4" style="display:none;">
+                        <i class="fa fa-times"></i> Reset Filter
+                    </button>
+                    <span id="filterLabel" class="ml-2 mt-md-4 text-muted" style="display:none;">
+                        <i class="fa fa-info-circle"></i> Menampilkan data untuk: <strong id="filterName"></strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Summary Stats Cards -->
-    <section aria-labelledby="stats-section-title" class="row mb-4">
+    <section aria-labelledby="stats-section-title" class="row mb-4" id="statsSection">
         <h2 id="stats-section-title" class="sr-only">Ringkasan Statistik Kasus</h2>
 
         <div class="col-xl-3 col-md-6 mb-3" role="listitem">
             <div class="card stat-card status-info h-100">
                 <div class="card-body text-center py-4">
                     <h3 class="h6 text-accessible-muted mb-2">Total Kasus</h3>
-                    <p class="h2 mb-1" aria-label="{{ $stats['total_cases'] }} total kasus">
-                        {{ $stats['total_cases'] }}
-                    </p>
+                    <p class="h2 mb-1" id="statTotal">{{ $stats['total_cases'] }}</p>
                     <p class="small text-accessible-muted mb-0">
                         <i class="fa fa-virus" aria-hidden="true"></i> Semua status
                     </p>
@@ -71,9 +120,7 @@
             <div class="card stat-card status-warning h-100">
                 <div class="card-body text-center py-4">
                     <h3 class="h6 text-accessible-muted mb-2">Suspected</h3>
-                    <p class="h2 mb-1" aria-label="{{ $stats['suspected_cases'] }} kasus suspected">
-                        {{ $stats['suspected_cases'] }}
-                    </p>
+                    <p class="h2 mb-1" id="statSuspected">{{ $stats['suspected_cases'] }}</p>
                     <p class="small text-accessible-muted mb-0">
                         <i class="fa fa-question-circle" aria-hidden="true"></i> Menunggu konfirmasi
                     </p>
@@ -85,9 +132,7 @@
             <div class="card stat-card status-danger h-100">
                 <div class="card-body text-center py-4">
                     <h3 class="h6 text-accessible-muted mb-2">Confirmed</h3>
-                    <p class="h2 mb-1" aria-label="{{ $stats['confirmed_cases'] }} kasus confirmed">
-                        {{ $stats['confirmed_cases'] }}
-                    </p>
+                    <p class="h2 mb-1" id="statConfirmed">{{ $stats['confirmed_cases'] }}</p>
                     <p class="small text-accessible-muted mb-0">
                         <i class="fa fa-exclamation-triangle" aria-hidden="true"></i> Terkonfirmasi
                     </p>
@@ -99,9 +144,7 @@
             <div class="card stat-card status-success h-100">
                 <div class="card-body text-center py-4">
                     <h3 class="h6 text-accessible-muted mb-2">Sembuh</h3>
-                    <p class="h2 mb-1" aria-label="{{ $stats['recovered_cases'] }} kasus sembuh">
-                        {{ $stats['recovered_cases'] }}
-                    </p>
+                    <p class="h2 mb-1" id="statRecovered">{{ $stats['recovered_cases'] }}</p>
                     <p class="small text-accessible-muted mb-0">
                         <i class="fa fa-heartbeat" aria-hidden="true"></i> Pulih total
                     </p>
@@ -116,7 +159,7 @@
 
         <!-- Disease Distribution Chart -->
         <div class="col-lg-6 mb-3">
-            <article class="card info-card h-100">
+            <article class="card info-card h-100" id="diseaseChartCard">
                 <div class="card-header" style="background: linear-gradient(135deg, var(--danger-rose) 0%, #e11d48 100%) !important;">
                     <h2 id="disease-chart-title">
                         <i class="fa fa-chart-pie" aria-hidden="true"></i> Distribusi Kasus per Jenis Penyakit
@@ -132,7 +175,7 @@
 
         <!-- Status Distribution Chart -->
         <div class="col-lg-6 mb-3">
-            <article class="card info-card h-100">
+            <article class="card info-card h-100" id="statusChartCard">
                 <div class="card-header" style="background: linear-gradient(135deg, var(--info-teal) 0%, #0e7490 100%) !important;">
                     <h2 id="status-chart-title">
                         <i class="fa fa-chart-pie" aria-hidden="true"></i> Distribusi Status Kasus
@@ -153,7 +196,7 @@
 
         <!-- Trend Chart -->
         <div class="col-lg-8 mb-3">
-            <article class="card info-card h-100">
+            <article class="card info-card h-100" id="trendChartCard">
                 <div class="card-header" style="background: linear-gradient(135deg, var(--success-green) 0%, #059669 100%) !important;">
                     <h2 id="trend-chart-title">
                         <i class="fa fa-chart-line" aria-hidden="true"></i> Trend Kasus Bulanan (12 Bulan Terakhir)
@@ -169,7 +212,7 @@
 
         <!-- Geographic Distribution -->
         <div class="col-lg-4 mb-3">
-            <article class="card info-card h-100">
+            <article class="card info-card h-100" id="geoChartCard">
                 <div class="card-header" style="background: linear-gradient(135deg, var(--warning-amber) 0%, #d97706 100%) !important;">
                     <h2 id="geo-chart-title">
                         <i class="fa fa-map-marker-alt" aria-hidden="true"></i> Top 10 Kecamatan
@@ -187,7 +230,7 @@
     <!-- Recent Cases Table -->
     <section aria-labelledby="recent-cases-title" class="row">
         <div class="col-lg-12">
-            <article class="card info-card">
+            <article class="card info-card" id="recentCasesCard">
                 <div class="card-header" style="background: linear-gradient(135deg, var(--text-muted) 0%, #374151 100%) !important;">
                     <h2 id="recent-cases-title">
                         <i class="fa fa-list" aria-hidden="true"></i> Kasus Terbaru (10 Terakhir)
@@ -208,7 +251,7 @@
                                     <th scope="col">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="recentCasesBody">
                                 @forelse($recentCases as $case)
                                 <tr>
                                     <td><strong>{{ $case->no_registrasi }}</strong></td>
@@ -263,144 +306,275 @@
 <script>
 $(document).ready(function() {
     // WCAG AA Compliant Chart Colors
-    const colors = {
-        primary: 'rgba(0, 102, 204, 0.85)',    // var(--primary-blue)
-        success: 'rgba(4, 120, 87, 0.85)',      // var(--success-green)
-        info:    'rgba(8, 145, 178, 0.85)',      // var(--info-teal)
-        warning: 'rgba(180, 83, 9, 0.85)',       // var(--warning-amber)
-        danger:  'rgba(190, 18, 60, 0.85)',      // var(--danger-rose)
-        secondary: 'rgba(75, 85, 99, 0.85)',     // var(--text-muted)
+    const chartColors = {
+        primary: 'rgba(0, 102, 204, 0.85)',
+        success: 'rgba(4, 120, 87, 0.85)',
+        info:    'rgba(8, 145, 178, 0.85)',
+        warning: 'rgba(180, 83, 9, 0.85)',
+        danger:  'rgba(190, 18, 60, 0.85)',
+        secondary: 'rgba(75, 85, 99, 0.85)',
         primaryLight: 'rgba(0, 102, 204, 0.15)',
         successLight: 'rgba(4, 120, 87, 0.15)',
     };
 
-    // 1. Disease Distribution Chart (Horizontal Bar)
-    const diseaseData = @json($diseaseData);
-    const diseaseLabels = diseaseData.map(item => item.jenis_kasus ? item.jenis_kasus.nama_penyakit : 'Unknown');
-    const diseaseCounts = diseaseData.map(item => item.total);
+    const barColors = [
+        chartColors.danger,
+        chartColors.warning,
+        chartColors.info,
+        chartColors.success,
+        chartColors.primary,
+        chartColors.secondary
+    ];
 
-    new Chart(document.getElementById('diseaseChart'), {
-        type: 'bar',
-        data: {
-            labels: diseaseLabels,
-            datasets: [{
-                label: 'Jumlah Kasus',
-                data: diseaseCounts,
-                backgroundColor: [
-                    colors.danger,
-                    colors.warning,
-                    colors.info,
-                    colors.success,
-                    colors.primary,
-                    colors.secondary
-                ],
-                borderWidth: 0,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            plugins: {
-                legend: { display: false }
+    // Chart instances (for destroy/recreate on filter)
+    let diseaseChartInstance = null;
+    let statusChartInstance = null;
+    let trendChartInstance = null;
+    let geoChartInstance = null;
+
+    // Initial data from server
+    let currentData = {
+        diseaseData: @json($diseaseData),
+        statusData: @json($statusData),
+        trendData: @json($trendData),
+        geoData: @json($geoData),
+    };
+
+    function renderAllCharts(data) {
+        renderDiseaseChart(data.diseaseData || []);
+        renderStatusChart(data.statusData || []);
+        renderTrendChart(data.trendData || []);
+        renderGeoChart(data.geoData || []);
+    }
+
+    function renderDiseaseChart(diseaseData) {
+        if (diseaseChartInstance) diseaseChartInstance.destroy();
+
+        var labels = diseaseData.map(function(item) {
+            return item.jenis_kasus ? item.jenis_kasus.nama_penyakit : 'Unknown';
+        });
+        var counts = diseaseData.map(function(item) { return item.total; });
+
+        diseaseChartInstance = new Chart(document.getElementById('diseaseChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jumlah Kasus',
+                    data: counts,
+                    backgroundColor: barColors.slice(0, labels.length),
+                    borderWidth: 0,
+                    borderRadius: 4
+                }]
             },
-            scales: {
-                x: { beginAtZero: true, ticks: { precision: 0 } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
             }
-        }
-    });
+        });
+    }
 
-    // 2. Status Distribution Chart (Doughnut)
-    const statusData = @json($statusData);
-    const statusLabels = statusData.map(item => item.status_kasus.charAt(0).toUpperCase() + item.status_kasus.slice(1));
-    const statusCounts = statusData.map(item => item.total);
+    function renderStatusChart(statusData) {
+        if (statusChartInstance) statusChartInstance.destroy();
 
-    new Chart(document.getElementById('statusChart'), {
-        type: 'doughnut',
-        data: {
-            labels: statusLabels,
-            datasets: [{
-                data: statusCounts,
-                backgroundColor: [
-                    colors.warning,
-                    colors.info,
-                    colors.danger,
-                    colors.secondary
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom' }
+        var labels = statusData.map(function(item) {
+            return item.status_kasus.charAt(0).toUpperCase() + item.status_kasus.slice(1);
+        });
+        var counts = statusData.map(function(item) { return item.total; });
+
+        var statusColors = statusData.map(function(item) {
+            switch (item.status_kasus) {
+                case 'suspected': return chartColors.warning;
+                case 'probable':  return chartColors.info;
+                case 'confirmed': return chartColors.danger;
+                case 'discarded': return chartColors.secondary;
+                default:          return chartColors.secondary;
             }
-        }
-    });
+        });
 
-    // 3. Trend Chart (Line)
-    const trendData = @json($trendData);
-    const trendLabels = trendData.map(item => {
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        return monthNames[item.month - 1] + ' ' + item.year;
-    });
-    const trendCounts = trendData.map(item => item.total);
-
-    new Chart(document.getElementById('trendChart'), {
-        type: 'line',
-        data: {
-            labels: trendLabels,
-            datasets: [{
-                label: 'Jumlah Kasus',
-                data: trendCounts,
-                borderColor: colors.success,
-                backgroundColor: colors.successLight,
-                fill: true,
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 4,
-                pointBackgroundColor: colors.success
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 } }
+        statusChartInstance = new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: statusColors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
             }
-        }
-    });
+        });
+    }
 
-    // 4. Geographic Distribution Chart (Horizontal Bar)
-    const geoData = @json($geoData);
-    const geoLabels = geoData.slice(0, 10).map(item => item.kecamatan ? item.kecamatan.name : 'Unknown');
-    const geoCounts = geoData.slice(0, 10).map(item => item.total);
+    function renderTrendChart(trendData) {
+        if (trendChartInstance) trendChartInstance.destroy();
 
-    new Chart(document.getElementById('geoChart'), {
-        type: 'bar',
-        data: {
-            labels: geoLabels,
-            datasets: [{
-                label: 'Jumlah Kasus',
-                data: geoCounts,
-                backgroundColor: colors.warning,
-                borderWidth: 0,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { beginAtZero: true, ticks: { precision: 0 } }
+        var monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        var labels = trendData.map(function(item) {
+            return monthNames[item.month - 1] + ' ' + item.year;
+        });
+        var counts = trendData.map(function(item) { return item.total; });
+
+        trendChartInstance = new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jumlah Kasus',
+                    data: counts,
+                    borderColor: chartColors.success,
+                    backgroundColor: chartColors.successLight,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointBackgroundColor: chartColors.success
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
             }
+        });
+    }
+
+    function renderGeoChart(geoData) {
+        if (geoChartInstance) geoChartInstance.destroy();
+
+        var sliced = geoData.slice(0, 10);
+        var labels = sliced.map(function(item) {
+            return item.kecamatan ? item.kecamatan.name : 'Unknown';
+        });
+        var counts = sliced.map(function(item) { return item.total; });
+
+        geoChartInstance = new Chart(document.getElementById('geoChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jumlah Kasus',
+                    data: counts,
+                    backgroundColor: chartColors.warning,
+                    borderWidth: 0,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    function updateStats(stats) {
+        $('#statTotal').text(stats.total_cases);
+        $('#statSuspected').text(stats.suspected_cases);
+        $('#statConfirmed').text(stats.confirmed_cases);
+        $('#statRecovered').text(stats.recovered_cases);
+    }
+
+    function updateRecentCases(cases) {
+        var $tbody = $('#recentCasesBody');
+        $tbody.empty();
+
+        if (!cases || cases.length === 0) {
+            $tbody.append(
+                '<tr><td colspan="7" class="text-center text-accessible-muted py-4">' +
+                '<i class="fa fa-inbox fa-2x mb-2 d-block"></i>Belum ada data kasus</td></tr>'
+            );
+            return;
         }
+
+        cases.forEach(function(c) {
+            var statusClass = 'badge-accessible-secondary';
+            if (c.status_kasus === 'confirmed') statusClass = 'badge-accessible-danger';
+            else if (c.status_kasus === 'suspected') statusClass = 'badge-accessible-warning';
+            else if (c.status_kasus === 'probable') statusClass = 'badge-accessible-info';
+
+            var statusLabel = c.status_kasus ? c.status_kasus.charAt(0).toUpperCase() + c.status_kasus.slice(1) : '-';
+
+            $tbody.append(
+                '<tr>' +
+                '<td><strong>' + (c.no_registrasi || '-') + '</strong></td>' +
+                '<td>' + c.nama_lengkap + '</td>' +
+                '<td>' + c.penyakit + '</td>' +
+                '<td>' + c.kecamatan + ' / ' + c.kelurahan + '</td>' +
+                '<td><time datetime="' + c.tanggal_onset_iso + '">' + c.tanggal_onset + '</time></td>' +
+                '<td><span class="badge badge-status ' + statusClass + '">' + statusLabel + '</span></td>' +
+                '<td><a href="' + c.show_url + '" class="btn btn-sm btn-outline-info"><i class="fa fa-eye"></i></a></td>' +
+                '</tr>'
+            );
+        });
+    }
+
+    function setLoading(on) {
+        var sections = ['#statsSection', '#diseaseChartCard', '#statusChartCard', '#trendChartCard', '#geoChartCard', '#recentCasesCard'];
+        sections.forEach(function(s) {
+            if (on) $(s).addClass('dashboard-loading');
+            else $(s).removeClass('dashboard-loading');
+        });
+    }
+
+    function loadFilteredData(diseaseId) {
+        setLoading(true);
+
+        $.ajax({
+            url: '{{ route("admin.epidemiologi.dashboardData") }}',
+            type: 'GET',
+            data: { disease_id: diseaseId || '' },
+            success: function(response) {
+                updateStats(response.stats);
+                renderAllCharts(response);
+                updateRecentCases(response.recentCases);
+                setLoading(false);
+            },
+            error: function() {
+                alert('Gagal memuat data dashboard');
+                setLoading(false);
+            }
+        });
+    }
+
+    // Disease filter handler
+    $('#diseaseFilter').on('change', function() {
+        var diseaseId = $(this).val();
+        var diseaseName = $(this).find('option:selected').text();
+
+        if (diseaseId) {
+            $(this).addClass('filter-active');
+            $('#resetDiseaseFilter').show();
+            $('#filterLabel').show();
+            $('#filterName').text(diseaseName);
+        } else {
+            $(this).removeClass('filter-active');
+            $('#resetDiseaseFilter').hide();
+            $('#filterLabel').hide();
+        }
+
+        loadFilteredData(diseaseId);
     });
+
+    $('#resetDiseaseFilter').on('click', function() {
+        $('#diseaseFilter').val('').removeClass('filter-active');
+        $(this).hide();
+        $('#filterLabel').hide();
+        loadFilteredData('');
+    });
+
+    // Initial render
+    renderAllCharts(currentData);
 });
 </script>
 @endsection
