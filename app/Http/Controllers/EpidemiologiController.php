@@ -38,52 +38,80 @@ class EpidemiologiController extends Controller
     public function dashboard()
     {
         $user = auth()->user();
+        $diseases = JenisKasusEpidemiologi::active()->get();
 
-        if ($user->isFaskesSurveilans()) {
-            // Faskes: stats dan data scoped ke faskes sendiri
-            $faskesId   = $user->getFaskesId();
-            $faskesType = $user->faskes_type; // 'puskesmas' | 'rs'
-
-            $stats = Cache::remember("epi_dashboard_faskes_{$faskesType}_{$faskesId}", 300, function () use ($faskesId, $faskesType) {
-                return $this->surveillanceRepository->getDashboardStats($faskesType, $faskesId);
-            });
-
-            $recentCases = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan'])
-                ->where('faskes_type', $faskesType)
-                ->where('id_faskes', $faskesId)
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
-        } else {
-            // Dinkes (superadmin): semua data
-            $stats = Cache::remember('epi_dashboard_stats', 300, function () {
-                return $this->surveillanceRepository->getDashboardStats();
-            });
-
-            $recentCases = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan'])
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get();
-        }
-
-        // Get trend/chart data (scoped untuk faskes)
         $faskesScope = $user->isFaskesSurveilans()
             ? ['faskes_type' => $user->faskes_type, 'id_faskes' => $user->getFaskesId()]
             : null;
 
-        $trendData   = $this->surveillanceRepository->getCasesTrend(12, $faskesScope);
-        $diseaseData = $this->surveillanceRepository->getCasesByDisease($faskesScope);
-        $statusData  = $this->surveillanceRepository->getCasesByStatus($faskesScope);
-        $geoData     = $this->surveillanceRepository->getCasesByGeography('kecamatan', $faskesScope);
+        $dashboardData = $this->buildDashboardData($user, $faskesScope);
 
-        return view('admin.epidemiologi.dashboard', compact(
-            'stats',
-            'recentCases',
-            'trendData',
-            'diseaseData',
-            'statusData',
-            'geoData'
+        return view('admin.epidemiologi.dashboard', array_merge(
+            $dashboardData,
+            ['diseases' => $diseases]
         ));
+    }
+
+    /**
+     * AJAX endpoint for filtered dashboard data
+     */
+    public function getDashboardData(Request $request)
+    {
+        $user = auth()->user();
+
+        $faskesScope = $user->isFaskesSurveilans()
+            ? ['faskes_type' => $user->faskes_type, 'id_faskes' => $user->getFaskesId()]
+            : null;
+
+        $diseaseId = $request->filled('disease_id') ? (int) $request->disease_id : null;
+
+        $data = $this->buildDashboardData($user, $faskesScope, $diseaseId);
+
+        // Convert recent cases to array for JSON
+        $data['recentCases'] = $data['recentCases']->map(function ($case) {
+            return [
+                'id' => $case->id,
+                'no_registrasi' => $case->no_registrasi,
+                'nama_lengkap' => $case->nama_lengkap,
+                'penyakit' => $case->jenisKasus->nama_penyakit ?? '-',
+                'kecamatan' => $case->kecamatan->name ?? '-',
+                'kelurahan' => $case->kelurahan->name ?? '-',
+                'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
+                'tanggal_onset_iso' => $case->tanggal_onset->format('Y-m-d'),
+                'status_kasus' => $case->status_kasus,
+                'show_url' => route('admin.epidemiologi.show', $case->id),
+            ];
+        });
+
+        return response()->json($data);
+    }
+
+    /**
+     * Build dashboard data arrays (shared between initial load and AJAX)
+     */
+    private function buildDashboardData($user, ?array $faskesScope, ?int $diseaseId = null)
+    {
+        $faskesType = $faskesScope['faskes_type'] ?? null;
+        $faskesId = $faskesScope['id_faskes'] ?? null;
+
+        $stats = $this->surveillanceRepository->getDashboardStats($faskesType, $faskesId ? (int) $faskesId : null, $diseaseId);
+
+        $recentQuery = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan']);
+        if ($faskesScope) {
+            $recentQuery->where('faskes_type', $faskesScope['faskes_type'])
+                        ->where('id_faskes', $faskesScope['id_faskes']);
+        }
+        if ($diseaseId) {
+            $recentQuery->where('id_jenis_kasus', $diseaseId);
+        }
+        $recentCases = $recentQuery->orderBy('created_at', 'desc')->limit(10)->get();
+
+        $trendData   = $this->surveillanceRepository->getCasesTrend(12, $faskesScope, $diseaseId);
+        $diseaseData = $this->surveillanceRepository->getCasesByDisease($faskesScope, $diseaseId);
+        $statusData  = $this->surveillanceRepository->getCasesByStatus($faskesScope, $diseaseId);
+        $geoData     = $this->surveillanceRepository->getCasesByGeography('kecamatan', $faskesScope, $diseaseId);
+
+        return compact('stats', 'recentCases', 'trendData', 'diseaseData', 'statusData', 'geoData');
     }
 
     /**
@@ -144,8 +172,61 @@ class EpidemiologiController extends Controller
             ];
         });
 
+        // Group by kecamatan
+        $casesByKecamatan = $cases->groupBy('id_kec')->map(function ($group) {
+            return [
+                'name' => $group->first()->kecamatan->name ?? 'Unknown',
+                'count' => $group->count(),
+                'cases' => $group->map(function ($case) {
+                    return [
+                        'id' => $case->id,
+                        'nama' => $case->nama_lengkap,
+                        'disease' => $case->jenisKasus->nama_penyakit ?? 'Unknown',
+                        'status' => $case->status_kasus,
+                        'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
+                    ];
+                })->toArray()
+            ];
+        });
+
+        // Group by RT
+        $casesByRT = $cases->groupBy('id_rt')->map(function ($group) {
+            $rt = $group->first()->rt;
+            return [
+                'name' => $rt->name ?? 'Unknown',
+                'count' => $group->count(),
+                'cases' => $group->map(function ($case) {
+                    return [
+                        'id' => $case->id,
+                        'nama' => $case->nama_lengkap,
+                        'disease' => $case->jenisKasus->nama_penyakit ?? 'Unknown',
+                        'status' => $case->status_kasus,
+                        'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
+                    ];
+                })->toArray()
+            ];
+        });
+
+        // Individual case markers (only cases with coordinates)
+        $caseMarkers = $cases->filter(function ($case) {
+            return $case->latitude && $case->longitude;
+        })->map(function ($case) {
+            return [
+                'id' => $case->id,
+                'nama' => $case->nama_lengkap,
+                'disease' => $case->jenisKasus->nama_penyakit ?? 'Unknown',
+                'status' => $case->status_kasus,
+                'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
+                'lat' => (float) $case->latitude,
+                'lng' => (float) $case->longitude,
+            ];
+        })->values();
+
         return response()->json([
             'casesByKelurahan' => $casesByKelurahan,
+            'casesByKecamatan' => $casesByKecamatan,
+            'casesByRT' => $casesByRT,
+            'caseMarkers' => $caseMarkers,
             'totalCases' => $cases->count(),
         ]);
     }
@@ -283,12 +364,7 @@ class EpidemiologiController extends Controller
         $kecamatanList = Kecamatan::all();
         $puskesmasList = Puskesmas::orderBy('name')->get();
 
-        // Generate registration number
-        $lastCase = SurveillanceCase::latest('id')->first();
-        $nextNumber = $lastCase ? ($lastCase->id + 1) : 1;
-        $suggestedRegNumber = 'EPI-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-
-        return view('admin.epidemiologi.create', compact('diseases', 'kecamatanList', 'puskesmasList', 'suggestedRegNumber'));
+        return view('admin.epidemiologi.create', compact('diseases', 'kecamatanList', 'puskesmasList'));
     }
 
     /**

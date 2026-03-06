@@ -109,6 +109,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.map');
         Route::get('api/map-data', [App\Http\Controllers\EpidemiologiController::class, 'getMapData'])
              ->name('admin.epidemiologi.mapData');
+        Route::get('api/dashboard-data', [App\Http\Controllers\EpidemiologiController::class, 'getDashboardData'])
+             ->name('admin.epidemiologi.dashboardData');
 
         // CRUD Routes
         Route::get('/', [App\Http\Controllers\EpidemiologiController::class, 'index'])

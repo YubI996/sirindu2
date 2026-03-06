@@ -19,109 +19,72 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     }
 
     /**
+     * Boolean checkbox fields that need special handling (unchecked = not in request)
+     */
+    private const BOOLEAN_FIELDS = [
+        'gejala_demam', 'gejala_batuk', 'gejala_pilek', 'gejala_sakit_kepala',
+        'gejala_mual', 'gejala_muntah', 'gejala_diare', 'gejala_ruam',
+        'gejala_sesak_napas', 'gejala_nyeri_otot', 'gejala_nyeri_sendi',
+        'gejala_lemas', 'gejala_kehilangan_nafsu_makan', 'gejala_mata_merah',
+        'gejala_pembengkakan_kelenjar', 'gejala_kejang', 'gejala_penurunan_kesadaran',
+        'gejala_adenopathy', 'gejala_arthralgia', 'gejala_kehamilan',
+        'komplikasi_diare', 'komplikasi_kebutaan', 'komplikasi_pneumonia',
+        'komplikasi_malnutrisi', 'komplikasi_bronchopneumonia', 'komplikasi_otitis_media',
+        'komplikasi_encephalitis', 'komplikasi_ulkus_mukosa_mulut',
+        'riwayat_kontak_kasus',
+    ];
+
+    /**
+     * Prepare validated data with boolean handling and auto-computed fields
+     */
+    private function prepareData($request)
+    {
+        $data = $request->validated();
+
+        // Handle boolean checkbox fields: unchecked checkboxes are absent from request
+        foreach (self::BOOLEAN_FIELDS as $field) {
+            $data[$field] = $request->has($field) ? 1 : 0;
+        }
+
+        // Auto-calculate kategori_umur from tanggal_lahir
+        if (!empty($data['tanggal_lahir'])) {
+            $tanggalLahir = Carbon::parse($data['tanggal_lahir']);
+            $data['kategori_umur'] = $this->getKategoriUmur($tanggalLahir->diffInYears(now()));
+        }
+
+        // Auto-populate reporter from authenticated user
+        $user = Auth::user();
+        $data['nama_pelapor'] = $user->name;
+        $data['instansi_pelapor'] = optional($user->puskesmas)->name ?? optional($user->rs)->name ?? $data['instansi_pelapor'] ?? null;
+        $data['telepon_pelapor'] = $data['telepon_pelapor'] ?? null;
+
+        return $data;
+    }
+
+    /**
      * Store a new surveillance case
      */
     public function storeCase($request)
     {
         return DB::transaction(function () use ($request) {
-            // Auto-calculate kategori_umur from tanggal_lahir
-            $tanggalLahir = Carbon::parse($request->tanggal_lahir);
-            $umurTahun = $tanggalLahir->diffInYears(now());
+            $data = $this->prepareData($request);
 
-            $kategoriUmur = $this->getKategoriUmur($umurTahun);
+            // Defaults for new cases
+            $data['tanggal_lapor'] = $data['tanggal_lapor'] ?? now()->toDateString();
+            $data['sumber_penularan'] = $data['sumber_penularan'] ?? 'unknown';
+            $data['riwayat_imunisasi'] = $data['riwayat_imunisasi'] ?? 'tidak_tahu';
+            $data['status_lab'] = $data['status_lab'] ?? 'belum_diperiksa';
+            $data['kondisi_akhir'] = $data['kondisi_akhir'] ?? 'dalam_perawatan';
+            $data['status_kasus'] = $data['status_kasus'] ?? 'suspected';
 
-            $case = SurveillanceCase::create([
-                // Category A: Patient Identity
-                'no_registrasi' => $request->no_registrasi,
-                'nik' => $request->nik,
-                'nama_lengkap' => $request->nama_lengkap,
-                'tanggal_lahir' => $request->tanggal_lahir,
-                'kategori_umur' => $kategoriUmur,
-                'jenis_kelamin' => $request->jenis_kelamin,
-                'alamat_lengkap' => $request->alamat_lengkap,
-                'id_kec' => $request->id_kec,
-                'id_kel' => $request->id_kel,
-                'id_rt' => $request->id_rt,
-                'no_telepon' => $request->no_telepon,
+            // System fields
+            $data['id_petugas_input'] = Auth::id();
+            $data['created_by'] = Auth::id();
+            $data['updated_by'] = Auth::id();
+            $data['faskes_type'] = Auth::user()->faskes_type;
+            $data['id_faskes'] = Auth::user()->getFaskesId();
 
-                // Category B: Reporter Identity
-                'nama_pelapor' => $request->nama_pelapor,
-                'jabatan_pelapor' => $request->jabatan_pelapor,
-                'instansi_pelapor' => $request->instansi_pelapor,
-                'telepon_pelapor' => $request->telepon_pelapor,
-
-                // Category C: Case Data
-                'id_jenis_kasus' => $request->id_jenis_kasus,
-                'kode_icd10' => $request->kode_icd10,
-                'tanggal_onset' => $request->tanggal_onset,
-                'tanggal_konsultasi' => $request->tanggal_konsultasi,
-                'tanggal_lapor' => $request->tanggal_lapor ?? now(),
-                'sumber_penularan' => $request->sumber_penularan ?? 'unknown',
-                'lokasi_penularan' => $request->lokasi_penularan,
-
-                // Category D: Symptoms (boolean)
-                'gejala_demam' => $request->has('gejala_demam') ? 1 : 0,
-                'gejala_batuk' => $request->has('gejala_batuk') ? 1 : 0,
-                'gejala_pilek' => $request->has('gejala_pilek') ? 1 : 0,
-                'gejala_sakit_kepala' => $request->has('gejala_sakit_kepala') ? 1 : 0,
-                'gejala_mual' => $request->has('gejala_mual') ? 1 : 0,
-                'gejala_muntah' => $request->has('gejala_muntah') ? 1 : 0,
-                'gejala_diare' => $request->has('gejala_diare') ? 1 : 0,
-                'gejala_ruam' => $request->has('gejala_ruam') ? 1 : 0,
-                'gejala_sesak_napas' => $request->has('gejala_sesak_napas') ? 1 : 0,
-                'gejala_nyeri_otot' => $request->has('gejala_nyeri_otot') ? 1 : 0,
-                'gejala_nyeri_sendi' => $request->has('gejala_nyeri_sendi') ? 1 : 0,
-                'gejala_lemas' => $request->has('gejala_lemas') ? 1 : 0,
-                'gejala_kehilangan_nafsu_makan' => $request->has('gejala_kehilangan_nafsu_makan') ? 1 : 0,
-                'gejala_mata_merah' => $request->has('gejala_mata_merah') ? 1 : 0,
-                'gejala_pembengkakan_kelenjar' => $request->has('gejala_pembengkakan_kelenjar') ? 1 : 0,
-                'gejala_kejang' => $request->has('gejala_kejang') ? 1 : 0,
-                'gejala_penurunan_kesadaran' => $request->has('gejala_penurunan_kesadaran') ? 1 : 0,
-
-                // Category E: History
-                'riwayat_perjalanan' => $request->riwayat_perjalanan,
-                'riwayat_kontak_kasus' => $request->has('riwayat_kontak_kasus') ? 1 : 0,
-                'riwayat_imunisasi' => $request->riwayat_imunisasi ?? 'tidak_tahu',
-                'tanggal_imunisasi_terakhir' => $request->tanggal_imunisasi_terakhir,
-
-                // Category F: Laboratory
-                'status_lab' => $request->status_lab ?? 'belum_diperiksa',
-                'tanggal_pengambilan_spesimen' => $request->tanggal_pengambilan_spesimen,
-                'jenis_spesimen' => $request->jenis_spesimen,
-                'hasil_lab' => $request->hasil_lab,
-                'tanggal_hasil_lab' => $request->tanggal_hasil_lab,
-
-                // Category G: Management
-                'status_rawat' => $request->status_rawat,
-                'nama_faskes_rawat' => $request->nama_faskes_rawat,
-                'tanggal_masuk_rawat' => $request->tanggal_masuk_rawat,
-                'tanggal_keluar_rawat' => $request->tanggal_keluar_rawat,
-
-                // Category H: Final Status
-                'kondisi_akhir' => $request->kondisi_akhir ?? 'dalam_perawatan',
-                'tanggal_kondisi_akhir' => $request->tanggal_kondisi_akhir,
-                'penyebab_kematian' => $request->penyebab_kematian,
-
-                // Category I: Contact Investigation
-                'jumlah_kontak_serumah' => $request->jumlah_kontak_serumah ?? 0,
-                'jumlah_kontak_diluar_rumah' => $request->jumlah_kontak_diluar_rumah ?? 0,
-                'jumlah_kontak_bergejala' => $request->jumlah_kontak_bergejala ?? 0,
-                'tindak_lanjut_kontak' => $request->tindak_lanjut_kontak,
-
-                // Category J: Metadata
-                'status_kasus' => $request->status_kasus ?? 'suspected',
-                'id_petugas_input' => Auth::id(),
-                'id_faskes_pelapor' => $request->id_faskes_pelapor,
-                'catatan_tambahan' => $request->catatan_tambahan,
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
-
-                // Faskes scoping — auto-filled from authenticated user
-                'faskes_type' => Auth::user()->faskes_type,
-                'id_faskes' => Auth::user()->getFaskesId(),
-            ]);
-
-            return $case;
+            return SurveillanceCase::create($data);
         });
     }
 
@@ -133,98 +96,10 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         return DB::transaction(function () use ($request, $id) {
             $case = SurveillanceCase::findOrFail($id);
 
-            // Auto-calculate kategori_umur if tanggal_lahir is updated
-            $kategoriUmur = $case->kategori_umur;
-            if ($request->filled('tanggal_lahir')) {
-                $tanggalLahir = Carbon::parse($request->tanggal_lahir);
-                $umurTahun = $tanggalLahir->diffInYears(now());
-                $kategoriUmur = $this->getKategoriUmur($umurTahun);
-            }
+            $data = $this->prepareData($request);
+            $data['updated_by'] = Auth::id();
 
-            $case->update([
-                // Category A: Patient Identity
-                'no_registrasi' => $request->no_registrasi,
-                'nik' => $request->nik,
-                'nama_lengkap' => $request->nama_lengkap,
-                'tanggal_lahir' => $request->tanggal_lahir,
-                'kategori_umur' => $kategoriUmur,
-                'jenis_kelamin' => $request->jenis_kelamin,
-                'alamat_lengkap' => $request->alamat_lengkap,
-                'id_kec' => $request->id_kec,
-                'id_kel' => $request->id_kel,
-                'id_rt' => $request->id_rt,
-                'no_telepon' => $request->no_telepon,
-
-                // Category B: Reporter Identity
-                'nama_pelapor' => $request->nama_pelapor,
-                'jabatan_pelapor' => $request->jabatan_pelapor,
-                'instansi_pelapor' => $request->instansi_pelapor,
-                'telepon_pelapor' => $request->telepon_pelapor,
-
-                // Category C: Case Data
-                'id_jenis_kasus' => $request->id_jenis_kasus,
-                'kode_icd10' => $request->kode_icd10,
-                'tanggal_onset' => $request->tanggal_onset,
-                'tanggal_konsultasi' => $request->tanggal_konsultasi,
-                'tanggal_lapor' => $request->tanggal_lapor,
-                'sumber_penularan' => $request->sumber_penularan,
-                'lokasi_penularan' => $request->lokasi_penularan,
-
-                // Category D: Symptoms
-                'gejala_demam' => $request->has('gejala_demam') ? 1 : 0,
-                'gejala_batuk' => $request->has('gejala_batuk') ? 1 : 0,
-                'gejala_pilek' => $request->has('gejala_pilek') ? 1 : 0,
-                'gejala_sakit_kepala' => $request->has('gejala_sakit_kepala') ? 1 : 0,
-                'gejala_mual' => $request->has('gejala_mual') ? 1 : 0,
-                'gejala_muntah' => $request->has('gejala_muntah') ? 1 : 0,
-                'gejala_diare' => $request->has('gejala_diare') ? 1 : 0,
-                'gejala_ruam' => $request->has('gejala_ruam') ? 1 : 0,
-                'gejala_sesak_napas' => $request->has('gejala_sesak_napas') ? 1 : 0,
-                'gejala_nyeri_otot' => $request->has('gejala_nyeri_otot') ? 1 : 0,
-                'gejala_nyeri_sendi' => $request->has('gejala_nyeri_sendi') ? 1 : 0,
-                'gejala_lemas' => $request->has('gejala_lemas') ? 1 : 0,
-                'gejala_kehilangan_nafsu_makan' => $request->has('gejala_kehilangan_nafsu_makan') ? 1 : 0,
-                'gejala_mata_merah' => $request->has('gejala_mata_merah') ? 1 : 0,
-                'gejala_pembengkakan_kelenjar' => $request->has('gejala_pembengkakan_kelenjar') ? 1 : 0,
-                'gejala_kejang' => $request->has('gejala_kejang') ? 1 : 0,
-                'gejala_penurunan_kesadaran' => $request->has('gejala_penurunan_kesadaran') ? 1 : 0,
-
-                // Category E: History
-                'riwayat_perjalanan' => $request->riwayat_perjalanan,
-                'riwayat_kontak_kasus' => $request->has('riwayat_kontak_kasus') ? 1 : 0,
-                'riwayat_imunisasi' => $request->riwayat_imunisasi,
-                'tanggal_imunisasi_terakhir' => $request->tanggal_imunisasi_terakhir,
-
-                // Category F: Laboratory
-                'status_lab' => $request->status_lab,
-                'tanggal_pengambilan_spesimen' => $request->tanggal_pengambilan_spesimen,
-                'jenis_spesimen' => $request->jenis_spesimen,
-                'hasil_lab' => $request->hasil_lab,
-                'tanggal_hasil_lab' => $request->tanggal_hasil_lab,
-
-                // Category G: Management
-                'status_rawat' => $request->status_rawat,
-                'nama_faskes_rawat' => $request->nama_faskes_rawat,
-                'tanggal_masuk_rawat' => $request->tanggal_masuk_rawat,
-                'tanggal_keluar_rawat' => $request->tanggal_keluar_rawat,
-
-                // Category H: Final Status
-                'kondisi_akhir' => $request->kondisi_akhir,
-                'tanggal_kondisi_akhir' => $request->tanggal_kondisi_akhir,
-                'penyebab_kematian' => $request->penyebab_kematian,
-
-                // Category I: Contact Investigation
-                'jumlah_kontak_serumah' => $request->jumlah_kontak_serumah ?? 0,
-                'jumlah_kontak_diluar_rumah' => $request->jumlah_kontak_diluar_rumah ?? 0,
-                'jumlah_kontak_bergejala' => $request->jumlah_kontak_bergejala ?? 0,
-                'tindak_lanjut_kontak' => $request->tindak_lanjut_kontak,
-
-                // Category J: Metadata
-                'status_kasus' => $request->status_kasus,
-                'id_faskes_pelapor' => $request->id_faskes_pelapor,
-                'catatan_tambahan' => $request->catatan_tambahan,
-                'updated_by' => Auth::id(),
-            ]);
+            $case->update($data);
 
             return $case;
         });
@@ -245,9 +120,13 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
      * @param string|null $faskesType  'puskesmas' or 'rs' (null = all)
      * @param int|null    $faskesId    ID of puskesmas/rs (null = all)
      */
-    public function getDashboardStats(?string $faskesType = null, ?int $faskesId = null)
+    public function getDashboardStats(?string $faskesType = null, ?int $faskesId = null, ?int $diseaseId = null)
     {
         $base = $this->scopedQuery($faskesType, $faskesId);
+
+        if ($diseaseId) {
+            $base->where('id_jenis_kasus', $diseaseId);
+        }
 
         $stats = [
             'total_cases' => (clone $base)->count(),
@@ -266,22 +145,29 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by geography
      */
-    public function getCasesByGeography($level = 'kecamatan', ?array $faskesScope = null)
+    public function getCasesByGeography($level = 'kecamatan', ?array $faskesScope = null, ?int $diseaseId = null)
     {
+        $applyDisease = function ($query) use ($diseaseId) {
+            if ($diseaseId) {
+                $query->where('id_jenis_kasus', $diseaseId);
+            }
+            return $query;
+        };
+
         if ($level === 'kecamatan') {
-            $query = $this->scopedQueryFromArray($faskesScope)
+            $query = $applyDisease($this->scopedQueryFromArray($faskesScope))
                 ->select('id_kec', DB::raw('count(*) as total'))
                 ->with('kecamatan:id,name')
                 ->groupBy('id_kec');
             return $query->get();
         } elseif ($level === 'kelurahan') {
-            $query = $this->scopedQueryFromArray($faskesScope)
+            $query = $applyDisease($this->scopedQueryFromArray($faskesScope))
                 ->select('id_kel', DB::raw('count(*) as total'))
                 ->with('kelurahan:id,name')
                 ->groupBy('id_kel');
             return $query->get();
         } elseif ($level === 'rt') {
-            $query = $this->scopedQueryFromArray($faskesScope)
+            $query = $applyDisease($this->scopedQueryFromArray($faskesScope))
                 ->select('id_rt', 'id_kel', DB::raw('count(*) as total'))
                 ->with(['rt:id,name', 'kelurahan:id,name'])
                 ->groupBy('id_rt', 'id_kel');
@@ -294,12 +180,17 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases trend over months
      */
-    public function getCasesTrend($months = 12, ?array $faskesScope = null)
+    public function getCasesTrend($months = 12, ?array $faskesScope = null, ?int $diseaseId = null)
     {
         $startDate = Carbon::now()->subMonths($months);
 
-        return $this->scopedQueryFromArray($faskesScope)
-            ->select(
+        $query = $this->scopedQueryFromArray($faskesScope);
+
+        if ($diseaseId) {
+            $query->where('id_jenis_kasus', $diseaseId);
+        }
+
+        return $query->select(
                 DB::raw('YEAR(tanggal_onset) as year'),
                 DB::raw('MONTH(tanggal_onset) as month'),
                 DB::raw('count(*) as total')
@@ -312,25 +203,38 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     }
 
     /**
-     * Get cases grouped by disease type
+     * Get cases grouped by disease type (only active diseases)
      */
-    public function getCasesByDisease(?array $faskesScope = null)
+    public function getCasesByDisease(?array $faskesScope = null, ?int $diseaseId = null)
     {
-        return $this->scopedQueryFromArray($faskesScope)
+        $query = $this->scopedQueryFromArray($faskesScope)
             ->select('id_jenis_kasus', DB::raw('count(*) as total'))
+            ->whereHas('jenisKasus', function ($q) {
+                $q->where('is_active', true);
+            })
             ->with('jenisKasus:id,nama_penyakit,kode_penyakit')
             ->groupBy('id_jenis_kasus')
-            ->orderByDesc('total')
-            ->get();
+            ->orderByDesc('total');
+
+        if ($diseaseId) {
+            $query->where('id_jenis_kasus', $diseaseId);
+        }
+
+        return $query->get();
     }
 
     /**
      * Get cases grouped by status
      */
-    public function getCasesByStatus(?array $faskesScope = null)
+    public function getCasesByStatus(?array $faskesScope = null, ?int $diseaseId = null)
     {
-        return $this->scopedQueryFromArray($faskesScope)
-            ->select('status_kasus', DB::raw('count(*) as total'))
+        $query = $this->scopedQueryFromArray($faskesScope);
+
+        if ($diseaseId) {
+            $query->where('id_jenis_kasus', $diseaseId);
+        }
+
+        return $query->select('status_kasus', DB::raw('count(*) as total'))
             ->groupBy('status_kasus')
             ->get();
     }
