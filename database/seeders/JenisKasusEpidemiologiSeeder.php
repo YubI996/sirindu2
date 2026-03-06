@@ -15,7 +15,6 @@ class JenisKasusEpidemiologiSeeder extends Seeder
     public function run()
     {
         $diseases = [
-            // ===== PRIORITY SURVEILLANCE DISEASES (as specified) =====
             [
                 'kode_penyakit' => 'CAMPAK_RUBELLA',
                 'nama_penyakit' => 'Suspek Campak Rubella',
@@ -49,78 +48,6 @@ class JenisKasusEpidemiologiSeeder extends Seeder
                 'nama_penyakit' => 'Suspek Tetanus Neonatorum',
                 'kategori' => 'PD3I',
                 'deskripsi' => 'Suspek tetanus pada bayi baru lahir',
-                'is_active' => true
-            ],
-
-            // ===== ADDITIONAL COMMON SURVEILLANCE DISEASES =====
-            [
-                'kode_penyakit' => 'DBD',
-                'nama_penyakit' => 'Demam Berdarah Dengue',
-                'kategori' => 'vector_borne',
-                'deskripsi' => 'Demam berdarah dengue (DBD) yang ditularkan melalui nyamuk Aedes',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'CHIKUNGUNYA',
-                'nama_penyakit' => 'Chikungunya',
-                'kategori' => 'vector_borne',
-                'deskripsi' => 'Penyakit virus yang ditularkan melalui nyamuk Aedes',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'MALARIA',
-                'nama_penyakit' => 'Malaria',
-                'kategori' => 'vector_borne',
-                'deskripsi' => 'Penyakit yang ditularkan melalui gigitan nyamuk Anopheles',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'TB',
-                'nama_penyakit' => 'Tuberkulosis',
-                'kategori' => 'menular_langsung',
-                'deskripsi' => 'Tuberkulosis (TB) - penyakit menular yang umumnya menyerang paru-paru',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'HEPATITIS',
-                'nama_penyakit' => 'Hepatitis',
-                'kategori' => 'menular_langsung',
-                'deskripsi' => 'Peradangan hati yang dapat disebabkan virus hepatitis A, B, C, D, atau E',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'HIV',
-                'nama_penyakit' => 'HIV/AIDS',
-                'kategori' => 'menular_langsung',
-                'deskripsi' => 'Human Immunodeficiency Virus dan Acquired Immunodeficiency Syndrome',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'DIARE',
-                'nama_penyakit' => 'Diare Akut',
-                'kategori' => 'menular_langsung',
-                'deskripsi' => 'Diare akut yang dapat menyebabkan dehidrasi',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'PNEUMONIA',
-                'nama_penyakit' => 'Pneumonia',
-                'kategori' => 'menular_langsung',
-                'deskripsi' => 'Infeksi yang menyebabkan peradangan pada kantong udara di paru-paru',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'RABIES',
-                'nama_penyakit' => 'Rabies',
-                'kategori' => 'zoonosis',
-                'deskripsi' => 'Penyakit virus yang ditularkan melalui gigitan hewan yang terinfeksi',
-                'is_active' => true
-            ],
-            [
-                'kode_penyakit' => 'COVID19',
-                'nama_penyakit' => 'COVID-19',
-                'kategori' => 'menular_langsung',
-                'deskripsi' => 'Coronavirus Disease 2019 yang disebabkan virus SARS-CoV-2',
                 'is_active' => true
             ],
         ];
