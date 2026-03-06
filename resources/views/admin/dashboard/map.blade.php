@@ -247,8 +247,8 @@ Peta
     </div>
     <div class="col-lg-2 col-md-4 col-6">
         <div class="stat-mini" style="background: linear-gradient(135deg, #059669 0%, #34d399 100%);">
-            <h3>{{ number_format($totalAnak - $totalStunting - $totalWasting) }}</h3>
-            <p>Normal/Lainnya</p>
+            <h3>{{ number_format($totalImunisasiLengkap) }} <small style="font-size:0.6em">({{ $persenImunisasiLengkap }}%)</small></h3>
+            <p>Imunisasi Lengkap</p>
         </div>
     </div>
 </div>
@@ -273,6 +273,9 @@ Peta
             </button>
             <button class="btn btn-outline-danger btn-sm" id="btnStunting" onclick="showMode('stunting')">
                 <i class="fa fa-child mr-1"></i> Stunting
+            </button>
+            <button class="btn btn-outline-info btn-sm" id="btnImunisasi" onclick="showMode('imunisasi')">
+                <i class="fa fa-syringe mr-1"></i> Imunisasi
             </button>
         </div>
     </div>
@@ -420,6 +423,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const rtStats = @json($rtStats);
     const kelurahanZScore = @json($kelurahanZScore);
     const rtZScore = @json($rtZScore);
+    const kelurahanImunisasi = @json($kelurahanImunisasi);
+    const rtImunisasi = @json($rtImunisasi);
 
     // Mapping from GeoJSON names
     const mapping = @json(json_decode(file_get_contents(public_path('geojson/mapping.json')), true));
@@ -583,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let rtLayerLoading = true;
     let rtLayerError = false;
     let currentLayer = 'kelurahan';
-    let currentMode = 'count'; // 'count' or 'stunting'
+    let currentMode = 'count'; // 'count', 'stunting', or 'imunisasi'
 
     // Color functions for count mode
     function getColorByCount(count) {
@@ -605,14 +610,25 @@ document.addEventListener('DOMContentLoaded', function() {
         return '#047857';
     }
 
+    // Color functions for immunization mode
+    function getColorByImunisasi(stats) {
+        if (!stats || stats.total_anak === 0) return '#e5e7eb';
+        const persen = stats.persen_lengkap;
+        if (persen >= 80) return '#047857';
+        if (persen >= 60) return '#0891b2';
+        if (persen >= 40) return '#f59e0b';
+        return '#be123c';
+    }
+
     // Style functions
     function getStyle(name, type, feature = null) {
-        let stats, zScore, count = 0;
+        let stats, zScore, imunisasiStats, count = 0;
 
         if (type === 'kelurahan') {
             const mappedName = resolveKelurahanName(name);
             stats = kelurahanStats[mappedName];
             zScore = kelurahanZScore[mappedName];
+            imunisasiStats = kelurahanImunisasi[mappedName];
             count = stats ? stats.total_anak : 0;
         } else if (type === 'kecamatan') {
             const cleanName = name.replace('Kecamatan ', '');
@@ -623,12 +639,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const dbRTName = rtInfo && rtInfo.dbRTName ? rtInfo.dbRTName : name;
             stats = rtStats[dbRTName];
             zScore = rtZScore[dbRTName];
+            imunisasiStats = rtImunisasi[dbRTName];
             count = stats ? stats.total_anak : 0;
         }
 
-        const color = currentMode === 'stunting' && zScore
-            ? getColorByStunting(zScore)
-            : getColorByCount(count);
+        let color;
+        if (currentMode === 'stunting' && zScore) {
+            color = getColorByStunting(zScore);
+        } else if (currentMode === 'imunisasi') {
+            color = getColorByImunisasi(imunisasiStats);
+        } else {
+            color = getColorByCount(count);
+        }
 
         return {
             fillColor: color,
@@ -659,16 +681,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let content = '<div class="popup-content">';
         let displayName = name;
 
-        let stats, zScore;
+        let stats, zScore, imunisasiStats;
         if (type === 'kelurahan') {
             const mappedName = resolveKelurahanName(name);
             stats = kelurahanStats[mappedName];
             zScore = kelurahanZScore[mappedName];
+            imunisasiStats = kelurahanImunisasi[mappedName];
         } else if (type === 'kecamatan') {
             const cleanName = name.replace('Kecamatan ', '');
             stats = kecamatanStats[cleanName];
         } else if (type === 'rt') {
-            // Convert GeoJSON RT format to database format for lookup
             const rtInfo = getRtLookup(feature);
             const dbRTName = rtInfo && rtInfo.dbRTName ? rtInfo.dbRTName : name;
             if (rtInfo && rtInfo.displayName) {
@@ -676,12 +698,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             stats = rtStats[dbRTName];
             zScore = rtZScore[dbRTName];
+            imunisasiStats = rtImunisasi[dbRTName];
         }
 
         content += '<h6>' + displayName + '</h6>';
         content += '<div class="popup-stat"><span>Jumlah Anak:</span><strong>' + (stats ? stats.total_anak : 0) + '</strong></div>';
 
-        if (zScore) {
+        if (currentMode === 'imunisasi' && imunisasiStats) {
+            content += '<div class="popup-stat"><span>Imunisasi Lengkap:</span><strong style="color:#047857">' + imunisasiStats.lengkap + '/' + imunisasiStats.total_anak + ' (' + imunisasiStats.persen_lengkap + '%)</strong></div>';
+            content += '<hr style="margin:0.3rem 0">';
+            content += '<div style="font-size:0.8rem;font-weight:600;margin-bottom:0.2rem">Detail per Vaksin:</div>';
+            const vaksinLabels = {
+                'HB0': 'HB-0', 'BCG': 'BCG', 'POLIO1': 'Polio 1', 'POLIO2': 'Polio 2',
+                'POLIO3': 'Polio 3', 'POLIO4': 'Polio 4', 'DPT-HB-HIB1': 'DPT-HB-HIB 1',
+                'DPT-HB-HIB2': 'DPT-HB-HIB 2', 'DPT-HB-HIB3': 'DPT-HB-HIB 3',
+                'IPV': 'IPV', 'CAMPAK': 'Campak'
+            };
+            for (const [code, label] of Object.entries(vaksinLabels)) {
+                const count = imunisasiStats.per_vaksin[code] || 0;
+                const persen = imunisasiStats.total_anak > 0 ? ((count / imunisasiStats.total_anak) * 100).toFixed(0) : 0;
+                content += '<div class="popup-stat"><span>' + label + ':</span><strong>' + count + '/' + imunisasiStats.total_anak + ' (' + persen + '%)</strong></div>';
+            }
+        } else if (zScore) {
             content += '<div class="popup-stat"><span>Normal:</span><strong style="color:#047857">' + zScore.normal + '</strong></div>';
             content += '<div class="popup-stat"><span>Stunting:</span><strong style="color:#be123c">' + zScore.stunting + '</strong></div>';
             content += '<div class="popup-stat"><span>Wasting:</span><strong style="color:#f59e0b">' + zScore.wasting + '</strong></div>';
@@ -723,22 +761,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('infoPanel').classList.add('show');
 
                 let infoHtml = '';
-                let stats, zScore;
+                let stats, zScore, imunisasiStats;
 
                 if (type === 'kelurahan') {
                     const mappedName = resolveKelurahanName(name);
                     stats = kelurahanStats[mappedName];
                     zScore = kelurahanZScore[mappedName];
+                    imunisasiStats = kelurahanImunisasi[mappedName];
                 } else if (type === 'kecamatan') {
                     const cleanName = name.replace('Kecamatan ', '');
                     stats = kecamatanStats[cleanName];
                 } else if (type === 'rt') {
                     stats = rtStats[dbRTName];
                     zScore = rtZScore[dbRTName];
+                    imunisasiStats = rtImunisasi[dbRTName];
                 }
 
                 infoHtml += '<div class="info-stat"><span>Jumlah Anak</span><strong>' + (stats ? stats.total_anak : 0) + '</strong></div>';
-                if (zScore) {
+                if (currentMode === 'imunisasi' && imunisasiStats) {
+                    infoHtml += '<div class="info-stat"><span>Imunisasi Lengkap</span><strong class="text-success">' + imunisasiStats.lengkap + '/' + imunisasiStats.total_anak + '</strong></div>';
+                    infoHtml += '<div class="info-stat"><span>Persentase</span><strong>' + imunisasiStats.persen_lengkap + '%</strong></div>';
+                } else if (zScore) {
                     infoHtml += '<div class="info-stat"><span>Normal</span><strong class="text-success">' + zScore.normal + '</strong></div>';
                     infoHtml += '<div class="info-stat"><span>Stunting</span><strong class="text-danger">' + zScore.stunting + '</strong></div>';
                     infoHtml += '<div class="info-stat"><span>Wasting</span><strong class="text-warning">' + zScore.wasting + '</strong></div>';
@@ -824,6 +867,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Tidak ada stunting</span></div>
                 <div class="legend-item"><div class="legend-color" style="background: #e5e7eb;"></div><span>Tidak ada data</span></div>
             `;
+        } else if (currentMode === 'imunisasi') {
+            legendContent.innerHTML = `
+                <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Imunisasi Lengkap &ge;80%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #0891b2;"></div><span>Imunisasi Lengkap 60-79%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div><span>Imunisasi Lengkap 40-59%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #be123c;"></div><span>Imunisasi Lengkap <40%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #e5e7eb;"></div><span>Tidak ada data</span></div>
+            `;
         } else {
             legendContent.innerHTML = `
                 <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>>50 anak</span></div>
@@ -847,7 +898,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentLayer = layerType;
 
         document.querySelectorAll('.layer-toggle .btn').forEach(btn => {
-            if (btn.id.startsWith('btn') && !btn.id.includes('Count') && !btn.id.includes('Stunting')) {
+            if (btn.id.startsWith('btn') && !btn.id.includes('Count') && !btn.id.includes('Stunting') && !btn.id.includes('Imunisasi')) {
                 btn.classList.remove('active');
             }
         });
@@ -898,16 +949,31 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showMode = function(mode) {
         currentMode = mode;
 
-        const btnCount = document.getElementById('btnCount');
-        const btnStunting = document.getElementById('btnStunting');
-        if (btnCount) btnCount.classList.remove('active');
-        if (btnStunting) btnStunting.classList.remove('active');
+        ['btnCount', 'btnStunting', 'btnImunisasi'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.remove('active');
+        });
 
         const modeBtn = document.getElementById('btn' + mode.charAt(0).toUpperCase() + mode.slice(1));
         if (modeBtn) modeBtn.classList.add('active');
 
         updateLegend();
         refreshLayers();
+
+        // Rebind popups with updated content
+        [kelurahanLayer, kecamatanLayer, rtLayer].forEach(layer => {
+            if (!layer) return;
+            layer.eachLayer(function(l) {
+                if (l.feature) {
+                    const props = l.feature.properties;
+                    const layerName = props.Name || props.kel_desa || props.nama || props.RT || props.nama_rt;
+                    let layerType = 'kelurahan';
+                    if (layer === kecamatanLayer) layerType = 'kecamatan';
+                    else if (layer === rtLayer) layerType = 'rt';
+                    l.setPopupContent(getPopupContent(layerName, layerType, l.feature));
+                }
+            });
+        });
     };
 
     // Search filter
