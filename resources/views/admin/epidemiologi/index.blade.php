@@ -571,7 +571,7 @@
             <table id="casesTable" class="table" style="width:100%; margin-bottom: 0;" aria-label="Tabel daftar kasus surveillance">
                 <thead>
                     <tr>
-                        <th scope="col">No. Registrasi</th>
+                        <th scope="col">No. Epid</th>
                         <th scope="col">NIK</th>
                         <th scope="col">Nama Lengkap</th>
                         <th scope="col">Jenis Penyakit</th>
@@ -639,7 +639,7 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 'no_registrasi', name: 'no_registrasi' },
+            { data: 'no_registrasi', name: 'no_registrasi', render: function(data) { return data || '<span class="text-muted">-</span>'; } },
             { data: 'nik', name: 'nik' },
             { data: 'nama_lengkap', name: 'nama_lengkap' },
             { data: 'disease', name: 'jenisKasus.nama_penyakit' },

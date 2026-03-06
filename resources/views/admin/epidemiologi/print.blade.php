@@ -176,8 +176,8 @@
     <!-- Status Overview -->
     <div class="status-box">
         <div class="status-item">
-            <div class="status-item-label">No. Registrasi</div>
-            <div class="status-item-value">{{ $case->no_registrasi }}</div>
+            <div class="status-item-label">No. Epid</div>
+            <div class="status-item-value">{{ $case->no_registrasi ?: '-' }}</div>
         </div>
         <div class="status-item">
             <div class="status-item-label">Status Kasus</div>

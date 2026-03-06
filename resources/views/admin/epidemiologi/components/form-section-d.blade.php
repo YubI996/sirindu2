@@ -1,176 +1,153 @@
-{{-- Section D: Clinical Symptoms (17 boolean fields) --}}
+{{-- Section D: Clinical Symptoms (expanded with Google Form fields) --}}
 <p class="text-muted mb-3">
-    <i class="fa fa-info-circle"></i> Centang gejala yang dialami pasien
+    <i class="fa fa-info-circle"></i> Centang semua gejala yang dialami pasien sejak onset penyakit.
 </p>
 
+<h6 class="section-subtitle"><i class="fa fa-thermometer-half"></i> Gejala Utama</h6>
+<div class="check-grid mb-4">
+    @php
+    $mainSymptoms = [
+        ['name' => 'gejala_demam', 'label' => 'Demam', 'icon' => 'fa-thermometer-full'],
+        ['name' => 'gejala_batuk', 'label' => 'Batuk', 'icon' => 'fa-head-side-cough'],
+        ['name' => 'gejala_pilek', 'label' => 'Pilek', 'icon' => 'fa-head-side-virus'],
+        ['name' => 'gejala_sakit_kepala', 'label' => 'Sakit Kepala', 'icon' => 'fa-brain'],
+        ['name' => 'gejala_mual', 'label' => 'Mual', 'icon' => 'fa-dizzy'],
+        ['name' => 'gejala_muntah', 'label' => 'Muntah', 'icon' => 'fa-procedures'],
+        ['name' => 'gejala_diare', 'label' => 'Diare', 'icon' => 'fa-toiletpaper'],
+        ['name' => 'gejala_ruam', 'label' => 'Ruam', 'icon' => 'fa-allergies'],
+        ['name' => 'gejala_sesak_napas', 'label' => 'Sesak Napas', 'icon' => 'fa-lungs-virus'],
+        ['name' => 'gejala_nyeri_otot', 'label' => 'Nyeri Otot', 'icon' => 'fa-running'],
+        ['name' => 'gejala_nyeri_sendi', 'label' => 'Nyeri Sendi', 'icon' => 'fa-bone'],
+        ['name' => 'gejala_lemas', 'label' => 'Lemas', 'icon' => 'fa-battery-quarter'],
+        ['name' => 'gejala_kehilangan_nafsu_makan', 'label' => 'Hilang Nafsu Makan', 'icon' => 'fa-utensils'],
+        ['name' => 'gejala_mata_merah', 'label' => 'Mata Merah', 'icon' => 'fa-eye'],
+        ['name' => 'gejala_pembengkakan_kelenjar', 'label' => 'Pembengkakan Kelenjar', 'icon' => 'fa-expand-arrows-alt'],
+        ['name' => 'gejala_kejang', 'label' => 'Kejang', 'icon' => 'fa-bolt'],
+        ['name' => 'gejala_penurunan_kesadaran', 'label' => 'Penurunan Kesadaran', 'icon' => 'fa-bed'],
+    ];
+    @endphp
+
+    @foreach ($mainSymptoms as $symptom)
+    <div class="check-card {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}">
+        <span class="check-icon"><i class="fas {{ $symptom['icon'] }}"></i></span>
+        <input type="hidden" name="{{ $symptom['name'] }}" value="0">
+        <input type="checkbox" name="{{ $symptom['name'] }}" value="1" id="{{ $symptom['name'] }}"
+               {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}>
+        <label for="{{ $symptom['name'] }}">{{ $symptom['label'] }}</label>
+    </div>
+    @endforeach
+</div>
+
+{{-- Google Form additional symptoms (Campak/Rubella specific) --}}
+<div class="disease-field" data-diseases="CAMPAK_RUBELLA"
+     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? old('_disease_kode', ''), ['CAMPAK_RUBELLA']) ? '' : 'display:none;' }}">
+<h6 class="section-subtitle"><i class="fa fa-plus-circle"></i> Gejala Lain (Campak/Rubella)</h6>
+<div class="check-grid mb-4">
+    @php
+    $additionalSymptoms = [
+        ['name' => 'gejala_adenopathy', 'label' => 'Adenopathy (Kelenjar Limfa)', 'icon' => 'fa-compress-arrows-alt'],
+        ['name' => 'gejala_arthralgia', 'label' => 'Arthralgia (Nyeri Sendi)', 'icon' => 'fa-hand-paper'],
+        ['name' => 'gejala_kehamilan', 'label' => 'Kehamilan', 'icon' => 'fa-baby'],
+    ];
+    @endphp
+
+    @foreach ($additionalSymptoms as $symptom)
+    <div class="check-card {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}">
+        <span class="check-icon"><i class="fas {{ $symptom['icon'] }}"></i></span>
+        <input type="hidden" name="{{ $symptom['name'] }}" value="0">
+        <input type="checkbox" name="{{ $symptom['name'] }}" value="1" id="{{ $symptom['name'] }}"
+               {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}>
+        <label for="{{ $symptom['name'] }}">{{ $symptom['label'] }}</label>
+    </div>
+    @endforeach
+</div>
+</div>
+
+{{-- Disease-specific dates: Campak/Rubella --}}
+<div class="disease-field" data-diseases="CAMPAK_RUBELLA"
+     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? '', ['CAMPAK_RUBELLA']) ? '' : 'display:none;' }}">
+<h6 class="section-subtitle"><i class="fa fa-calendar-alt"></i> Tanggal Onset Gejala (Campak/Rubella)</h6>
 <div class="row">
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_demam" name="gejala_demam"
-                   {{ old('gejala_demam', $case->gejala_demam ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_demam">
-                <i class="fa fa-thermometer-half text-danger"></i> Demam
-            </label>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Tanggal Demam</label>
+            <small class="form-text text-muted">Sudah diisi di Section C</small>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_batuk" name="gejala_batuk"
-                   {{ old('gejala_batuk', $case->gejala_batuk ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_batuk">
-                <i class="fa fa-lungs text-info"></i> Batuk
-            </label>
+</div>
+</div>
+
+{{-- Disease-specific dates: Difteri --}}
+<div class="disease-field" data-diseases="DIFTERI_OBS"
+     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? '', ['DIFTERI_OBS']) ? '' : 'display:none;' }}">
+<h6 class="section-subtitle"><i class="fa fa-calendar-alt"></i> Tanggal Onset Gejala (Difteri)</h6>
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Tanggal Leher Bengkak</label>
+            <input type="date" name="tanggal_leher_bengkak" class="form-control"
+                   value="{{ old('tanggal_leher_bengkak', isset($case) && $case->tanggal_leher_bengkak ? $case->tanggal_leher_bengkak->format('Y-m-d') : '') }}"
+                   max="{{ date('Y-m-d') }}">
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_pilek" name="gejala_pilek"
-                   {{ old('gejala_pilek', $case->gejala_pilek ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_pilek">
-                <i class="fa fa-head-side-cough text-primary"></i> Pilek
-            </label>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Tanggal Sesak Napas</label>
+            <input type="date" name="tanggal_sesak_nafas" class="form-control"
+                   value="{{ old('tanggal_sesak_nafas', isset($case) && $case->tanggal_sesak_nafas ? $case->tanggal_sesak_nafas->format('Y-m-d') : '') }}"
+                   max="{{ date('Y-m-d') }}">
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_sakit_kepala" name="gejala_sakit_kepala"
-                   {{ old('gejala_sakit_kepala', $case->gejala_sakit_kepala ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_sakit_kepala">
-                <i class="fa fa-head-side-virus text-warning"></i> Sakit Kepala
-            </label>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Tanggal Pseudomembran</label>
+            <input type="date" name="tanggal_pseudomembran" class="form-control"
+                   value="{{ old('tanggal_pseudomembran', isset($case) && $case->tanggal_pseudomembran ? $case->tanggal_pseudomembran->format('Y-m-d') : '') }}"
+                   max="{{ date('Y-m-d') }}">
+        </div>
+    </div>
+</div>
+</div>
+
+{{-- Disease-specific dates: Pertusis --}}
+<div class="disease-field" data-diseases="PERTUSIS"
+     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? '', ['PERTUSIS']) ? '' : 'display:none;' }}">
+<h6 class="section-subtitle"><i class="fa fa-calendar-alt"></i> Tanggal Onset Gejala (Pertusis)</h6>
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Tanggal Apnea</label>
+            <input type="date" name="tanggal_apnea" class="form-control"
+                   value="{{ old('tanggal_apnea', isset($case) && $case->tanggal_apnea ? $case->tanggal_apnea->format('Y-m-d') : '') }}"
+                   max="{{ date('Y-m-d') }}">
+        </div>
+    </div>
+</div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="form-group">
+            <label>Gejala Lainnya (Teks Bebas)</label>
+            <textarea name="gejala_lainnya" class="form-control" rows="2"
+                      placeholder="Tuliskan gejala lain yang tidak tercantum di atas...">{{ old('gejala_lainnya', $case->gejala_lainnya ?? '') }}</textarea>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_mual" name="gejala_mual"
-                   {{ old('gejala_mual', $case->gejala_mual ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_mual">
-                <i class="fa fa-dizzy text-success"></i> Mual
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_muntah" name="gejala_muntah"
-                   {{ old('gejala_muntah', $case->gejala_muntah ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_muntah">
-                <i class="fa fa-sad-tear text-danger"></i> Muntah
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_diare" name="gejala_diare"
-                   {{ old('gejala_diare', $case->gejala_diare ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_diare">
-                <i class="fa fa-toilet text-warning"></i> Diare
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_ruam" name="gejala_ruam"
-                   {{ old('gejala_ruam', $case->gejala_ruam ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_ruam">
-                <i class="fa fa-allergies text-danger"></i> Ruam/Bercak Merah
-            </label>
-        </div>
-    </div>
-</div>
+@push('js')
+<script>
+$(document).ready(function() {
+    // Toggle checked class on symptom item click
+    $('.check-card').on('click', function(e) {
+        if ($(e.target).is('input[type="checkbox"]') || $(e.target).is('label')) return;
+        var cb = $(this).find('input[type="checkbox"]');
+        cb.prop('checked', !cb.prop('checked')).trigger('change');
+    });
 
-<div class="row">
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_sesak_napas" name="gejala_sesak_napas"
-                   {{ old('gejala_sesak_napas', $case->gejala_sesak_napas ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_sesak_napas">
-                <i class="fa fa-wind text-danger"></i> Sesak Napas
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_nyeri_otot" name="gejala_nyeri_otot"
-                   {{ old('gejala_nyeri_otot', $case->gejala_nyeri_otot ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_nyeri_otot">
-                <i class="fa fa-dumbbell text-info"></i> Nyeri Otot
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_nyeri_sendi" name="gejala_nyeri_sendi"
-                   {{ old('gejala_nyeri_sendi', $case->gejala_nyeri_sendi ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_nyeri_sendi">
-                <i class="fa fa-walking text-warning"></i> Nyeri Sendi
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_lemas" name="gejala_lemas"
-                   {{ old('gejala_lemas', $case->gejala_lemas ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_lemas">
-                <i class="fa fa-tired text-secondary"></i> Lemas
-            </label>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_kehilangan_nafsu_makan" name="gejala_kehilangan_nafsu_makan"
-                   {{ old('gejala_kehilangan_nafsu_makan', $case->gejala_kehilangan_nafsu_makan ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_kehilangan_nafsu_makan">
-                <i class="fa fa-utensils text-muted"></i> Hilang Nafsu Makan
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_mata_merah" name="gejala_mata_merah"
-                   {{ old('gejala_mata_merah', $case->gejala_mata_merah ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_mata_merah">
-                <i class="fa fa-eye text-danger"></i> Mata Merah
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_pembengkakan_kelenjar" name="gejala_pembengkakan_kelenjar"
-                   {{ old('gejala_pembengkakan_kelenjar', $case->gejala_pembengkakan_kelenjar ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_pembengkakan_kelenjar">
-                <i class="fa fa-circle text-info"></i> Pembengkakan Kelenjar
-            </label>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_kejang" name="gejala_kejang"
-                   {{ old('gejala_kejang', $case->gejala_kejang ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_kejang">
-                <i class="fa fa-bolt text-warning"></i> Kejang
-            </label>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-3">
-        <div class="custom-control custom-checkbox mb-3">
-            <input type="checkbox" class="custom-control-input" id="gejala_penurunan_kesadaran" name="gejala_penurunan_kesadaran"
-                   {{ old('gejala_penurunan_kesadaran', $case->gejala_penurunan_kesadaran ?? false) ? 'checked' : '' }}>
-            <label class="custom-control-label" for="gejala_penurunan_kesadaran">
-                <i class="fa fa-brain text-danger"></i> Penurunan Kesadaran
-            </label>
-        </div>
-    </div>
-</div>
-
-<div class="alert alert-info mt-3">
-    <i class="fa fa-lightbulb"></i> <strong>Tips:</strong> Gejala yang dicentang akan membantu dalam analisis pola penyakit dan diagnosis.
-</div>
+    $('input[type="checkbox"]').on('change', function() {
+        $(this).closest('.check-card').toggleClass('checked', this.checked);
+    });
+});
+</script>
+@endpush

@@ -1,4 +1,4 @@
-{{-- Section A: Patient Identity (12 fields) --}}
+{{-- Section A: Patient Identity (expanded with Google Form fields) --}}
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
@@ -20,7 +20,7 @@
     </div>
     <div class="col-md-4">
         <div class="form-group">
-            <label>Nama Lengkap <span class="text-danger">*</span></label>
+            <label>Nama Pasien <span class="text-danger">*</span></label>
             <input type="text" name="nama_lengkap" class="form-control"
                    value="{{ old('nama_lengkap', $case->nama_lengkap ?? '') }}" required>
         </div>
@@ -36,29 +36,29 @@
                    max="{{ date('Y-m-d') }}" required>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="form-group">
             <label>Umur</label>
             <input type="text" id="umur_display" class="form-control" readonly>
-            <small class="form-text text-muted">Dihitung otomatis</small>
+            <small class="form-text text-muted">Otomatis</small>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="form-group">
             <label>Kategori Umur <span class="text-danger">*</span></label>
             <select name="kategori_umur" id="kategori_umur" class="form-control" required>
-                <option value="">Pilih Kategori</option>
-                <option value="bayi" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'bayi' ? 'selected' : '' }}>Bayi (&lt;1 tahun)</option>
-                <option value="balita" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'balita' ? 'selected' : '' }}>Balita (1-4 tahun)</option>
-                <option value="anak" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'anak' ? 'selected' : '' }}>Anak (5-11 tahun)</option>
-                <option value="remaja" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'remaja' ? 'selected' : '' }}>Remaja (12-17 tahun)</option>
-                <option value="dewasa" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'dewasa' ? 'selected' : '' }}>Dewasa (18-59 tahun)</option>
-                <option value="lansia" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'lansia' ? 'selected' : '' }}>Lansia (≥60 tahun)</option>
+                <option value="">Pilih</option>
+                <option value="bayi" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'bayi' ? 'selected' : '' }}>Bayi (<1 thn)</option>
+                <option value="balita" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'balita' ? 'selected' : '' }}>Balita (1-4)</option>
+                <option value="anak" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'anak' ? 'selected' : '' }}>Anak (5-11)</option>
+                <option value="remaja" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'remaja' ? 'selected' : '' }}>Remaja (12-17)</option>
+                <option value="dewasa" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'dewasa' ? 'selected' : '' }}>Dewasa (18-59)</option>
+                <option value="lansia" {{ old('kategori_umur', $case->kategori_umur ?? '') == 'lansia' ? 'selected' : '' }}>Lansia (≥60)</option>
             </select>
-            <small class="form-text text-muted">Diset otomatis dari tanggal lahir</small>
+            <small class="form-text text-muted">Otomatis dari tgl lahir</small>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="form-group">
             <label>Jenis Kelamin <span class="text-danger">*</span></label>
             <select name="jenis_kelamin" class="form-control" required>
@@ -68,12 +68,44 @@
             </select>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="form-group">
+            <label>No. Telepon</label>
+            <input type="text" name="no_telepon" class="form-control"
+                   value="{{ old('no_telepon', $case->no_telepon ?? '') }}">
+        </div>
+    </div>
+</div>
+
+{{-- Google Form additions --}} 
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Tempat Kerja / Sekolah / PAUD / TPA</label>
+            <input type="text" name="tempat_kerja_sekolah" class="form-control"
+                   value="{{ old('tempat_kerja_sekolah', $case->tempat_kerja_sekolah ?? '') }}">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Nama Orang Tua</label>
+            <input type="text" name="nama_orang_tua" class="form-control"
+                   value="{{ old('nama_orang_tua', $case->nama_orang_tua ?? '') }}">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>No HP Orang Tua</label>
+            <input type="text" name="no_hp_orang_tua" class="form-control"
+                   value="{{ old('no_hp_orang_tua', $case->no_hp_orang_tua ?? '') }}" maxlength="20">
+        </div>
+    </div>
 </div>
 
 <div class="row">
     <div class="col-md-12">
         <div class="form-group">
-            <label>Alamat Lengkap <span class="text-danger">*</span></label>
+            <label>Alamat Domisili <span class="text-danger">*</span></label>
             <textarea name="alamat_lengkap" class="form-control" rows="2" required>{{ old('alamat_lengkap', $case->alamat_lengkap ?? '') }}</textarea>
         </div>
     </div>
@@ -82,9 +114,23 @@
 <div class="row">
     <div class="col-md-3">
         <div class="form-group">
+            <label>Provinsi</label>
+            <input type="text" name="provinsi" class="form-control"
+                   value="{{ old('provinsi', $case->provinsi ?? 'Kalimantan Timur') }}">
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="form-group">
+            <label>Kab/Kota</label>
+            <input type="text" name="kab_kota" class="form-control"
+                   value="{{ old('kab_kota', $case->kab_kota ?? 'Kota Bontang') }}">
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="form-group">
             <label>Kecamatan <span class="text-danger">*</span></label>
             <select id="kec" name="id_kec" class="form-control" required>
-                <option value="">== Pilih Kecamatan ==</option>
+                <option value="">Kecamatan</option>
                 @foreach ($kecamatanList as $kec)
                     <option value="{{ $kec->id }}" {{ old('id_kec', $case->id_kec ?? '') == $kec->id ? 'selected' : '' }}>
                         {{ $kec->name }}
@@ -97,7 +143,7 @@
         <div class="form-group">
             <label>Kelurahan <span class="text-danger">*</span></label>
             <select id="kel" name="id_kel" class="form-control" required>
-                <option value="">== Pilih Kelurahan ==</option>
+                <option value="">Kelurahan</option>
                 @if(isset($kelurahanList))
                     @foreach ($kelurahanList as $kel)
                         <option value="{{ $kel->id }}" {{ old('id_kel', $case->id_kel ?? '') == $kel->id ? 'selected' : '' }}>
@@ -108,11 +154,11 @@
             </select>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="form-group">
             <label>RT <span class="text-danger">*</span></label>
             <select id="rt" name="id_rt" class="form-control" required>
-                <option value="">== Pilih RT ==</option>
+                <option value="">RT</option>
                 @if(isset($rtList))
                     @foreach ($rtList as $rt)
                         <option value="{{ $rt->id }}" {{ old('id_rt', $case->id_rt ?? '') == $rt->id ? 'selected' : '' }}>
@@ -123,15 +169,9 @@
             </select>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="form-group">
-            <label>No. Telepon</label>
-            <input type="text" name="no_telepon" class="form-control"
-                   value="{{ old('no_telepon', $case->no_telepon ?? '') }}">
-            <small class="form-text text-muted">Opsional</small>
-        </div>
-    </div>
 </div>
+
+@include('admin.epidemiologi.components.form-map-picker')
 
 @push('js')
 <script>
@@ -188,7 +228,6 @@ $(document).ready(function() {
 
         $('#umur_display').val(ageYears + ' tahun');
 
-        // Set category
         var category = '';
         if (ageYears < 1) category = 'bayi';
         else if (ageYears >= 1 && ageYears < 5) category = 'balita';
@@ -200,18 +239,15 @@ $(document).ready(function() {
         $('#kategori_umur').val(category);
     });
 
-    // Trigger age calculation if date already set
     if ($('#tanggal_lahir').val()) {
         $('#tanggal_lahir').trigger('change');
     }
 
-    // NIK validation (check for duplicates)
+    // NIK validation
     var nikTimeout;
     $('#nik').on('input', function() {
         var nik = $(this).val();
-
         clearTimeout(nikTimeout);
-
         if (nik.length === 16) {
             nikTimeout = setTimeout(function() {
                 $.ajax({

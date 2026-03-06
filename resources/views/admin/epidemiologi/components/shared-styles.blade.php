@@ -70,6 +70,9 @@ textarea:focus,
         transition: none;
         transform: none;
     }
+    [class*="section-header-"] {
+        transition: none !important;
+    }
 }
 
 .stat-card:hover {
@@ -273,7 +276,55 @@ a:not(.btn):hover {
     color: var(--primary-blue-dark);
 }
 
-/* Accordion overrides for create/edit forms */
+/* =============================================
+   MODERN FORM CONTROLS
+   ============================================= */
+.form-control {
+    border-radius: 8px;
+    background-color: #fafbfc;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.form-control:focus {
+    background-color: #fff;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15) !important;
+    outline: none !important;
+}
+
+.form-control[readonly] {
+    border-style: dashed;
+    background-color: #f3f4f6;
+}
+
+label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.35rem;
+}
+
+select.form-control {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2rem;
+}
+
+.form-text {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+/* =============================================
+   ACCORDION — MINIMALIST WITH BLUE ACCENT
+   ============================================= */
 .accordion .card {
     border-radius: 12px;
     border: 1px solid #e5e7eb;
@@ -284,27 +335,243 @@ a:not(.btn):hover {
 .accordion .card-header {
     border-radius: 0 !important;
     font-weight: 600;
-    padding: 0.75rem 1.25rem;
+    padding: 0;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .accordion .card-header .btn-link {
     text-decoration: none;
     font-weight: 600;
     font-size: 1rem;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    padding: 0.85rem 1.25rem;
+    color: var(--primary-blue-dark);
 }
 
-.accordion .card-header .btn-link:hover {
+.accordion .card-header .btn-link:not(.collapsed):hover {
     text-decoration: none;
+    background-color: #f0f7ff;
 }
 
-/* Section header gradient variants */
-.section-header-a { background: linear-gradient(135deg, var(--primary-blue) 0%, #0077dd 100%) !important; }
-.section-header-b { background: linear-gradient(135deg, var(--info-teal) 0%, #0e7490 100%) !important; }
-.section-header-c { background: linear-gradient(135deg, var(--warning-amber) 0%, #d97706 100%) !important; }
-.section-header-d { background: linear-gradient(135deg, var(--danger-rose) 0%, #e11d48 100%) !important; }
-.section-header-e { background: linear-gradient(135deg, var(--text-muted) 0%, #374151 100%) !important; }
-.section-header-f { background: linear-gradient(135deg, var(--success-green) 0%, #059669 100%) !important; }
-.section-header-g { background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%) !important; }
-.section-header-h { background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important; }
-.section-header-i { background: linear-gradient(135deg, var(--info-teal) 0%, var(--primary-blue) 100%) !important; }
-.section-header-j { background: linear-gradient(135deg, var(--text-secondary) 0%, var(--text-muted) 100%) !important; }
+.accordion .card-header .btn-link i:first-child {
+    color: var(--primary-blue);
+    margin-right: 0.5rem;
+    width: 20px;
+    text-align: center;
+}
+
+.accordion .card-body {
+    padding: 1.25rem;
+}
+
+/* =============================================
+   PER-SECTION COLOR CODING
+   ============================================= */
+.section-header-a  { --section-color: #0066cc; --section-bg: #e6f2ff; }
+.section-header-b  { --section-color: #0891b2; --section-bg: #e0f7fa; }
+.section-header-c  { --section-color: #b45309; --section-bg: #fef3c7; }
+.section-header-d  { --section-color: #be123c; --section-bg: #ffe4e6; }
+.section-header-e  { --section-color: #475569; --section-bg: #f1f5f9; }
+.section-header-f  { --section-color: #047857; --section-bg: #d1fae5; }
+.section-header-g  { --section-color: #4f46e5; --section-bg: #e0e7ff; }
+.section-header-h  { --section-color: #334155; --section-bg: #e2e8f0; }
+.section-header-i  { --section-color: #0284c7; --section-bg: #e0f2fe; }
+.section-header-j  { --section-color: #6b7280; --section-bg: #f3f4f6; }
+
+/* Active (expanded) section header */
+.section-header-a,
+.section-header-b,
+.section-header-c,
+.section-header-d,
+.section-header-e,
+.section-header-f,
+.section-header-g,
+.section-header-h,
+.section-header-i,
+.section-header-j {
+    background: var(--section-bg) !important;
+    border-left: 4px solid var(--section-color) !important;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+/* Active btn-link — vivid section color */
+[class*="section-header-"] .btn-link:not(.collapsed) {
+    color: var(--section-color) !important;
+}
+
+[class*="section-header-"] .btn-link:not(.collapsed) i:first-child {
+    color: var(--section-color) !important;
+}
+
+/* =============================================
+   COLLAPSED STATE — MUTED / DISABLED LOOK
+   ============================================= */
+[class*="section-header-"]:has(.btn-link.collapsed) {
+    background: #f9fafb !important;
+    border-left-color: #d1d5db !important;
+}
+
+[class*="section-header-"] .btn-link.collapsed {
+    color: #6b7280 !important;
+    background: #f9fafb;
+    cursor: pointer;
+}
+
+[class*="section-header-"] .btn-link.collapsed i:first-child {
+    color: #9ca3af !important;
+}
+
+[class*="section-header-"] .btn-link.collapsed:hover {
+    background: #f0f1f3;
+    color: #374151 !important;
+}
+
+/* =============================================
+   SECTION SUBTITLE HEADINGS
+   ============================================= */
+.section-subtitle {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary-blue-dark);
+    border-bottom: 2px solid var(--primary-blue-light);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.section-subtitle i {
+    color: var(--primary-blue);
+    margin-right: 0.35rem;
+}
+
+/* =============================================
+   UNIFIED CHECKBOX CARD GRID
+   ============================================= */
+.check-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.check-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: #fafbfc;
+}
+
+.check-card:hover {
+    background: var(--primary-blue-light);
+    border-color: var(--primary-blue);
+}
+
+.check-card.checked {
+    background: var(--primary-blue-light);
+    border-color: var(--primary-blue);
+}
+
+.check-card input[type="checkbox"] {
+    margin: 0;
+}
+
+.check-card label {
+    margin: 0;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: #1f2937;
+}
+
+.check-card .check-icon {
+    font-size: 1rem;
+    color: var(--primary-blue);
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Danger variant for komplikasi */
+.check-card.check-danger:hover {
+    background: #fef2f2;
+    border-color: var(--danger-rose);
+}
+
+.check-card.check-danger.checked {
+    background: #fef2f2;
+    border-color: var(--danger-rose);
+}
+
+.check-card.check-danger .check-icon {
+    color: var(--danger-rose);
+}
+
+/* =============================================
+   FORM ACTIONS BAR
+   ============================================= */
+.form-actions-card {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.form-actions-card .btn {
+    border-radius: 8px;
+}
+
+.form-actions-card .btn-lg {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.95rem;
+}
+
+/* =============================================
+   RESPONSIVE — MOBILE FIRST
+   ============================================= */
+@media (max-width: 768px) {
+    .form-control {
+        font-size: 1rem; /* prevent iOS zoom */
+    }
+
+    .accordion .card-body {
+        padding: 0.85rem;
+    }
+
+    .row > [class*="col-md-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .check-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions-card .d-flex {
+        flex-direction: column;
+    }
+
+    .form-actions-card .btn {
+        width: 100%;
+        margin-bottom: 0.35rem;
+    }
+
+    .form-actions-card .btn:last-child {
+        margin-bottom: 0;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 991px) {
+    .row > .col-md-2,
+    .row > .col-md-3 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}

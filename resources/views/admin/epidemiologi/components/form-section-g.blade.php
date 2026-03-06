@@ -70,7 +70,7 @@ $(document).ready(function() {
         var keluar = new Date($('#tanggal_keluar_rawat').val());
 
         if (masuk && keluar && keluar >= masuk) {
-            var diff = Math.floor((keluar - masuk) / (1000 * 60 * 60 * 24));
+            var diff = Math.floor((keluar - masuk) / (1000 * 60 * 60 * 24)) + 1;
             $('#lama_rawat_display').val(diff + ' hari');
         } else {
             $('#lama_rawat_display').val('');

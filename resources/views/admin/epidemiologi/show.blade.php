@@ -59,8 +59,8 @@
                 <div>
                     <h1 class="h3 mb-1">{{ $case->nama_lengkap }}</h1>
                     <p class="text-accessible-muted mb-0">
-                        <span class="sr-only">Nomor Registrasi:</span>
-                        No. Reg: <strong>{{ $case->no_registrasi }}</strong>
+                        <span class="sr-only">Nomor Epidemiologi:</span>
+                        No. Epid: <strong>{{ $case->no_registrasi ?: '-' }}</strong>
                         <span aria-hidden="true" class="mx-1">•</span>
                         <span class="sr-only">NIK:</span>
                         NIK: {{ $case->nik }}
@@ -163,8 +163,8 @@
                     <div class="row">
                         <div class="col-md-4">
                             <dl class="row mb-0">
-                                <dt class="col-sm-6 text-accessible-muted">No. Registrasi</dt>
-                                <dd class="col-sm-6"><strong>{{ $case->no_registrasi }}</strong></dd>
+                                <dt class="col-sm-6 text-accessible-muted">No. Epid</dt>
+                                <dd class="col-sm-6"><strong>{{ $case->no_registrasi ?: '-' }}</strong></dd>
                                 <dt class="col-sm-6 text-accessible-muted">NIK</dt>
                                 <dd class="col-sm-6">{{ $case->nik }}</dd>
                                 <dt class="col-sm-6 text-accessible-muted">Nama Lengkap</dt>
