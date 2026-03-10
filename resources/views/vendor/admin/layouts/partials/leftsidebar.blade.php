@@ -44,6 +44,7 @@
 						<li><a href="{{route('admin.epidemiologi.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
 						<li><a href="{{route('admin.epidemiologi.index')}}"><i class="fa fa-list mr-2"></i>Daftar Kasus</a></li>
 						<li><a href="{{route('admin.epidemiologi.create')}}"><i class="fa fa-plus mr-2"></i>Tambah Kasus</a></li>
+						<li><a href="{{route('admin.masterdata.penyakit.index')}}"><i class="fa fa-disease mr-2"></i>Jenis Penyakit</a></li>
 					</ul>
 				</li>
 				{{-- Data --}}
@@ -53,6 +54,7 @@
 					</a>
 					<ul class="submenu">
 						<li><a href="{{route('admin.anak')}}">Data Anak</a></li>
+						<li><a href="{{route('admin.masterdata.vaksin.index')}}"><i class="fa fa-syringe mr-2"></i>Jenis Vaksin</a></li>
 					</ul>
 				</li>
 				{{-- User Management --}}

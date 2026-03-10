@@ -99,6 +99,43 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-ibu-hamil', [App\Http\Controllers\AdminController::class, 'ibuHamil'])->name('admin.ibuHamil');
 
     /*------------------------------------------
+    Master Data Routes (superadmin only, enforced in controller)
+    --------------------------------------------*/
+    Route::prefix('master-data/vaksin')->group(function () {
+        Route::get('/', [App\Http\Controllers\MasterDataVaksinController::class, 'index'])
+             ->name('admin.masterdata.vaksin.index');
+        Route::get('get-data', [App\Http\Controllers\MasterDataVaksinController::class, 'getData'])
+             ->name('admin.masterdata.vaksin.getData');
+        Route::post('store', [App\Http\Controllers\MasterDataVaksinController::class, 'store'])
+             ->name('admin.masterdata.vaksin.store');
+        Route::put('update/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'update'])
+             ->name('admin.masterdata.vaksin.update');
+        Route::patch('toggle-status/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'toggleStatus'])
+             ->name('admin.masterdata.vaksin.toggleStatus');
+        Route::delete('destroy/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'destroy'])
+             ->name('admin.masterdata.vaksin.destroy');
+        Route::patch('restore/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'restore'])
+             ->name('admin.masterdata.vaksin.restore');
+    });
+
+    Route::prefix('master-data/penyakit')->group(function () {
+        Route::get('/', [App\Http\Controllers\MasterDataPenyakitController::class, 'index'])
+             ->name('admin.masterdata.penyakit.index');
+        Route::get('get-data', [App\Http\Controllers\MasterDataPenyakitController::class, 'getData'])
+             ->name('admin.masterdata.penyakit.getData');
+        Route::post('store', [App\Http\Controllers\MasterDataPenyakitController::class, 'store'])
+             ->name('admin.masterdata.penyakit.store');
+        Route::put('update/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'update'])
+             ->name('admin.masterdata.penyakit.update');
+        Route::patch('toggle-status/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'toggleStatus'])
+             ->name('admin.masterdata.penyakit.toggleStatus');
+        Route::delete('destroy/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'destroy'])
+             ->name('admin.masterdata.penyakit.destroy');
+        Route::patch('restore/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'restore'])
+             ->name('admin.masterdata.penyakit.restore');
+    });
+
+    /*------------------------------------------
     Epidemiology Surveillance Routes
     --------------------------------------------*/
     Route::prefix('epidemiologi/')->group(function () {

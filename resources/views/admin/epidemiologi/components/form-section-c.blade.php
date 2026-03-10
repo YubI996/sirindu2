@@ -3,15 +3,25 @@
     <div class="col-md-6">
         <div class="form-group">
             <label>Jenis Penyakit <span class="text-danger">*</span></label>
-            <select name="id_jenis_kasus" id="id_jenis_kasus" class="form-control" required>
-                <option value="">-- Pilih Jenis Penyakit --</option>
-                @foreach ($diseases as $disease)
-                    <option value="{{ $disease->id }}" data-nama="{{ $disease->nama_penyakit }}" data-kode="{{ $disease->kode_penyakit ?? '' }}"
-                        {{ old('id_jenis_kasus', $case->id_jenis_kasus ?? '') == $disease->id ? 'selected' : '' }}>
-                        {{ $disease->nama_penyakit }} ({{ $disease->kode_penyakit ?? '-' }})
-                    </option>
-                @endforeach
-            </select>
+            @if($diseases->isEmpty())
+                <select name="id_jenis_kasus" id="id_jenis_kasus" class="form-control" disabled>
+                    <option value="">-- Tidak ada jenis penyakit yang aktif --</option>
+                </select>
+                <small class="form-text text-danger">
+                    <i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+                    Semua jenis penyakit sedang nonaktif. Hubungi superadmin untuk mengaktifkan data master penyakit.
+                </small>
+            @else
+                <select name="id_jenis_kasus" id="id_jenis_kasus" class="form-control" required>
+                    <option value="">-- Pilih Jenis Penyakit --</option>
+                    @foreach ($diseases as $disease)
+                        <option value="{{ $disease->id }}" data-nama="{{ $disease->nama_penyakit }}" data-kode="{{ $disease->kode_penyakit ?? '' }}"
+                            {{ old('id_jenis_kasus', $case->id_jenis_kasus ?? '') == $disease->id ? 'selected' : '' }}>
+                            {{ $disease->nama_penyakit }} ({{ $disease->kode_penyakit ?? '-' }})
+                        </option>
+                    @endforeach
+                </select>
+            @endif
         </div>
     </div>
     <div class="col-md-3">
