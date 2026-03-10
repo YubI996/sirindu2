@@ -10,5 +10,5 @@ class Kelurahan extends Model
     use HasFactory;
 
     protected $table = 'kelurahan';
-    protected $fillable = [];
+    protected $fillable = ['id_kecamatan', 'name'];
 }

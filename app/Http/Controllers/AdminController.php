@@ -78,7 +78,6 @@ ANAK
                     <a class="dropdown-item" href="' . route('admin.dataAnak', $data->hashid) . '">Tambah Data Berkala Anak</a>
                     <a class="dropdown-item" href="' . route('admin.imunisasiLengkap', $data->hashid) . '">Data Imunisasi Lengkap</a>
                     <a class="dropdown-item" href="' . route('admin.jadwalImunisasi', $data->hashid) . '">Jadwal Imunisasi</a>
-                    <a class="dropdown-item" href="' . route('admin.dataImunisasi', $data->hashid) . '">Imunisasi Dasar (Legacy)</a>
                 </div>
                 </div>
                 ';
@@ -242,9 +241,11 @@ ANAK
                     'jk' => $jk,
                     'jenis_tbl' => 1,
                 ])->get();
+            // BB/U (jenis_tbl=2) always has var=1 in database
             $bb_u = DB::table('z_score')
                 ->select('id', 'm3sd as a2', 'm2sd as b2', '1sd as c2')
                 ->where([
+                    'var' => 1,
                     'acuan' => $umur,
                     'jk' => $jk,
                     'jenis_tbl' => 2,
@@ -482,7 +483,8 @@ ANAK
         $anak = Anak::findByHashIdOrFail($id);
         $query = DB::table('data_anak')->where('id_anak', $anak->id)->max('bln');
         $bulanSekarang = $query + 1;
-        return view('admin.anak.data-anak', compact('anak', 'bulanSekarang'));
+        $jenisVaksin = $this->anakRepository->getJenisVaksin();
+        return view('admin.anak.data-anak', compact('anak', 'bulanSekarang', 'jenisVaksin'));
     }
 
     public function storeDataAnak(Request $request)
@@ -490,10 +492,38 @@ ANAK
         try {
             $anak = Anak::findByHashIdOrFail($request->id_anak_hash);
             $request->merge(['id_anak' => $anak->id]);
+
+            DB::beginTransaction();
+
             $this->anakRepository->storeDataAnak($request);
+
+            // Simpan data imunisasi jika ada
+            if ($request->has('imunisasi') && is_array($request->imunisasi)) {
+                foreach ($request->imunisasi as $dataImunisasi) {
+                    if (empty($dataImunisasi['id_jenis_vaksin'])) {
+                        continue;
+                    }
+                    $imunisasiRequest = new Request([
+                        'id_anak' => $anak->id,
+                        'id_jenis_vaksin' => $dataImunisasi['id_jenis_vaksin'],
+                        'dosis' => $dataImunisasi['dosis'] ?? 1,
+                        'tanggal_pemberian' => $dataImunisasi['tanggal_pemberian'],
+                        'batch_number' => $dataImunisasi['batch_number'] ?? null,
+                        'lokasi_pemberian' => $dataImunisasi['lokasi_pemberian'] ?? null,
+                        'reaksi_kipi' => $dataImunisasi['reaksi_kipi'] ?? null,
+                        'catatan' => $dataImunisasi['catatan'] ?? null,
+                    ]);
+                    $this->anakRepository->storeImunisasiDetail($imunisasiRequest);
+                }
+            }
+
+            DB::commit();
+
             Alert::success('Data Anak', 'Berhasil Menambahkan Data');
             return redirect()->route('admin.anak');
         } catch (\Throwable $e) {
+            DB::rollBack();
+            \Log::error('storeDataAnak error: ' . $e->getMessage());
             Alert::error('Data Anak', 'Gagal Menambahkan Data');
             return redirect()->route('admin.anak');
         }
@@ -511,26 +541,7 @@ ANAK
         }
     }
 
-    public function dataImunisasi($id)
-    {
-        $data = Anak::findByHashIdOrFail($id);
-        return view('admin.anak.data-imunisasi', compact('data'));
-    }
-
-    public function updateImunisasi(Request $request, $id)
-    {
-        try {
-            $anak = Anak::findByHashIdOrFail($id);
-            $this->anakRepository->updateImunisasi($request, $anak->id);
-            Alert::success('Anak', 'Berhasil Menambahkan Data Imunisasi');
-            return redirect()->route('admin.anak');
-        } catch (\Throwable $e) {
-            Alert::error('Anak', 'Gagal Menambahkan Data Imunisasi');
-            return redirect()->route('admin.anak');
-        }
-    }
-
-    // ==================== ENHANCED IMUNISASI METHODS ====================
+    // ==================== IMUNISASI METHODS ====================
 
     public function imunisasiLengkap($id)
     {
@@ -929,16 +940,6 @@ ANAK
                     'Golongan Darah' => $data->golda,
                     'Anak Ke-' => $data->anak,
                     'Catatan' => $data->catatan,
-                    'hbo' => $data->hbo,
-                    'bcg' => $data->bcg,
-                    'polio1' => $data->polio1,
-                    'dpthb_hib1' => $data->dpthb_hib1,
-                    'polio2' => $data->polio2,
-                    'dpthb_hib2' => $data->dpthb_hib2,
-                    'polio3' => $data->polio3,
-                    'dpthb_hib3' => $data->dpthb_hib3,
-                    'polio4' => $data->polio4,
-                    'campak' => $data->campak,
                     'Kecamatan' => $data->nameKec,
                     'Kelurahan' => $data->nameKel,
                     'Puskesmas' => $data->namePuskes,
@@ -1267,6 +1268,10 @@ All Admin Controller
         // Get Z-Score status per RT (optimized)
         $rtZScore = $this->getZScoreByRTOptimized();
 
+        // Get immunization coverage per kelurahan and RT
+        $kelurahanImunisasi = $this->getImunisasiByKelurahanOptimized();
+        $rtImunisasi = $this->getImunisasiByRTOptimized();
+
         // Get posyandu locations with stats
         $posyanduStats = DB::table('anak')
             ->join('posyandu', 'anak.id_posyandu', '=', 'posyandu.id')
@@ -1292,12 +1297,18 @@ All Admin Controller
         $totalStunting = collect($kelurahanZScore)->sum('stunting');
         $totalWasting = collect($kelurahanZScore)->sum('wasting');
 
+        // Immunization summary
+        $totalImunisasiLengkap = collect($kelurahanImunisasi)->sum('lengkap');
+        $persenImunisasiLengkap = $totalAnak > 0 ? round(($totalImunisasiLengkap / $totalAnak) * 100, 1) : 0;
+
         return view('admin.dashboard.map', compact(
             'kelurahanStats',
             'kecamatanStats',
             'rtStats',
             'kelurahanZScore',
             'rtZScore',
+            'kelurahanImunisasi',
+            'rtImunisasi',
             'posyanduStats',
             'totalAnak',
             'totalKelurahan',
@@ -1305,7 +1316,9 @@ All Admin Controller
             'kelurahanWithData',
             'rtWithData',
             'totalStunting',
-            'totalWasting'
+            'totalWasting',
+            'totalImunisasiLengkap',
+            'persenImunisasiLengkap'
         ));
     }
 
@@ -2005,6 +2018,134 @@ All Admin Controller
             if ($stats['total'] > 0) {
                 $results[$rtName] = $stats;
             }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get immunization coverage statistics by Kelurahan
+     */
+    private function getImunisasiByKelurahanOptimized()
+    {
+        $results = [];
+
+        // Basic immunization vaccine codes (11 vaccines)
+        $basicVaccineCodes = ['HB0', 'BCG', 'POLIO1', 'POLIO2', 'POLIO3', 'POLIO4',
+                              'DPT-HB-HIB1', 'DPT-HB-HIB2', 'DPT-HB-HIB3', 'IPV', 'CAMPAK'];
+
+        // Get children grouped by kelurahan with their completed basic immunizations
+        $children = DB::table('anak as a')
+            ->join('kelurahan as k', 'a.id_kel', '=', 'k.id')
+            ->leftJoin('imunisasi as i', function ($join) {
+                $join->on('a.id', '=', 'i.id_anak')
+                     ->where('i.status', '=', 'sudah');
+            })
+            ->leftJoin('jenis_vaksin as jv', function ($join) {
+                $join->on('i.id_jenis_vaksin', '=', 'jv.id')
+                     ->where('jv.kategori', '=', 'Imunisasi Dasar');
+            })
+            ->select('k.name as kelurahan', 'a.id as anak_id', 'jv.kode as vaksin_kode')
+            ->get()
+            ->groupBy('kelurahan');
+
+        foreach ($children as $kelName => $rows) {
+            $anakVaccines = [];
+            foreach ($rows as $row) {
+                if (!isset($anakVaccines[$row->anak_id])) {
+                    $anakVaccines[$row->anak_id] = [];
+                }
+                if ($row->vaksin_kode) {
+                    $anakVaccines[$row->anak_id][$row->vaksin_kode] = true;
+                }
+            }
+
+            $totalAnak = count($anakVaccines);
+            $lengkap = 0;
+            $perVaksin = array_fill_keys($basicVaccineCodes, 0);
+
+            foreach ($anakVaccines as $anakId => $vaccines) {
+                $completedBasic = 0;
+                foreach ($basicVaccineCodes as $code) {
+                    if (isset($vaccines[$code])) {
+                        $perVaksin[$code]++;
+                        $completedBasic++;
+                    }
+                }
+                if ($completedBasic >= 11) {
+                    $lengkap++;
+                }
+            }
+
+            $results[$kelName] = [
+                'total_anak' => $totalAnak,
+                'lengkap' => $lengkap,
+                'persen_lengkap' => $totalAnak > 0 ? round(($lengkap / $totalAnak) * 100, 1) : 0,
+                'per_vaksin' => $perVaksin,
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get immunization coverage statistics by RT
+     */
+    private function getImunisasiByRTOptimized()
+    {
+        $results = [];
+
+        $basicVaccineCodes = ['HB0', 'BCG', 'POLIO1', 'POLIO2', 'POLIO3', 'POLIO4',
+                              'DPT-HB-HIB1', 'DPT-HB-HIB2', 'DPT-HB-HIB3', 'IPV', 'CAMPAK'];
+
+        $children = DB::table('anak as a')
+            ->join('rt as r', 'a.id_rt', '=', 'r.id')
+            ->leftJoin('imunisasi as i', function ($join) {
+                $join->on('a.id', '=', 'i.id_anak')
+                     ->where('i.status', '=', 'sudah');
+            })
+            ->leftJoin('jenis_vaksin as jv', function ($join) {
+                $join->on('i.id_jenis_vaksin', '=', 'jv.id')
+                     ->where('jv.kategori', '=', 'Imunisasi Dasar');
+            })
+            ->select('r.name as rt_name', 'a.id as anak_id', 'jv.kode as vaksin_kode')
+            ->get()
+            ->groupBy('rt_name');
+
+        foreach ($children as $rtName => $rows) {
+            $anakVaccines = [];
+            foreach ($rows as $row) {
+                if (!isset($anakVaccines[$row->anak_id])) {
+                    $anakVaccines[$row->anak_id] = [];
+                }
+                if ($row->vaksin_kode) {
+                    $anakVaccines[$row->anak_id][$row->vaksin_kode] = true;
+                }
+            }
+
+            $totalAnak = count($anakVaccines);
+            $lengkap = 0;
+            $perVaksin = array_fill_keys($basicVaccineCodes, 0);
+
+            foreach ($anakVaccines as $anakId => $vaccines) {
+                $completedBasic = 0;
+                foreach ($basicVaccineCodes as $code) {
+                    if (isset($vaccines[$code])) {
+                        $perVaksin[$code]++;
+                        $completedBasic++;
+                    }
+                }
+                if ($completedBasic >= 11) {
+                    $lengkap++;
+                }
+            }
+
+            $results[$rtName] = [
+                'total_anak' => $totalAnak,
+                'lengkap' => $lengkap,
+                'persen_lengkap' => $totalAnak > 0 ? round(($lengkap / $totalAnak) * 100, 1) : 0,
+                'per_vaksin' => $perVaksin,
+            ];
         }
 
         return $results;

@@ -21,7 +21,7 @@ Route::get('/',[App\Http\Controllers\Auth\LoginController::class,'showLoginForm'
 
 Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Route /home dihapus — semua user diarahkan ke /admin/home setelah login
 
 /*------------------------------------------
 --------------------------------------------
@@ -81,10 +81,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-anak/{id}', [App\Http\Controllers\AdminController::class, 'dataAnak'])->name('admin.dataAnak');
     Route::post('store-data-anak', [App\Http\Controllers\AdminController::class, 'storeDataAnak'])->name('admin.storeDataAnak');
     Route::put('update-data-anak/{id}', [App\Http\Controllers\AdminController::class, 'updateDataAnak'])->name('admin.updateDataAnak');
-    //Data Imunisasi Anak Route List (Legacy - Imunisasi Dasar)
-    Route::get('data-imunisasi-anak/{id}', [App\Http\Controllers\AdminController::class, 'dataImunisasi'])->name('admin.dataImunisasi');
-    Route::put('update-data-imunisasi-anak/{id}', [App\Http\Controllers\AdminController::class, 'updateImunisasi'])->name('admin.updateImunisasi');
-    //Data Imunisasi Lengkap (Enhanced)
+    //Data Imunisasi Lengkap
     Route::get('imunisasi-lengkap/{id}', [App\Http\Controllers\AdminController::class, 'imunisasiLengkap'])->name('admin.imunisasiLengkap');
     Route::get('jadwal-imunisasi/{id}', [App\Http\Controllers\AdminController::class, 'jadwalImunisasi'])->name('admin.jadwalImunisasi');
     Route::post('store-imunisasi', [App\Http\Controllers\AdminController::class, 'storeImunisasiDetail'])->name('admin.storeImunisasiDetail');
@@ -100,6 +97,90 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-ibu', [App\Http\Controllers\AdminController::class, 'ibu'])->name('admin.ibu');
     //Ibu Hamil Route List
     Route::get('data-ibu-hamil', [App\Http\Controllers\AdminController::class, 'ibuHamil'])->name('admin.ibuHamil');
+
+    /*------------------------------------------
+    Master Data Routes (superadmin only, enforced in controller)
+    --------------------------------------------*/
+    Route::prefix('master-data/vaksin')->group(function () {
+        Route::get('/', [App\Http\Controllers\MasterDataVaksinController::class, 'index'])
+             ->name('admin.masterdata.vaksin.index');
+        Route::get('get-data', [App\Http\Controllers\MasterDataVaksinController::class, 'getData'])
+             ->name('admin.masterdata.vaksin.getData');
+        Route::post('store', [App\Http\Controllers\MasterDataVaksinController::class, 'store'])
+             ->name('admin.masterdata.vaksin.store');
+        Route::put('update/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'update'])
+             ->name('admin.masterdata.vaksin.update');
+        Route::patch('toggle-status/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'toggleStatus'])
+             ->name('admin.masterdata.vaksin.toggleStatus');
+        Route::delete('destroy/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'destroy'])
+             ->name('admin.masterdata.vaksin.destroy');
+        Route::patch('restore/{id}', [App\Http\Controllers\MasterDataVaksinController::class, 'restore'])
+             ->name('admin.masterdata.vaksin.restore');
+    });
+
+    Route::prefix('master-data/penyakit')->group(function () {
+        Route::get('/', [App\Http\Controllers\MasterDataPenyakitController::class, 'index'])
+             ->name('admin.masterdata.penyakit.index');
+        Route::get('get-data', [App\Http\Controllers\MasterDataPenyakitController::class, 'getData'])
+             ->name('admin.masterdata.penyakit.getData');
+        Route::post('store', [App\Http\Controllers\MasterDataPenyakitController::class, 'store'])
+             ->name('admin.masterdata.penyakit.store');
+        Route::put('update/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'update'])
+             ->name('admin.masterdata.penyakit.update');
+        Route::patch('toggle-status/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'toggleStatus'])
+             ->name('admin.masterdata.penyakit.toggleStatus');
+        Route::delete('destroy/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'destroy'])
+             ->name('admin.masterdata.penyakit.destroy');
+        Route::patch('restore/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'restore'])
+             ->name('admin.masterdata.penyakit.restore');
+    });
+
+    /*------------------------------------------
+    Epidemiology Surveillance Routes
+    --------------------------------------------*/
+    Route::prefix('epidemiologi/')->group(function () {
+        // Dashboard & Analytics
+        Route::get('dashboard', [App\Http\Controllers\EpidemiologiController::class, 'dashboard'])
+             ->name('admin.epidemiologi.dashboard');
+        Route::get('map', [App\Http\Controllers\EpidemiologiController::class, 'mapDashboard'])
+             ->name('admin.epidemiologi.map');
+        Route::get('api/map-data', [App\Http\Controllers\EpidemiologiController::class, 'getMapData'])
+             ->name('admin.epidemiologi.mapData');
+        Route::get('api/dashboard-data', [App\Http\Controllers\EpidemiologiController::class, 'getDashboardData'])
+             ->name('admin.epidemiologi.dashboardData');
+
+        // CRUD Routes
+        Route::get('/', [App\Http\Controllers\EpidemiologiController::class, 'index'])
+             ->name('admin.epidemiologi.index');
+        Route::get('get-cases', [App\Http\Controllers\EpidemiologiController::class, 'getSurveillanceCases'])
+             ->name('admin.epidemiologi.getCases');
+        Route::get('create', [App\Http\Controllers\EpidemiologiController::class, 'create'])
+             ->name('admin.epidemiologi.create');
+        Route::post('store', [App\Http\Controllers\EpidemiologiController::class, 'store'])
+             ->name('admin.epidemiologi.store');
+        Route::get('show/{id}', [App\Http\Controllers\EpidemiologiController::class, 'show'])
+             ->name('admin.epidemiologi.show');
+        Route::get('edit/{id}', [App\Http\Controllers\EpidemiologiController::class, 'edit'])
+             ->name('admin.epidemiologi.edit');
+        Route::put('update/{id}', [App\Http\Controllers\EpidemiologiController::class, 'update'])
+             ->name('admin.epidemiologi.update');
+        Route::delete('destroy/{id}', [App\Http\Controllers\EpidemiologiController::class, 'destroy'])
+             ->name('admin.epidemiologi.destroy');
+
+        // AJAX Helpers
+        Route::get('get-kelurahan/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getKelurahan'])
+             ->name('admin.epidemiologi.getKelurahan');
+        Route::get('get-rt/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getRt'])
+             ->name('admin.epidemiologi.getRt');
+        Route::get('check-nik/{nik}', [App\Http\Controllers\EpidemiologiController::class, 'checkNik'])
+             ->name('admin.epidemiologi.checkNik');
+
+        // Exports
+        Route::get('export-excel', [App\Http\Controllers\EpidemiologiController::class, 'exportExcel'])
+             ->name('admin.epidemiologi.exportExcel');
+        Route::get('export-pdf/{id}', [App\Http\Controllers\EpidemiologiController::class, 'exportPdf'])
+             ->name('admin.epidemiologi.exportPdf');
+    });
 });
 
 /*------------------------------------------

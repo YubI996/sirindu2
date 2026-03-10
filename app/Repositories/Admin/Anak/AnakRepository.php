@@ -53,7 +53,7 @@ class AnakRepository implements AnakRepositoryInterface
             'id_rt' => $request->id_rt,
             'id_posyandu' => $request->id_posyandu,
             'id_puskesmas' => $request->id_puskesmas,
-            'catatan' => $request->catatan,
+            'catatan' => $request->catatan ?? '',
         ]);
 
         DataAnak::create([
@@ -104,7 +104,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'id_rt' => $anak->id_rt,
                 'id_posyandu' => $anak->id_posyandu,
                 'id_puskesmas' => $anak->id_puskesmas,
-                'catatan' => $request->catatan,
+                'catatan' => $request->catatan ?? '',
             ]);
             $dt->update([
                 'bln' => $umur,
@@ -140,7 +140,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'id_rt' => $request->id_rt,
                 'id_posyandu' => $request->id_posyandu,
                 'id_puskesmas' => $request->id_puskesmas,
-                'catatan' => $request->catatan,
+                'catatan' => $request->catatan ?? '',
             ]);
             $dt->update([
                 'bln' => $umur,
@@ -186,23 +186,6 @@ class AnakRepository implements AnakRepositoryInterface
             'obat_cacing' => $request->obat_cacing,
             'ddtka' => $request->ddtka,
             'id_user' => Auth::user()->id,
-        ]);
-    }
-
-    public function updateImunisasi($request, $id)
-    {
-        $dataImunisasi = Anak::find($id);
-        $dataImunisasi->update([
-            'hbo' => $request->hbo,
-            'bcg' => $request->bcg,
-            'polio1' => $request->polio1,
-            'dpthb_hib1' => $request->dpthb_hib1,
-            'polio2' => $request->polio2,
-            'dpthb_hib2' => $request->dpthb_hib2,
-            'polio3' => $request->polio3,
-            'dpthb_hib3' => $request->dpthb_hib3,
-            'polio4' => $request->polio4,
-            'campak' => $request->campak
         ]);
     }
 
@@ -253,7 +236,7 @@ class AnakRepository implements AnakRepositoryInterface
             'id_petugas' => Auth::user()->id,
             'status' => 'sudah',
             'reaksi_kipi' => $request->reaksi_kipi,
-            'catatan' => $request->catatan,
+            'catatan' => $request->catatan ?? '',
         ]);
     }
 
@@ -269,7 +252,7 @@ class AnakRepository implements AnakRepositoryInterface
             'lokasi_pemberian' => $request->lokasi_pemberian,
             'status' => $request->status ?? 'sudah',
             'reaksi_kipi' => $request->reaksi_kipi,
-            'catatan' => $request->catatan,
+            'catatan' => $request->catatan ?? '',
         ]);
         return $imunisasi;
     }

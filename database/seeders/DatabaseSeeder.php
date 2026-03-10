@@ -28,7 +28,15 @@ class DatabaseSeeder extends Seeder
         $this->call(PosyanduTableSeeder::class);
         $this->call(RtTableSeeder::class);
         $this->call(JenisTabelSeeder::class);
+        $this->call(ZScoreSeeder::class);
         $this->call(JenisVaksinSeeder::class);
+        $this->call(JenisKasusEpidemiologiSeeder::class);
+        $this->call(AnakSeeder::class);
+        $this->call(DataAnakSeeder::class);
+        $this->call(ImunisasiSeeder::class);
+        $this->call(SurveillanceCaseSeeder::class);
+        $this->call(RumahSakitSeeder::class);
+        $this->call(RoleUserSeeder::class);
 
     }
 }

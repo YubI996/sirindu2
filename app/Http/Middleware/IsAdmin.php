@@ -16,7 +16,15 @@ class IsAdmin
      */
     public function handle(Request $request, Closure $next)
     {
-        if(auth()->user()->type == 'super-admin' || auth()->user()->type == 'admin' ){
+        $user = auth()->user();
+
+        // New role-based system: superadmin punya akses admin penuh
+        if ($user->isSuperAdmin()) {
+            return $next($request);
+        }
+
+        // Legacy type-based check (type is tinyInteger: 0=super-admin, 1=admin)
+        if (in_array($user->type, [0, 1])) {
             return $next($request);
         }
 

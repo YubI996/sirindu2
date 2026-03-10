@@ -12,12 +12,18 @@
 	<div class="menu-block customscroll">
 		<div class="sidebar-menu">
 			<ul id="accordion-menu">
-				@if (Auth::user()->type == 'super-admin')
+
+				{{-- ============================================
+				     SUPERADMIN (Dinkes) — Akses penuh semua modul
+				     Juga mencakup legacy super-admin (type=0)
+				     ============================================ --}}
+				@if (Auth::user()->isSuperAdmin())
 				<li>
-					<a href="{{Route('super.admin.home')}}" class="dropdown-toggle no-arrow">
+					<a href="{{route('admin.home')}}" class="dropdown-toggle no-arrow">
 						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
 					</a>
 				</li>
+				{{-- Dashboard Imunisasi --}}
 				<li class="dropdown">
 					<a href="javascript:;" class="dropdown-toggle">
 						<span class="micon fa fa-chart-pie"></span><span class="mtext">Dashboard</span>
@@ -28,48 +34,88 @@
 						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
 					</ul>
 				</li>
+				{{-- Epidemiologi --}}
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-virus"></span><span class="mtext">Epidemiologi</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}"><i class="fa fa-chart-line mr-2"></i>Dashboard Analytics</a></li>
+						<li><a href="{{route('admin.epidemiologi.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
+						<li><a href="{{route('admin.epidemiologi.index')}}"><i class="fa fa-list mr-2"></i>Daftar Kasus</a></li>
+						<li><a href="{{route('admin.epidemiologi.create')}}"><i class="fa fa-plus mr-2"></i>Tambah Kasus</a></li>
+						<li><a href="{{route('admin.masterdata.penyakit.index')}}"><i class="fa fa-disease mr-2"></i>Jenis Penyakit</a></li>
+					</ul>
+				</li>
+				{{-- Data --}}
 				<li class="dropdown">
 					<a href="javascript:;" class="dropdown-toggle">
 						<span class="micon fa fa-database"></span><span class="mtext">Data</span>
 					</a>
 					<ul class="submenu">
-						<!-- <li><a href="{{route('admin.ibuHamil')}}">Data Ibu Hamil</a></li> -->
 						<li><a href="{{route('admin.anak')}}">Data Anak</a></li>
+						<li><a href="{{route('admin.masterdata.vaksin.index')}}"><i class="fa fa-syringe mr-2"></i>Jenis Vaksin</a></li>
 					</ul>
 				</li>
-				@elseif (Auth::user()->type == 'admin')
+				{{-- User Management --}}
 				<li>
-					<a href="{{Route('admin.home')}}" class="dropdown-toggle no-arrow">
-						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
-					</a>
-				</li>
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-chart-pie"></span><span class="mtext">Dashboard</span>
-					</a>
-					<ul class="submenu">
-						<li><a href="{{route('admin.analytics')}}"><i class="fa fa-chart-bar mr-2"></i>Analytics</a></li>
-						<li><a href="{{route('admin.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
-						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
-					</ul>
-				</li>
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-database"></span><span class="mtext">Data</span>
-					</a>
-					<ul class="submenu">
-						<!-- <li><a href="{{route('admin.ibuHamil')}}">Data Ibu Hamil</a></li> -->
-						<li><a href="{{route('admin.anak')}}">Data Anak</a></li>
-					</ul>
-				</li>
-				@endif
-				@if (Auth::user()->type == 'super-admin')
-				<li>
-					<a href="{{Route('super.admin.user')}}" class="dropdown-toggle no-arrow">
+					<a href="{{route('super.admin.user')}}" class="dropdown-toggle no-arrow">
 						<span class="micon fa fa-user"></span><span class="mtext">User</span>
 					</a>
 				</li>
+
+				{{-- ============================================
+				     FASKES SURVEILANS (Puskesmas / RS)
+				     Hanya modul Epidemiologi, scoped ke faskes
+				     ============================================ --}}
+				@elseif (Auth::user()->isFaskesSurveilans())
+				<li>
+					<a href="{{route('admin.epidemiologi.dashboard')}}" class="dropdown-toggle no-arrow">
+						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
+					</a>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-virus"></span><span class="mtext">Epidemiologi</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}"><i class="fa fa-chart-line mr-2"></i>Dashboard Analytics</a></li>
+						<li><a href="{{route('admin.epidemiologi.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
+						<li><a href="{{route('admin.epidemiologi.index')}}"><i class="fa fa-list mr-2"></i>Daftar Kasus</a></li>
+						<li><a href="{{route('admin.epidemiologi.create')}}"><i class="fa fa-plus mr-2"></i>Tambah Kasus</a></li>
+					</ul>
+				</li>
+
+				{{-- ============================================
+				     LEGACY ADMIN (type=1) & IMUNISASI FASKES
+				     Modul imunisasi: Dashboard + Data Anak
+				     ============================================ --}}
+				@else
+				<li>
+					<a href="{{route('admin.home')}}" class="dropdown-toggle no-arrow">
+						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
+					</a>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-chart-pie"></span><span class="mtext">Dashboard</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.analytics')}}"><i class="fa fa-chart-bar mr-2"></i>Analytics</a></li>
+						<li><a href="{{route('admin.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
+						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
+					</ul>
+				</li>
+				<li class="dropdown">
+					<a href="javascript:;" class="dropdown-toggle">
+						<span class="micon fa fa-database"></span><span class="mtext">Data</span>
+					</a>
+					<ul class="submenu">
+						<li><a href="{{route('admin.anak')}}">Data Anak</a></li>
+					</ul>
+				</li>
 				@endif
+
 			</ul>
 		</div>
 	</div>

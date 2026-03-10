@@ -8,6 +8,8 @@ use App\Repositories\Admin\User\UserRepository;
 use App\Repositories\Admin\Core\User\UserRepositoryInterface;
 use App\Repositories\Admin\Anak\AnakRepository;
 use App\Repositories\Admin\Core\Anak\AnakRepositoryInterface;
+use App\Repositories\Admin\Epidemiologi\SurveillanceRepository;
+use App\Repositories\Admin\Core\Epidemiologi\SurveillanceRepositoryInterface;
 
 class RepositoriesServiceProvider extends ServiceProvider
 {
@@ -30,9 +32,17 @@ class RepositoriesServiceProvider extends ServiceProvider
     {
         $this->app->bind(
             UserRepositoryInterface::class,
-            UserRepository::class,
+            UserRepository::class
+        );
+
+        $this->app->bind(
             AnakRepositoryInterface::class,
-            AnakRepository::class,
+            AnakRepository::class
+        );
+
+        $this->app->bind(
+            SurveillanceRepositoryInterface::class,
+            SurveillanceRepository::class
         );
     }
 }

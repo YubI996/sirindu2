@@ -44,21 +44,34 @@ class LoginController extends Controller
         $input = $request->all();
 
         $this->validate($request, [
-            'email' => 'required',
+            'email'    => 'required',
             'password' => 'required',
         ]);
 
-        if (auth()->attempt(array('email' => $input['email'], 'password' => $input['password']))) {
-            if (auth()->user()->type == 'super-admin') {
-                return redirect()->route('super.admin.home');
-            } else if (auth()->user()->type == 'admin') {
-                return redirect()->route('admin.home');
-            } else {
-                return redirect()->route('home');
-            }
+        if (auth()->attempt(['email' => $input['email'], 'password' => $input['password']])) {
+            $user = auth()->user();
+
+            // Redirect berdasarkan role sistem baru + legacy type
+            return match(true) {
+                // Dinkes: superadmin — akses ke admin dashboard
+                // (isSuperAdmin juga mengenali legacy type=1/'super-admin')
+                $user->isSuperAdmin()          => redirect()->route('admin.home'),
+
+                // Faskes surveilans (Puskesmas / RS) → dashboard epidemiologi
+                $user->isFaskesSurveilans()    => redirect()->route('admin.epidemiologi.dashboard'),
+
+                // Faskes imunisasi → admin dashboard (modul imunisasi)
+                $user->isFaskesImunisasi()     => redirect()->route('admin.home'),
+
+                // Legacy admin (type lama) → admin dashboard
+                in_array($user->type, [1, 2])  => redirect()->route('admin.home'),
+
+                // Fallback → admin dashboard
+                default                        => redirect()->route('admin.home'),
+            };
         } else {
             return redirect()->route('login')
-                ->with('error', 'Email-Address And Password Are Wrong.');
+                ->with('error', 'Email atau password salah. Silakan coba lagi.');
         }
     }
 }

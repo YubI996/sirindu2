@@ -39,6 +39,7 @@ function z_score($x)
         $bb_u = DB::table('z_score')
             ->select('id', 'm3sd as a2', 'm2sd as b2', '1sd as c2')
             ->where([
+                'var' => 1,
                 'acuan' => $umur,
                 'jk' => $jk,
                 'jenis_tbl' => 2,
@@ -59,14 +60,20 @@ function z_score($x)
                 'jk' => $jk,
                 'jenis_tbl' => 4,
             ])->get();
-        $imt_u2 = DB::table('z_score')
-            ->select('id', 'm3sd as a5', 'm2sd as b5', '1sd as c5', '2sd as d5')
-            ->where([
-                'var' => $var,
-                'acuan' => $tinggi,
-                'jk' => $jk,
-                'jenis_tbl' => 5,
-            ])->get();
+
+        // Guard: skip jika data referensi Z-Score tidak tersedia
+        if ($imt_u->isEmpty() || $bb_u->isEmpty() || $tb_u->isEmpty() || $bt_tb->isEmpty()) {
+            $hasilx[$key] = array(
+                "bln" => $umur,
+                "tinggi" => $tinggi,
+                "berat" => $berat,
+                "imt" => "Data Z-Score tidak tersedia",
+                "bb" => "Data Z-Score tidak tersedia",
+                "tb" => "Data Z-Score tidak tersedia",
+                "bt" => "Data Z-Score tidak tersedia"
+            );
+            continue;
+        }
 
         if ($umur <= 60) {
             if ($bmi < $imt_u[0]->a1) {
@@ -117,15 +124,6 @@ function z_score($x)
             $s3 = "Tinggi";
         }
 
-        if ($tinggi < $tb_u[0]->a3) {
-            $s3 = "Sangat pendek (severely stunted)";
-        } elseif ($tinggi >= $tb_u[0]->a3 && $tinggi < $tb_u[0]->b3) {
-            $s3 = "Pendek (stunted)";
-        } elseif ($tinggi >= $tb_u[0]->b3 && $tinggi <= $tb_u[0]->e3) {
-            $s3 = "Normal";
-        } else {
-            $s3 = "Tinggi";
-        }
         try {
             if ($berat < $bt_tb[0]->a4) {
                 $s4 = "Gizi buruk (severely wasted)";
@@ -141,10 +139,7 @@ function z_score($x)
                 $s4 = "Obesitas (obese)";
             }
         } catch (\Exception $e) {
-            // dump('culprit : '.$key.', Error : '.$e->getMessage());
-            // $s4 = $key;
             $s4 = "Data Tidak Valid";
-            // continue;
         }
 
 
