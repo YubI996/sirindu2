@@ -1,9 +1,8 @@
 <div class="left-side-bar">
 	<div class="brand-logo">
 		<a href="#">
-			<!-- <img src="{{asset('logo/Sirindu-white.png')}}" alt="" class="light-logo"> -->
-			<img src="{{asset('logo/Sirindu-allblack.png')}}" alt="" class="dark-logo">
-			<img src="{{asset('logo/Sirindu-white.png')}}" alt="" class="light-logo">
+			<img src="{{asset('logo/Sirindu-allblack.png')}}" alt="Sirindu" class="dark-logo">
+			<img src="{{asset('logo/Sirindu-white.png')}}" alt="Sirindu" class="light-logo">
 		</a>
 		<div class="close-sidebar" data-toggle="left-sidebar-close">
 			<i class="ion-close-round"></i>
@@ -15,103 +14,129 @@
 
 				{{-- ============================================
 				     SUPERADMIN (Dinkes) — Akses penuh semua modul
-				     Juga mencakup legacy super-admin (type=0)
 				     ============================================ --}}
 				@if (Auth::user()->isSuperAdmin())
-				<li>
-					<a href="{{route('admin.home')}}" class="dropdown-toggle no-arrow">
-						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
+
+				@php
+					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.home');
+					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
+					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
+					$master = request()->routeIs('admin.masterdata.*');
+					$admin = request()->routeIs('super.admin.*');
+				@endphp
+
+				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $beranda ? 'active' : '' }}">
+						<span class="micon fa fa-th-large"></span><span class="mtext">Beranda</span>
 					</a>
-				</li>
-				{{-- Dashboard Imunisasi --}}
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-chart-pie"></span><span class="mtext">Dashboard</span>
-					</a>
-					<ul class="submenu">
-						<li><a href="{{route('admin.analytics')}}"><i class="fa fa-chart-bar mr-2"></i>Analytics</a></li>
-						<li><a href="{{route('admin.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
-						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
+					<ul class="submenu" {!! $beranda ? 'style="display:block;"' : '' !!}>
+						<li class="submenu-label">Imunisasi</li>
+						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Dashboard</a></li>
+						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
+						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
+						<li class="submenu-label">Surveilans</li>
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Dashboard</a></li>
+						<li><a href="{{route('admin.epidemiologi.map')}}" class="{{ request()->routeIs('admin.epidemiologi.map') ? 'active' : '' }}">Peta Sebaran</a></li>
 					</ul>
 				</li>
-				{{-- Epidemiologi --}}
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-virus"></span><span class="mtext">Epidemiologi</span>
+
+				<li class="dropdown section-group {{ $anak ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $anak ? 'active' : '' }}">
+						<span class="micon fa fa-child"></span><span class="mtext">Anak</span>
 					</a>
-					<ul class="submenu">
-						<li><a href="{{route('admin.epidemiologi.dashboard')}}"><i class="fa fa-chart-line mr-2"></i>Dashboard Analytics</a></li>
-						<li><a href="{{route('admin.epidemiologi.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
-						<li><a href="{{route('admin.epidemiologi.index')}}"><i class="fa fa-list mr-2"></i>Daftar Kasus</a></li>
-						<li><a href="{{route('admin.epidemiologi.create')}}"><i class="fa fa-plus mr-2"></i>Tambah Kasus</a></li>
-						<li><a href="{{route('admin.masterdata.penyakit.index')}}"><i class="fa fa-disease mr-2"></i>Jenis Penyakit</a></li>
+					<ul class="submenu" {!! $anak ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.anak')}}" class="{{ request()->routeIs('admin.anak', 'admin.anak.*') ? 'active' : '' }}">Data Anak</a></li>
 					</ul>
 				</li>
-				{{-- Data --}}
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-database"></span><span class="mtext">Data</span>
+
+				<li class="dropdown section-group {{ $pd3i ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $pd3i ? 'active' : '' }}">
+						<span class="micon fa fa-clipboard-list"></span><span class="mtext">PD3I</span>
 					</a>
-					<ul class="submenu">
-						<li><a href="{{route('admin.anak')}}">Data Anak</a></li>
-						<li><a href="{{route('admin.masterdata.vaksin.index')}}"><i class="fa fa-syringe mr-2"></i>Jenis Vaksin</a></li>
+					<ul class="submenu" {!! $pd3i ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
+						<li><a href="{{route('admin.epidemiologi.create')}}" class="{{ request()->routeIs('admin.epidemiologi.create') ? 'active' : '' }}">Tambah Kasus</a></li>
 					</ul>
 				</li>
-				{{-- User Management --}}
-				<li>
-					<a href="{{route('super.admin.user')}}" class="dropdown-toggle no-arrow">
-						<span class="micon fa fa-user"></span><span class="mtext">User</span>
+
+				<li class="dropdown section-group {{ $master ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $master ? 'active' : '' }}">
+						<span class="micon fa fa-cogs"></span><span class="mtext">Data Master</span>
 					</a>
+					<ul class="submenu" {!! $master ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.masterdata.vaksin.index')}}" class="{{ request()->routeIs('admin.masterdata.vaksin.*') ? 'active' : '' }}">Antigen</a></li>
+						<li><a href="{{route('admin.masterdata.penyakit.index')}}" class="{{ request()->routeIs('admin.masterdata.penyakit.*') ? 'active' : '' }}">Surveilans PD3I</a></li>
+					</ul>
+				</li>
+
+				<li class="dropdown section-group {{ $admin ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $admin ? 'active' : '' }}">
+						<span class="micon fa fa-user-shield"></span><span class="mtext">Administrasi</span>
+					</a>
+					<ul class="submenu" {!! $admin ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('super.admin.user')}}" class="{{ request()->routeIs('super.admin.*') ? 'active' : '' }}">Pengguna</a></li>
+					</ul>
 				</li>
 
 				{{-- ============================================
 				     FASKES SURVEILANS (Puskesmas / RS)
-				     Hanya modul Epidemiologi, scoped ke faskes
 				     ============================================ --}}
 				@elseif (Auth::user()->isFaskesSurveilans())
-				<li>
-					<a href="{{route('admin.epidemiologi.dashboard')}}" class="dropdown-toggle no-arrow">
-						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
+
+				@php
+					$beranda = request()->routeIs('admin.epidemiologi.dashboard', 'admin.epidemiologi.map');
+					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
+				@endphp
+
+				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $beranda ? 'active' : '' }}">
+						<span class="micon fa fa-th-large"></span><span class="mtext">Beranda</span>
 					</a>
+					<ul class="submenu" {!! $beranda ? 'style="display:block;"' : '' !!}>
+						<li class="submenu-label">Surveilans</li>
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Dashboard</a></li>
+						<li><a href="{{route('admin.epidemiologi.map')}}" class="{{ request()->routeIs('admin.epidemiologi.map') ? 'active' : '' }}">Peta Sebaran</a></li>
+					</ul>
 				</li>
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-virus"></span><span class="mtext">Epidemiologi</span>
+
+				<li class="dropdown section-group {{ $pd3i ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $pd3i ? 'active' : '' }}">
+						<span class="micon fa fa-clipboard-list"></span><span class="mtext">PD3I</span>
 					</a>
-					<ul class="submenu">
-						<li><a href="{{route('admin.epidemiologi.dashboard')}}"><i class="fa fa-chart-line mr-2"></i>Dashboard Analytics</a></li>
-						<li><a href="{{route('admin.epidemiologi.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
-						<li><a href="{{route('admin.epidemiologi.index')}}"><i class="fa fa-list mr-2"></i>Daftar Kasus</a></li>
-						<li><a href="{{route('admin.epidemiologi.create')}}"><i class="fa fa-plus mr-2"></i>Tambah Kasus</a></li>
+					<ul class="submenu" {!! $pd3i ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
+						<li><a href="{{route('admin.epidemiologi.create')}}" class="{{ request()->routeIs('admin.epidemiologi.create') ? 'active' : '' }}">Tambah Kasus</a></li>
 					</ul>
 				</li>
 
 				{{-- ============================================
-				     LEGACY ADMIN (type=1) & IMUNISASI FASKES
-				     Modul imunisasi: Dashboard + Data Anak
+				     LEGACY ADMIN & IMUNISASI FASKES
 				     ============================================ --}}
 				@else
-				<li>
-					<a href="{{route('admin.home')}}" class="dropdown-toggle no-arrow">
-						<span class="micon fa fa-home"></span><span class="mtext">Home</span>
+
+				@php
+					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.home');
+					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
+				@endphp
+
+				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $beranda ? 'active' : '' }}">
+						<span class="micon fa fa-th-large"></span><span class="mtext">Beranda</span>
 					</a>
-				</li>
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-chart-pie"></span><span class="mtext">Dashboard</span>
-					</a>
-					<ul class="submenu">
-						<li><a href="{{route('admin.analytics')}}"><i class="fa fa-chart-bar mr-2"></i>Analytics</a></li>
-						<li><a href="{{route('admin.map')}}"><i class="fa fa-map-marked-alt mr-2"></i>Peta Sebaran</a></li>
-						<li><a href="{{route('admin.earlyWarning')}}"><i class="fa fa-chart-line mr-2"></i>Proyeksi</a></li>
+					<ul class="submenu" {!! $beranda ? 'style="display:block;"' : '' !!}>
+						<li class="submenu-label">Imunisasi</li>
+						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Dashboard</a></li>
+						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
+						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 					</ul>
 				</li>
-				<li class="dropdown">
-					<a href="javascript:;" class="dropdown-toggle">
-						<span class="micon fa fa-database"></span><span class="mtext">Data</span>
+
+				<li class="dropdown section-group {{ $anak ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $anak ? 'active' : '' }}">
+						<span class="micon fa fa-child"></span><span class="mtext">Anak</span>
 					</a>
-					<ul class="submenu">
-						<li><a href="{{route('admin.anak')}}">Data Anak</a></li>
+					<ul class="submenu" {!! $anak ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.anak')}}" class="{{ request()->routeIs('admin.anak', 'admin.anak.*') ? 'active' : '' }}">Data Anak</a></li>
 					</ul>
 				</li>
 				@endif
