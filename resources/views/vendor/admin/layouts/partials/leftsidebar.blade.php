@@ -21,6 +21,7 @@
 					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
+					$export = request()->routeIs('admin.export.*');
 					$master = request()->routeIs('admin.masterdata.*');
 					$admin = request()->routeIs('super.admin.*');
 				@endphp
@@ -56,6 +57,15 @@
 					<ul class="submenu" {!! $pd3i ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
 						<li><a href="{{route('admin.epidemiologi.create')}}" class="{{ request()->routeIs('admin.epidemiologi.create') ? 'active' : '' }}">Tambah Kasus</a></li>
+					</ul>
+				</li>
+
+				<li class="dropdown section-group {{ $export ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $export ? 'active' : '' }}">
+						<span class="micon fa fa-file-export"></span><span class="mtext">Export Data</span>
+					</a>
+					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
 					</ul>
 				</li>
 
@@ -117,6 +127,7 @@
 				@php
 					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
+					$export = request()->routeIs('admin.export.*');
 				@endphp
 
 				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">
@@ -137,6 +148,15 @@
 					</a>
 					<ul class="submenu" {!! $anak ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.anak')}}" class="{{ request()->routeIs('admin.anak', 'admin.anak.*') ? 'active' : '' }}">Data Anak</a></li>
+					</ul>
+				</li>
+
+				<li class="dropdown section-group {{ $export ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $export ? 'active' : '' }}">
+						<span class="micon fa fa-file-export"></span><span class="mtext">Export Data</span>
+					</a>
+					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
 					</ul>
 				</li>
 				@endif

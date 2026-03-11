@@ -57,6 +57,7 @@ All Admin Routes List
 Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('home', [App\Http\Controllers\AdminController::class, 'adminHome'])->name('admin.home');
     Route::get('analytics', [App\Http\Controllers\AdminController::class, 'analyticsDashboard'])->name('admin.analytics');
+    Route::get('analytics/filter-imunisasi', [App\Http\Controllers\AdminController::class, 'analyticsFilterImunisasi'])->name('admin.analytics.filterImunisasi');
     Route::get('map', [App\Http\Controllers\AdminController::class, 'mapDashboard'])->name('admin.map');
     Route::get('api/map-data', [App\Http\Controllers\AdminController::class, 'getMapData'])->name('admin.mapData');
     Route::get('early-warning', [App\Http\Controllers\AdminController::class, 'earlyWarningSystem'])->name('admin.earlyWarning');
@@ -133,6 +134,18 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.masterdata.penyakit.destroy');
         Route::patch('restore/{id}', [App\Http\Controllers\MasterDataPenyakitController::class, 'restore'])
              ->name('admin.masterdata.penyakit.restore');
+    });
+
+    /*------------------------------------------
+    Export Data Routes
+    --------------------------------------------*/
+    Route::prefix('export-imunisasi')->group(function () {
+        Route::get('/', [App\Http\Controllers\ExportImunisasiController::class, 'index'])
+             ->name('admin.export.imunisasi.index');
+        Route::get('get-data', [App\Http\Controllers\ExportImunisasiController::class, 'getData'])
+             ->name('admin.export.imunisasi.getData');
+        Route::get('download', [App\Http\Controllers\ExportImunisasiController::class, 'download'])
+             ->name('admin.export.imunisasi.download');
     });
 
     /*------------------------------------------

@@ -201,7 +201,7 @@ ANAK
             ->join('data_anak', 'anak.id', '=', 'data_anak.id_anak')
             ->select('data_anak.id', 'jk', 'tgl_kunjungan', 'bln', 'posisi', 'tb', 'bb')
             ->where('data_anak.id_anak', $anak->id)
-            ->orderBy('tgl_kunjungan', 'asc')
+            ->orderBy('tgl_kunjungan', 'desc')
             ->get();
 
         $no = 0;
@@ -489,6 +489,31 @@ ANAK
 
     public function storeDataAnak(Request $request)
     {
+        $request->validate([
+            'id_anak_hash' => 'required',
+            'tgl_kunjungan' => 'required|date',
+            'bln' => 'required|numeric',
+            'posisi' => 'required|in:H,L',
+            'tb' => 'required|numeric',
+            'bb' => 'required|numeric',
+            'lla' => 'required|numeric',
+            'lk' => 'required|numeric',
+        ], [
+            'tgl_kunjungan.required' => 'Tanggal kunjungan wajib diisi.',
+            'tgl_kunjungan.date' => 'Format tanggal kunjungan tidak valid.',
+            'bln.required' => 'Umur (bulan) wajib diisi.',
+            'posisi.required' => 'Posisi wajib dipilih.',
+            'posisi.in' => 'Posisi harus H atau L.',
+            'tb.required' => 'Tinggi badan wajib diisi.',
+            'tb.numeric' => 'Tinggi badan harus berupa angka.',
+            'bb.required' => 'Berat badan wajib diisi.',
+            'bb.numeric' => 'Berat badan harus berupa angka.',
+            'lla.required' => 'Lingkar lengan atas wajib diisi.',
+            'lla.numeric' => 'Lingkar lengan atas harus berupa angka.',
+            'lk.required' => 'Lingkar kepala wajib diisi.',
+            'lk.numeric' => 'Lingkar kepala harus berupa angka.',
+        ]);
+
         try {
             $anak = Anak::findByHashIdOrFail($request->id_anak_hash);
             $request->merge(['id_anak' => $anak->id]);
@@ -1001,6 +1026,10 @@ All Admin Controller
      */
     public function analyticsDashboard()
     {
+        // Dropdown data for filters
+        $kelurahanList = Kelurahan::orderBy('name')->get();
+        $vaksinList = JenisVaksin::aktif()->orderBy('nama')->get();
+
         // Use caching for expensive queries (5 minutes cache)
         $cacheTime = 300;
 
@@ -1134,8 +1163,273 @@ All Admin Controller
             'visitTrend',
             'incompleteImunisasiCount',
             'recentActivities',
-            'rtDistribution'
+            'rtDistribution',
+            'kelurahanList',
+            'vaksinList'
         ));
+    }
+
+    /**
+     * AJAX endpoint: return filtered analytics data for all dashboard charts
+     */
+    public function analyticsFilterImunisasi(Request $request)
+    {
+        $bulan = $request->input('bulan');
+        $filterKel = $request->input('kelurahan');
+        $antigen = $request->input('antigen');
+        $status = $request->input('status');
+
+        // --- Anak filter (kelurahan) ---
+        $applyAnakFilter = function($query, $table = 'anak') use ($filterKel) {
+            if ($filterKel) $query->where("$table.id_kel", $filterKel);
+            return $query;
+        };
+
+        // --- Imunisasi filter (all 4 filters) ---
+        $applyImunisasiFilter = function($query) use ($bulan, $filterKel, $antigen, $status) {
+            if ($bulan) {
+                $parts = explode('-', $bulan);
+                $query->whereYear('imunisasi.tanggal_pemberian', $parts[0])
+                      ->whereMonth('imunisasi.tanggal_pemberian', $parts[1]);
+            }
+            if ($filterKel) {
+                $query->whereExists(function($sub) use ($filterKel) {
+                    $sub->select(DB::raw(1))
+                        ->from('anak')
+                        ->whereColumn('anak.id', 'imunisasi.id_anak')
+                        ->where('anak.id_kel', $filterKel);
+                });
+            }
+            if ($antigen) $query->where('imunisasi.id_jenis_vaksin', $antigen);
+            if ($status) $query->where('imunisasi.status', $status);
+            return $query;
+        };
+
+        // --- data_anak filter (kelurahan via anak join) ---
+        $applyDataAnakFilter = function($query) use ($filterKel) {
+            if ($filterKel) {
+                $query->whereExists(function($sub) use ($filterKel) {
+                    $sub->select(DB::raw(1))
+                        ->from('anak')
+                        ->whereColumn('anak.id', 'data_anak.id_anak')
+                        ->where('anak.id_kel', $filterKel);
+                });
+            }
+            return $query;
+        };
+
+        // ========== Stat Cards ==========
+        $anakQuery = Anak::query();
+        $applyAnakFilter($anakQuery);
+        $totalAnak = $anakQuery->count();
+
+        $dataAnakQuery = DB::table('data_anak');
+        $applyDataAnakFilter($dataAnakQuery);
+        $totalDataAnak = $dataAnakQuery->count();
+
+        $imunisasiCountQuery = DB::table('imunisasi');
+        $applyImunisasiFilter($imunisasiCountQuery);
+        $totalImunisasi = $imunisasiCountQuery->count();
+
+        // ========== Gender Distribution ==========
+        $genderQuery = DB::table('anak')->select('jk', DB::raw('count(*) as total'));
+        $applyAnakFilter($genderQuery);
+        $genderDistribution = $genderQuery->groupBy('jk')->get()
+            ->mapWithKeys(fn($item) => [$item->jk == 1 ? 'Laki-laki' : 'Perempuan' => $item->total]);
+
+        // ========== Age Distribution ==========
+        $ageQuery = DB::table('anak')
+            ->selectRaw('FLOOR(DATEDIFF(CURDATE(), tgl_lahir) / 365) as age_year, count(*) as total')
+            ->whereRaw('DATEDIFF(CURDATE(), tgl_lahir) / 365 < 10');
+        $applyAnakFilter($ageQuery);
+        $ageDistribution = $ageQuery->groupBy('age_year')->orderBy('age_year')->get();
+
+        // ========== Kecamatan Distribution ==========
+        $kecQuery = DB::table('anak')
+            ->join('kecamatan', 'anak.id_kec', '=', 'kecamatan.id')
+            ->select('kecamatan.name', DB::raw('count(*) as total'));
+        $applyAnakFilter($kecQuery);
+        $kecamatanDistribution = $kecQuery->groupBy('kecamatan.name')->get();
+
+        // ========== Kelurahan Distribution ==========
+        $kelQuery = DB::table('anak')
+            ->join('kelurahan', 'anak.id_kel', '=', 'kelurahan.id')
+            ->select('kelurahan.name', DB::raw('count(*) as total'));
+        $applyAnakFilter($kelQuery);
+        $kelurahanDistribution = $kelQuery->groupBy('kelurahan.name')->orderByDesc('total')->get();
+
+        // ========== Posyandu Distribution ==========
+        $posyanduQuery = DB::table('anak')
+            ->join('posyandu', 'anak.id_posyandu', '=', 'posyandu.id')
+            ->select('posyandu.name', DB::raw('count(*) as total'));
+        $applyAnakFilter($posyanduQuery);
+        $posyanduDistribution = $posyanduQuery->groupBy('posyandu.name')->orderByDesc('total')->limit(15)->get();
+
+        // ========== Imunisasi Status ==========
+        $statusQuery = DB::table('imunisasi')->select('status', DB::raw('count(*) as total'));
+        $applyImunisasiFilter($statusQuery);
+        $imunisasiStatus = $statusQuery->groupBy('status')->get()
+            ->mapWithKeys(fn($item) => [$item->status => $item->total]);
+
+        // ========== Vaccine Coverage ==========
+        $coverageQuery = DB::table('imunisasi')
+            ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
+            ->select('jenis_vaksin.kode', 'jenis_vaksin.nama', DB::raw('count(*) as total'));
+        if (!$status) $coverageQuery->where('imunisasi.status', 'sudah');
+        $applyImunisasiFilter($coverageQuery);
+        $vaccineCoverage = $coverageQuery->groupBy('jenis_vaksin.kode', 'jenis_vaksin.nama')
+            ->orderBy('jenis_vaksin.id')->get();
+
+        // ========== ASI Status ==========
+        $asiSubQuery = DB::table('data_anak')->selectRaw('MAX(id)')->groupBy('id_anak');
+        if ($filterKel) {
+            $asiSubQuery->whereExists(function($sub) use ($filterKel) {
+                $sub->select(DB::raw(1))->from('anak')
+                    ->whereColumn('anak.id', 'data_anak.id_anak')
+                    ->where('anak.id_kel', $filterKel);
+            });
+        }
+        $asiStatus = DB::table('data_anak')
+            ->select('asi', DB::raw('count(DISTINCT id_anak) as total'))
+            ->whereIn('id', $asiSubQuery)
+            ->groupBy('asi')->get()
+            ->mapWithKeys(fn($item) => [
+                $item->asi == 1 ? 'ASI Eksklusif' : ($item->asi == 0 ? 'Tidak ASI Eksklusif' : 'Tidak Diketahui') => $item->total
+            ]);
+
+        // ========== Growth Trend ==========
+        $growthQuery = DB::table('data_anak')
+            ->select('bln', DB::raw('AVG(bb) as avg_bb'), DB::raw('AVG(tb) as avg_tb'), DB::raw('COUNT(*) as count'))
+            ->whereBetween('bln', [0, 60]);
+        $applyDataAnakFilter($growthQuery);
+        $growthTrend = $growthQuery->groupBy('bln')->orderBy('bln')->get();
+
+        // ========== Visit Trend ==========
+        $visitQuery = DB::table('data_anak')
+            ->selectRaw("DATE_FORMAT(tgl_kunjungan, '%Y-%m') as month, COUNT(*) as total")
+            ->whereRaw("tgl_kunjungan >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)");
+        $applyDataAnakFilter($visitQuery);
+        $visitTrend = $visitQuery->groupBy('month')->orderBy('month')->get();
+
+        // ========== Z-Score (filtered by kelurahan) ==========
+        $zScoreResults = [
+            'imt_u' => ['normal' => 0, 'kurang' => 0, 'buruk' => 0, 'lebih' => 0, 'obesitas' => 0],
+            'bb_u' => ['normal' => 0, 'kurang' => 0, 'sangat_kurang' => 0, 'lebih' => 0],
+            'tb_u' => ['normal' => 0, 'pendek' => 0, 'sangat_pendek' => 0, 'tinggi' => 0],
+        ];
+        $measurementQuery = DB::table('data_anak as da')
+            ->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->whereIn('da.id', function($q) use ($filterKel) {
+                $sub = $q->selectRaw('MAX(id)')->from('data_anak')->groupBy('id_anak');
+                if ($filterKel) {
+                    $sub->whereExists(function($s) use ($filterKel) {
+                        $s->select(DB::raw(1))->from('anak')
+                            ->whereColumn('anak.id', 'data_anak.id_anak')
+                            ->where('anak.id_kel', $filterKel);
+                    });
+                }
+            })
+            ->where('da.bln', '<=', 60)
+            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk');
+        if ($filterKel) $measurementQuery->where('a.id_kel', $filterKel);
+        $latestMeasurements = $measurementQuery->get();
+
+        $zScoreRefs = DB::table('z_score')->whereIn('jenis_tbl', [1, 2, 3])->get()
+            ->groupBy(fn($item) => $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0));
+
+        foreach ($latestMeasurements as $m) {
+            $tb = $m->tb;
+            if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
+            elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
+            $tb = round($tb);
+            $var = $m->bln <= 24 ? 1 : 2;
+            $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
+
+            $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
+            if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
+                $ref = $zScoreRefs[$imtKey]->first();
+                if ($bmi < $ref->m3sd) $zScoreResults['imt_u']['buruk']++;
+                elseif ($bmi < $ref->m2sd) $zScoreResults['imt_u']['kurang']++;
+                elseif ($bmi <= $ref->{'1sd'}) $zScoreResults['imt_u']['normal']++;
+                elseif ($bmi <= $ref->{'2sd'}) $zScoreResults['imt_u']['lebih']++;
+                else $zScoreResults['imt_u']['obesitas']++;
+            }
+            $bbKey = "2_{$m->jk}_{$m->bln}_1";
+            if (isset($zScoreRefs[$bbKey]) && $zScoreRefs[$bbKey]->isNotEmpty()) {
+                $ref = $zScoreRefs[$bbKey]->first();
+                if ($m->bb < $ref->m3sd) $zScoreResults['bb_u']['sangat_kurang']++;
+                elseif ($m->bb < $ref->m2sd) $zScoreResults['bb_u']['kurang']++;
+                elseif ($m->bb <= $ref->{'1sd'}) $zScoreResults['bb_u']['normal']++;
+                else $zScoreResults['bb_u']['lebih']++;
+            }
+            $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
+            if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
+                $ref = $zScoreRefs[$tbKey]->first();
+                if ($tb < $ref->m3sd) $zScoreResults['tb_u']['sangat_pendek']++;
+                elseif ($tb < $ref->m2sd) $zScoreResults['tb_u']['pendek']++;
+                elseif ($tb <= $ref->{'3sd'}) $zScoreResults['tb_u']['normal']++;
+                else $zScoreResults['tb_u']['tinggi']++;
+            }
+        }
+
+        // ========== Recent Activities ==========
+        $recentQuery = DB::table('data_anak')
+            ->join('anak', 'data_anak.id_anak', '=', 'anak.id')
+            ->select('anak.nama', 'data_anak.tgl_kunjungan', 'data_anak.bb', 'data_anak.tb', 'data_anak.bln')
+            ->orderByDesc('data_anak.tgl_kunjungan')->limit(20);
+        if ($filterKel) $recentQuery->where('anak.id_kel', $filterKel);
+        $recentActivities = $recentQuery->get()->map(function($a) {
+            $bmi = $a->tb > 0 ? round(10000 * $a->bb / pow($a->tb, 2), 1) : 0;
+            return [
+                'nama' => $a->nama,
+                'tgl_kunjungan' => \Carbon\Carbon::parse($a->tgl_kunjungan)->format('d M Y'),
+                'bln' => $a->bln,
+                'bb' => $a->bb,
+                'tb' => $a->tb,
+                'bmi' => $bmi,
+            ];
+        });
+
+        // ========== Incomplete Imunisasi ==========
+        $completeQuery = DB::table('imunisasi')
+            ->join('jenis_vaksin', 'imunisasi.id_jenis_vaksin', '=', 'jenis_vaksin.id')
+            ->where('imunisasi.status', 'sudah')
+            ->where('jenis_vaksin.kategori', 'Imunisasi Dasar')
+            ->groupBy('imunisasi.id_anak')
+            ->havingRaw('COUNT(DISTINCT jenis_vaksin.kode) >= 11')
+            ->select('imunisasi.id_anak');
+        if ($filterKel) {
+            $completeQuery->whereExists(function($sub) use ($filterKel) {
+                $sub->select(DB::raw(1))->from('anak')
+                    ->whereColumn('anak.id', 'imunisasi.id_anak')
+                    ->where('anak.id_kel', $filterKel);
+            });
+        }
+        $completeCount = $completeQuery->get()->count();
+        $incompleteImunisasiCount = $totalAnak - $completeCount;
+
+        return response()->json([
+            'totalAnak' => $totalAnak,
+            'totalDataAnak' => $totalDataAnak,
+            'totalImunisasi' => $totalImunisasi,
+            'incompleteImunisasiCount' => $incompleteImunisasiCount,
+            'genderDistribution' => ['labels' => $genderDistribution->keys(), 'data' => $genderDistribution->values()],
+            'ageDistribution' => ['labels' => $ageDistribution->pluck('age_year')->map(fn($a) => $a . ' Tahun'), 'data' => $ageDistribution->pluck('total')],
+            'kecamatanDistribution' => ['labels' => $kecamatanDistribution->pluck('name'), 'data' => $kecamatanDistribution->pluck('total')],
+            'kelurahanDistribution' => ['labels' => $kelurahanDistribution->pluck('name'), 'data' => $kelurahanDistribution->pluck('total')],
+            'posyanduDistribution' => ['labels' => $posyanduDistribution->pluck('name'), 'data' => $posyanduDistribution->pluck('total')],
+            'imunisasiStatus' => ['labels' => $imunisasiStatus->keys()->map(fn($s) => ucfirst($s))->values(), 'data' => $imunisasiStatus->values(), 'raw' => $imunisasiStatus],
+            'vaccineCoverage' => ['labels' => $vaccineCoverage->pluck('kode'), 'data' => $vaccineCoverage->pluck('total')],
+            'asiStatus' => ['labels' => $asiStatus->keys(), 'data' => $asiStatus->values()],
+            'growthTrend' => [
+                'labels' => $growthTrend->pluck('bln')->map(fn($b) => 'Bln ' . $b),
+                'avg_bb' => $growthTrend->pluck('avg_bb')->map(fn($v) => round($v, 2)),
+                'avg_tb' => $growthTrend->pluck('avg_tb')->map(fn($v) => round($v, 2)),
+            ],
+            'visitTrend' => ['labels' => $visitTrend->pluck('month'), 'data' => $visitTrend->pluck('total')],
+            'zScoreAnalysis' => $zScoreResults,
+            'recentActivities' => $recentActivities,
+        ]);
     }
 
     /**

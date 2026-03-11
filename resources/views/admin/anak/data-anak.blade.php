@@ -12,32 +12,41 @@ Data
 Data Anak
 @endsection
 @section('content')
+@if ($errors->any())
+<div class="alert alert-danger">
+    <ul class="mb-0">
+        @foreach ($errors->all() as $error)
+        <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
 <form method="post" action="{{route('admin.storeDataAnak')}}">
     @csrf
     <div class="row">
-        <input type="hidden" name="id_anak_hash" value="{{$anak->hashid}}" class="form-control" require>
+        <input type="hidden" name="id_anak_hash" value="{{$anak->hashid}}" class="form-control" required>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Tanggal Kunjungan <font color="red">*</font> </label>
-                <input type="date" name="tgl_kunjungan" id="tgl_kunjungan" class="form-control" require>
+                <input type="date" name="tgl_kunjungan" id="tgl_kunjungan" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Nama <font color="red">*</font></label>
-                <input type="text" name="nama" value="{{$anak->nama}}" class="form-control" require readonly>
+                <input type="text" name="nama" value="{{$anak->nama}}" class="form-control" required readonly>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Umur (Bulan) <font color="red">*</font></label>
-                <input type="text" name="bln" value="{{$bulanSekarang}}" class="form-control" require readonly>
+                <input type="text" name="bln" value="{{$bulanSekarang}}" class="form-control" required readonly>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Posisi<font color="red">*</font></label>
-                <select name="posisi" class="form-control" require>
+                <select name="posisi" class="form-control" required>
                     <option value="H">H</option>
                     <option value="L">L</option>
                 </select>
@@ -46,31 +55,31 @@ Data Anak
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Tinggi Badan <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="number" step="any" name="tb" class="form-control" require>
+                <input type="number" step="any" name="tb" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Berat Badan <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="number" step="any" name="bb" class="form-control" require>
+                <input type="number" step="any" name="bb" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Lingkar Lengan Atas <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="number" step="any" name="lla" class="form-control" require>
+                <input type="number" step="any" name="lla" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Lingkar Kepala <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="number" step="any" name="lk" class="form-control" require>
+                <input type="number" step="any" name="lk" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Asi Ekslusif <font color="red">*</font></label>
-                <select name="asi" class="form-control" require>
+                <select name="asi" class="form-control" required>
                     <option value="0">Tidak</option>
                     <option value="1">Ya</option>
                 </select>
@@ -79,7 +88,7 @@ Data Anak
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Vitamin A <font color="red">*</font></label>
-                <select name="vit_a" class="form-control" require>
+                <select name="vit_a" class="form-control" required>
                     <option value="0">Tidak</option>
                     <option value="1">Ya</option>
                 </select>
@@ -88,7 +97,7 @@ Data Anak
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>Obat Cacing <font color="red">*</font></label>
-                <select name="obat_cacing" class="form-control" require>
+                <select name="obat_cacing" class="form-control" required>
                     <option value="0">Tidak</option>
                     <option value="1">Ya</option>
                 </select>
@@ -97,7 +106,7 @@ Data Anak
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label>DDTKA</label>
-                <input type="text" step="any" name="ddtka" class="form-control" require>
+                <input type="text" name="ddtka" class="form-control">
             </div>
         </div>
     </div>

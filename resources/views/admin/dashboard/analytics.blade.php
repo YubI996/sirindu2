@@ -141,13 +141,67 @@ Analytics
     }
 </style>
 
+{{-- Filter --}}
+<div class="card mb-4" style="border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
+    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, var(--primary-blue) 0%, #0891b2 100%); border-radius: 12px 12px 0 0; border: none;">
+        <h5 class="mb-0"><i class="fa fa-filter mr-2"></i> Filter Data Imunisasi</h5>
+        <span id="filterLoading" style="display:none;"><i class="fa fa-spinner fa-spin"></i> Memuat...</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="font-weight-bold" style="font-size: 0.8125rem;">Bulan</label>
+                    <input type="month" id="filterBulan" class="form-control filter-input">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="font-weight-bold" style="font-size: 0.8125rem;">Kelurahan</label>
+                    <select id="filterKelurahan" class="form-control filter-input">
+                        <option value="">-- Semua Kelurahan --</option>
+                        @foreach ($kelurahanList as $kel)
+                            <option value="{{ $kel->id }}">{{ $kel->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="font-weight-bold" style="font-size: 0.8125rem;">Jenis Antigen</label>
+                    <select id="filterAntigen" class="form-control filter-input">
+                        <option value="">-- Semua Antigen --</option>
+                        @foreach ($vaksinList as $vaksin)
+                            <option value="{{ $vaksin->id }}">{{ $vaksin->nama }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="font-weight-bold" style="font-size: 0.8125rem;">Status Imunisasi</label>
+                    <select id="filterStatus" class="form-control filter-input">
+                        <option value="">-- Semua Status --</option>
+                        <option value="belum">Belum</option>
+                        <option value="sudah">Sudah</option>
+                        <option value="terlambat">Terlambat</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex justify-content-end" style="gap: 8px;">
+            <button type="button" id="btnResetFilter" class="btn btn-outline-secondary btn-sm" style="display:none;"><i class="fa fa-times mr-1"></i> Reset</button>
+        </div>
+    </div>
+</div>
+
 {{-- Summary Statistics --}}
 <div class="row mb-4">
     <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
         <div class="stat-card primary p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="stat-value">{{ number_format($totalAnak) }}</div>
+                    <div class="stat-value" id="statTotalAnak">{{ number_format($totalAnak) }}</div>
                     <div class="stat-label">Total Anak Terdaftar</div>
                 </div>
                 <div class="stat-icon">
@@ -160,7 +214,7 @@ Analytics
         <div class="stat-card success p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="stat-value">{{ number_format($totalDataAnak) }}</div>
+                    <div class="stat-value" id="statTotalDataAnak">{{ number_format($totalDataAnak) }}</div>
                     <div class="stat-label">Total Pengukuran</div>
                 </div>
                 <div class="stat-icon">
@@ -173,7 +227,7 @@ Analytics
         <div class="stat-card warning p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="stat-value">{{ number_format($totalImunisasi) }}</div>
+                    <div class="stat-value" id="statTotalImunisasi">{{ number_format($totalImunisasi) }}</div>
                     <div class="stat-label">Total Imunisasi</div>
                 </div>
                 <div class="stat-icon">
@@ -186,7 +240,7 @@ Analytics
         <div class="stat-card danger p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="stat-value">{{ number_format($incompleteImunisasiCount) }}</div>
+                    <div class="stat-value" id="statIncomplete">{{ number_format($incompleteImunisasiCount) }}</div>
                     <div class="stat-label">Imunisasi Belum Lengkap</div>
                 </div>
                 <div class="stat-icon">
@@ -272,12 +326,12 @@ Analytics
             <div class="chart-container-sm">
                 <canvas id="imunisasiStatusChart"></canvas>
             </div>
-            <div class="mt-3">
+            <div class="mt-3" id="imunisasiStatusLegend">
                 @foreach($imunisasiStatus as $status => $count)
                 <div class="legend-item">
                     <span class="legend-dot" style="background: {{ $status == 'sudah' ? '#047857' : ($status == 'terlambat' ? '#b45309' : '#6b7280') }}"></span>
                     <span class="flex-grow-1">{{ ucfirst($status) }}</span>
-                    <span class="font-weight-bold">{{ $count }}</span>
+                    <span class="font-weight-bold">{{ number_format($count) }}</span>
                 </div>
                 @endforeach
             </div>
@@ -318,7 +372,7 @@ Analytics
     <div class="col-lg-4 mb-3">
         <div class="chart-card">
             <h5><i class="fa fa-exclamation-circle text-danger mr-2"></i> Ringkasan Imunisasi</h5>
-            <div class="text-center py-4">
+            <div class="text-center py-4" id="ringkasanImunisasi">
                 @if($incompleteImunisasiCount > 0)
                 <div class="mb-3">
                     <i class="fa fa-exclamation-triangle fa-3x text-warning mb-2"></i>
@@ -363,7 +417,7 @@ Analytics
                             <th>BMI</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="recentActivitiesBody">
                         @forelse($recentActivities as $activity)
                         <tr>
                             <td><strong>{{ $activity->nama }}</strong></td>
@@ -442,7 +496,7 @@ document.addEventListener('DOMContentLoaded', function() {
     Chart.defaults.plugins.legend.labels.usePointStyle = true;
 
     // IMT/U Chart
-    new Chart(document.getElementById('imtChart'), {
+    var imtChart = new Chart(document.getElementById('imtChart'), {
         type: 'doughnut',
         data: {
             labels: ['Normal', 'Gizi Kurang', 'Gizi Buruk', 'Gizi Lebih', 'Obesitas'],
@@ -465,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // BB/U Chart
-    new Chart(document.getElementById('bbChart'), {
+    var bbChart = new Chart(document.getElementById('bbChart'), {
         type: 'doughnut',
         data: {
             labels: ['Normal', 'BB Kurang', 'BB Sangat Kurang', 'Risiko BB Lebih'],
@@ -487,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // TB/U Chart
-    new Chart(document.getElementById('tbChart'), {
+    var tbChart = new Chart(document.getElementById('tbChart'), {
         type: 'doughnut',
         data: {
             labels: ['Normal', 'Pendek (Stunted)', 'Sangat Pendek', 'Tinggi'],
@@ -509,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Gender Distribution Chart
-    new Chart(document.getElementById('genderChart'), {
+    var genderChart = new Chart(document.getElementById('genderChart'), {
         type: 'pie',
         data: {
             labels: {!! json_encode($genderDistribution->keys()) !!},
@@ -526,7 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Age Distribution Chart
-    new Chart(document.getElementById('ageChart'), {
+    var ageChart = new Chart(document.getElementById('ageChart'), {
         type: 'bar',
         data: {
             labels: {!! json_encode($ageDistribution->pluck('age_year')->map(fn($a) => $a . ' Tahun')) !!},
@@ -545,7 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Kecamatan Distribution Chart
-    new Chart(document.getElementById('kecamatanChart'), {
+    var kecamatanChart = new Chart(document.getElementById('kecamatanChart'), {
         type: 'pie',
         data: {
             labels: {!! json_encode($kecamatanDistribution->pluck('name')) !!},
@@ -562,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Growth Trend Chart
-    new Chart(document.getElementById('growthTrendChart'), {
+    var growthTrendChart = new Chart(document.getElementById('growthTrendChart'), {
         type: 'line',
         data: {
             labels: {!! json_encode($growthTrend->pluck('bln')->map(fn($b) => 'Bln ' . $b)) !!},
@@ -594,8 +648,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Immunization Status Chart
-    new Chart(document.getElementById('imunisasiStatusChart'), {
+    // Immunization Status Chart (stored for AJAX update)
+    var imunisasiStatusChart = new Chart(document.getElementById('imunisasiStatusChart'), {
         type: 'doughnut',
         data: {
             labels: {!! json_encode(array_map('ucfirst', array_keys($imunisasiStatus->toArray()))) !!},
@@ -611,8 +665,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Vaccine Coverage Chart
-    new Chart(document.getElementById('vaccineCoverageChart'), {
+    // Vaccine Coverage Chart (stored for AJAX update)
+    var vaccineCoverageChart = new Chart(document.getElementById('vaccineCoverageChart'), {
         type: 'bar',
         data: {
             labels: {!! json_encode($vaccineCoverage->pluck('kode')) !!},
@@ -630,8 +684,153 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Helper: update a simple chart (labels + single dataset data)
+    function updateChart(chart, labels, data) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.update();
+    }
+
+    var statusColors = { 'sudah': '#047857', 'terlambat': '#b45309', 'belum': '#6b7280' };
+    var pendingFilterXhr = null;
+    var fmt = function(n) { return Number(n).toLocaleString('id-ID'); };
+
+    function applyDashboardFilter() {
+        if (pendingFilterXhr) { pendingFilterXhr.abort(); }
+
+        var bulan = $('#filterBulan').val();
+        var kelurahan = $('#filterKelurahan').val();
+        var antigen = $('#filterAntigen').val();
+        var status = $('#filterStatus').val();
+
+        $('#btnResetFilter').toggle(!!(bulan || kelurahan || antigen || status));
+        $('#filterLoading').show();
+
+        pendingFilterXhr = $.ajax({
+            url: '{{ route("admin.analytics.filterImunisasi") }}',
+            type: 'GET',
+            data: { bulan: bulan, kelurahan: kelurahan, antigen: antigen, status: status },
+            dataType: 'json',
+            success: function(r) {
+                pendingFilterXhr = null;
+                $('#filterLoading').hide();
+
+                // === Stat Cards ===
+                $('#statTotalAnak').text(fmt(r.totalAnak));
+                $('#statTotalDataAnak').text(fmt(r.totalDataAnak));
+                $('#statTotalImunisasi').text(fmt(r.totalImunisasi));
+                $('#statIncomplete').text(fmt(r.incompleteImunisasiCount));
+
+                // === Z-Score Charts ===
+                var z = r.zScoreAnalysis;
+                imtChart.data.datasets[0].data = [z.imt_u.normal, z.imt_u.kurang, z.imt_u.buruk, z.imt_u.lebih, z.imt_u.obesitas];
+                imtChart.update();
+                bbChart.data.datasets[0].data = [z.bb_u.normal, z.bb_u.kurang, z.bb_u.sangat_kurang, z.bb_u.lebih];
+                bbChart.update();
+                tbChart.data.datasets[0].data = [z.tb_u.normal, z.tb_u.pendek, z.tb_u.sangat_pendek, z.tb_u.tinggi];
+                tbChart.update();
+
+                // === Demographics ===
+                updateChart(genderChart, r.genderDistribution.labels, r.genderDistribution.data);
+                updateChart(ageChart, r.ageDistribution.labels, r.ageDistribution.data);
+                updateChart(kecamatanChart, r.kecamatanDistribution.labels, r.kecamatanDistribution.data);
+
+                // === Growth Trend (2 datasets) ===
+                growthTrendChart.data.labels = r.growthTrend.labels;
+                growthTrendChart.data.datasets[0].data = r.growthTrend.avg_bb;
+                growthTrendChart.data.datasets[1].data = r.growthTrend.avg_tb;
+                growthTrendChart.update();
+
+                // === Imunisasi Status Chart + Legend ===
+                imunisasiStatusChart.data.labels = r.imunisasiStatus.labels;
+                imunisasiStatusChart.data.datasets[0].data = r.imunisasiStatus.data;
+                imunisasiStatusChart.data.datasets[0].backgroundColor = r.imunisasiStatus.labels.map(function(l) {
+                    return statusColors[l.toLowerCase()] || colors.gray;
+                });
+                imunisasiStatusChart.update();
+
+                var legendHtml = '';
+                var raw = r.imunisasiStatus.raw;
+                for (var key in raw) {
+                    legendHtml += '<div class="legend-item">'
+                        + '<span class="legend-dot" style="background:' + (statusColors[key] || colors.gray) + '"></span>'
+                        + '<span class="flex-grow-1">' + key.charAt(0).toUpperCase() + key.slice(1) + '</span>'
+                        + '<span class="font-weight-bold">' + fmt(raw[key]) + '</span></div>';
+                }
+                $('#imunisasiStatusLegend').html(legendHtml);
+
+                // === Vaccine Coverage ===
+                updateChart(vaccineCoverageChart, r.vaccineCoverage.labels, r.vaccineCoverage.data);
+
+                // === ASI ===
+                updateChart(asiChart, r.asiStatus.labels, r.asiStatus.data);
+
+                // === Visit Trend ===
+                updateChart(visitTrendChart, r.visitTrend.labels, r.visitTrend.data);
+
+                // === Posyandu & Kelurahan ===
+                updateChart(posyanduChart, r.posyanduDistribution.labels, r.posyanduDistribution.data);
+                updateChart(kelurahanChart, r.kelurahanDistribution.labels, r.kelurahanDistribution.data);
+
+                // === Recent Activities Table ===
+                var tbody = '';
+                if (r.recentActivities.length === 0) {
+                    tbody = '<tr><td colspan="6" class="text-center text-muted">Belum ada data kunjungan</td></tr>';
+                } else {
+                    r.recentActivities.forEach(function(a) {
+                        tbody += '<tr><td><strong>' + a.nama + '</strong></td>'
+                            + '<td>' + a.tgl_kunjungan + '</td>'
+                            + '<td>' + a.bln + ' bulan</td>'
+                            + '<td>' + a.bb + ' kg</td>'
+                            + '<td>' + a.tb + ' cm</td>'
+                            + '<td>' + a.bmi + '</td></tr>';
+                    });
+                }
+                $('#recentActivitiesBody').html(tbody);
+
+                // Update Ringkasan Imunisasi card
+                var incomplete = r.incompleteImunisasiCount || 0;
+                var total = r.totalAnak || 0;
+                var complete = total - incomplete;
+                var ringkasanHtml = '';
+                if (incomplete > 0) {
+                    var rate = total > 0 ? ((complete / total) * 100).toFixed(1) : '0.0';
+                    ringkasanHtml = '<div class="mb-3">'
+                        + '<i class="fa fa-exclamation-triangle fa-3x text-warning mb-2"></i>'
+                        + '<h3 class="text-warning mb-1">' + incomplete.toLocaleString() + '</h3>'
+                        + '<p class="text-muted">Anak dengan imunisasi belum lengkap</p>'
+                        + '</div>'
+                        + '<div class="progress progress-thin mb-3" style="height: 20px;">'
+                        + '<div class="progress-bar bg-success" style="width: ' + rate + '%">' + rate + '%</div>'
+                        + '</div>'
+                        + '<p class="small text-muted">'
+                        + '<strong>' + complete.toLocaleString() + '</strong> dari <strong>' + total.toLocaleString() + '</strong> anak sudah lengkap'
+                        + '</p>'
+                        + '<a href="{{ route("admin.earlyWarning") }}" class="btn btn-warning btn-sm mt-2">'
+                        + '<i class="fa fa-eye mr-1"></i> Lihat Detail di Early Warning</a>';
+                } else {
+                    ringkasanHtml = '<i class="fa fa-check-circle fa-3x text-success mb-2"></i>'
+                        + '<h5 class="text-success">Semua Lengkap!</h5>'
+                        + '<p class="text-muted">Semua anak memiliki imunisasi dasar lengkap</p>';
+                }
+                $('#ringkasanImunisasi').html(ringkasanHtml);
+            },
+            error: function(xhr) {
+                if (xhr.statusText !== 'abort') $('#filterLoading').hide();
+            }
+        });
+    }
+
+    $('.filter-input').on('change', function() { applyDashboardFilter(); });
+
+    $('#btnResetFilter').on('click', function() {
+        $('#filterBulan, #filterKelurahan, #filterAntigen, #filterStatus').val('');
+        $(this).hide();
+        applyDashboardFilter();
+    });
+
     // ASI Chart
-    new Chart(document.getElementById('asiChart'), {
+    var asiChart = new Chart(document.getElementById('asiChart'), {
         type: 'pie',
         data: {
             labels: {!! json_encode($asiStatus->keys()) !!},
@@ -648,7 +847,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Visit Trend Chart
-    new Chart(document.getElementById('visitTrendChart'), {
+    var visitTrendChart = new Chart(document.getElementById('visitTrendChart'), {
         type: 'bar',
         data: {
             labels: {!! json_encode($visitTrend->pluck('month')) !!},
@@ -667,7 +866,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Posyandu Chart
-    new Chart(document.getElementById('posyanduChart'), {
+    var posyanduChart = new Chart(document.getElementById('posyanduChart'), {
         type: 'bar',
         data: {
             labels: {!! json_encode($posyanduDistribution->pluck('name')) !!},
@@ -686,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Kelurahan Chart
-    new Chart(document.getElementById('kelurahanChart'), {
+    var kelurahanChart = new Chart(document.getElementById('kelurahanChart'), {
         type: 'bar',
         data: {
             labels: {!! json_encode($kelurahanDistribution->pluck('name')) !!},
