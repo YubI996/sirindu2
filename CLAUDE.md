@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sirindu is a Laravel 9 web application for managing child health data (Sistem Informasi Anak Rindu). It tracks children's growth metrics, immunization records, and calculates Z-score nutritional status indicators based on WHO standards.
+Sirindu is a Laravel 12 web application for managing child health data (Sistem Informasi Anak Rindu). It tracks children's growth metrics, immunization records, and calculates Z-score nutritional status indicators based on WHO standards.
 
 ## Common Commands
 
@@ -18,8 +18,7 @@ php artisan serve
 
 # Build frontend assets
 npm run dev          # Development build
-npm run watch        # Watch for changes
-npm run production   # Production build
+npm run build        # Production build
 
 # Database
 php artisan migrate           # Run migrations
@@ -94,7 +93,7 @@ Validation is handled in `app/Http/Requests/Admin/`:
 - `User/storeUserRequest.php` - Create user validation
 
 ### Frontend
-- Bootstrap 5 with Laravel Mix
+- Bootstrap 5 with Vite
 - DataTables (Yajra) for table rendering
 - SweetAlert for notifications
 - Blade templates in `resources/views/admin/`

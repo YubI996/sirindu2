@@ -2,36 +2,44 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     /**
-     * Register any application services.
-     *
-     * @return void
+     * The path to the "home" route for your application.
      */
-    public function register()
+    public const HOME = '/admin/home';
+
+    /**
+     * Register any application services.
+     */
+    public function register(): void
     {
         //
     }
 
     /**
      * Bootstrap any application services.
-     *
-     * @return void
      */
-    public function boot()
+    public function boot(): void
     {
-        $this->loadViewsFrom(__DIR__.'/../views','admin');
+        $this->loadViewsFrom(__DIR__.'/../views', 'admin');
 
-        // Force HTTPS URL generation unconditionally in production
+        // Force HTTPS URL generation in production
         if (config('app.env') === 'production') {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+            URL::forceScheme('https');
             $this->app['url']->forceScheme('https');
-
-            // Force request to be treated as HTTPS
             $this->app['request']->server->set('HTTPS', 'on');
         }
+
+        // Rate limiting
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }
