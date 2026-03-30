@@ -1,0 +1,3420 @@
+[
+  {
+    "id": "TC001",
+    "title": "Login succeeds and redirects to admin dashboard",
+    "description": "Verifies a user can log in with valid credentials and reach the admin dashboard.",
+    "category": "User Login",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the admin dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dashboard summary statistics are displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Login shows error on invalid credentials",
+    "description": "Verifies invalid credentials do not log the user in and an error is shown.",
+    "category": "User Login",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill invalid_user@example.com into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill wrong-password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an invalid credentials error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user remains on the login page"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Login requires email and password fields",
+    "description": "Verifies client-side or server-side validation prevents submitting an empty login form.",
+    "category": "User Login",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is visible for the required fields"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Login handles invalid email format",
+    "description": "Verifies an invalid email format is rejected during login.",
+    "category": "User Login",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill not-an-email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an email validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user remains on the login page"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Login password field masks input",
+    "description": "Verifies the password field does not display typed characters plainly.",
+    "category": "User Login",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the password field masks the entered value"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Login supports keyboard submission",
+    "description": "Verifies the user can submit the login form using the Enter key from the password field.",
+    "category": "User Login",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the admin dashboard"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Admin dashboard loads for authenticated user",
+    "description": "Verifies the main admin dashboard page loads and shows its primary summary content after login.",
+    "category": "Admin Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dashboard summary statistics are displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Admin dashboard navigation to analytics",
+    "description": "Verifies an authenticated user can navigate from the admin dashboard to the analytics page and see analytics content.",
+    "category": "Admin Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item for analytics"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the analytics dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify analytics charts or statistics are displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Unauthenticated access to admin dashboard redirects to login",
+    "description": "Verifies protected admin pages cannot be accessed without authentication.",
+    "category": "Admin Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /admin/home"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is redirected to the login page"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Admin dashboard navigation menu is available",
+    "description": "Verifies the dashboard provides navigation to key sections via the sidebar/menu.",
+    "category": "Admin Dashboard",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the main navigation menu is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Child list search filters results",
+    "description": "Verifies searching the children list filters the table results.",
+    "category": "Child Data Management (CRUD)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Fill a search query into the table search field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the children list updates to show filtered results"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Create a new child record and verify it appears in the list",
+    "description": "Verifies an authenticated user can create a child record with cascading geographic selections and see it in the list.",
+    "category": "Child Data Management (CRUD)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the child creation page"
+      },
+      {
+        "type": "action",
+        "description": "Fill Child Test A into the child name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique numeric value into the NIK field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid gender option"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date of birth field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kecamatan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kelurahan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid RT option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Puskesmas option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Posyandu option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the child registration form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Fill Child Test A into the table search field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the children list contains Child Test A"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Child creation blocks duplicate NIK",
+    "description": "Verifies the system prevents creating a second child with the same NIK and shows a duplicate error.",
+    "category": "Child Data Management (CRUD)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the child creation page"
+      },
+      {
+        "type": "action",
+        "description": "Fill Child Test Dup 1 into the child name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill 7777777777777777 into the NIK field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid gender option"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date of birth field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kecamatan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kelurahan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid RT option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Puskesmas option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Posyandu option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the child registration form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the child creation page"
+      },
+      {
+        "type": "action",
+        "description": "Fill Child Test Dup 2 into the child name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill 7777777777777777 into the NIK field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid gender option"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date of birth field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kecamatan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kelurahan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid RT option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Puskesmas option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Posyandu option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the child registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a duplicate identifier error is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Delete a child record from the list",
+    "description": "Verifies an authenticated user can delete a child record and it no longer appears in the list.",
+    "category": "Child Data Management (CRUD)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the child creation page"
+      },
+      {
+        "type": "action",
+        "description": "Fill Child Test Delete into the child name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique numeric value into the NIK field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid gender option"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid date into the date of birth field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kecamatan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Kelurahan option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid RT option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Puskesmas option"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Posyandu option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the child registration form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Fill Child Test Delete into the table search field"
+      },
+      {
+        "type": "action",
+        "description": "Click the delete action for the matching child row"
+      },
+      {
+        "type": "action",
+        "description": "Confirm deletion in the confirmation dialog"
+      },
+      {
+        "type": "action",
+        "description": "Fill Child Test Delete into the table search field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the children list does not contain Child Test Delete"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Child creation requires mandatory fields",
+    "description": "Verifies validation prevents submitting the child registration form when required fields are missing.",
+    "category": "Child Data Management (CRUD)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the child creation page"
+      },
+      {
+        "type": "action",
+        "description": "Submit the child registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify required field validation errors are visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Create a new growth measurement and see it reflected in the list and chart",
+    "description": "Ensures an admin can add a periodic measurement for a child and the UI updates to show the new data in the measurement list and growth chart.",
+    "category": "Child Growth Data Entry",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid visit date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid age in months into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid height into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid weight into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new measurement appears in the measurement list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the growth chart is displayed with updated data"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Prevent saving a growth measurement with a future measurement date",
+    "description": "Validates that the UI blocks submitting a measurement when the measurement date is set in the future.",
+    "category": "Child Growth Data Entry",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a future date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid age in months into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid height into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid weight into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a date validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new measurement is not added to the measurement list"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Submit a lying-position measurement for a child under 24 months and see adjusted height reflected on chart",
+    "description": "Ensures the UI supports a lying-position measurement for a child under 24 months and the chart reflects adjusted height handling.",
+    "category": "Child Growth Data Entry",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid visit date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill an age in months under 24 into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select the lying measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid height into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid weight into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the growth chart is displayed with updated data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the newly added measurement is present in the measurement list"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Edit an existing growth measurement and see updated values reflected in the list",
+    "description": "Verifies that an existing measurement can be edited and the updated values are shown in the measurement list.",
+    "category": "Child Growth Data Entry",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid visit date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid age in months into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill 80 into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill 10 into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "action",
+        "description": "Open the edit action for the newly created measurement"
+      },
+      {
+        "type": "action",
+        "description": "Fill 81 into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement update"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the measurement list shows height value 81 for the updated record"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Display calculated Z-score indicators for a measurement record",
+    "description": "Confirms that after a measurement exists, the UI displays calculated Z-score indicator values for that record.",
+    "category": "Child Growth Data Entry",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid visit date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid age in months into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid height into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid weight into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify Z-score values are displayed for the measurement record"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Require mandatory measurement fields before submission",
+    "description": "Checks that the measurement form enforces required fields and prevents submission when mandatory inputs are missing.",
+    "category": "Child Growth Data Entry",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form without filling required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify required field validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new measurement is added to the measurement list"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "View growth data page primary content (measurement list and chart)",
+    "description": "Ensures the growth data page loads and displays its primary UI components for viewing measurements and the growth chart.",
+    "category": "Child Growth Data Entry",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the periodic measurement list is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the growth chart section is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Delete a growth measurement and confirm it is removed from the list",
+    "description": "Verifies that a measurement record can be deleted and it disappears from the measurement list.",
+    "category": "Child Growth Data Entry",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid visit date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid age in months into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill 82 into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill 11 into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "action",
+        "description": "Delete the newly created measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the measurement with height value 82 is no longer present in the measurement list"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Display Z-score values and nutritional classifications per indicator",
+    "description": "Ensures the UI shows both Z-score values and the nutritional status classifications for each indicator on the growth data page.",
+    "category": "Z-score Calculation & Classification",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid visit date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid age in months into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid height into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid weight into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify Z-score values are displayed for each indicator"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify nutritional status classifications are displayed for each indicator"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Show reference-data-unavailable state for Z-scores when calculation cannot be performed",
+    "description": "Verifies that when Z-score calculation cannot be completed, the UI shows a reference-unavailable message and does not display computed Z-scores.",
+    "category": "Z-score Calculation & Classification",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the growth data page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add a new measurement record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid visit date into the measurement date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid age in months into the age-in-months field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid measurement position"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid height into the height field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid weight into the weight field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the measurement form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a reference-data-unavailable message is visible for Z-score calculation"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Add an immunization record and see status update in the complete list/schedule",
+    "description": "Ensures an admin can record an immunization event and the UI reflects completion in the immunization list and schedule.",
+    "category": "Immunization Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the complete immunization page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add an immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Select a vaccine type"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid administration date into the administration date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the immunization record"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the immunization record appears in the complete immunization list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the corresponding vaccine dose status is shown as completed in the schedule"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Show overdue flag for a vaccine dose when the schedule is past due",
+    "description": "Verifies the immunization schedule can display an overdue indicator for a dose on the complete immunization page.",
+    "category": "Immunization Management",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the complete immunization page for a child from the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify at least one vaccine dose is flagged as overdue in the schedule, or an empty state indicates no overdue doses"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Prevent saving immunization record with administration date before child's birth date",
+    "description": "Validates that the UI blocks submitting an immunization record if the administration date is earlier than the child's birth date.",
+    "category": "Immunization Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the complete immunization page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add an immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Select a vaccine type"
+      },
+      {
+        "type": "action",
+        "description": "Fill a date earlier than the child's birth date into the administration date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the immunization record"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a date validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the immunization record is not added to the complete immunization list"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Edit an existing immunization record and see updated values reflected",
+    "description": "Verifies that an immunization record can be edited and the updated details are shown in the list or schedule.",
+    "category": "Immunization Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the complete immunization page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add an immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Select a vaccine type"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid administration date into the administration date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Open the edit action for the newly created immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Fill a different valid administration date into the administration date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the immunization update"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the immunization record reflects the updated administration date"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Delete an immunization record and confirm it is removed",
+    "description": "Ensures an immunization record can be deleted and it no longer appears in the complete immunization list.",
+    "category": "Immunization Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the complete immunization page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add an immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Select a vaccine type"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid administration date into the administration date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Delete the newly created immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the deleted immunization record is no longer present in the complete immunization list"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Require mandatory fields on immunization record form",
+    "description": "Checks that the immunization form enforces required inputs such as vaccine type and administration date before submission.",
+    "category": "Immunization Management",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to the children basic data list"
+      },
+      {
+        "type": "action",
+        "description": "Open the complete immunization page for a child from the list"
+      },
+      {
+        "type": "action",
+        "description": "Add an immunization record"
+      },
+      {
+        "type": "action",
+        "description": "Submit the immunization record without selecting a vaccine type or date"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify required field validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new immunization record is added to the complete immunization list"
+      }
+    ]
+  },
+  {
+    "id": "TC032",
+    "title": "Analytics Dashboard loads and shows primary analytics content",
+    "description": "Verifies the analytics dashboard loads and displays immunization coverage visuals and summary statistics.",
+    "category": "Analytics Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/analytics"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify immunization coverage charts are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify summary statistics widgets are displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC033",
+    "title": "Analytics Dashboard filter updates charts and statistics",
+    "description": "Verifies applying an immunization type or period filter updates the displayed analytics.",
+    "category": "Analytics Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/analytics"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid immunization type in the filter control"
+      },
+      {
+        "type": "action",
+        "description": "Apply the selected filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the charts update to reflect the selected filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the statistics values update to reflect the selected filter"
+      }
+    ]
+  },
+  {
+    "id": "TC034",
+    "title": "Analytics Dashboard shows empty state when filter returns no data",
+    "description": "Verifies applying a filter combination with no results shows an empty state for charts/statistics.",
+    "category": "Analytics Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/analytics"
+      },
+      {
+        "type": "action",
+        "description": "Select a filter option that is least likely to have data for the current dataset"
+      },
+      {
+        "type": "action",
+        "description": "Apply the selected filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible for the analytics results"
+      }
+    ]
+  },
+  {
+    "id": "TC035",
+    "title": "Analytics Dashboard location breakdown is viewable",
+    "description": "Verifies the breakdown section by Puskesmas or Posyandu is accessible and populated when viewing analytics.",
+    "category": "Analytics Dashboard",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/analytics"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the statistics breakdown section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a location-based breakdown by Puskesmas or Posyandu is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC036",
+    "title": "Analytics Dashboard filter can be changed multiple times in one session",
+    "description": "Verifies switching filters repeatedly continues to update analytics without breaking the page.",
+    "category": "Analytics Dashboard",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/analytics"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid period in the filter control"
+      },
+      {
+        "type": "action",
+        "description": "Apply the selected filter"
+      },
+      {
+        "type": "action",
+        "description": "Select a different valid period in the filter control"
+      },
+      {
+        "type": "action",
+        "description": "Apply the selected filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the charts reflect the most recently applied filter"
+      }
+    ]
+  },
+  {
+    "id": "TC037",
+    "title": "Map Dashboard loads and shows interactive map area",
+    "description": "Verifies the map dashboard loads and the primary map content is present.",
+    "category": "Geographic Map Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/map"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an interactive map is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC038",
+    "title": "Map Dashboard marker selection shows Posyandu statistics",
+    "description": "Verifies clicking a Posyandu marker reveals statistics for that location.",
+    "category": "Geographic Map Dashboard",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/map"
+      },
+      {
+        "type": "action",
+        "description": "Wait for map markers to load"
+      },
+      {
+        "type": "action",
+        "description": "Click a Posyandu location marker on the map"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify Posyandu statistics for the selected location are displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC039",
+    "title": "Map Dashboard provides a graceful empty state when no locations are shown",
+    "description": "Verifies the map dashboard shows a user-visible empty state when no markers are available to display.",
+    "category": "Geographic Map Dashboard",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/map"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the map data load to complete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify either map markers are displayed or an empty state message is visible indicating no locations are available"
+      }
+    ]
+  },
+  {
+    "id": "TC040",
+    "title": "Early Warning System page loads and shows risk list",
+    "description": "Verifies the early warning page loads and displays children risk scoring/classification list.",
+    "category": "Early Warning System",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/early-warning"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a list of children with risk scores and classifications is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC041",
+    "title": "Early Warning System location filter updates the risk list ordering",
+    "description": "Verifies filtering by location updates the visible list and keeps it sorted by risk score.",
+    "category": "Early Warning System",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/early-warning"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid location in the location filter"
+      },
+      {
+        "type": "action",
+        "description": "Apply the location filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the list updates to show only children for the selected location"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the filtered list is sorted by risk score"
+      }
+    ]
+  },
+  {
+    "id": "TC042",
+    "title": "Export filtered child data to Excel",
+    "description": "Verifies an admin can export child data using Puskesmas and date range criteria.",
+    "category": "Data Export",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export"
+      },
+      {
+        "type": "action",
+        "description": "Select a Puskesmas export criterion"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid start date into the start date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid end date that is after the start date into the end date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the export request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an Excel export is initiated by the browser"
+      }
+    ]
+  },
+  {
+    "id": "TC043",
+    "title": "Export all child data to Excel",
+    "description": "Verifies an admin can export all child data without applying filters.",
+    "category": "Data Export",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export"
+      },
+      {
+        "type": "action",
+        "description": "Trigger the export-all action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an Excel export is initiated by the browser"
+      }
+    ]
+  },
+  {
+    "id": "TC044",
+    "title": "Invalid date range shows validation error",
+    "description": "Verifies the export form prevents submitting a start date after the end date.",
+    "category": "Data Export",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid end date into the end date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid start date that is after the end date into the start date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the export request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a date range validation error is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC045",
+    "title": "Export page loads and offers export criteria controls",
+    "description": "Verifies the export page loads and provides filter controls needed to perform an export.",
+    "category": "Data Export",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify export criteria controls are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an action to submit an export request is available"
+      }
+    ]
+  },
+  {
+    "id": "TC046",
+    "title": "Export with only Puskesmas criterion initiates Excel export",
+    "description": "Verifies an admin can export using location criteria without specifying a date range if allowed by the UI.",
+    "category": "Data Export",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export"
+      },
+      {
+        "type": "action",
+        "description": "Select a Puskesmas export criterion"
+      },
+      {
+        "type": "action",
+        "description": "Submit the export request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an Excel export is initiated by the browser"
+      }
+    ]
+  },
+  {
+    "id": "TC047",
+    "title": "Export with only date range initiates Excel export",
+    "description": "Verifies an admin can export using just a valid date range if allowed by the UI.",
+    "category": "Data Export",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid start date into the start date field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid end date that is after the start date into the end date field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the export request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an Excel export is initiated by the browser"
+      }
+    ]
+  },
+  {
+    "id": "TC048",
+    "title": "Epidemiology cases list loads and shows table controls",
+    "description": "Verifies the epidemiology cases list page loads and presents a cases list for interaction.",
+    "category": "Epidemiology Surveillance",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/epidemiologi/"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the surveillance cases list is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an action to create a new case is available"
+      }
+    ]
+  },
+  {
+    "id": "TC049",
+    "title": "Create a new epidemiology case and see it in the list",
+    "description": "Verifies creating a new surveillance case end-to-end and returning to the list shows the new record.",
+    "category": "Epidemiology Surveillance",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/epidemiologi/"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to create a new case"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the patient NIK field with 3201123456789012"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the patient name field with Test Case Pasien A"
+      },
+      {
+        "type": "action",
+        "description": "Select a disease type"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the patient address field with Jalan Uji Otomasi 1"
+      },
+      {
+        "type": "action",
+        "description": "Submit the case form"
+      },
+      {
+        "type": "action",
+        "description": "Return to the cases list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cases list contains Test Case Pasien A"
+      }
+    ]
+  },
+  {
+    "id": "TC050",
+    "title": "Create case with partial data and confirm it is saved",
+    "description": "Verifies the create form allows saving incomplete case data for incremental updates.",
+    "category": "Epidemiology Surveillance",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/epidemiologi/create"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the patient name field with Test Case Parsial B"
+      },
+      {
+        "type": "action",
+        "description": "Select a disease type"
+      },
+      {
+        "type": "action",
+        "description": "Submit the case form"
+      },
+      {
+        "type": "action",
+        "description": "Return to the cases list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cases list contains Test Case Parsial B"
+      }
+    ]
+  },
+  {
+    "id": "TC051",
+    "title": "Create case missing mandatory identity fields shows validation errors",
+    "description": "Verifies mandatory identity validation prevents creating a case when required fields are missing.",
+    "category": "Epidemiology Surveillance",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/epidemiologi/"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to create a new case"
+      },
+      {
+        "type": "action",
+        "description": "Submit the case form without filling mandatory identity fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors for mandatory identity fields are visible"
+      }
+    ]
+  },
+  {
+    "id": "TC052",
+    "title": "Epidemiology dashboard loads KPI and charts",
+    "description": "Verifies the epidemiology dashboard page loads its primary analytics content.",
+    "category": "Epidemiology Surveillance",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/epidemiologi/dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify KPI summary data is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify surveillance charts are displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC053",
+    "title": "Epidemiology map page loads and displays a geographic view",
+    "description": "Verifies the epidemiology map page loads and shows a map view for cases.",
+    "category": "Epidemiology Surveillance",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/epidemiologi/map"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a geographic map view is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC054",
+    "title": "Export epidemiology cases to Excel from list page",
+    "description": "Verifies exporting epidemiology cases to Excel is available and initiates a download.",
+    "category": "Epidemiology Surveillance",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/epidemiologi/"
+      },
+      {
+        "type": "action",
+        "description": "Trigger the action to export cases to Excel"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an Excel export is initiated by the browser"
+      }
+    ]
+  },
+  {
+    "id": "TC055",
+    "title": "Vaccine master list loads for super-admin",
+    "description": "Verifies the vaccine master data page loads and displays the vaccine list for super-admin.",
+    "category": "Vaccine Master Data",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/master-data/vaksin"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the vaccine list is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an action to add a new vaccine is available"
+      }
+    ]
+  },
+  {
+    "id": "TC056",
+    "title": "Add a new vaccine and verify it appears in the list",
+    "description": "Verifies a super-admin can create a new vaccine record and see it in the list.",
+    "category": "Vaccine Master Data",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/master-data/vaksin"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to add a new vaccine"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine code field with VAX-AUTO-01"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine name field with Vaksin Otomasi 01"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid age range or schedule option"
+      },
+      {
+        "type": "action",
+        "description": "Fill in a valid interval value if required"
+      },
+      {
+        "type": "action",
+        "description": "Submit the vaccine form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the vaccine list contains VAX-AUTO-01"
+      }
+    ]
+  },
+  {
+    "id": "TC057",
+    "title": "Deactivate a vaccine and verify status changes",
+    "description": "Verifies a super-admin can toggle a vaccine to inactive and the list reflects the new status.",
+    "category": "Vaccine Master Data",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/master-data/vaksin"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to add a new vaccine"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine code field with VAX-AUTO-02"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine name field with Vaksin Otomasi 02"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid age range or schedule option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the vaccine form"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the active status for vaccine VAX-AUTO-02 to inactive"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify vaccine VAX-AUTO-02 is shown as inactive in the list"
+      }
+    ]
+  },
+  {
+    "id": "TC058",
+    "title": "Add vaccine without code shows validation error",
+    "description": "Verifies the vaccine creation form requires a vaccine code.",
+    "category": "Vaccine Master Data",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/master-data/vaksin"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to add a new vaccine"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine name field with Vaksin Tanpa Kode"
+      },
+      {
+        "type": "action",
+        "description": "Submit the vaccine form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a required-field validation error for the vaccine code is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC059",
+    "title": "Edit an existing vaccine and verify updated values in list",
+    "description": "Verifies a super-admin can update vaccine details and see the change reflected in the list.",
+    "category": "Vaccine Master Data",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/master-data/vaksin"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to add a new vaccine"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine code field with VAX-AUTO-03"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine name field with Vaksin Otomasi 03"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid age range or schedule option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the vaccine form"
+      },
+      {
+        "type": "action",
+        "description": "Open the edit action for vaccine VAX-AUTO-03"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine name field with Vaksin Otomasi 03 Updated"
+      },
+      {
+        "type": "action",
+        "description": "Submit the update"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the vaccine list contains Vaksin Otomasi 03 Updated"
+      }
+    ]
+  },
+  {
+    "id": "TC060",
+    "title": "Delete a vaccine and verify it is removed from list",
+    "description": "Verifies a super-admin can delete a vaccine record and it no longer appears in the list.",
+    "category": "Vaccine Master Data",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/master-data/vaksin"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to add a new vaccine"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine code field with VAX-AUTO-04"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the vaccine name field with Vaksin Otomasi 04"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid age range or schedule option"
+      },
+      {
+        "type": "action",
+        "description": "Submit the vaccine form"
+      },
+      {
+        "type": "action",
+        "description": "Delete vaccine VAX-AUTO-04"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion in the confirmation prompt"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the vaccine list does not contain VAX-AUTO-04"
+      }
+    ]
+  },
+  {
+    "id": "TC061",
+    "title": "User Management: view users list",
+    "description": "Verifies a super-admin can access the user management page and see the users list content.",
+    "category": "User Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /super-admin/user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a list of users is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC062",
+    "title": "User Management: create a new user with role and assigned facility",
+    "description": "Verifies a super-admin can create a new user with a role and facility assignment and see it in the list.",
+    "category": "User Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /super-admin/user"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new user account"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with Test User A"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with test.user.a@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid role"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid facility assignment"
+      },
+      {
+        "type": "action",
+        "description": "Submit the user creation form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the users list contains Test User A"
+      }
+    ]
+  },
+  {
+    "id": "TC063",
+    "title": "User Management: validation error when creating user without role",
+    "description": "Verifies role is required when creating a user and a validation error is shown if omitted.",
+    "category": "User Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /super-admin/user"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new user account"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with Test User No Role"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with test.user.norole@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Submit the user creation form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a role validation error is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC064",
+    "title": "User Management: edit an existing user's details",
+    "description": "Verifies a super-admin can edit a user's details and see the updated value in the list.",
+    "category": "User Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /super-admin/user"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new user account"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with Test User Edit"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with test.user.edit@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid role"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid facility assignment"
+      },
+      {
+        "type": "action",
+        "description": "Submit the user creation form"
+      },
+      {
+        "type": "action",
+        "description": "Open the edit user details flow for Test User Edit"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with Test User Edited"
+      },
+      {
+        "type": "action",
+        "description": "Submit the user update form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the users list contains Test User Edited"
+      }
+    ]
+  },
+  {
+    "id": "TC065",
+    "title": "User Management: delete a user account",
+    "description": "Verifies a super-admin can delete a user and the user no longer appears in the list.",
+    "category": "User Management",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /super-admin/user"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new user account"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with Test User Delete"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with test.user.delete@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid role"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid facility assignment"
+      },
+      {
+        "type": "action",
+        "description": "Submit the user creation form"
+      },
+      {
+        "type": "action",
+        "description": "Initiate deleting the user account for Test User Delete"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the deletion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the users list does not contain Test User Delete"
+      }
+    ]
+  },
+  {
+    "id": "TC066",
+    "title": "User Management: create role 'imunisasi_faskes' user and verify limited access after login",
+    "description": "Verifies a newly created user with role imunisasi_faskes can log in and access immunization export, indicating limited access to immunization modules.",
+    "category": "User Management",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /super-admin/user"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new user account"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the name field with Test Imunisasi Faskes"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with test.imunisasi.faskes@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with ValidPass123!?"
+      },
+      {
+        "type": "action",
+        "description": "Select the role imunisasi_faskes"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid Puskesmas facility assignment"
+      },
+      {
+        "type": "action",
+        "description": "Submit the user creation form"
+      },
+      {
+        "type": "action",
+        "description": "Log out"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with test.imunisasi.faskes@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with ValidPass123!?"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export-imunisasi"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the immunization export page primary content is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC067",
+    "title": "Immunization Export: page loads and shows datatable",
+    "description": "Verifies an authenticated admin can open the immunization export page and see the data area.",
+    "category": "Immunization Export",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export-imunisasi"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify immunization export data is displayed"
+      }
+    ]
+  },
+  {
+    "id": "TC068",
+    "title": "Immunization Export: apply vaccine type and status filters",
+    "description": "Verifies filters can be applied and the results update based on the chosen vaccine type and status.",
+    "category": "Immunization Export",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export-imunisasi"
+      },
+      {
+        "type": "action",
+        "description": "Select a vaccine type filter value"
+      },
+      {
+        "type": "action",
+        "description": "Select a status filter value"
+      },
+      {
+        "type": "action",
+        "description": "Apply the filters"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the immunization export results reflect the applied filters"
+      }
+    ]
+  },
+  {
+    "id": "TC069",
+    "title": "Immunization Export: download export file with filtered records",
+    "description": "Verifies downloading an export after applying filters starts a file download.",
+    "category": "Immunization Export",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export-imunisasi"
+      },
+      {
+        "type": "action",
+        "description": "Select a vaccine type filter value"
+      },
+      {
+        "type": "action",
+        "description": "Select a status filter value"
+      },
+      {
+        "type": "action",
+        "description": "Apply the filters"
+      },
+      {
+        "type": "action",
+        "description": "Start the export download"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a file download is initiated"
+      }
+    ]
+  },
+  {
+    "id": "TC070",
+    "title": "Immunization Export: attempt download when filters return no records shows empty-state message",
+    "description": "Verifies the UI prevents exporting when no records match the filters and shows a no-data message.",
+    "category": "Immunization Export",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /admin/export-imunisasi"
+      },
+      {
+        "type": "action",
+        "description": "Select filter values that result in no records"
+      },
+      {
+        "type": "action",
+        "description": "Apply the filters"
+      },
+      {
+        "type": "action",
+        "description": "Start the export download"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a no-data-to-export message is visible"
+      }
+    ]
+  }
+]

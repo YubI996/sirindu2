@@ -1,0 +1,398 @@
+version: "2"
+type: frontend
+tech_stack:
+  - PHP 8.4
+  - Laravel 12
+  - Bootstrap 5
+  - Blade Templates
+  - MySQL
+  - Vite
+  - DataTables (Yajra)
+  - SweetAlert2
+  - Chart.js
+  - Leaflet.js
+routes:
+  - path: /
+    file: routes/web.php
+    auth_required: false
+    description: Root redirect to login page
+  - path: /login
+    file: routes/web.php
+    auth_required: false
+    description: User login page
+  - path: /admin/home
+    file: routes/web.php
+    auth_required: true
+    description: Admin dashboard home
+  - path: /admin/analytics
+    file: routes/web.php
+    auth_required: true
+    description: Analytics dashboard with immunization statistics
+  - path: /admin/map
+    file: routes/web.php
+    auth_required: true
+    description: Geographic map dashboard
+  - path: /admin/early-warning
+    file: routes/web.php
+    auth_required: true
+    description: Early warning system for vaccine needs
+  - path: /admin/data-dasar-anak
+    file: routes/web.php
+    auth_required: true
+    description: List of children basic data
+  - path: /admin/create-data-dasar-anak
+    file: routes/web.php
+    auth_required: true
+    description: Create new child record
+  - path: /admin/edit-data-dasar-anak/{id}
+    file: routes/web.php
+    auth_required: true
+    description: Edit existing child record
+  - path: /admin/show-data-dasar-anak/{id}
+    file: routes/web.php
+    auth_required: true
+    description: View single child detail
+  - path: /admin/data-anak/{id}
+    file: routes/web.php
+    auth_required: true
+    description: Periodic growth data for a child
+  - path: /admin/imunisasi-lengkap/{id}
+    file: routes/web.php
+    auth_required: true
+    description: Complete immunization records for a child
+  - path: /admin/jadwal-imunisasi/{id}
+    file: routes/web.php
+    auth_required: true
+    description: Immunization schedule for a child
+  - path: /admin/export
+    file: routes/web.php
+    auth_required: true
+    description: Export child data page
+  - path: /admin/data-ibu
+    file: routes/web.php
+    auth_required: true
+    description: Mother data list
+  - path: /admin/data-ibu-hamil
+    file: routes/web.php
+    auth_required: true
+    description: Pregnant mother data list
+  - path: /admin/master-data/vaksin
+    file: routes/web.php
+    auth_required: true
+    description: Vaccine master data management (super-admin)
+  - path: /admin/master-data/penyakit
+    file: routes/web.php
+    auth_required: true
+    description: Disease master data management (super-admin)
+  - path: /admin/export-imunisasi
+    file: routes/web.php
+    auth_required: true
+    description: Export immunization data
+  - path: /admin/epidemiologi/dashboard
+    file: routes/web.php
+    auth_required: true
+    description: Epidemiology surveillance dashboard
+  - path: /admin/epidemiologi/
+    file: routes/web.php
+    auth_required: true
+    description: Epidemiology cases list
+  - path: /admin/epidemiologi/create
+    file: routes/web.php
+    auth_required: true
+    description: Create new epidemiology case
+  - path: /admin/epidemiologi/show/{id}
+    file: routes/web.php
+    auth_required: true
+    description: View single epidemiology case
+  - path: /admin/epidemiologi/edit/{id}
+    file: routes/web.php
+    auth_required: true
+    description: Edit epidemiology case
+  - path: /admin/epidemiologi/map
+    file: routes/web.php
+    auth_required: true
+    description: Epidemiology geographic map
+  - path: /super-admin/home
+    file: routes/web.php
+    auth_required: true
+    description: Super admin dashboard
+  - path: /super-admin/user
+    file: routes/web.php
+    auth_required: true
+    description: User management list
+
+features:
+  - name: User Login
+    description: Login with email and password credentials, redirects to admin home on success
+    files:
+      - app/Http/Controllers/Auth/LoginController.php
+      - resources/views/auth/login.blade.php
+    entry_route: /login
+    user_interactions:
+      - Fill email input field
+      - Fill password input field
+      - Click Login button to submit
+      - See error message on invalid credentials
+      - Redirect to /admin/home on success
+    api_calls: []
+    auth_required: false
+
+  - name: Admin Dashboard
+    description: Main dashboard showing summary statistics of child health data
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/home.blade.php
+    entry_route: /admin/home
+    user_interactions:
+      - View summary statistics cards
+      - Navigate to different sections via sidebar
+    api_calls: []
+    auth_required: true
+
+  - name: Child Data Management (CRUD)
+    description: Create, read, update, delete children basic data records including personal info, address, Puskesmas and Posyandu assignment
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/anak/
+      - app/Repositories/Admin/Anak/AnakRepository.php
+    entry_route: /admin/data-dasar-anak
+    user_interactions:
+      - View datatable list of children
+      - Search/filter children by name or ID
+      - Click create button to add new child
+      - Fill form with personal data, address, Puskesmas, Posyandu
+      - Submit form to create child
+      - Click edit button on child row
+      - Update child information and submit
+      - Click delete button to remove child
+      - Confirm deletion in SweetAlert dialog
+    api_calls:
+      - method: GET
+        endpoint: /admin/get-data-dasar-anak
+      - method: POST
+        endpoint: /admin/store-data-dasar-anak
+      - method: PUT
+        endpoint: /admin/update-data-dasar-anak/{id}
+      - method: DELETE
+        endpoint: /admin/destroy-data-dasar-anak/{id}
+    auth_required: true
+
+  - name: Child Growth Data Entry
+    description: Record periodic growth measurements for children including height, weight, and Z-score calculations
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/dataAnak/
+      - app/Helpers/helpers.php
+    entry_route: /admin/data-anak/{id}
+    user_interactions:
+      - View list of periodic measurements for a child
+      - Add new measurement record
+      - Fill height, weight, and measurement date
+      - View calculated Z-score values (BB/U, TB/U, IMT/U, BB/TB)
+      - Edit existing measurement
+      - View growth chart
+    api_calls:
+      - method: POST
+        endpoint: /admin/store-data-anak
+      - method: PUT
+        endpoint: /admin/update-data-anak/{id}
+      - method: GET
+        endpoint: /admin/get-chart-data-dasar-anak/{id}
+    auth_required: true
+
+  - name: Immunization Management
+    description: Record and track complete immunization history for children according to schedule
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/imunisasi/
+    entry_route: /admin/imunisasi-lengkap/{id}
+    user_interactions:
+      - View complete immunization list for a child
+      - View immunization schedule
+      - Add immunization record
+      - Select vaccine type and date administered
+      - Edit existing immunization record
+      - Delete immunization record
+    api_calls:
+      - method: POST
+        endpoint: /admin/store-imunisasi
+      - method: PUT
+        endpoint: /admin/update-imunisasi-detail/{id}
+      - method: DELETE
+        endpoint: /admin/delete-imunisasi/{id}
+    auth_required: true
+
+  - name: Analytics Dashboard
+    description: Visual analytics for immunization coverage statistics with filters
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/analytics/
+    entry_route: /admin/analytics
+    user_interactions:
+      - View immunization coverage charts
+      - Filter data by immunization type or period
+      - View statistics breakdown by Puskesmas or Posyandu
+    api_calls:
+      - method: GET
+        endpoint: /admin/analytics/filter-imunisasi
+    auth_required: true
+
+  - name: Geographic Map Dashboard
+    description: Interactive map showing geographic distribution of children and immunization coverage
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/map/
+    entry_route: /admin/map
+    user_interactions:
+      - View interactive Leaflet map
+      - See markers for Posyandu locations
+      - Click marker to view Posyandu statistics
+    api_calls:
+      - method: GET
+        endpoint: /admin/api/map-data
+    auth_required: true
+
+  - name: Early Warning System
+    description: Early warning system for vaccine needs forecasting
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/earlyWarning/
+    entry_route: /admin/early-warning
+    user_interactions:
+      - View list of children needing upcoming vaccines
+      - Export vaccine needs report
+    api_calls:
+      - method: GET
+        endpoint: /admin/early-warning/export-vaccine-needs
+    auth_required: true
+
+  - name: Data Export
+    description: Export child health data to Excel format
+    files:
+      - app/Http/Controllers/AdminController.php
+      - app/Exports/AnakExport.php
+      - app/Exports/AllExport.php
+    entry_route: /admin/export
+    user_interactions:
+      - Select export criteria (by Puskesmas, date range, etc.)
+      - Click export button to download Excel file
+      - Export all data to Excel
+    api_calls:
+      - method: POST
+        endpoint: /admin/formViewExport
+      - method: GET
+        endpoint: /admin/formViewExportExcel
+      - method: GET
+        endpoint: /admin/exportAllExcel
+    auth_required: true
+
+  - name: Epidemiology Surveillance
+    description: Track and manage PD3I (vaccine-preventable disease) surveillance cases
+    files:
+      - app/Http/Controllers/EpidemiologiController.php
+      - resources/views/admin/epidemiologi/
+    entry_route: /admin/epidemiologi/
+    user_interactions:
+      - View list of epidemiology surveillance cases in datatable
+      - View epidemiology dashboard with KPI cards and charts
+      - Create new disease case report
+      - Fill patient data including NIK, name, disease type, address
+      - View case details
+      - Edit existing case
+      - Delete case
+      - View cases on geographic map
+      - Export cases to Excel
+      - Export single case PDF
+    api_calls:
+      - method: GET
+        endpoint: /admin/epidemiologi/get-cases
+      - method: POST
+        endpoint: /admin/epidemiologi/store
+      - method: PUT
+        endpoint: /admin/epidemiologi/update/{id}
+      - method: DELETE
+        endpoint: /admin/epidemiologi/destroy/{id}
+      - method: GET
+        endpoint: /admin/epidemiologi/api/map-data
+      - method: GET
+        endpoint: /admin/epidemiologi/api/dashboard-data
+      - method: GET
+        endpoint: /admin/epidemiologi/export-excel
+    auth_required: true
+
+  - name: Vaccine Master Data
+    description: Manage master data for available vaccines (super-admin only)
+    files:
+      - app/Http/Controllers/MasterDataVaksinController.php
+      - resources/views/admin/masterdata/vaksin/
+    entry_route: /admin/master-data/vaksin
+    user_interactions:
+      - View list of vaccines in datatable
+      - Add new vaccine type
+      - Edit vaccine details
+      - Toggle vaccine active/inactive status
+      - Delete vaccine record
+      - Restore deleted vaccine
+    api_calls:
+      - method: GET
+        endpoint: /admin/master-data/vaksin/get-data
+      - method: POST
+        endpoint: /admin/master-data/vaksin/store
+      - method: PUT
+        endpoint: /admin/master-data/vaksin/update/{id}
+      - method: PATCH
+        endpoint: /admin/master-data/vaksin/toggle-status/{id}
+      - method: DELETE
+        endpoint: /admin/master-data/vaksin/destroy/{id}
+    auth_required: true
+
+  - name: User Management
+    description: Super admin manages system user accounts
+    files:
+      - app/Http/Controllers/AdminController.php
+      - resources/views/admin/user/
+      - app/Repositories/Admin/User/UserRepository.php
+    entry_route: /super-admin/user
+    user_interactions:
+      - View list of users
+      - Create new user account
+      - Edit user details
+      - Delete user account
+    api_calls:
+      - method: POST
+        endpoint: /super-admin/store-user
+      - method: PUT
+        endpoint: /super-admin/update-user/{id}
+      - method: DELETE
+        endpoint: /super-admin/delete-user/{id}
+    auth_required: true
+
+  - name: Immunization Export
+    description: Export immunization data filtered by various criteria
+    files:
+      - app/Http/Controllers/ExportImunisasiController.php
+    entry_route: /admin/export-imunisasi
+    user_interactions:
+      - View immunization data in datatable
+      - Apply filters
+      - Download export file
+    api_calls:
+      - method: GET
+        endpoint: /admin/export-imunisasi/get-data
+      - method: GET
+        endpoint: /admin/export-imunisasi/download
+    auth_required: true
+
+known_limitations:
+  - issue: DataTables loaded via AJAX — initial page load shows empty table until AJAX fires
+    location: resources/views/admin/anak/index.blade.php
+    impact: Test may see empty table on initial load before AJAX completes
+  - issue: Geographic dropdowns (Kelurahan, Puskesmas, Posyandu, RT) are dependent — must select parent first
+    location: resources/views/admin/anak/create.blade.php
+    impact: Form cannot be fully filled without sequential dropdown selection
+  - issue: Z-score calculation depends on WHO reference data in database
+    location: app/Helpers/helpers.php
+    impact: Z-score values only appear if reference data exists in z_score table
+  - issue: Map dashboard requires Leaflet.js CDN and correct geo-coordinate data
+    location: resources/views/admin/map/
+    impact: Map may not render if CDN unavailable or geo-data missing

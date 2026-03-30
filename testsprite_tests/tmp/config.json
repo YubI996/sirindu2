@@ -1,0 +1,20 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:80",
+  "loginUser": "dinkes@sirindu.go.id",
+  "loginPassword": "Sirindu@2026",
+  "executionArgs": {
+    "projectName": "sirindu",
+    "projectPath": "d:\\apps\\laragon\\www\\sirindu",
+    "testIds": [],
+    "additionalInstruction": "Aplikasi ini adalah Laravel 12 dengan autentikasi berbasis session. Login menggunakan email dan password. Kredensial admin test dapat menggunakan user yang ada di database (cek seeder). URL login ada di /login. Setelah login berhasil redirect ke /admin/home. Semua route /admin/* memerlukan autentikasi.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-pN_LKAM6qT9DOoxLHFQG7fX5RQn9fWaWK6wGtV3OHiS1QJkxYFLKsdwWYyZn-pfjC_4GRNVDrxdok-UBjqWJuQ5SGsss5okWzUnJ9Y-g5GAn_bc6QlK9UDilCkSYL4QIDzw"
+    }
+  },
+  "serverPort": 58047,
+  "proxy": "http://3f34bd68-dc67-4e4e-a4e4-a9a4e0da1355:Ox1de9pK4TvuTB60UCAbwaXjDPssJ1wz@tun.testsprite.com:8080"
+}
