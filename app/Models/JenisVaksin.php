@@ -20,12 +20,18 @@ class JenisVaksin extends Model
         'usia_pemberian_max',
         'interval_hari',
         'keterangan',
+        'id_kelompok_vaksin',
         'aktif',
     ];
 
     protected $casts = [
         'aktif' => 'boolean',
     ];
+
+    public function kelompokVaksin()
+    {
+        return $this->belongsTo(KelompokVaksin::class, 'id_kelompok_vaksin', 'id');
+    }
 
     public function imunisasi()
     {

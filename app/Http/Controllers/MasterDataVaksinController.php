@@ -21,9 +21,18 @@ class MasterDataVaksinController extends Controller
 
     public function getData(Request $request)
     {
-        $query = JenisVaksin::withTrashed();
+        $query = JenisVaksin::withTrashed()->with('kelompokVaksin');
 
         return DataTables::of($query)
+            ->addColumn('kelompok_badge', function ($vaksin) {
+                $kelompok = $vaksin->kelompokVaksin;
+                if (!$kelompok) {
+                    return '<span class="badge bg-secondary">-</span>';
+                }
+                $colors = ['IDL' => 'bg-primary', 'IBL' => 'bg-info', 'ISL' => 'bg-success'];
+                $color = $colors[$kelompok->kode] ?? 'bg-secondary';
+                return '<span class="badge ' . $color . '">' . e($kelompok->kode) . '</span>';
+            })
             ->addColumn('status_badge', function ($vaksin) {
                 if ($vaksin->trashed()) {
                     return '<span class="badge bg-danger">Dihapus</span>';
@@ -42,7 +51,7 @@ class MasterDataVaksinController extends Controller
                 $deleteBtn = '<button class="btn btn-sm btn-danger btn-delete" data-id="' . $vaksin->id . '" title="Hapus"><i class="fa fa-trash"></i></button>';
                 return '<div class="btn-group">' . $editBtn . $toggleBtn . $deleteBtn . '</div>';
             })
-            ->rawColumns(['status_badge', 'action'])
+            ->rawColumns(['kelompok_badge', 'status_badge', 'action'])
             ->make(true);
     }
 

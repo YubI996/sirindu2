@@ -25,7 +25,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
     {
         return [
             // Category A: Patient Identity (Required fields)
-            'no_registrasi' => 'nullable|string|max:50|unique:surveillance_cases,no_registrasi',
+            // no_registrasi is auto-generated in SurveillanceRepository::storeCase()
             'nik' => 'required|string|size:16',
             'nama_lengkap' => 'required|string|max:255',
             'tanggal_lahir' => 'required|date|before:today',

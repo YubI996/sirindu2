@@ -184,6 +184,7 @@
                     <tr>
                         <th>Kode</th>
                         <th>Nama</th>
+                        <th>Kelompok</th>
                         <th>Kategori</th>
                         <th>Usia Min (hari)</th>
                         <th>Usia Max (hari)</th>
@@ -326,6 +327,7 @@ $(document).ready(function() {
         columns: [
             { data: 'kode', name: 'kode' },
             { data: 'nama', name: 'nama' },
+            { data: 'kelompok_badge', name: 'kelompok_vaksin.kode', orderable: false },
             { data: 'kategori', name: 'kategori' },
             { data: 'usia_pemberian_min', name: 'usia_pemberian_min', render: function(d) { return d !== null ? d : '-'; } },
             { data: 'usia_pemberian_max', name: 'usia_pemberian_max', render: function(d) { return d !== null ? d : '-'; } },

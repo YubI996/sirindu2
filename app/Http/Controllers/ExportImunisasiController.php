@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\AgregatImunisasiExport;
 use App\Exports\ImunisasiExport;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
@@ -110,6 +111,21 @@ class ExportImunisasiController extends Controller
             $request->kelurahan,
             $request->antigen,
             $request->status
+        );
+
+        return Excel::download($export, $export->filename());
+    }
+
+    public function downloadAgregat(Request $request)
+    {
+        $request->validate([
+            'bulan' => 'required|integer|min:1|max:12',
+            'tahun' => 'required|integer|min:2020|max:2099',
+        ]);
+
+        $export = new AgregatImunisasiExport(
+            (int) $request->bulan,
+            (int) $request->tahun
         );
 
         return Excel::download($export, $export->filename());

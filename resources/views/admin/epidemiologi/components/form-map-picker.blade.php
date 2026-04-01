@@ -3,7 +3,7 @@
     <div class="col-md-12">
         <div class="form-group">
             <label><i class="fa fa-map-marker-alt"></i> Titik Koordinat Lokasi</label>
-            <small class="form-text text-muted mb-2">Klik pada peta untuk menandai lokasi pasien dan mengisi Kecamatan/Kelurahan/RT otomatis. Marker dapat di-drag untuk menyesuaikan posisi.</small>
+            <small class="form-text text-muted mb-2">Klik pada peta untuk menandai titik koordinat pasien. Alamat KTP (Kecamatan/Kelurahan/RT) diisi manual melalui dropdown di atas.</small>
 
             <div id="mapPickerContainer" style="position: relative;">
                 <div id="mapPicker" style="height: 350px; width: 100%; border: 1px solid #ced4da; border-radius: 4px;"></div>
@@ -29,12 +29,6 @@
                         <input type="text" id="lngDisplay" class="form-control form-control-sm" readonly placeholder="Belum ditandai">
                     </div>
                 </div>
-            </div>
-
-            <div id="mapLocationStatus" class="mt-2" style="display: none;">
-                <small>
-                    <i class="fa fa-spinner fa-spin"></i> <span id="mapLocationStatusText">Mencari wilayah...</span>
-                </small>
             </div>
 
             <input type="hidden" name="latitude" id="inputLatitude" value="{{ old('latitude', $case->latitude ?? '') }}">
@@ -162,166 +156,6 @@ $(document).ready(function() {
         })
         .catch(function() {});
 
-    // Point-in-polygon using ray casting algorithm
-    function pointInPolygon(lat, lng, polygon) {
-        var inside = false;
-        for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            var xi = polygon[i][1], yi = polygon[i][0]; // [lng, lat] in geojson
-            var xj = polygon[j][1], yj = polygon[j][0];
-            var intersect = ((yi > lng) !== (yj > lng)) &&
-                (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
-            if (intersect) inside = !inside;
-        }
-        return inside;
-    }
-
-    function findRtAtPoint(lat, lng) {
-        if (!rtGeoJsonData) return null;
-        for (var i = 0; i < rtGeoJsonData.features.length; i++) {
-            var feature = rtGeoJsonData.features[i];
-            var coords = feature.geometry.coordinates;
-            // Polygon can have multiple rings, check outer ring (index 0)
-            if (feature.geometry.type === 'Polygon') {
-                if (pointInPolygon(lat, lng, coords[0])) return feature.properties;
-            } else if (feature.geometry.type === 'MultiPolygon') {
-                for (var p = 0; p < coords.length; p++) {
-                    if (pointInPolygon(lat, lng, coords[p][0])) return feature.properties;
-                }
-            }
-        }
-        return null;
-    }
-
-    // Normalize text for comparison: lowercase, replace hyphens with spaces, trim
-    function normalizeText(str) {
-        return (str || '').toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
-    }
-
-    // Track pending AJAX requests so we can abort on re-click
-    var pendingKelXhr = null;
-    var pendingRtXhr = null;
-
-    function showLocationStatus(text, type) {
-        var el = $('#mapLocationStatus');
-        var textEl = $('#mapLocationStatusText');
-        if (type === 'loading') {
-            el.show().removeClass('text-success text-danger text-warning').addClass('text-info');
-            textEl.html('<i class="fa fa-spinner fa-spin"></i> ' + text);
-        } else if (type === 'success') {
-            el.show().removeClass('text-info text-danger text-warning').addClass('text-success');
-            textEl.html('<i class="fa fa-check-circle"></i> ' + text);
-        } else if (type === 'warning') {
-            el.show().removeClass('text-info text-success text-danger').addClass('text-warning');
-            textEl.html('<i class="fa fa-exclamation-triangle"></i> ' + text);
-        }
-    }
-
-    function hideLocationStatus() {
-        $('#mapLocationStatus').hide();
-    }
-
-    // Auto-fill kecamatan → kelurahan → RT dropdowns from geojson properties
-    function autoFillLocation(properties) {
-        // Abort any pending requests from previous click
-        if (pendingKelXhr) { pendingKelXhr.abort(); pendingKelXhr = null; }
-        if (pendingRtXhr) { pendingRtXhr.abort(); pendingRtXhr = null; }
-
-        if (!properties) {
-            showLocationStatus('Titik di luar wilayah RT yang diketahui', 'warning');
-            return;
-        }
-
-        showLocationStatus('Mengisi Kecamatan / Kelurahan / RT...', 'loading');
-
-        var geoKec = normalizeText(properties.Kecamatan);
-        var geoKel = normalizeText(properties.Kelurahan);
-        var geoRt = parseInt(properties.RT, 10); // "021" → 21
-
-        // Step 1: Find and set Kecamatan
-        var kecSelect = $('#kec');
-        var kecMatched = false;
-        kecSelect.find('option').each(function() {
-            if (normalizeText($(this).text()) === geoKec) {
-                kecSelect.val($(this).val());
-                kecMatched = true;
-                return false;
-            }
-        });
-
-        if (!kecMatched) {
-            showLocationStatus('Kecamatan tidak ditemukan di dropdown', 'warning');
-            return;
-        }
-
-        // Step 2: Load kelurahan → set kelurahan → load RT → set RT
-        var id_kec = kecSelect.val();
-        $('#kel').empty().append('<option value="">== Pilih Kelurahan ==</option>');
-        $('#rt').empty().append('<option value="">== Pilih RT ==</option>');
-
-        pendingKelXhr = $.ajax({
-            url: '{{ route("admin.epidemiologi.getKelurahan", "") }}/' + id_kec,
-            type: "GET",
-            dataType: "json",
-            success: function(data) {
-                pendingKelXhr = null;
-                var kelSelect = $('#kel');
-                kelSelect.empty().append('<option value="">== Pilih Kelurahan ==</option>');
-                $.each(data, function(key, value) {
-                    kelSelect.append('<option value="' + key + '">' + value + '</option>');
-                });
-
-                // Step 3: Find and set Kelurahan
-                var kelMatched = false;
-                kelSelect.find('option').each(function() {
-                    if (normalizeText($(this).text()) === geoKel) {
-                        kelSelect.val($(this).val());
-                        kelMatched = true;
-                        return false;
-                    }
-                });
-
-                if (!kelMatched) {
-                    showLocationStatus('Kelurahan tidak ditemukan di dropdown', 'warning');
-                    return;
-                }
-
-                // Step 4: Load RT → then set RT
-                var id_kel = kelSelect.val();
-                pendingRtXhr = $.ajax({
-                    url: '{{ route("admin.epidemiologi.getRt", "") }}/' + id_kel,
-                    type: "GET",
-                    dataType: "json",
-                    success: function(rtData) {
-                        pendingRtXhr = null;
-                        var rtSelect = $('#rt');
-                        rtSelect.empty().append('<option value="">== Pilih RT ==</option>');
-                        $.each(rtData, function(key, value) {
-                            rtSelect.append('<option value="' + key + '">' + value + '</option>');
-                        });
-
-                        // Step 5: Find and set RT by matching the number prefix
-                        var rtMatched = false;
-                        rtSelect.find('option').each(function() {
-                            var optText = $(this).text();
-                            var optNum = parseInt(optText, 10);
-                            if (!isNaN(optNum) && optNum === geoRt) {
-                                rtSelect.val($(this).val());
-                                rtMatched = true;
-                                return false;
-                            }
-                        });
-
-                        if (rtMatched) {
-                            showLocationStatus('Kec. ' + properties.Kecamatan + ' / Kel. ' + properties.Kelurahan + ' / RT ' + geoRt, 'success');
-                        } else {
-                            showLocationStatus('RT ' + geoRt + ' tidak ditemukan di dropdown', 'warning');
-                        }
-                    }
-                });
-            }
-        });
-    }
-
     var marker = null;
 
     function setMarker(lat, lng) {
@@ -333,7 +167,6 @@ $(document).ready(function() {
             marker.on('dragend', function(e) {
                 var pos = e.target.getLatLng();
                 updateCoordinates(pos.lat, pos.lng);
-                autoFillLocation(findRtAtPoint(pos.lat, pos.lng));
             });
         }
         updateCoordinates(lat, lng);
@@ -350,8 +183,6 @@ $(document).ready(function() {
     }
 
     function clearMarker() {
-        if (pendingKelXhr) { pendingKelXhr.abort(); pendingKelXhr = null; }
-        if (pendingRtXhr) { pendingRtXhr.abort(); pendingRtXhr = null; }
         if (marker) {
             pickerMap.removeLayer(marker);
             marker = null;
@@ -361,7 +192,6 @@ $(document).ready(function() {
         $('#latDisplay').val('');
         $('#lngDisplay').val('');
         $('#resetMarkerBtn').hide();
-        hideLocationStatus();
     }
 
     // Place existing marker on edit
@@ -369,10 +199,9 @@ $(document).ready(function() {
         setMarker(parseFloat(existingLat), parseFloat(existingLng));
     }
 
-    // Click on map to place marker
+    // Click on map to place marker (coordinates only, no address auto-fill)
     pickerMap.on('click', function(e) {
         setMarker(e.latlng.lat, e.latlng.lng);
-        autoFillLocation(findRtAtPoint(e.latlng.lat, e.latlng.lng));
     });
 
     // Reset button

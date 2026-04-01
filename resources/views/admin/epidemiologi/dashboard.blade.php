@@ -227,6 +227,26 @@
         </div>
     </section>
 
+    <!-- Charts Row 3: Facility Distribution -->
+    <section aria-labelledby="charts-row3-title" class="row mb-4">
+        <h2 id="charts-row3-title" class="sr-only">Distribusi Kasus Berdasarkan Fasilitas</h2>
+
+        <div class="col-lg-6 mb-3">
+            <article class="card info-card h-100" id="facilityChartCard">
+                <div class="card-header" style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%) !important;">
+                    <h2 id="facility-chart-title">
+                        <i class="fa fa-building" aria-hidden="true"></i> Distribusi Kasus Berdasarkan Lokasi Penularan
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="facilityChart" role="img" aria-label="Grafik distribusi kasus berdasarkan lokasi penularan di fasilitas umum"></canvas>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+
     <!-- Recent Cases Table -->
     <section aria-labelledby="recent-cases-title" class="row">
         <div class="col-lg-12">
@@ -331,6 +351,7 @@ $(document).ready(function() {
     let statusChartInstance = null;
     let trendChartInstance = null;
     let geoChartInstance = null;
+    let facilityChartInstance = null;
 
     // Initial data from server
     let currentData = {
@@ -338,6 +359,7 @@ $(document).ready(function() {
         statusData: @json($statusData),
         trendData: @json($trendData),
         geoData: @json($geoData),
+        facilityData: @json($facilityData ?? []),
     };
 
     function renderAllCharts(data) {
@@ -345,6 +367,7 @@ $(document).ready(function() {
         renderStatusChart(data.statusData || []);
         renderTrendChart(data.trendData || []);
         renderGeoChart(data.geoData || []);
+        renderFacilityChart(data.facilityData || []);
     }
 
     function renderDiseaseChart(diseaseData) {
@@ -478,6 +501,43 @@ $(document).ready(function() {
         });
     }
 
+    function renderFacilityChart(facilityData) {
+        if (facilityChartInstance) facilityChartInstance.destroy();
+
+        var canvas = document.getElementById('facilityChart');
+        if (!facilityData || facilityData.length === 0) {
+            facilityChartInstance = new Chart(canvas, {
+                type: 'bar',
+                data: { labels: ['Tidak ada data'], datasets: [{ data: [0], backgroundColor: chartColors.secondary }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+            return;
+        }
+
+        var labels = facilityData.map(function(item) { return item.kategori; });
+        var counts = facilityData.map(function(item) { return item.total; });
+
+        facilityChartInstance = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Jumlah Kasus',
+                    data: counts,
+                    backgroundColor: barColors.slice(0, labels.length),
+                    borderWidth: 0,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
     function updateStats(stats) {
         $('#statTotal').text(stats.total_cases);
         $('#statSuspected').text(stats.suspected_cases);
@@ -520,7 +580,7 @@ $(document).ready(function() {
     }
 
     function setLoading(on) {
-        var sections = ['#statsSection', '#diseaseChartCard', '#statusChartCard', '#trendChartCard', '#geoChartCard', '#recentCasesCard'];
+        var sections = ['#statsSection', '#diseaseChartCard', '#statusChartCard', '#trendChartCard', '#geoChartCard', '#facilityChartCard', '#recentCasesCard'];
         sections.forEach(function(s) {
             if (on) $(s).addClass('dashboard-loading');
             else $(s).removeClass('dashboard-loading');

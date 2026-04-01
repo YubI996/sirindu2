@@ -7,6 +7,7 @@ use App\Http\Requests\Epidemiologi\StoreSurveillanceCaseRequest;
 use App\Http\Requests\Epidemiologi\UpdateSurveillanceCaseRequest;
 use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
+use App\Models\LokasiPenularanMaster;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Rt;
@@ -16,6 +17,7 @@ use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
 class EpidemiologiController extends Controller
@@ -106,12 +108,13 @@ class EpidemiologiController extends Controller
         }
         $recentCases = $recentQuery->orderBy('created_at', 'desc')->limit(10)->get();
 
-        $trendData   = $this->surveillanceRepository->getCasesTrend(12, $faskesScope, $diseaseId);
-        $diseaseData = $this->surveillanceRepository->getCasesByDisease($faskesScope, $diseaseId);
-        $statusData  = $this->surveillanceRepository->getCasesByStatus($faskesScope, $diseaseId);
-        $geoData     = $this->surveillanceRepository->getCasesByGeography('kecamatan', $faskesScope, $diseaseId);
+        $trendData    = $this->surveillanceRepository->getCasesTrend(12, $faskesScope, $diseaseId);
+        $diseaseData  = $this->surveillanceRepository->getCasesByDisease($faskesScope, $diseaseId);
+        $statusData   = $this->surveillanceRepository->getCasesByStatus($faskesScope, $diseaseId);
+        $geoData      = $this->surveillanceRepository->getCasesByGeography('kecamatan', $faskesScope, $diseaseId);
+        $facilityData = $this->surveillanceRepository->getCasesByFacilityType($faskesScope, $diseaseId);
 
-        return compact('stats', 'recentCases', 'trendData', 'diseaseData', 'statusData', 'geoData');
+        return compact('stats', 'recentCases', 'trendData', 'diseaseData', 'statusData', 'geoData', 'facilityData');
     }
 
     /**
@@ -593,9 +596,9 @@ class EpidemiologiController extends Controller
     }
 
     /**
-     * Export single case to PDF
+     * Export single case to PDF (MR-01 form)
      */
-    public function exportPdf($id)
+    public function exportPdfMR01($id)
     {
         $case = SurveillanceCase::with([
             'jenisKasus',
@@ -607,10 +610,14 @@ class EpidemiologiController extends Controller
 
         $this->authorizeFaskesAccess($case);
 
-        // For now, return a print-friendly view
-        // Later can be enhanced with PDF library like DomPDF or wkhtmltopdf
+        $disease = $case->jenisKasus;
 
-        return view('admin.epidemiologi.print', compact('case'));
+        $pdf = Pdf::loadView('admin.epidemiologi.pdf.formulir-mr01', compact('case', 'disease'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'MR01_' . ($case->no_registrasi ?? $case->id) . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     // ==================== PRIVATE HELPERS ====================
@@ -629,6 +636,57 @@ class EpidemiologiController extends Controller
                 'Anda tidak memiliki izin mengakses kasus dari faskes lain.'
             );
         }
+    }
+
+    // ==================== LOKASI PENULARAN ====================
+
+    /**
+     * Get lokasi penularan for searchable dropdown (AJAX)
+     */
+    public function getLokasiPenularan(Request $request)
+    {
+        $search = $request->get('q', '');
+
+        $query = LokasiPenularanMaster::orderBy('kategori')->orderBy('nama');
+
+        if ($search) {
+            $query->where('nama', 'like', "%{$search}%");
+        }
+
+        $results = $query->get()->groupBy('kategori')->map(function ($items, $kategori) {
+            return [
+                'text' => $kategori,
+                'children' => $items->map(function ($item) {
+                    return ['id' => $item->nama, 'text' => $item->nama];
+                })->values(),
+            ];
+        })->values();
+
+        return response()->json(['results' => $results]);
+    }
+
+    /**
+     * Store a new custom lokasi penularan
+     */
+    public function storeLokasiPenularan(Request $request)
+    {
+        $validated = $request->validate([
+            'nama' => 'required|string|max:255',
+            'kategori' => 'required|in:Sekolah,Tempat Kerja,Gym,Tempat Ibadah,Lainnya',
+        ]);
+
+        $lokasi = LokasiPenularanMaster::create([
+            'nama' => $validated['nama'],
+            'kategori' => $validated['kategori'],
+            'is_custom' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'id' => $lokasi->nama,
+            'text' => $lokasi->nama,
+            'message' => 'Lokasi penularan berhasil ditambahkan',
+        ]);
     }
 
     /**

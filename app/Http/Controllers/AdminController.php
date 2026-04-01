@@ -1977,6 +1977,31 @@ All Admin Controller
                 }
             }
 
+            // Alert 4: Kejar vaksin status (catch-up immunization)
+            $kejarStatus = $child->statusKejarVaksin();
+            $childData['kejar_idl'] = $kejarStatus['kejar_idl'];
+            $childData['kejar_ibl'] = $kejarStatus['kejar_ibl'];
+
+            if ($kejarStatus['kejar_idl']) {
+                $childAlerts[] = [
+                    'type' => 'danger',
+                    'icon' => 'fa-exclamation-triangle',
+                    'message' => 'Kejar IDL - imunisasi dasar belum lengkap',
+                    'category' => 'kejar_vaksin'
+                ];
+                $riskScore += 15;
+            }
+
+            if ($kejarStatus['kejar_ibl']) {
+                $childAlerts[] = [
+                    'type' => 'warning',
+                    'icon' => 'fa-exclamation-triangle',
+                    'message' => 'Kejar IBL - imunisasi booster belum lengkap',
+                    'category' => 'kejar_vaksin'
+                ];
+                $riskScore += 10;
+            }
+
             // Calculate risk level
             if ($riskScore >= 50) {
                 $childData['risk_level'] = 'high';

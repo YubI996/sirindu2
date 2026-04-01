@@ -5,6 +5,8 @@ namespace App\Repositories\Admin\Epidemiologi;
 use App\Repositories\Admin\Core\Epidemiologi\SurveillanceRepositoryInterface;
 use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
+use App\Models\EpidCounter;
+use App\Models\LokasiPenularanMaster;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -84,8 +86,42 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             $data['faskes_type'] = Auth::user()->faskes_type;
             $data['id_faskes'] = Auth::user()->getFaskesId();
 
+            // Auto-generate nomor epidemiologi
+            $data['no_registrasi'] = $this->generateNoRegistrasi($data['id_jenis_kasus']);
+
             return SurveillanceCase::create($data);
         });
+    }
+
+    /**
+     * Generate nomor registrasi epidemiologi.
+     * Format: [prefix]-1710[YY][NNN] or 1710[YY][NNN] for AFP/Polio.
+     */
+    private function generateNoRegistrasi(int $idJenisKasus): string
+    {
+        $jenisKasus = JenisKasusEpidemiologi::findOrFail($idJenisKasus);
+        $kodePenyakit = $jenisKasus->kode_penyakit;
+
+        $prefixMap = [
+            'CAMPAK_RUBELLA' => 'C',
+            'DIFTERI_OBS' => 'D',
+            'PERTUSIS' => 'P',
+            'TETANUS_NEO' => 'TN',
+            // AFP has no prefix
+        ];
+
+        $tahun = now()->year;
+        $yy = substr((string) $tahun, -2);
+        $sequence = EpidCounter::getNextSequence($tahun);
+        $nnn = str_pad($sequence, 3, '0', STR_PAD_LEFT);
+
+        $baseNumber = "1710{$yy}{$nnn}";
+
+        if (!isset($prefixMap[$kodePenyakit])) {
+            return $baseNumber;
+        }
+
+        return $prefixMap[$kodePenyakit] . '-' . $baseNumber;
     }
 
     /**
@@ -237,6 +273,41 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         return $query->select('status_kasus', DB::raw('count(*) as total'))
             ->groupBy('status_kasus')
             ->get();
+    }
+
+    /**
+     * Get cases grouped by facility type (lokasi penularan category).
+     */
+    public function getCasesByFacilityType(?array $faskesScope = null, ?int $diseaseId = null)
+    {
+        $query = $this->scopedQueryFromArray($faskesScope)
+            ->whereNotNull('lokasi_penularan')
+            ->where('lokasi_penularan', '!=', '');
+
+        if ($diseaseId) {
+            $query->where('id_jenis_kasus', $diseaseId);
+        }
+
+        $cases = $query->select('lokasi_penularan', DB::raw('count(*) as total'))
+            ->groupBy('lokasi_penularan')
+            ->get();
+
+        // Map lokasi_penularan text to kategori from master table
+        $masterLookup = LokasiPenularanMaster::pluck('kategori', 'nama');
+
+        $grouped = [];
+        foreach ($cases as $case) {
+            $kategori = $masterLookup[$case->lokasi_penularan] ?? 'Lainnya';
+            if (!isset($grouped[$kategori])) {
+                $grouped[$kategori] = 0;
+            }
+            $grouped[$kategori] += $case->total;
+        }
+
+        // Convert to collection format matching other chart methods
+        return collect($grouped)->map(function ($total, $kategori) {
+            return ['kategori' => $kategori, 'total' => $total];
+        })->sortByDesc('total')->values();
     }
 
     /**

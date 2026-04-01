@@ -91,15 +91,105 @@
     <div class="col-md-8">
         <div class="form-group">
             <label>Lokasi Penularan</label>
-            <input type="text" name="lokasi_penularan" class="form-control"
-                   value="{{ old('lokasi_penularan', $case->lokasi_penularan ?? '') }}">
+            <select name="lokasi_penularan" id="lokasi_penularan" class="form-control" style="width: 100%;">
+                <option value="">-- Pilih atau cari lokasi --</option>
+                @if(old('lokasi_penularan', $case->lokasi_penularan ?? ''))
+                    <option value="{{ old('lokasi_penularan', $case->lokasi_penularan ?? '') }}" selected>
+                        {{ old('lokasi_penularan', $case->lokasi_penularan ?? '') }}
+                    </option>
+                @endif
+            </select>
+            <small class="form-text text-muted">
+                Cari lokasi atau <a href="#" id="btnTambahLokasi">tambah lokasi baru</a>
+            </small>
         </div>
     </div>
 </div>
 
+{{-- Modal Tambah Lokasi Penularan --}}
+<div class="modal fade" id="modalTambahLokasi" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Tambah Lokasi Penularan Baru</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nama Lokasi <span class="text-danger">*</span></label>
+                    <input type="text" id="lokasiBaruNama" class="form-control" placeholder="Nama lokasi">
+                </div>
+                <div class="form-group">
+                    <label>Kategori <span class="text-danger">*</span></label>
+                    <select id="lokasiBaruKategori" class="form-control">
+                        <option value="Sekolah">Sekolah</option>
+                        <option value="Tempat Kerja">Tempat Kerja</option>
+                        <option value="Gym">Gym</option>
+                        <option value="Tempat Ibadah">Tempat Ibadah</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="btnSimpanLokasi">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('css')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@endpush
+
 @push('js')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
+    // Select2 for lokasi penularan
+    $('#lokasi_penularan').select2({
+        ajax: {
+            url: '{{ route("admin.epidemiologi.getLokasiPenularan") }}',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) { return { q: params.term }; },
+            processResults: function(data) { return data; },
+            cache: true
+        },
+        placeholder: '-- Pilih atau cari lokasi --',
+        allowClear: true,
+        minimumInputLength: 0,
+        width: '100%'
+    });
+
+    // Open tambah lokasi modal
+    $('#btnTambahLokasi').on('click', function(e) {
+        e.preventDefault();
+        $('#lokasiBaruNama').val('');
+        $('#modalTambahLokasi').modal('show');
+    });
+
+    // Save new lokasi
+    $('#btnSimpanLokasi').on('click', function() {
+        var nama = $('#lokasiBaruNama').val().trim();
+        var kategori = $('#lokasiBaruKategori').val();
+        if (!nama) { alert('Nama lokasi wajib diisi'); return; }
+
+        $.ajax({
+            url: '{{ route("admin.epidemiologi.storeLokasiPenularan") }}',
+            type: 'POST',
+            data: { _token: '{{ csrf_token() }}', nama: nama, kategori: kategori },
+            success: function(response) {
+                $('#modalTambahLokasi').modal('hide');
+                var option = new Option(response.text, response.id, true, true);
+                $('#lokasi_penularan').append(option).trigger('change');
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON ? xhr.responseJSON.message : 'Gagal menyimpan lokasi');
+            }
+        });
+    });
+
     // Date validations
     $('#tanggal_onset').on('change', function() {
         var onsetDate = $(this).val();

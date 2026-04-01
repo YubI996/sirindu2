@@ -226,6 +226,57 @@
         </div>
     </div>
 
+    {{-- Export Agregat Card --}}
+    <div class="st-card">
+        <div class="st-card__header" style="background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);">
+            <h3 class="st-card__header-title">
+                <span class="material-symbols-outlined">table_chart</span>
+                Export Agregat per Kelurahan
+            </h3>
+        </div>
+        <div class="st-card__body">
+            <p style="font-size: 0.8125rem; color: var(--st-text-muted); margin-bottom: 16px; font-weight: 500;">
+                Export data agregat imunisasi per kelurahan dengan rincian per vaksin dan per kelompok (IDL/IBL/ISL) dalam format Excel.
+            </p>
+            <div class="row align-items-end">
+                <div class="col-md-3">
+                    <div class="st-form-group">
+                        <label for="agregatBulan">Bulan</label>
+                        <select id="agregatBulan">
+                            <option value="">-- Pilih Bulan --</option>
+                            @php
+                                $bulanNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                            @endphp
+                            @foreach($bulanNames as $idx => $namaBulan)
+                                <option value="{{ $idx + 1 }}">{{ $namaBulan }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="st-form-group">
+                        <label for="agregatTahun">Tahun</label>
+                        <select id="agregatTahun">
+                            <option value="">-- Pilih Tahun --</option>
+                            @for($y = date('Y'); $y >= 2020; $y--)
+                                <option value="{{ $y }}">{{ $y }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="st-form-group">
+                        <label>&nbsp;</label>
+                        <button class="st-btn st-btn-primary" id="btnExportAgregat" disabled style="width: 100%;">
+                            <span class="material-symbols-outlined">download</span>
+                            Export Agregat Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Filter Badges (US3) --}}
     <div class="filter-badges" id="filterBadges"></div>
 
@@ -328,6 +379,21 @@ $(document).ready(function() {
         var hasData = totalRecords > 0;
         $('#btnExport').prop('disabled', !hasBulan || !hasData);
     }
+
+    // Export Agregat
+    $('#agregatBulan, #agregatTahun').on('change', function() {
+        var hasBulan = $('#agregatBulan').val() !== '';
+        var hasTahun = $('#agregatTahun').val() !== '';
+        $('#btnExportAgregat').prop('disabled', !hasBulan || !hasTahun);
+    });
+
+    $('#btnExportAgregat').on('click', function() {
+        var params = $.param({
+            bulan: $('#agregatBulan').val(),
+            tahun: $('#agregatTahun').val()
+        });
+        window.location.href = '{{ route("admin.export.imunisasi.downloadAgregat") }}?' + params;
+    });
 
     // US3: Update filter badges
     function updateBadges() {

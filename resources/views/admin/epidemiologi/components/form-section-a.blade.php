@@ -2,10 +2,13 @@
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
-            <label>No. Registrasi <span class="text-danger">*</span></label>
-            <input type="text" name="no_registrasi" class="form-control"
-                   value="{{ old('no_registrasi', $case->no_registrasi ?? $suggestedRegNumber ?? '') }}" readonly required>
-            <small class="form-text text-muted">Nomor registrasi otomatis</small>
+            <label>No. Epid</label>
+            @if(isset($case) && $case->no_registrasi)
+                <input type="text" class="form-control" value="{{ $case->no_registrasi }}" readonly>
+            @else
+                <input type="text" class="form-control" value="" readonly placeholder="Otomatis di-generate saat simpan">
+            @endif
+            <small class="form-text text-muted">Nomor epidemiologi otomatis</small>
         </div>
     </div>
     <div class="col-md-4">
@@ -184,7 +187,7 @@ $(document).ready(function() {
 
         if (id_kec) {
             $.ajax({
-                url: '{{ route("admin.epidemiologi.getKelurahan", "") }}/' + id_kec,
+                url: '{{ url("admin/epidemiologi/get-kelurahan") }}/' + id_kec,
                 type: "GET",
                 dataType: "json",
                 success: function(data) {
@@ -203,7 +206,7 @@ $(document).ready(function() {
 
         if (id_kel) {
             $.ajax({
-                url: '{{ route("admin.epidemiologi.getRt", "") }}/' + id_kel,
+                url: '{{ url("admin/epidemiologi/get-rt") }}/' + id_kel,
                 type: "GET",
                 dataType: "json",
                 success: function(data) {
@@ -251,7 +254,7 @@ $(document).ready(function() {
         if (nik.length === 16) {
             nikTimeout = setTimeout(function() {
                 $.ajax({
-                    url: '{{ route("admin.epidemiologi.checkNik", "") }}/' + nik,
+                    url: '{{ url("admin/epidemiologi/check-nik") }}/' + nik,
                     type: 'GET',
                     success: function(response) {
                         if (response.exists) {

@@ -845,6 +845,67 @@ Detail
     </section>
     @endif
 
+    {{-- Vaccination Completeness Status (IDL/IBL/ISL) --}}
+    @php $detailVaksin = $anak->detailKelengkapanVaksin(); @endphp
+    <section aria-labelledby="vaksin-status-title" class="row">
+        <div class="col-12 mb-4">
+            <article class="card info-card">
+                <div class="card-header">
+                    <h2 id="vaksin-status-title">
+                        <span aria-hidden="true" class="icon-copy dw dw-checked mr-2"></span>
+                        Status Kelengkapan Vaksin
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach($detailVaksin as $kode => $detail)
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100" style="border-left: 4px solid {{ $detail['status'] === 'Lengkap' ? 'var(--success-green, #047857)' : 'var(--danger-rose, #be123c)' }};">
+                                <div class="card-body py-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h5 class="mb-0" style="font-weight: 700;">{{ $kode }}</h5>
+                                        @if($detail['status'] === 'Lengkap')
+                                            <span class="badge badge-accessible-success">Lengkap</span>
+                                        @else
+                                            <span class="badge badge-accessible-danger">Belum Lengkap</span>
+                                        @endif
+                                    </div>
+                                    <p class="mb-1" style="font-size: 0.85rem; color: var(--text-muted, #4b5563);">{{ $detail['nama'] }}</p>
+                                    <p class="mb-1" style="font-size: 0.85rem;">
+                                        <strong>{{ $detail['received'] }}</strong> / {{ $detail['required'] }} vaksin
+                                    </p>
+                                    @if(count($detail['missing']) > 0)
+                                        <div style="font-size: 0.8rem; color: var(--danger-rose, #be123c);">
+                                            Belum: {{ implode(', ', $detail['missing']) }}
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                    @php $kejarStatus = $anak->statusKejarVaksin(); @endphp
+                    @if($kejarStatus['kejar_idl'] || $kejarStatus['kejar_ibl'])
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            @if($kejarStatus['kejar_idl'])
+                                <span class="badge badge-accessible-danger mr-2" style="font-size: 0.85rem; padding: 6px 12px;">
+                                    <i class="fa fa-exclamation-triangle mr-1" aria-hidden="true"></i> Kejar IDL
+                                </span>
+                            @endif
+                            @if($kejarStatus['kejar_ibl'])
+                                <span class="badge badge-accessible-warning mr-2" style="font-size: 0.85rem; padding: 6px 12px;">
+                                    <i class="fa fa-exclamation-triangle mr-1" aria-hidden="true"></i> Kejar IBL
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </article>
+        </div>
+    </section>
+
     {{-- Immunization Records --}}
     <section aria-labelledby="immunization-title" class="row">
         <div class="col-12 mb-4">

@@ -146,6 +146,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.export.imunisasi.getData');
         Route::get('download', [App\Http\Controllers\ExportImunisasiController::class, 'download'])
              ->name('admin.export.imunisasi.download');
+        Route::get('download-agregat', [App\Http\Controllers\ExportImunisasiController::class, 'downloadAgregat'])
+             ->name('admin.export.imunisasi.downloadAgregat');
     });
 
     /*------------------------------------------
@@ -188,10 +190,16 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         Route::get('check-nik/{nik}', [App\Http\Controllers\EpidemiologiController::class, 'checkNik'])
              ->name('admin.epidemiologi.checkNik');
 
+        // Lokasi Penularan
+        Route::get('api/lokasi-penularan', [App\Http\Controllers\EpidemiologiController::class, 'getLokasiPenularan'])
+             ->name('admin.epidemiologi.getLokasiPenularan');
+        Route::post('api/lokasi-penularan', [App\Http\Controllers\EpidemiologiController::class, 'storeLokasiPenularan'])
+             ->name('admin.epidemiologi.storeLokasiPenularan');
+
         // Exports
         Route::get('export-excel', [App\Http\Controllers\EpidemiologiController::class, 'exportExcel'])
              ->name('admin.epidemiologi.exportExcel');
-        Route::get('export-pdf/{id}', [App\Http\Controllers\EpidemiologiController::class, 'exportPdf'])
+        Route::get('export-pdf/{id}', [App\Http\Controllers\EpidemiologiController::class, 'exportPdfMR01'])
              ->name('admin.epidemiologi.exportPdf');
     });
 });
