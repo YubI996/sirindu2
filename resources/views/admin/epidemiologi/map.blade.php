@@ -163,6 +163,58 @@
         </div>
     </div>
 
+    {{-- Panel: Kasus RT Tidak Terdefinisi — hanya muncul saat layer RT aktif --}}
+    <div id="undefined-rt-panel" class="alert alert-warning mt-3" style="display:none;">
+        <i class="fa fa-exclamation-triangle"></i>
+        <strong>Kasus dengan RT Tidak Terdefinisi:</strong>
+        <span id="undefined-rt-count">0</span> kasus tidak dapat ditampilkan di peta RT karena data RT tidak tercatat.
+        Kasus-kasus ini tetap terhitung di layer <strong>Kelurahan</strong> dan <strong>Kecamatan</strong>.
+        <button type="button" class="btn btn-sm btn-warning ml-2" id="btn-show-undefined-rt"
+                onclick="showUndefinedRtCases()">
+            <i class="fa fa-list"></i> Lihat Daftar
+        </button>
+    </div>
+
+    {{-- Modal: Daftar kasus RT tidak terdefinisi --}}
+    <div class="modal fade" id="undefinedRtModal" tabindex="-1" role="dialog" aria-labelledby="undefinedRtModalLabel" aria-modal="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="undefinedRtModalLabel">
+                        <i class="fa fa-exclamation-triangle"></i> Kasus dengan RT Tidak Terdefinisi
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Tutup">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-2">
+                        Kasus berikut diimpor dari Excel namun data RT tidak ditemukan di master data atau tidak diisi.
+                        Kasus ini tetap tercatat dalam sistem dan terhitung di laporan per kelurahan/kecamatan.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered" id="undefined-rt-table">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>No. Reg</th>
+                                    <th>Nama</th>
+                                    <th>Kelurahan</th>
+                                    <th>Penyakit</th>
+                                    <th>Status</th>
+                                    <th>Tgl. Onset</th>
+                                </tr>
+                            </thead>
+                            <tbody id="undefined-rt-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Instructions -->
     <div class="alert alert-info mt-3">
         <i class="fa fa-lightbulb"></i> <strong>Cara Penggunaan:</strong>
@@ -171,6 +223,7 @@
             <li>Klik pada wilayah untuk melihat detail kasus</li>
             <li>Gunakan filter untuk menyaring data berdasarkan penyakit, status, atau periode waktu</li>
             <li>Warna wilayah menunjukkan kepadatan kasus (semakin merah = semakin banyak kasus)</li>
+            <li>Saat layer <strong>RT</strong> aktif, kasus tanpa data RT ditampilkan dalam panel peringatan di bawah peta</li>
         </ul>
     </div>
 </div>
@@ -588,7 +641,45 @@ function switchLayer(layerType) {
     document.getElementById('legend_title').textContent = 'Legenda Kepadatan Kasus per ' + labels[layerType];
     document.getElementById('layer_label').textContent = 'Layer: ' + labels[layerType];
 
+    // Tampilkan/sembunyikan panel kasus RT tidak terdefinisi
+    const rtPanel = document.getElementById('undefined-rt-panel');
+    if (layerType === 'rt' && mapData && (mapData.undefinedRtCount || 0) > 0) {
+        document.getElementById('undefined-rt-count').textContent = mapData.undefinedRtCount;
+        rtPanel.style.display = 'block';
+    } else {
+        rtPanel.style.display = 'none';
+    }
+
     renderCurrentLayer();
+}
+
+function showUndefinedRtCases() {
+    if (!mapData || !mapData.casesByRT) return;
+
+    // Cari grup dengan undefined=true di casesByRT
+    const tbody = document.getElementById('undefined-rt-tbody');
+    tbody.innerHTML = '';
+
+    Object.values(mapData.casesByRT).forEach(function(group) {
+        if (!group.undefined) return;
+        (group.cases || []).forEach(function(c) {
+            const row = document.createElement('tr');
+            row.innerHTML =
+                '<td>' + (c.no_registrasi || '-') + '</td>' +
+                '<td>' + (c.nama || '-') + '</td>' +
+                '<td>' + (c.kelurahan || '-') + '</td>' +
+                '<td>' + (c.disease || '-') + '</td>' +
+                '<td><span class="badge badge-secondary">' + (c.status || '-') + '</span></td>' +
+                '<td>' + (c.tanggal_onset || '-') + '</td>';
+            tbody.appendChild(row);
+        });
+    });
+
+    if (tbody.children.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Tidak ada data</td></tr>';
+    }
+
+    $('#undefinedRtModal').modal('show');
 }
 
 // --- Case markers (individual coordinate points) ---

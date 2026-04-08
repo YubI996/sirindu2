@@ -196,6 +196,12 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         Route::post('api/lokasi-penularan', [App\Http\Controllers\EpidemiologiController::class, 'storeLokasiPenularan'])
              ->name('admin.epidemiologi.storeLokasiPenularan');
 
+        // Imports
+        Route::post('import-excel', [App\Http\Controllers\EpidemiologiController::class, 'importExcel'])
+             ->name('admin.epidemiologi.importExcel');
+        Route::get('import-status', [App\Http\Controllers\EpidemiologiController::class, 'importStatus'])
+             ->name('admin.epidemiologi.importStatus');
+
         // Exports
         Route::get('export-excel', [App\Http\Controllers\EpidemiologiController::class, 'exportExcel'])
              ->name('admin.epidemiologi.exportExcel');
