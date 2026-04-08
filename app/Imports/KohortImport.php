@@ -313,7 +313,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                 }
 
                 $jk = strtoupper(trim((string) ($row[4] ?? '')));
-                $jkValue = in_array($jk, ['L', 'LAKI', 'LAKI-LAKI']) ? 'L' : 'P';
+                // jk kolom INT: 1 = Laki-laki, 0 = Perempuan (sesuai z-score lookup)
+                $jkValue = in_array($jk, ['L', 'LAKI', 'LAKI-LAKI']) ? 1 : 0;
 
                 $imd = $this->parseBoolean($row[18] ?? null);
 
@@ -374,17 +375,20 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                     DataAnak::updateOrCreate(
                         ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglPosy],
                         [
-                            'bln'         => $this->parseIntOrNull($row[$base + 1] ?? null),
-                            'lk'          => $this->parseDecimalOrNull($row[$base + 2] ?? null),
+                            // NOT NULL tanpa default — fallback ke 0/'L' jika kosong
+                            'bln'         => $this->parseIntOrNull($row[$base + 1] ?? null) ?? 0,
+                            'lk'          => $this->parseDecimalOrNull($row[$base + 2] ?? null) ?? 0,
+                            'lla'         => $this->parseDecimalOrNull($row[$base + 4] ?? null) ?? 0,
+                            'bb'          => $this->parseDecimalOrNull($row[$base + 6] ?? null) ?? 0,
+                            'tb'          => $this->parseDecimalOrNull($row[$base + 7] ?? null) ?? 0,
+                            'posisi'      => !empty($row[$base + 10]) ? (string) $row[$base + 10] : 'L',
+                            'id_user'     => $this->userId,
+                            // Nullable fields
                             'hasil_lk'    => !empty($row[$base + 3]) ? (string) $row[$base + 3] : null,
-                            'lla'         => $this->parseDecimalOrNull($row[$base + 4] ?? null),
                             'hasil_lila'  => !empty($row[$base + 5]) ? (string) $row[$base + 5] : null,
-                            'bb'          => $this->parseDecimalOrNull($row[$base + 6] ?? null),
                             'zscore_bb_u' => $this->parseDecimalOrNull($row[$base + 8] ?? null),
                             'zscore_pb_u' => $this->parseDecimalOrNull($row[$base + 9] ?? null),
-                            'posisi'      => !empty($row[$base + 10]) ? (string) $row[$base + 10] : null,
                             'zscore_bb_pb'=> $this->parseDecimalOrNull($row[$base + 11] ?? null),
-                            'tb'          => $this->parseDecimalOrNull($row[$base + 7] ?? null),
                             'pb_meter'    => $this->parseDecimalOrNull($row[$base + 12] ?? null),
                             'imt'         => $this->parseDecimalOrNull($row[$base + 13] ?? null),
                             'imt_u'       => $this->parseDecimalOrNull($row[$base + 14] ?? null),
@@ -453,13 +457,41 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
 
     protected function simplifyError(string $message): string
     {
+        // Coba ekstrak nama kolom dan nilai dari pesan MySQL (Incorrect integer/date/Data too long)
+        // Contoh: "Incorrect integer value: 'xyz' for column 'anak' at row 1"
+        // Contoh: "Data too long for column 'komplikasi_persalinan' at row 1"
+        $extractColumn = function (string $msg): string {
+            if (preg_match("/for column '([^']+)'/i", $msg, $m)) {
+                return " (kolom: {$m[1]})";
+            }
+            return '';
+        };
+
+        $extractValue = function (string $msg): string {
+            if (preg_match("/value:\s*'([^']*)'/i", $msg, $m)) {
+                $val = mb_substr($m[1], 0, 30);
+                return " — nilai: '{$val}'";
+            }
+            return '';
+        };
+
         return match (true) {
-            str_contains($message, 'Data too long')        => 'Data terlalu panjang untuk salah satu kolom.',
-            str_contains($message, 'Incorrect date value') => 'Format tanggal tidak valid.',
-            str_contains($message, 'Incorrect integer')    => 'Format angka tidak valid.',
-            str_contains($message, 'Integrity constraint') => 'Data referensi tidak ditemukan di sistem.',
-            str_contains($message, 'ENUM')                 => 'Nilai pilihan tidak valid untuk salah satu kolom.',
-            default => 'Gagal menyimpan data — periksa isian baris ini.',
+            str_contains($message, 'Data too long') =>
+                'Data terlalu panjang' . $extractColumn($message) . '.',
+
+            str_contains($message, 'Incorrect date value') =>
+                'Format tanggal tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
+
+            str_contains($message, 'Incorrect integer') || str_contains($message, 'Incorrect decimal') =>
+                'Format angka tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
+
+            str_contains($message, 'Integrity constraint') =>
+                'Data referensi tidak ditemukan di sistem' . $extractColumn($message) . '.',
+
+            str_contains($message, 'ENUM') =>
+                'Nilai pilihan tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
+
+            default => 'Gagal menyimpan' . $extractColumn($message) . ' — ' . mb_substr($message, 0, 120),
         };
     }
 
