@@ -17,8 +17,13 @@ use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Imports\Pd3iImport;
+use App\Jobs\ImportPd3iJob;
+use App\Models\ImportLog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EpidemiologiController extends Controller
 {
@@ -192,19 +197,25 @@ class EpidemiologiController extends Controller
             ];
         });
 
-        // Group by RT
+        // Group by RT — kasus tanpa id_rt dikelompokkan sebagai 'Tidak Terdefinisi'
         $casesByRT = $cases->groupBy('id_rt')->map(function ($group) {
             $rt = $group->first()->rt;
+            $rtName = $rt?->name ?? 'Tidak Terdefinisi';
+            $kelurahanName = $group->first()->kelurahan?->name ?? null;
             return [
-                'name' => $rt->name ?? 'Unknown',
+                'name'      => $rtName,
+                'kelurahan' => $kelurahanName,
+                'undefined' => $rt === null,
                 'count' => $group->count(),
                 'cases' => $group->map(function ($case) {
                     return [
-                        'id' => $case->id,
-                        'nama' => $case->nama_lengkap,
-                        'disease' => $case->jenisKasus->nama_penyakit ?? 'Unknown',
-                        'status' => $case->status_kasus,
-                        'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
+                        'id'             => $case->id,
+                        'no_registrasi'  => $case->no_registrasi,
+                        'nama'           => $case->nama_lengkap,
+                        'disease'        => $case->jenisKasus->nama_penyakit ?? '-',
+                        'status'         => $case->status_kasus,
+                        'kelurahan'      => $case->kelurahan?->name ?? '-',
+                        'tanggal_onset'  => $case->tanggal_onset->format('d/m/Y'),
                     ];
                 })->toArray()
             ];
@@ -225,12 +236,16 @@ class EpidemiologiController extends Controller
             ];
         })->values();
 
+        // Hitung kasus tanpa RT (id_rt null) — ditampilkan sebagai catatan di layer RT
+        $undefinedRtCount = $cases->whereNull('id_rt')->count();
+
         return response()->json([
             'casesByKelurahan' => $casesByKelurahan,
             'casesByKecamatan' => $casesByKecamatan,
             'casesByRT' => $casesByRT,
             'caseMarkers' => $caseMarkers,
             'totalCases' => $cases->count(),
+            'undefinedRtCount' => $undefinedRtCount,
         ]);
     }
 
@@ -245,7 +260,11 @@ class EpidemiologiController extends Controller
         $kecamatanList = Kecamatan::all();
         $isFaskes = auth()->user()->isFaskesSurveilans();
 
-        return view('admin.epidemiologi.index', compact('diseases', 'kecamatanList', 'isFaskes'));
+        $importLogs = auth()->user()->isSuperAdmin()
+            ? ImportLog::where('user_id', auth()->id())->latest()->take(5)->get()
+            : collect();
+
+        return view('admin.epidemiologi.index', compact('diseases', 'kecamatanList', 'isFaskes', 'importLogs'));
     }
 
     /**
@@ -505,6 +524,51 @@ class EpidemiologiController extends Controller
             'exists' => $exists,
             'message' => $exists ? 'NIK sudah terdaftar' : 'NIK tersedia'
         ]);
+    }
+
+    // ==================== IMPORT METHODS ====================
+
+    /**
+     * Simpan file Excel PD3I dan antrikan job import di latar belakang.
+     */
+    public function importExcel(Request $request)
+    {
+        abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
+
+        $request->validate([
+            'file_import' => 'required|file|mimes:xlsx,xls|max:20480',
+        ]);
+
+        $file     = $request->file('file_import');
+        $filename = $file->getClientOriginalName();
+        $path     = $file->store('imports/pd3i');
+
+        $log = ImportLog::create([
+            'user_id'   => auth()->id(),
+            'filename'  => $filename,
+            'file_path' => $path,
+            'status'    => 'pending',
+        ]);
+
+        ImportPd3iJob::dispatch($log);
+
+        return redirect()->route('admin.epidemiologi.index')
+            ->with('import_queued', "File \"{$filename}\" telah diterima dan sedang diproses di latar belakang. Cek status import di bawah.");
+    }
+
+    /**
+     * Kembalikan status import log terbaru (untuk polling AJAX).
+     */
+    public function importStatus()
+    {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
+
+        $logs = ImportLog::where('user_id', auth()->id())
+            ->latest()
+            ->take(5)
+            ->get(['id', 'filename', 'status', 'success_count', 'failure_count', 'failures', 'started_at', 'completed_at', 'created_at']);
+
+        return response()->json($logs);
     }
 
     // ==================== EXPORT METHODS ====================

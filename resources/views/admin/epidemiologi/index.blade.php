@@ -495,6 +495,10 @@
                 <span class="material-symbols-outlined">download</span>
                 Export Excel
             </a>
+            <button type="button" class="st-btn st-btn-outline-teal" data-toggle="modal" data-target="#modalImportPd3i" aria-label="Import Excel PD3I">
+                <span class="material-symbols-outlined">upload_file</span>
+                Import Excel PD3I
+            </button>
             @endif
             <a href="{{ route('admin.epidemiologi.create') }}" class="st-btn st-btn-primary" aria-label="Tambah Kasus Baru">
                 <span class="material-symbols-outlined">add</span>
@@ -620,6 +624,123 @@
     </div>
 </div>
 
+{{-- ===== Flash: File Diterima ===== --}}
+@if(session('import_queued'))
+<div class="alert alert-info alert-dismissible fade show mt-3" role="alert">
+    <span class="material-symbols-outlined" style="vertical-align:middle;font-size:1.1rem;">sync</span>
+    {{ session('import_queued') }}
+    <button type="button" class="close" data-dismiss="alert" aria-label="Tutup">&times;</button>
+</div>
+@endif
+
+{{-- ===== Panel Status Import ===== --}}
+@if(!$isFaskes && $importLogs->isNotEmpty())
+<div class="st-card mt-3" id="import-status-panel">
+    <div class="st-card__header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 class="st-card__header-title" style="margin:0;">
+            <span class="material-symbols-outlined">history</span>
+            Status Import PD3I
+        </h3>
+        <span class="small text-muted" id="import-last-refresh"></span>
+    </div>
+    <div class="st-card__body p-0">
+        <table class="table table-sm mb-0" id="import-log-table">
+            <thead class="thead-light">
+                <tr>
+                    <th>File</th>
+                    <th>Status</th>
+                    <th>Berhasil</th>
+                    <th>Dilewati</th>
+                    <th>Waktu Selesai</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($importLogs as $log)
+                <tr data-log-id="{{ $log->id }}" data-status="{{ $log->status }}">
+                    <td class="small">{{ $log->filename }}</td>
+                    <td>
+                        <span class="badge badge-{{ $log->statusColor() }}">{{ $log->statusLabel() }}</span>
+                    </td>
+                    <td>{{ $log->success_count ?? '—' }}</td>
+                    <td>{{ $log->failure_count ?? '—' }}</td>
+                    <td class="small">{{ $log->completed_at ? $log->completed_at->format('d/m/Y H:i') : '—' }}</td>
+                    <td>
+                        @if($log->isDone() && $log->failure_count > 0)
+                        <button class="btn btn-xs btn-outline-warning btn-lihat-error" data-id="{{ $log->id }}" data-failures="{{ htmlspecialchars(json_encode($log->failures), ENT_QUOTES) }}">
+                            Lihat Error
+                        </button>
+                        @elseif($log->isFailed())
+                        <button class="btn btn-xs btn-outline-danger btn-lihat-error" data-id="{{ $log->id }}" data-failures="{{ htmlspecialchars(json_encode($log->failures), ENT_QUOTES) }}">
+                            Lihat Detail
+                        </button>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{{-- Modal detail error --}}
+<div class="modal fade" id="modalErrorDetail" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detail Baris Bermasalah</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <ul id="error-list" class="small mb-0"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- ===== Modal: Import Excel PD3I ===== --}}
+@if(!$isFaskes)
+<div class="modal fade" id="modalImportPd3i" tabindex="-1" role="dialog" aria-labelledby="modalImportPd3iLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalImportPd3iLabel">
+                    <span class="material-symbols-outlined" style="vertical-align:middle;">upload_file</span>
+                    Import Excel PD3I
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span>&times;</span></button>
+            </div>
+            <form action="{{ route('admin.epidemiologi.importExcel') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="file_import" class="form-label fw-semibold">Pilih File Excel PD3I</label>
+                        <input type="file" name="file_import" id="file_import" class="form-control" accept=".xlsx,.xls" required>
+                        <div class="form-text">Format: .xlsx atau .xls. Maksimal ukuran file: 20 MB.</div>
+                    </div>
+                    <div class="alert alert-info small mb-0">
+                        <strong>Catatan:</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Gunakan template Excel PD3I resmi. Data mulai dibaca dari baris ke-3.</li>
+                            <li>Data dengan nomor registrasi yang sama akan di-<em>update</em> otomatis (tidak digandakan).</li>
+                            <li>Baris yang gagal diproses akan dilewati dan ditampilkan sebagai laporan.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="st-btn st-btn-primary">
+                        <span class="material-symbols-outlined">upload</span>
+                        Upload &amp; Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @section('scripts')
@@ -730,5 +851,78 @@ $(document).ready(function() {
         }
     });
 });
+
+@if(!$isFaskes && $importLogs->isNotEmpty())
+// ===== Import Status Polling =====
+(function() {
+    var statusUrl  = '{{ route("admin.epidemiologi.importStatus") }}';
+    var hasActive  = {{ $importLogs->whereIn('status', ['pending', 'processing'])->isNotEmpty() ? 'true' : 'false' }};
+    var pollTimer  = null;
+
+    var statusColors = { pending: 'warning', processing: 'info', done: 'success', failed: 'danger' };
+    var statusLabels = { pending: 'Menunggu', processing: 'Diproses', done: 'Selesai', failed: 'Gagal' };
+
+    function refreshStatus() {
+        $.getJSON(statusUrl, function(logs) {
+            var stillActive = false;
+            logs.forEach(function(log) {
+                var $row = $('tr[data-log-id="' + log.id + '"]');
+                if (!$row.length) return;
+
+                var oldStatus = $row.data('status');
+                if (oldStatus === log.status) return; // tidak berubah
+
+                $row.data('status', log.status);
+                $row.find('.badge')
+                    .removeClass('badge-warning badge-info badge-success badge-danger')
+                    .addClass('badge-' + (statusColors[log.status] || 'secondary'))
+                    .text(statusLabels[log.status] || log.status);
+
+                $row.find('td').eq(2).text(log.success_count !== null ? log.success_count : '—');
+                $row.find('td').eq(3).text(log.failure_count !== null ? log.failure_count : '—');
+                $row.find('td').eq(4).text(log.completed_at ? log.completed_at.substring(0, 16).replace('T', ' ') : '—');
+
+                if (log.status === 'done' && log.failure_count > 0) {
+                    $row.find('td').eq(5).html('<button class="btn btn-xs btn-outline-warning btn-lihat-error" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures) + '\'>Lihat Error</button>');
+                } else if (log.status === 'failed') {
+                    $row.find('td').eq(5).html('<button class="btn btn-xs btn-outline-danger btn-lihat-error" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures) + '\'>Lihat Detail</button>');
+                }
+
+                if (log.status === 'done' && oldStatus !== 'done') {
+                    var msg = log.success_count + ' data berhasil diimpor';
+                    if (log.failure_count > 0) msg += ', ' + log.failure_count + ' baris dilewati';
+                    toastr && toastr.success(msg + '.', 'Import Selesai');
+                } else if (log.status === 'failed' && oldStatus !== 'failed') {
+                    toastr && toastr.error('Import gagal. Lihat detail untuk informasi lebih lanjut.', 'Import Gagal');
+                }
+
+                if (log.status === 'pending' || log.status === 'processing') stillActive = true;
+            });
+
+            $('#import-last-refresh').text('Update: ' + new Date().toLocaleTimeString('id-ID'));
+
+            if (!stillActive && pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        });
+    }
+
+    // Lihat detail error
+    $(document).on('click', '.btn-lihat-error', function() {
+        var failures = $(this).data('failures');
+        if (typeof failures === 'string') { try { failures = JSON.parse(failures); } catch(e) { failures = [failures]; } }
+        var $list = $('#error-list').empty();
+        (failures || []).forEach(function(f) { $list.append('<li>' + $('<span>').text(f).html() + '</li>'); });
+        $('#modalErrorDetail').modal('show');
+    });
+
+    // Start polling jika ada job aktif
+    if (hasActive) {
+        pollTimer = setInterval(refreshStatus, 5000);
+        refreshStatus();
+    }
+})();
+@endif
 </script>
 @endsection
