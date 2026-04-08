@@ -72,6 +72,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('get-rt-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtAnak'])->name('admin.getRtAnak');
     Route::get('get-posyandu-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduAnak'])->name('admin.getPosyanduAnak');
     Route::post('store-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'storeAnak'])->name('admin.storeAnak');
+    Route::post('import-kohort', [App\Http\Controllers\AdminController::class, 'importKohort'])->name('admin.importKohort');
+    Route::get('import-kohort-status', [App\Http\Controllers\AdminController::class, 'importKohortStatus'])->name('admin.importKohortStatus');
     Route::get('edit-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'editAnak'])->name('admin.editAnak');
     Route::get('show-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'showAnak'])->name('admin.showAnak');
     Route::get('chart-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'chartAnak'])->name('admin.chartAnak');
