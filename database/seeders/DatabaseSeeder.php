@@ -9,6 +9,7 @@ use Database\Seeders\UsersTableSeeder;
 use Database\Seeders\PuskesmasTableSeeder;
 use Database\Seeders\PosyanduTableSeeder;
 use Database\Seeders\RtTableSeeder;
+use Database\Seeders\LokasiPenularanSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -37,6 +38,7 @@ class DatabaseSeeder extends Seeder
         $this->call(SurveillanceCaseSeeder::class);
         $this->call(RumahSakitSeeder::class);
         $this->call(RoleUserSeeder::class);
+        $this->call(LokasiPenularanSeeder::class);
 
     }
 }
