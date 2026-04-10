@@ -70,7 +70,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('get-puskesmas-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPuskesmasAnak'])->name('admin.getPuskesmasAnak');
     Route::get('get-posyandu-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduAnak'])->name('admin.getPosyanduAnak');
     Route::get('get-rt-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtAnak'])->name('admin.getRtAnak');
-    Route::get('get-posyandu-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduAnak'])->name('admin.getPosyanduAnak');
+    Route::get('get-rt-by-kel-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtByKelAnak'])->name('admin.getRtByKelAnak');
     Route::post('store-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'storeAnak'])->name('admin.storeAnak');
     Route::post('import-kohort', [App\Http\Controllers\AdminController::class, 'importKohort'])->name('admin.importKohort');
     Route::get('import-kohort-status', [App\Http\Controllers\AdminController::class, 'importKohortStatus'])->name('admin.importKohortStatus');

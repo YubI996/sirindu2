@@ -62,13 +62,13 @@ Anak
                         @if($log->isDone() && $log->failure_count > 0)
                         <button class="btn btn-xs btn-outline-warning btn-lihat-error-kohort"
                             data-id="{{ $log->id }}"
-                            data-failures="{{ htmlspecialchars(json_encode($log->failures), ENT_QUOTES) }}">
+                            data-failures="{{ json_encode($log->failures) }}">
                             Lihat Error
                         </button>
                         @elseif($log->isFailed())
                         <button class="btn btn-xs btn-outline-danger btn-lihat-error-kohort"
                             data-id="{{ $log->id }}"
-                            data-failures="{{ htmlspecialchars(json_encode($log->failures), ENT_QUOTES) }}">
+                            data-failures="{{ json_encode($log->failures) }}">
                             Lihat Detail
                         </button>
                         @endif
@@ -85,11 +85,14 @@ Anak
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Detail Baris Bermasalah</h5>
+                <h5 class="modal-title"><i class="fa fa-exclamation-triangle text-warning mr-1"></i> Detail Baris Bermasalah</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body">
-                <ul id="kohort-error-list" class="small mb-0"></ul>
+            <div class="modal-body p-0">
+                <div class="px-3 pt-3 pb-2 border-bottom">
+                    <small id="kohort-error-count" class="text-muted"></small>
+                </div>
+                <ol id="kohort-error-list" class="small mb-0 px-4 py-3" style="max-height:400px;overflow-y:auto;"></ol>
             </div>
         </div>
     </div>
@@ -306,9 +309,13 @@ Anak
                 $row.find('td').eq(4).text(log.completed_at ? log.completed_at.substring(0, 16).replace('T', ' ') : '—');
 
                 if (log.status === 'done' && log.failure_count > 0) {
-                    $row.find('td').eq(5).html('<button class="btn btn-xs btn-outline-warning btn-lihat-error-kohort" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures) + '\'>Lihat Error</button>');
+                    var $btn = $('<button>').addClass('btn btn-xs btn-outline-warning btn-lihat-error-kohort')
+                        .attr('data-id', log.id).text('Lihat Error').data('failures', log.failures || []);
+                    $row.find('td').eq(5).empty().append($btn);
                 } else if (log.status === 'failed') {
-                    $row.find('td').eq(5).html('<button class="btn btn-xs btn-outline-danger btn-lihat-error-kohort" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures) + '\'>Lihat Detail</button>');
+                    var $btn = $('<button>').addClass('btn btn-xs btn-outline-danger btn-lihat-error-kohort')
+                        .attr('data-id', log.id).text('Lihat Detail').data('failures', log.failures || []);
+                    $row.find('td').eq(5).empty().append($btn);
                 }
 
                 if (log.status === 'done' && oldStatus !== 'done') {
@@ -334,8 +341,17 @@ Anak
     $(document).on('click', '.btn-lihat-error-kohort', function() {
         var failures = $(this).data('failures');
         if (typeof failures === 'string') { try { failures = JSON.parse(failures); } catch(e) { failures = [failures]; } }
+        failures = failures || [];
+
         var $list = $('#kohort-error-list').empty();
-        (failures || []).forEach(function(f) { $list.append('<li>' + $('<span>').text(f).html() + '</li>'); });
+        if (failures.length === 0) {
+            $list.append($('<li class="text-muted">').text('Tidak ada detail error tersedia.'));
+        } else {
+            failures.forEach(function(f) {
+                $list.append($('<li class="mb-1 lh-sm">').text(f));
+            });
+        }
+        $('#kohort-error-count').text('Ditemukan ' + failures.length + ' baris bermasalah.');
         $('#modalKohortErrorDetail').modal('show');
     });
 

@@ -6,9 +6,8 @@ use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
-use App\Models\Kecamatan;
-use App\Models\Kelurahan;
-use App\Models\Rt;
+use App\Services\NikDummyService;
+use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,15 +25,12 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  */
 class KohortImport implements ToCollection, WithStartRow, WithChunkReading
 {
+    use ResolvesWilayah;
+
     protected int $userId;
     protected int $successCount = 0;
     protected array $failures = [];
     protected int $rowOffset = 0;
-
-    /** Cache wilayah — dimuat sekali di konstruktor */
-    protected array $kecamatanCache = [];
-    protected array $kelurahanCache = [];
-    protected array $rtCache = [];
 
     /** Cache jenis vaksin: kode → id */
     protected array $vaksinCache = [];
@@ -69,18 +65,15 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
         'campak booster' => 'MR2',
     ];
 
+    protected NikDummyService $nikService;
+
     public function __construct(int $userId)
     {
         $this->userId = $userId;
+        $this->nikService = new NikDummyService();
 
-        // Pra-muat cache wilayah
-        $this->kecamatanCache = Kecamatan::pluck('id', 'name')->mapWithKeys(
-            fn($id, $name) => [strtoupper($name) => $id]
-        )->toArray();
-
-        $this->kelurahanCache = Kelurahan::pluck('id', 'name')->mapWithKeys(
-            fn($id, $name) => [strtoupper($name) => $id]
-        )->toArray();
+        // Pra-muat cache wilayah (via trait ResolvesWilayah)
+        $this->initWilayahCache();
 
         // Pra-muat cache vaksin: kode → id
         $this->vaksinCache = JenisVaksin::pluck('id', 'kode')->toArray();
@@ -137,51 +130,6 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
     {
         if ($value === null || $value === '') return null;
         return is_numeric($value) ? (int) $value : null;
-    }
-
-    protected function resolveKecamatan(string $name): ?int
-    {
-        $key = strtoupper(trim($name));
-        if (empty($key)) return null;
-
-        if (!isset($this->kecamatanCache[$key])) {
-            $kec = Kecamatan::firstOrCreate(['name' => ucwords(strtolower(trim($name)))]);
-            $this->kecamatanCache[$key] = $kec->id;
-        }
-
-        return $this->kecamatanCache[$key];
-    }
-
-    protected function resolveKelurahan(string $name, ?int $idKec): ?int
-    {
-        $key = strtoupper(trim($name));
-        if (empty($key)) return null;
-
-        if (!isset($this->kelurahanCache[$key])) {
-            $attrs = ['name' => ucwords(strtolower(trim($name)))];
-            if ($idKec) $attrs['id_kecamatan'] = $idKec;
-
-            $kel = Kelurahan::firstOrCreate($attrs);
-            $this->kelurahanCache[$key] = $kel->id;
-        }
-
-        return $this->kelurahanCache[$key];
-    }
-
-    protected function resolveRt(string $name, ?int $idKel): ?int
-    {
-        $key = strtoupper(trim($name));
-        if (empty($key) || !$idKel) return null;
-
-        $cacheKey = $key . '_' . $idKel;
-        if (!array_key_exists($cacheKey, $this->rtCache)) {
-            $rt = Rt::where('id_kelurahan', $idKel)
-                ->where('name', 'like', '%' . trim($name) . '%')
-                ->first();
-            $this->rtCache[$cacheKey] = $rt?->id;
-        }
-
-        return $this->rtCache[$cacheKey];
     }
 
     /**
@@ -306,10 +254,18 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                 // =============================================================
                 // US1: Upsert Anak (identitas)
                 // =============================================================
-                $nikKey = !empty($nik) ? $nik : ('TEMP-' . uniqid());
+                if (!empty($nik)) {
+                    $nikKey = $nik;
+                } else {
+                    // Generate atau temukan NIK dummy terstruktur
+                    $tglLahirStr = $this->parseDate($row[3] ?? null) ?? date('Y-m-d');
+                    $jkStr       = in_array(strtoupper(trim((string) ($row[4] ?? ''))), ['L', 'LAKI', 'LAKI-LAKI']) ? 'L' : 'P';
+                    $kodeWilayah = NikDummyService::DEFAULT_KODE_WILAYAH;
 
-                if (empty($nik)) {
-                    $this->failures[] = "Peringatan baris {$rowNum} (Nama: {$nama}): NIK kosong — data disimpan dengan kunci sementara, tidak bisa diperbarui via import ulang.";
+                    $nikKey = $this->nikService->findExisting($nama, $tglLahirStr, $jkStr)
+                        ?? $this->nikService->generate($kodeWilayah, $tglLahirStr, $jkStr);
+
+                    $this->failures[] = "Info baris {$rowNum} (Nama: {$nama}): NIK kosong — NIK dummy {$nikKey} di-generate otomatis.";
                 }
 
                 $jk = strtoupper(trim((string) ($row[4] ?? '')));

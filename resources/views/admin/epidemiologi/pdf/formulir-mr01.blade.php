@@ -382,5 +382,143 @@
     </table>
 
 </div>
+
+{{-- ===== HALAMAN 2 ===== --}}
+<div class="page" style="page-break-before: always;">
+
+    {{-- Header halaman 2 --}}
+    <div class="header">
+        <div class="mr-code">MR-01 (Hal. 2)</div>
+        @if(file_exists($logoPath))
+            <img src="{{ $logoPath }}" class="logo" alt="Kemenkes RI">
+        @endif
+        <div style="text-align:center; font-size:10pt; font-weight:bold; margin:4px 0 2px;">
+            FORMULIR PENYELIDIKAN EPIDEMIOLOGI PENYAKIT YANG DAPAT DICEGAH DENGAN IMUNISASI (PD3I)
+        </div>
+        <div style="text-align:center; font-size:9pt; margin-bottom:6px;">
+            Nomor: <strong>{{ $case->no_registrasi }}</strong> &nbsp;|&nbsp; Penyakit: <strong>{{ $case->jenisKasus->nama_penyakit ?? '-' }}</strong>
+        </div>
+    </div>
+
+    {{-- Kontak Erat --}}
+    <div class="section-header" style="margin-bottom:4px;">DATA KONTAK ERAT</div>
+    @php $kontakErat = $case->kontakErat ?? collect(); @endphp
+    <table class="data-table" style="font-size:8pt;">
+        <thead>
+            <tr style="background:#f0f0f0; font-weight:bold;">
+                <th style="width:4%; text-align:center;">No</th>
+                <th style="width:20%">Nama</th>
+                <th style="width:12%">Hubungan</th>
+                <th style="width:14%">No. HP</th>
+                <th style="width:22%">Alamat</th>
+                <th style="width:13%">Tgl Kontak Terakhir</th>
+                <th style="width:8%; text-align:center;">Bergejala</th>
+                <th>Catatan</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($kontakErat as $i => $k)
+            <tr>
+                <td style="text-align:center;">{{ $i + 1 }}</td>
+                <td>{{ $k->nama }}</td>
+                <td>{{ $k->hubungan ?? '-' }}</td>
+                <td>{{ $k->no_telepon ?? '-' }}</td>
+                <td>{{ $k->alamat ?? '-' }}</td>
+                <td style="text-align:center;">{{ $k->tanggal_kontak_terakhir ? $k->tanggal_kontak_terakhir->format('d/m/Y') : '-' }}</td>
+                <td style="text-align:center;">{{ $k->ada_gejala ? 'Ya' : 'Tidak' }}</td>
+                <td>{{ $k->catatan ?? '' }}</td>
+            </tr>
+            @empty
+            @for($r = 0; $r < 5; $r++)
+            <tr>
+                <td style="text-align:center;">{{ $r + 1 }}</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            @endfor
+            @endforelse
+        </tbody>
+    </table>
+
+    {{-- Spesimen --}}
+    <div class="section-header" style="margin:8px 0 4px;">DATA SPESIMEN LABORATORIUM</div>
+    @php $spesimenList = $case->spesimen ?? collect(); @endphp
+    <table class="data-table" style="font-size:8pt;">
+        <thead>
+            <tr style="background:#f0f0f0; font-weight:bold;">
+                <th style="width:4%; text-align:center;">No</th>
+                <th style="width:18%">Jenis Spesimen</th>
+                <th style="width:13%">Tgl Ambil</th>
+                <th style="width:13%">Tgl Kirim</th>
+                <th style="width:13%">Tgl Terima Lab</th>
+                <th style="width:15%">Status Pemeriksaan</th>
+                <th>Konfirmasi / Variant</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($spesimenList as $i => $sp)
+            <tr>
+                <td style="text-align:center;">{{ $i + 1 }}</td>
+                <td>{{ $sp->jenis_spesimen }}</td>
+                <td>{{ $sp->tanggal_ambil_spesimen ? $sp->tanggal_ambil_spesimen->format('d/m/Y') : '-' }}</td>
+                <td>{{ $sp->tanggal_kirim_sampel ? $sp->tanggal_kirim_sampel->format('d/m/Y') : '-' }}</td>
+                <td>{{ $sp->tanggal_terima_lab ? $sp->tanggal_terima_lab->format('d/m/Y') : '-' }}</td>
+                <td>{{ $sp->status_pemeriksaan ?? '-' }}</td>
+                <td>{{ $sp->jenisKasusTerkonfirmasi->nama_penyakit ?? '' }}{{ $sp->nama_variant_genotype ? ' / '.$sp->nama_variant_genotype : '' }}</td>
+            </tr>
+            @empty
+            @for($r = 0; $r < 3; $r++)
+            <tr>
+                <td style="text-align:center;">{{ $r + 1 }}</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            </tr>
+            @endfor
+            @endforelse
+        </tbody>
+    </table>
+
+    {{-- Riwayat Imunisasi Per Antigen --}}
+    <div class="section-header" style="margin:8px 0 4px;">RIWAYAT IMUNISASI PER ANTIGEN</div>
+    @php
+        $imunisasiDetail = $case->imunisasi ?? collect();
+        $imunisasiByKe = $imunisasiDetail->keyBy('imunisasi_ke');
+    @endphp
+    <table class="data-table" style="font-size:8pt;">
+        <thead>
+            <tr style="background:#f0f0f0; font-weight:bold;">
+                <th style="width:5%; text-align:center;">No</th>
+                <th style="width:35%">Antigen / Dosis</th>
+                <th style="width:15%; text-align:center;">Diberikan</th>
+                <th style="width:20%">Sumber Informasi</th>
+                <th>Tanggal Imunisasi</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php
+            $antigenPdf = [1 => 'MR1 / DPT-HB-Hib 1 / OPV1', 2 => 'MR2 / DPT-HB-Hib Booster / OPV2', 3 => 'MR3 / DT kelas 1 SD', 4 => 'MMR / TD kelas 2 dan 5', 5 => 'Kampanye / ORI / SUBPIN / PIN'];
+            @endphp
+            @for($ke = 1; $ke <= 5; $ke++)
+            @php $im = $imunisasiByKe->get($ke); @endphp
+            <tr>
+                <td style="text-align:center;">{{ $ke }}</td>
+                <td>{{ $antigenPdf[$ke] }}</td>
+                <td style="text-align:center;">
+                    @if(!$im || $im->diberikan === 'tidak_tahu') Tidak Tahu
+                    @elseif($im->diberikan === 'ya') Ya
+                    @else Tidak
+                    @endif
+                </td>
+                <td>{{ $im->sumber_informasi ?? '' }}</td>
+                <td>{{ isset($im) && $im->tanggal_imunisasi ? $im->tanggal_imunisasi->format('d/m/Y') : '' }}</td>
+            </tr>
+            @endfor
+        </tbody>
+    </table>
+
+    {{-- Footer --}}
+    <div style="margin-top:16px; text-align:right; font-size:8pt; color:#555;">
+        Dicetak: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; {{ $case->nama_pelapor ?? '' }}
+    </div>
+
+</div>
 </body>
 </html>

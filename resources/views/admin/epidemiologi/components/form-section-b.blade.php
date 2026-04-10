@@ -42,10 +42,10 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Wilker Puskesmas</label>
-            <input type="text" name="wilker_puskesmas" class="form-control"
+            <input type="text" name="wilker_puskesmas" id="wilker_puskesmas" class="form-control"
                    value="{{ old('wilker_puskesmas', $case->wilker_puskesmas ?? '') }}"
-                   placeholder="Sesuai lokasi kelurahan kasus">
-            <small class="form-text text-muted">Wilayah kerja Puskesmas sesuai lokasi kelurahan kasus</small>
+                   placeholder="Otomatis dari kelurahan" readonly>
+            <small class="form-text text-muted">Otomatis terisi berdasarkan kelurahan pasien</small>
         </div>
     </div>
     <div class="col-md-4">

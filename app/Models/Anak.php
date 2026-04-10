@@ -56,6 +56,16 @@ class Anak extends Model
     }
 
     /**
+     * Cek apakah NIK anak adalah NIK dummy (digit ke-13 = '9').
+     */
+    public function isDummyNik(): bool
+    {
+        return strlen((string) $this->nik) === 16
+            && isset($this->nik[12])
+            && $this->nik[12] === '9';
+    }
+
+    /**
      * Get vaccination completeness status per kelompok (IDL/IBL/ISL).
      *
      * @return array ['IDL' => 'Lengkap'|'Belum Lengkap', 'IBL' => ..., 'ISL' => ...]
