@@ -516,6 +516,23 @@
             </h3>
         </div>
         <div class="st-card__body">
+            {{-- Filter Wilker (hanya untuk user puskesmas) --}}
+            @if($isFaskes && auth()->user()->faskes_type === 'puskesmas')
+            <div class="mb-3">
+                <label class="font-weight-bold small d-block mb-1">Tampilkan Kasus:</label>
+                <div class="btn-group btn-group-toggle" data-toggle="buttons" role="group" aria-label="Filter mode kasus">
+                    <label class="btn btn-sm btn-outline-primary active" for="filter_wilker">
+                        <input type="radio" name="filter_mode" id="filter_wilker" value="wilker" checked>
+                        <i class="fa fa-map-marker-alt"></i> Wilker Saya
+                    </label>
+                    <label class="btn btn-sm btn-outline-secondary" for="filter_dilaporkan">
+                        <input type="radio" name="filter_mode" id="filter_dilaporkan" value="dilaporkan">
+                        <i class="fa fa-hospital"></i> Dilaporkan ke Saya
+                    </label>
+                </div>
+                <small class="text-muted ml-2">Wilker: <strong>{{ auth()->user()->puskesmas->name ?? '-' }}</strong></small>
+            </div>
+            @endif
             <div class="filter-grid">
                 <div class="filter-group">
                     <label for="disease_filter">Jenis Penyakit</label>
@@ -757,6 +774,7 @@ $(document).ready(function() {
                 d.disease_filter = $('#disease_filter').val();
                 d.status_filter = $('#status_filter').val();
                 d.kecamatan_filter = $('#kecamatan_filter').val();
+                d.filter_mode = $('input[name="filter_mode"]:checked').val() || 'dilaporkan';
             }
         },
         columns: [
@@ -781,8 +799,13 @@ $(document).ready(function() {
         }
     });
 
-    // Filter change events â€” auto-search on change
+    // Filter change events — auto-search on change
     $('#disease_filter, #status_filter, #kecamatan_filter').on('change', function() {
+        table.draw();
+    });
+
+    // Wilker/faskes filter mode toggle
+    $('input[name=”filter_mode”]').on('change', function() {
         table.draw();
     });
 

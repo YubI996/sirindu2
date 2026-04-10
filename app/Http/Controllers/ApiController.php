@@ -8,7 +8,6 @@ use App\Models\Puskesmas;
 use App\Models\Kelurahan;
 use App\Models\Posyandu;
 use App\Models\Rt;
-use App\Models\AllData;
 use App\Models\Anak;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +15,7 @@ class ApiController extends Controller
 {
     public function allDataAnak()
     {
-        $all = AllData::all();
+        $all = Anak::with('dataAnak')->get();
         return response()->json([
             'success' => true,
             'data' => $all,

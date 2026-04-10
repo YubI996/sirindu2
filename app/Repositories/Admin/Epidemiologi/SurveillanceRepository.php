@@ -337,6 +337,107 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     }
 
     /**
+     * Upsert 5 imunisasi rows for a surveillance case.
+     * If $imunisasiData is empty, inserts 5 default rows with diberikan = 'tidak_tahu'.
+     */
+    public function syncImunisasi(SurveillanceCase $case, array $imunisasiData): void
+    {
+        $antigenLabels = [
+            1 => 'MR1 / DPT-HB-Hib 1 / OPV1',
+            2 => 'MR2 / DPT-HB-Hib Booster / OPV2',
+            3 => 'MR3 / DT kelas 1 SD',
+            4 => 'MMR / TD kelas 2 dan 5',
+            5 => 'Kampanye / ORI / SUBPIN / PIN',
+        ];
+
+        for ($ke = 1; $ke <= 5; $ke++) {
+            $row = $imunisasiData[$ke] ?? [];
+            $case->imunisasi()->updateOrCreate(
+                ['imunisasi_ke' => $ke],
+                [
+                    'nama_antigen'      => $antigenLabels[$ke],
+                    'diberikan'         => $row['diberikan'] ?? 'tidak_tahu',
+                    'sumber_informasi'  => $row['sumber_informasi'] ?? null,
+                    'tanggal_imunisasi' => $row['tanggal_imunisasi'] ?: null,
+                ]
+            );
+        }
+    }
+
+    /**
+     * Delete-then-insert faskes berobat rows, assigning urutan from index.
+     */
+    public function syncFaskesBerobat(SurveillanceCase $case, array $data): void
+    {
+        $case->faskesBerobat()->delete();
+
+        $urutan = 1;
+        foreach ($data as $row) {
+            if (empty($row['jenis_faskes']) || empty($row['nama_faskes'])) {
+                continue;
+            }
+            $case->faskesBerobat()->create([
+                'urutan'           => $urutan++,
+                'jenis_faskes'     => $row['jenis_faskes'],
+                'nama_faskes'      => $row['nama_faskes'],
+                'tanggal_berobat'  => $row['tanggal_berobat'] ?: null,
+                'jenis_perawatan'  => $row['jenis_perawatan'] ?: null,
+                'tanggal_keluar'   => $row['tanggal_keluar'] ?: null,
+            ]);
+        }
+    }
+
+    /**
+     * Delete-then-insert spesimen rows. Rows with empty jenis_spesimen are skipped.
+     */
+    public function syncSpesimen(SurveillanceCase $case, array $data): void
+    {
+        $case->spesimen()->delete();
+
+        $urutan = 1;
+        foreach ($data as $row) {
+            if (empty($row['jenis_spesimen'])) {
+                continue;
+            }
+            $case->spesimen()->create([
+                'urutan'                        => $urutan++,
+                'jenis_spesimen'                => $row['jenis_spesimen'],
+                'tanggal_ambil_spesimen'        => $row['tanggal_ambil_spesimen'] ?: null,
+                'tanggal_kirim_sampel'          => $row['tanggal_kirim_sampel'] ?: null,
+                'tanggal_terima_lab'            => $row['tanggal_terima_lab'] ?: null,
+                'status_pemeriksaan'            => $row['status_pemeriksaan'] ?: null,
+                'id_jenis_kasus_terkonfirmasi'  => $row['id_jenis_kasus_terkonfirmasi'] ?: null,
+                'nama_variant_genotype'         => $row['nama_variant_genotype'] ?: null,
+            ]);
+        }
+    }
+
+    /**
+     * Delete-then-insert kontak erat rows. Rows with empty nama are skipped.
+     */
+    public function syncKontakErat(SurveillanceCase $case, array $data): void
+    {
+        $case->kontakErat()->delete();
+
+        $urutan = 1;
+        foreach ($data as $row) {
+            if (empty($row['nama'])) {
+                continue;
+            }
+            $case->kontakErat()->create([
+                'urutan'                  => $urutan++,
+                'nama'                    => $row['nama'],
+                'hubungan'                => $row['hubungan'] ?: null,
+                'no_telepon'              => $row['no_telepon'] ?: null,
+                'alamat'                  => $row['alamat'] ?: null,
+                'tanggal_kontak_terakhir' => $row['tanggal_kontak_terakhir'] ?: null,
+                'ada_gejala'              => !empty($row['ada_gejala']),
+                'catatan'                 => $row['catatan'] ?: null,
+            ]);
+        }
+    }
+
+    /**
      * Determine age category from age in years
      */
     private function getKategoriUmur($umurTahun)

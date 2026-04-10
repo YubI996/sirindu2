@@ -27,6 +27,28 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class EpidemiologiController extends Controller
 {
+    /**
+     * Pemetaan nama kelurahan (uppercase) ke nama Wilker Puskesmas.
+     * Sinkron dengan WILKER_MAP di form-section-a.blade.php.
+     */
+    protected const WILKER_MAP = [
+        'API-API'            => 'Bontang Utara 1',
+        'BONTANG BARU'       => 'Bontang Utara 1',
+        'GUNUNG ELAI'        => 'Bontang Utara 1',
+        'BONTANG KUALA'      => 'Bontang Utara 1',
+        'GUNTUNG'            => 'Bontang Utara 2',
+        'LOK TUAN'           => 'Bontang Utara 2',
+        'BELIMBING'          => 'Bontang Barat',
+        'KANAAN'             => 'Bontang Barat',
+        'GUNUNG TELIHAN'     => 'Bontang Barat',
+        'BONTANG LESTARI'    => 'Bontang Lestari',
+        'TANJUNG LAUT'       => 'Bontang Selatan 1',
+        'TANJUNG LAUT INDAH' => 'Bontang Selatan 1',
+        'SATIMPO'            => 'Bontang Selatan 1',
+        'BERBAS PANTAI'      => 'Bontang Selatan 2',
+        'BEREBAS TENGAH'     => 'Bontang Selatan 2',
+    ];
+
     protected $surveillanceRepository;
 
     public function __construct(SurveillanceRepository $surveillanceRepository)
@@ -35,6 +57,20 @@ class EpidemiologiController extends Controller
         // Semua user surveilans (superadmin + faskes puskesmas + faskes RS) bisa akses
         $this->middleware('module.role:superadmin,surveilans_puskesmas,surveilans_rs');
         $this->surveillanceRepository = $surveillanceRepository;
+    }
+
+    /**
+     * Resolve wilker puskesmas dari id_kel berdasarkan pemetaan statis WILKER_MAP.
+     * Mengembalikan nama wilker atau string kosong jika tidak ditemukan.
+     */
+    protected function resolveWilker(int $idKel): string
+    {
+        $kelurahan = \App\Models\Kelurahan::find($idKel);
+        if (! $kelurahan) {
+            return '';
+        }
+        $namaUpper = strtoupper(trim($kelurahan->name));
+        return static::WILKER_MAP[$namaUpper] ?? '';
     }
 
     // ==================== DASHBOARD & ANALYTICS ====================
@@ -274,11 +310,20 @@ class EpidemiologiController extends Controller
     {
         $query = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan', 'rt']);
 
-        // Data scoping: faskes hanya lihat kasus dari faskes sendiri
+        // Data scoping berdasarkan filter_mode dan peran pengguna
         $user = auth()->user();
+        $filterMode = $request->get('filter_mode', 'dilaporkan'); // default: dilaporkan
+
         if ($user->isFaskesSurveilans()) {
-            $query->where('faskes_type', $user->faskes_type)
-                  ->where('id_faskes', $user->getFaskesId());
+            if ($filterMode === 'wilker' && $user->puskesmas) {
+                // Filter berdasarkan wilker: semua kasus yang wilker_puskesmasnya cocok dengan nama puskesmas user
+                $wilkerName = $user->puskesmas->name;
+                $query->where('wilker_puskesmas', $wilkerName);
+            } else {
+                // Default: hanya kasus yang dilaporkan faskes ini
+                $query->where('faskes_type', $user->faskes_type)
+                      ->where('id_faskes', $user->getFaskesId());
+            }
         }
 
         return DataTables::of($query)
@@ -395,7 +440,19 @@ class EpidemiologiController extends Controller
     public function store(StoreSurveillanceCaseRequest $request)
     {
         try {
-            $case = $this->surveillanceRepository->storeCase($request);
+            // Override wilker_puskesmas berdasarkan kelurahan yang dipilih
+            if ($request->filled('id_kel')) {
+                $request->merge(['wilker_puskesmas' => $this->resolveWilker((int) $request->id_kel)]);
+            }
+
+            $case = DB::transaction(function () use ($request) {
+                $case = $this->surveillanceRepository->storeCase($request);
+                $this->surveillanceRepository->syncImunisasi($case, $request->input('imunisasi', []));
+                $this->surveillanceRepository->syncFaskesBerobat($case, $request->input('faskes_berobat', []));
+                $this->surveillanceRepository->syncSpesimen($case, $request->input('spesimen', []));
+                $this->surveillanceRepository->syncKontakErat($case, $request->input('kontak_erat', []));
+                return $case;
+            });
 
             $this->clearEpiCache();
 
@@ -419,7 +476,11 @@ class EpidemiologiController extends Controller
             'rt',
             'petugasInput',
             'creator',
-            'updater'
+            'updater',
+            'imunisasi',
+            'faskesBerobat',
+            'spesimen.jenisKasusTerkonfirmasi',
+            'kontakErat',
         ])->findOrFail($id);
 
         $this->authorizeFaskesAccess($case);
@@ -433,6 +494,7 @@ class EpidemiologiController extends Controller
     public function edit($id)
     {
         $case = SurveillanceCase::findOrFail($id);
+        $case->load(['imunisasi', 'faskesBerobat', 'spesimen', 'kontakErat']);
         $this->authorizeFaskesAccess($case);
         $diseases = JenisKasusEpidemiologi::active()->orderBy('nama_penyakit')->get();
         $kecamatanList = Kecamatan::all();
@@ -451,7 +513,19 @@ class EpidemiologiController extends Controller
     public function update(UpdateSurveillanceCaseRequest $request, $id)
     {
         try {
-            $case = $this->surveillanceRepository->updateCase($request, $id);
+            // Override wilker_puskesmas berdasarkan kelurahan yang dipilih
+            if ($request->filled('id_kel')) {
+                $request->merge(['wilker_puskesmas' => $this->resolveWilker((int) $request->id_kel)]);
+            }
+
+            $case = DB::transaction(function () use ($request, $id) {
+                $case = $this->surveillanceRepository->updateCase($request, $id);
+                $this->surveillanceRepository->syncImunisasi($case, $request->input('imunisasi', []));
+                $this->surveillanceRepository->syncFaskesBerobat($case, $request->input('faskes_berobat', []));
+                $this->surveillanceRepository->syncSpesimen($case, $request->input('spesimen', []));
+                $this->surveillanceRepository->syncKontakErat($case, $request->input('kontak_erat', []));
+                return $case;
+            });
 
             $this->clearEpiCache();
 
@@ -464,7 +538,9 @@ class EpidemiologiController extends Controller
     }
 
     /**
-     * Delete a surveillance case (superadmin only)
+     * Delete a surveillance case.
+     *
+     * @access superadmin only — faskes (puskesmas/rs) tidak diizinkan menghapus kasus.
      */
     public function destroy($id)
     {
@@ -669,7 +745,11 @@ class EpidemiologiController extends Controller
             'kecamatan',
             'kelurahan',
             'rt',
-            'petugasInput'
+            'petugasInput',
+            'imunisasi',
+            'faskesBerobat',
+            'spesimen.jenisKasusTerkonfirmasi',
+            'kontakErat',
         ])->findOrFail($id);
 
         $this->authorizeFaskesAccess($case);

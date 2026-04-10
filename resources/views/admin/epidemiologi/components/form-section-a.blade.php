@@ -85,8 +85,16 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Tempat Kerja / Sekolah / PAUD / TPA</label>
-            <input type="text" name="tempat_kerja_sekolah" class="form-control"
-                   value="{{ old('tempat_kerja_sekolah', $case->tempat_kerja_sekolah ?? '') }}">
+            <select name="tempat_kerja_sekolah" id="tempat_kerja_sekolah" class="form-control" style="width:100%">
+                @if(old('tempat_kerja_sekolah', $case->tempat_kerja_sekolah ?? ''))
+                    <option value="{{ old('tempat_kerja_sekolah', $case->tempat_kerja_sekolah ?? '') }}" selected>
+                        {{ old('tempat_kerja_sekolah', $case->tempat_kerja_sekolah ?? '') }}
+                    </option>
+                @else
+                    <option value="">-- Cari atau pilih lokasi --</option>
+                @endif
+            </select>
+            <small class="form-text text-muted">Ketik untuk mencari lokasi</small>
         </div>
     </div>
     <div class="col-md-4">
@@ -176,9 +184,31 @@
 
 @include('admin.epidemiologi.components.form-map-picker')
 
+@push('css')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@endpush
+
 @push('js')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
+    // Select2 for tempat_kerja_sekolah (lokasi penularan master)
+    $('#tempat_kerja_sekolah').select2({
+        ajax: {
+            url: '{{ route("admin.epidemiologi.getLokasiPenularan") }}',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) { return { q: params.term }; },
+            processResults: function(data) { return data; },
+            cache: true
+        },
+        placeholder: '-- Cari atau pilih lokasi --',
+        allowClear: true,
+        minimumInputLength: 0,
+        tags: true,
+        width: '100%'
+    });
+
     // Cascading select: Kecamatan -> Kelurahan
     $('#kec').on('change', function() {
         var id_kec = $(this).val();
@@ -199,7 +229,32 @@ $(document).ready(function() {
         }
     });
 
-    // Cascading select: Kelurahan -> RT
+    // Pemetaan kelurahan → wilker puskesmas (uppercase nama kelurahan)
+    var WILKER_MAP = {
+        'API-API':              'Bontang Utara 1',
+        'BONTANG BARU':         'Bontang Utara 1',
+        'GUNUNG ELAI':          'Bontang Utara 1',
+        'BONTANG KUALA':        'Bontang Utara 1',
+        'GUNTUNG':              'Bontang Utara 2',
+        'LOK TUAN':             'Bontang Utara 2',
+        'BELIMBING':            'Bontang Barat',
+        'KANAAN':               'Bontang Barat',
+        'GUNUNG TELIHAN':       'Bontang Barat',
+        'BONTANG LESTARI':      'Bontang Lestari',
+        'TANJUNG LAUT':         'Bontang Selatan 1',
+        'TANJUNG LAUT INDAH':   'Bontang Selatan 1',
+        'SATIMPO':              'Bontang Selatan 1',
+        'BERBAS PANTAI':        'Bontang Selatan 2',
+        'BEREBAS TENGAH':       'Bontang Selatan 2',
+    };
+
+    function updateWilker() {
+        var kelText = $('#kel option:selected').text().trim().toUpperCase();
+        var wilker = WILKER_MAP[kelText] || '';
+        $('#wilker_puskesmas').val(wilker);
+    }
+
+    // Cascading select: Kelurahan -> RT + autofill wilker
     $('#kel').on('change', function() {
         var id_kel = $(this).val();
         $('#rt').empty().append('<option value="">== Pilih RT ==</option>');
@@ -216,7 +271,14 @@ $(document).ready(function() {
                 }
             });
         }
+
+        updateWilker();
     });
+
+    // Trigger wilker update saat halaman edit load (kelurahan sudah terpilih)
+    if ($('#kel').val()) {
+        updateWilker();
+    }
 
     // Auto-calculate age and category from birth date
     $('#tanggal_lahir').on('change', function() {

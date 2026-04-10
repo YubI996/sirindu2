@@ -177,6 +177,12 @@ ANAK
         $rt = Rt::where('id_posyandu', $id)->pluck('name', 'id');
         return response()->json($rt);
     }
+
+    public function getRtByKelAnak($id)
+    {
+        $rt = Rt::where('id_kelurahan', $id)->pluck('name', 'id');
+        return response()->json($rt);
+    }
     public function getPosyanduAnak($id)
     {
         $posyandu = Posyandu::where('id_puskesmas', $id)->pluck('name', 'id');

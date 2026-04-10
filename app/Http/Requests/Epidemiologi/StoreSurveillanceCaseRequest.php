@@ -231,6 +231,40 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'status_kasus' => 'nullable|in:suspected,probable,confirmed,discarded',
             'id_faskes_pelapor' => 'nullable|integer|exists:puskesmas,id',
             'catatan_tambahan' => 'nullable|string',
+
+            // MoD: Imunisasi per antigen
+            'imunisasi' => 'nullable|array',
+            'imunisasi.*.diberikan' => 'nullable|in:ya,tidak,tidak_tahu',
+            'imunisasi.*.sumber_informasi' => 'nullable|string|max:255',
+            'imunisasi.*.tanggal_imunisasi' => 'nullable|date|before_or_equal:today',
+
+            // MoD: Faskes berobat
+            'faskes_berobat' => 'nullable|array',
+            'faskes_berobat.*.jenis_faskes' => 'required_with:faskes_berobat.*.nama_faskes|nullable|in:rs,puskesmas,klinik,pengobatan_tradisional,lainnya',
+            'faskes_berobat.*.nama_faskes' => 'required_with:faskes_berobat.*.jenis_faskes|nullable|string|max:255',
+            'faskes_berobat.*.tanggal_berobat' => 'nullable|date|before_or_equal:today',
+            'faskes_berobat.*.jenis_perawatan' => 'nullable|in:inap,jalan',
+            'faskes_berobat.*.tanggal_keluar' => 'nullable|date|after_or_equal:faskes_berobat.*.tanggal_berobat|before_or_equal:today',
+
+            // MoD: Spesimen
+            'spesimen' => 'nullable|array',
+            'spesimen.*.jenis_spesimen' => 'required_with:spesimen.*|nullable|string|max:100',
+            'spesimen.*.tanggal_ambil_spesimen' => 'nullable|date|before_or_equal:today',
+            'spesimen.*.tanggal_kirim_sampel' => 'nullable|date|before_or_equal:today',
+            'spesimen.*.tanggal_terima_lab' => 'nullable|date|before_or_equal:today',
+            'spesimen.*.status_pemeriksaan' => 'nullable|string|max:100',
+            'spesimen.*.id_jenis_kasus_terkonfirmasi' => 'nullable|integer|exists:jenis_kasus_epidemiologi,id',
+            'spesimen.*.nama_variant_genotype' => 'nullable|string|max:255',
+
+            // MoD: Kontak erat
+            'kontak_erat' => 'nullable|array',
+            'kontak_erat.*.nama' => 'required_with:kontak_erat.*|nullable|string|max:255',
+            'kontak_erat.*.hubungan' => 'nullable|string|max:100',
+            'kontak_erat.*.no_telepon' => 'nullable|string|max:20',
+            'kontak_erat.*.alamat' => 'nullable|string',
+            'kontak_erat.*.tanggal_kontak_terakhir' => 'nullable|date|before_or_equal:today',
+            'kontak_erat.*.ada_gejala' => 'nullable|boolean',
+            'kontak_erat.*.catatan' => 'nullable|string|max:500',
         ];
     }
 

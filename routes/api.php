@@ -14,15 +14,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+    Route::get('/allDataAnak', [App\Http\Controllers\ApiController::class, 'allDataAnak']);
+    Route::get('/allDataDasarAnak', [App\Http\Controllers\ApiController::class, 'allDataDasarAnak']);
+    Route::get('/showDataDasarAnak/{id}', [App\Http\Controllers\ApiController::class, 'showDataDasarAnak']);
+    Route::get('/showAllDataAnak/{id}', [App\Http\Controllers\ApiController::class, 'showAllDataAnak']);
 });
 
-
-Route::get('/allDataAnak', [App\Http\Controllers\ApiController::class, 'allDataAnak']);
-Route::get('/allDataDasarAnak', [App\Http\Controllers\ApiController::class, 'allDataDasarAnak']);
-Route::get('/showDataDasarAnak/{id}', [App\Http\Controllers\ApiController::class, 'showDataDasarAnak']);
-Route::get('/showAllDataAnak/{id}', [App\Http\Controllers\ApiController::class, 'showAllDataAnak']);
+// Public: digunakan untuk dropdown form wilayah/faskes
 Route::get('/get-kec', [App\Http\Controllers\ApiController::class, 'getKecApi']);
 Route::get('/get-puskesmas/{id}', [App\Http\Controllers\ApiController::class, 'getPuskesmasApi']);
 Route::get('/get-kelurahan/{id}', [App\Http\Controllers\ApiController::class, 'getKelApi']);
