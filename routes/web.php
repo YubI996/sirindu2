@@ -201,6 +201,12 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         // Imports
         Route::post('import-excel', [App\Http\Controllers\EpidemiologiController::class, 'importExcel'])
              ->name('admin.epidemiologi.importExcel');
+        Route::post('reimport/{log}', [App\Http\Controllers\EpidemiologiController::class, 'reimportExcel'])
+             ->name('admin.epidemiologi.reimport');
+        Route::delete('import-log/{log}', [App\Http\Controllers\EpidemiologiController::class, 'destroyImportLog'])
+             ->name('admin.epidemiologi.destroyImportLog');
+        Route::delete('import-log', [App\Http\Controllers\EpidemiologiController::class, 'destroyAllImportLogs'])
+             ->name('admin.epidemiologi.destroyAllImportLogs');
         Route::get('import-status', [App\Http\Controllers\EpidemiologiController::class, 'importStatus'])
              ->name('admin.epidemiologi.importStatus');
 
@@ -209,6 +215,24 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.exportExcel');
         Route::get('export-pdf/{id}', [App\Http\Controllers\EpidemiologiController::class, 'exportPdfMR01'])
              ->name('admin.epidemiologi.exportPdf');
+
+        /*------------------------------------------
+        PD3I Dashboard (super-admin / Dinas Kesehatan)
+        --------------------------------------------*/
+        Route::prefix('pd3i-dashboard/')->middleware('module.role:superadmin')->group(function () {
+            Route::get('/', [App\Http\Controllers\Pd3iDashboardController::class, 'index'])
+                 ->name('admin.pd3i.dashboard');
+            Route::get('api/kinerja', [App\Http\Controllers\Pd3iDashboardController::class, 'kinerja'])
+                 ->name('admin.pd3i.apiKinerja');
+            Route::get('api/demografi', [App\Http\Controllers\Pd3iDashboardController::class, 'demografi'])
+                 ->name('admin.pd3i.apiDemografi');
+            Route::get('api/tren', [App\Http\Controllers\Pd3iDashboardController::class, 'tren'])
+                 ->name('admin.pd3i.apiTren');
+            Route::get('api/wilayah', [App\Http\Controllers\Pd3iDashboardController::class, 'wilayah'])
+                 ->name('admin.pd3i.apiWilayah');
+            Route::post('export-pdf', [App\Http\Controllers\Pd3iDashboardController::class, 'exportPdf'])
+                 ->name('admin.pd3i.exportPdf');
+        });
     });
 });
 

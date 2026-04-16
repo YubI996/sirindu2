@@ -60,6 +60,24 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         $data['instansi_pelapor'] = optional($user->puskesmas)->name ?? optional($user->rs)->name ?? $data['instansi_pelapor'] ?? null;
         $data['telepon_pelapor'] = $data['telepon_pelapor'] ?? null;
 
+        // Auto-derive legacy management fields from faskes_berobat MoD rows.
+        // These fields are no longer submitted via form — always overwritten here.
+        $faskesRows = $request->input('faskes_berobat', []);
+        $firstRow = collect($faskesRows)->first(fn($r) => !empty($r['nama_faskes']));
+        if ($firstRow) {
+            $perawatanMap = ['inap' => 'rawat_inap', 'jalan' => 'rawat_jalan'];
+            $data['status_rawat']        = $perawatanMap[$firstRow['jenis_perawatan'] ?? ''] ?? 'rawat_jalan';
+            $data['nama_faskes_rawat']   = $firstRow['nama_faskes'];
+            $data['tanggal_masuk_rawat'] = $firstRow['tanggal_berobat'] ?: null;
+            $data['tanggal_keluar_rawat'] = $firstRow['tanggal_keluar'] ?: null;
+        } else {
+            // No faskes_berobat rows — satisfy NOT NULL columns with safe defaults
+            $data['status_rawat']        = 'rawat_jalan';
+            $data['nama_faskes_rawat']   = '-';
+            $data['tanggal_masuk_rawat'] = null;
+            $data['tanggal_keluar_rawat'] = null;
+        }
+
         return $data;
     }
 
@@ -74,7 +92,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             // Defaults for new cases
             $data['tanggal_lapor'] = $data['tanggal_lapor'] ?? now()->toDateString();
             $data['sumber_penularan'] = $data['sumber_penularan'] ?? 'unknown';
-            $data['riwayat_imunisasi'] = $data['riwayat_imunisasi'] ?? 'tidak_tahu';
+            // riwayat_imunisasi nullable — null berarti belum diisi, bukan 'tidak_tahu'
             $data['status_lab'] = $data['status_lab'] ?? 'belum_diperiksa';
             $data['kondisi_akhir'] = $data['kondisi_akhir'] ?? 'dalam_perawatan';
             $data['status_kasus'] = $data['status_kasus'] ?? 'suspected';
@@ -406,7 +424,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
                 'tanggal_kirim_sampel'          => $row['tanggal_kirim_sampel'] ?: null,
                 'tanggal_terima_lab'            => $row['tanggal_terima_lab'] ?: null,
                 'status_pemeriksaan'            => $row['status_pemeriksaan'] ?: null,
-                'id_jenis_kasus_terkonfirmasi'  => $row['id_jenis_kasus_terkonfirmasi'] ?: null,
+                'penyakit_terkonfirmasi'        => $row['penyakit_terkonfirmasi'] ?: null,
                 'nama_variant_genotype'         => $row['nama_variant_genotype'] ?: null,
             ]);
         }
@@ -425,14 +443,16 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
                 continue;
             }
             $case->kontakErat()->create([
-                'urutan'                  => $urutan++,
-                'nama'                    => $row['nama'],
-                'hubungan'                => $row['hubungan'] ?: null,
-                'no_telepon'              => $row['no_telepon'] ?: null,
-                'alamat'                  => $row['alamat'] ?: null,
-                'tanggal_kontak_terakhir' => $row['tanggal_kontak_terakhir'] ?: null,
-                'ada_gejala'              => !empty($row['ada_gejala']),
-                'catatan'                 => $row['catatan'] ?: null,
+                'urutan'                          => $urutan++,
+                'nama'                            => $row['nama'],
+                'hubungan'                        => $row['hubungan'] ?: null,
+                'tanggal_lahir'                   => $row['tanggal_lahir'] ?: null,
+                'no_telepon'                      => $row['no_telepon'] ?: null,
+                'alamat'                          => $row['alamat'] ?: null,
+                'tanggal_kontak_terakhir'         => $row['tanggal_kontak_terakhir'] ?: null,
+                'ada_gejala'                      => !empty($row['ada_gejala']),
+                'jumlah_imunisasi_campak_rubella' => isset($row['jumlah_imunisasi_campak_rubella']) && $row['jumlah_imunisasi_campak_rubella'] !== '' ? (int) $row['jumlah_imunisasi_campak_rubella'] : null,
+                'catatan'                         => $row['catatan'] ?: null,
             ]);
         }
     }
@@ -448,5 +468,379 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         if ($umurTahun >= 12 && $umurTahun < 18) return 'remaja';
         if ($umurTahun >= 18 && $umurTahun < 60) return 'dewasa';
         return 'lansia';
+    }
+
+    // ==================== PD3I DASHBOARD METHODS ====================
+
+    /**
+     * Anonymise a full name — keeps first initial + last initial only.
+     */
+    private function samarkanNama(?string $nama): string
+    {
+        if (!$nama) return '–';
+        $parts = array_filter(explode(' ', trim($nama)));
+        $first = reset($parts);
+        $last  = end($parts);
+        $result = strtoupper($first[0] ?? '') . '***';
+        if ($last && $last !== $first) {
+            $result .= ' ' . strtoupper($last[0]) . '.';
+        }
+        return $result;
+    }
+
+    /**
+     * Base query builder for PD3I dashboard — applies year/jenis_kasus/wilker/kelurahan filters.
+     */
+    private function pd3iBaseQuery(int $tahun, ?int $jenisKasusId, ?string $wilker, ?int $kelurahanId = null): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = SurveillanceCase::query()->whereYear('tanggal_lapor', $tahun);
+
+        if ($jenisKasusId) {
+            $query->where('id_jenis_kasus', $jenisKasusId);
+        }
+
+        if ($wilker) {
+            $query->where('wilker_puskesmas', $wilker);
+        }
+
+        if ($kelurahanId) {
+            $query->where('id_kel', $kelurahanId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Kinerja Surveilans scorecard data for all 4 disease panels.
+     *
+     * Disease IDs: 1=Campak-Rubella, 2=Difteri, 3=AFP, 4=Pertusis
+     */
+    public function getPd3iKinerja(int $tahun, ?int $jenisKasusId, ?string $wilker, ?int $kelurahanId = null): array
+    {
+        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId);
+
+        // ===== Campak-Rubella (id=1) =====
+        $cr = (clone $base)->where('id_jenis_kasus', 1);
+        $crTotal = (clone $cr)->count();
+        // pct_sampel: kasus yang status_lab = 'diperiksa_lab' (sampel diambil & dikirim ke lab)
+        $crSampel = (clone $cr)->where('status_lab', 'diperiksa_lab')->count();
+        $crLabDiterima = (clone $cr)->whereNotNull('tanggal_hasil_lab')->count();
+        $crLabDiperiksa = (clone $cr)->whereIn('status_lab', ['diperiksa_lab','proses','positif','negatif'])->count();
+        $crLabPositif = (clone $cr)->where('status_lab', 'positif')->count();
+
+        $campakRubella = [
+            'suspek'            => (clone $cr)->where('status_kasus', 'suspected')->count(),
+            'confirmed_campak'  => (clone $cr)->where('status_kasus', 'confirmed')
+                                              ->whereRaw('LOWER(hasil_lab) LIKE ?', ['%campak%'])
+                                              ->count(),
+            'confirmed_rubella' => (clone $cr)->where('status_kasus', 'confirmed')
+                                              ->whereRaw('LOWER(hasil_lab) LIKE ?', ['%rubella%'])
+                                              ->count(),
+            'discarded'         => (clone $cr)->where('status_kasus', 'discarded')->count(),
+            'meninggal'         => (clone $cr)->where('kondisi_akhir', 'meninggal')->count(),
+            'pct_sampel'        => $crTotal > 0 ? round($crSampel / $crTotal * 100, 1) : 0,
+            'pct_lab_diterima'  => $crTotal > 0 ? round($crLabDiterima / $crTotal * 100, 1) : 0,
+            'positivity_rate'   => $crLabDiperiksa > 0 ? round($crLabPositif / $crLabDiperiksa * 100, 1) : 0,
+        ];
+
+        // ===== AFP/Polio (id=3) =====
+        $afp = (clone $base)->where('id_jenis_kasus', 3);
+        $afpData = [
+            'total'      => (clone $afp)->count(),
+            'confirmed'  => (clone $afp)->where('status_kasus', 'confirmed')->count(),
+            'npafp_rate' => null, // Butuh data populasi eksternal
+        ];
+
+        // ===== Difteri (id=2) =====
+        $difteri = (clone $base)->where('id_jenis_kasus', 2);
+        $difteriData = [
+            'observasi' => (clone $difteri)->count(),
+            'confirmed' => (clone $difteri)->where('status_kasus', 'confirmed')->count(),
+        ];
+
+        // ===== Pertusis (id=4) =====
+        $pertusis = (clone $base)->where('id_jenis_kasus', 4);
+        $pertusisData = [
+            'suspek' => (clone $pertusis)->count(),
+        ];
+
+        return [
+            'campak_rubella' => $campakRubella,
+            'afp'            => $afpData,
+            'difteri'        => $difteriData,
+            'pertusis'       => $pertusisData,
+        ];
+    }
+
+    /**
+     * Tren data: epiweek curve, monthly trend, per faskes/kecamatan/kelurahan.
+     */
+    public function getPd3iTren(int $tahun, ?int $jenisKasusId, ?string $wilker, ?int $kelurahanId = null): array
+    {
+        $bulanLabels = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+        // ===== Epiweek (based on tanggal_onset, tahun-1 to tahun) =====
+        $epiBase = SurveillanceCase::query()
+            ->whereNotNull('tanggal_onset')
+            ->whereRaw('YEAR(tanggal_onset) BETWEEN ? AND ?', [$tahun - 1, $tahun]);
+        if ($jenisKasusId) $epiBase->where('id_jenis_kasus', $jenisKasusId);
+        if ($wilker) $epiBase->where('wilker_puskesmas', $wilker);
+        if ($kelurahanId) $epiBase->where('id_kel', $kelurahanId);
+
+        $epiweek = $epiBase
+            ->select(
+                DB::raw('YEARWEEK(tanggal_onset, 3) as epiweek'),
+                DB::raw('COUNT(*) as suspek'),
+                DB::raw("SUM(CASE WHEN status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed")
+            )
+            ->groupBy('epiweek')
+            ->orderBy('epiweek')
+            ->get()
+            ->map(function ($r) {
+                $yw   = str_pad((string) $r->epiweek, 6, '0', STR_PAD_LEFT);
+                $year = substr($yw, 0, 4);
+                $week = substr($yw, 4, 2);
+                return ['week' => $year . '-W' . $week, 'suspek' => (int)$r->suspek, 'confirmed' => (int)$r->confirmed];
+            })->values()->toArray();
+
+        // ===== Bulanan 12 bulan (based on tanggal_lapor) =====
+        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId);
+
+        $bulananRaw = (clone $base)
+            ->select(
+                DB::raw('MONTH(tanggal_lapor) as bulan'),
+                DB::raw('COUNT(*) as total'),
+                DB::raw("SUM(CASE WHEN status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed")
+            )
+            ->groupBy('bulan')
+            ->orderBy('bulan')
+            ->get()->keyBy('bulan');
+
+        $bulanan = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $row = $bulananRaw->get($m);
+            $bulanan[] = [
+                'bulan'     => $m,
+                'label'     => $bulanLabels[$m - 1],
+                'total'     => $row ? (int)$row->total : 0,
+                'confirmed' => $row ? (int)$row->confirmed : 0,
+            ];
+        }
+
+        // ===== Per Faskes =====
+        $perFaskes = (clone $base)
+            ->select(
+                DB::raw('MONTH(surveillance_cases.tanggal_lapor) as bulan'),
+                DB::raw('COALESCE(rs.name, surveillance_cases.instansi_pelapor, \'Tidak Diketahui\') as faskes'),
+                DB::raw('COUNT(*) as jumlah')
+            )
+            ->leftJoin('rumah_sakits as rs', 'surveillance_cases.id_faskes_pelapor', '=', 'rs.id')
+            ->groupBy('bulan', 'faskes')
+            ->orderBy('bulan')
+            ->get()
+            ->map(fn($r) => ['bulan' => (int)$r->bulan, 'faskes' => $r->faskes, 'jumlah' => (int)$r->jumlah])
+            ->toArray();
+
+        // ===== Per Kecamatan =====
+        $perKecamatan = (clone $base)
+            ->select(
+                DB::raw('MONTH(surveillance_cases.tanggal_lapor) as bulan'),
+                DB::raw('COALESCE(kec.name, \'Tidak Diketahui\') as kecamatan'),
+                DB::raw('COUNT(*) as jumlah')
+            )
+            ->leftJoin('kecamatan as kec', 'surveillance_cases.id_kec', '=', 'kec.id')
+            ->groupBy('bulan', 'kecamatan')
+            ->orderBy('bulan')
+            ->get()
+            ->map(fn($r) => ['bulan' => (int)$r->bulan, 'kecamatan' => $r->kecamatan, 'jumlah' => (int)$r->jumlah])
+            ->toArray();
+
+        // ===== Per Kelurahan =====
+        $perKelurahan = (clone $base)
+            ->select(
+                DB::raw('MONTH(surveillance_cases.tanggal_lapor) as bulan'),
+                DB::raw('COALESCE(kel.name, \'Tidak Diketahui\') as kelurahan'),
+                DB::raw('COALESCE(kec.name, \'Tidak Diketahui\') as kecamatan'),
+                DB::raw('COUNT(*) as jumlah')
+            )
+            ->leftJoin('kelurahan as kel', 'surveillance_cases.id_kel', '=', 'kel.id')
+            ->leftJoin('kecamatan as kec', 'surveillance_cases.id_kec', '=', 'kec.id')
+            ->groupBy('bulan', 'kelurahan', 'kecamatan')
+            ->orderBy('bulan')
+            ->get()
+            ->map(fn($r) => ['bulan' => (int)$r->bulan, 'kelurahan' => $r->kelurahan, 'kecamatan' => $r->kecamatan, 'jumlah' => (int)$r->jumlah])
+            ->toArray();
+
+        return [
+            'epiweek'       => $epiweek,
+            'bulanan'       => $bulanan,
+            'per_faskes'    => $perFaskes,
+            'per_kecamatan' => $perKecamatan,
+            'per_kelurahan' => $perKelurahan,
+        ];
+    }
+
+    /**
+     * Demografi data: kelompok umur, status vaksinasi, severity.
+     */
+    public function getPd3iDemografi(int $tahun, ?int $jenisKasusId, ?string $wilker, ?int $kelurahanId = null): array
+    {
+        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId);
+
+        // ===== Kelompok Umur =====
+        $buckets = ['< 6 bulan','6-8 bulan','9-11 bulan','12-17 bulan','18-59 bulan','5-9 tahun','10-14 tahun','>= 15 tahun','Tidak Diketahui'];
+
+        $umurRaw = (clone $base)
+            ->select(
+                DB::raw("CASE
+                    WHEN tanggal_lahir IS NULL THEN 'Tidak Diketahui'
+                    WHEN TIMESTAMPDIFF(MONTH, tanggal_lahir, COALESCE(tanggal_onset, NOW())) < 6 THEN '< 6 bulan'
+                    WHEN TIMESTAMPDIFF(MONTH, tanggal_lahir, COALESCE(tanggal_onset, NOW())) BETWEEN 6 AND 8 THEN '6-8 bulan'
+                    WHEN TIMESTAMPDIFF(MONTH, tanggal_lahir, COALESCE(tanggal_onset, NOW())) BETWEEN 9 AND 11 THEN '9-11 bulan'
+                    WHEN TIMESTAMPDIFF(MONTH, tanggal_lahir, COALESCE(tanggal_onset, NOW())) BETWEEN 12 AND 17 THEN '12-17 bulan'
+                    WHEN TIMESTAMPDIFF(MONTH, tanggal_lahir, COALESCE(tanggal_onset, NOW())) BETWEEN 18 AND 59 THEN '18-59 bulan'
+                    WHEN TIMESTAMPDIFF(MONTH, tanggal_lahir, COALESCE(tanggal_onset, NOW())) BETWEEN 60 AND 119 THEN '5-9 tahun'
+                    WHEN TIMESTAMPDIFF(MONTH, tanggal_lahir, COALESCE(tanggal_onset, NOW())) BETWEEN 120 AND 179 THEN '10-14 tahun'
+                    ELSE '>= 15 tahun'
+                END as kelompok"),
+                'status_kasus',
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('kelompok', 'status_kasus')
+            ->get();
+
+        $umurMap = [];
+        foreach ($umurRaw as $row) {
+            $k = $row->kelompok;
+            if (!isset($umurMap[$k])) {
+                $umurMap[$k] = ['label' => $k, 'suspek' => 0, 'confirmed' => 0, 'discarded' => 0];
+            }
+            if ($row->status_kasus === 'suspected')  $umurMap[$k]['suspek']    = (int)$row->total;
+            elseif ($row->status_kasus === 'confirmed') $umurMap[$k]['confirmed'] = (int)$row->total;
+            elseif ($row->status_kasus === 'discarded') $umurMap[$k]['discarded'] = (int)$row->total;
+        }
+        $kelompokUmur = array_map(
+            fn($b) => $umurMap[$b] ?? ['label' => $b, 'suspek' => 0, 'confirmed' => 0, 'discarded' => 0],
+            $buckets
+        );
+
+        // ===== Status Vaksinasi =====
+        $vaksinasiRaw = (clone $base)
+            ->select('riwayat_imunisasi', DB::raw('COUNT(*) as total'))
+            ->groupBy('riwayat_imunisasi')
+            ->get()->keyBy('riwayat_imunisasi');
+
+        $statusVaksinasi = [
+            'tidak_ada'     => (int)($vaksinasiRaw->get('tidak_ada')?->total ?? 0),
+            'tidak_lengkap' => (int)($vaksinasiRaw->get('tidak_lengkap')?->total ?? 0),
+            'lengkap'       => (int)($vaksinasiRaw->get('lengkap')?->total ?? 0),
+            'tidak_tahu'    => (int)($vaksinasiRaw->get('tidak_tahu')?->total ?? 0),
+        ];
+
+        // ===== Severity =====
+        $total    = (clone $base)->count();
+        $rawatInap = (clone $base)->where('status_rawat', 'rawat_inap')->count();
+        $meninggal = (clone $base)->where('kondisi_akhir', 'meninggal')->count();
+
+        $komp = (clone $base)->select(
+            DB::raw('SUM(komplikasi_diare) as diare'),
+            DB::raw('SUM(komplikasi_kebutaan) as kebutaan'),
+            DB::raw('SUM(komplikasi_pneumonia) as pneumonia'),
+            DB::raw('SUM(komplikasi_malnutrisi) as malnutrisi'),
+            DB::raw('SUM(komplikasi_bronchopneumonia) as bronchopneumonia'),
+            DB::raw('SUM(komplikasi_otitis_media) as otitis_media'),
+            DB::raw('SUM(komplikasi_encephalitis) as encephalitis'),
+            DB::raw('SUM(komplikasi_ulkus_mukosa_mulut) as ulkus_mukosa_mulut')
+        )->first();
+
+        $severity = [
+            'pct_rawat_inap' => $total > 0 ? round($rawatInap / $total * 100, 1) : 0,
+            'komplikasi' => [
+                'diare'              => (int)($komp?->diare ?? 0),
+                'kebutaan'           => (int)($komp?->kebutaan ?? 0),
+                'pneumonia'          => (int)($komp?->pneumonia ?? 0),
+                'malnutrisi'         => (int)($komp?->malnutrisi ?? 0),
+                'bronchopneumonia'   => (int)($komp?->bronchopneumonia ?? 0),
+                'otitis_media'       => (int)($komp?->otitis_media ?? 0),
+                'encephalitis'       => (int)($komp?->encephalitis ?? 0),
+                'ulkus_mukosa_mulut' => (int)($komp?->ulkus_mukosa_mulut ?? 0),
+            ],
+            'meninggal' => $meninggal,
+        ];
+
+        return [
+            'kelompok_umur'    => array_values($kelompokUmur),
+            'status_vaksinasi' => $statusVaksinasi,
+            'severity'         => $severity,
+        ];
+    }
+
+    /**
+     * Wilayah data: per puskesmas/kecamatan/kelurahan tables + peta markers.
+     */
+    public function getPd3iWilayah(int $tahun, ?int $jenisKasusId, ?string $wilker, ?int $kelurahanId = null): array
+    {
+        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId);
+
+        // ===== Per Puskesmas =====
+        $perPuskesmas = (clone $base)
+            ->select(
+                DB::raw("COALESCE(wilker_puskesmas, 'Tidak Diketahui') as wilker"),
+                DB::raw("SUM(CASE WHEN status_kasus='suspected' THEN 1 ELSE 0 END) as suspek"),
+                DB::raw("SUM(CASE WHEN status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed"),
+                DB::raw("SUM(CASE WHEN kondisi_akhir='meninggal' THEN 1 ELSE 0 END) as meninggal")
+            )
+            ->groupBy('wilker')->orderBy('wilker')->get()
+            ->map(fn($r) => ['wilker' => $r->wilker, 'suspek' => (int)$r->suspek, 'confirmed' => (int)$r->confirmed, 'meninggal' => (int)$r->meninggal])
+            ->toArray();
+
+        // ===== Per Kecamatan =====
+        $perKecamatan = (clone $base)
+            ->select(
+                DB::raw("COALESCE(kec.name, 'Tidak Diketahui') as kecamatan"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='suspected' THEN 1 ELSE 0 END) as suspek"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.kondisi_akhir='meninggal' THEN 1 ELSE 0 END) as meninggal")
+            )
+            ->leftJoin('kecamatan as kec', 'surveillance_cases.id_kec', '=', 'kec.id')
+            ->groupBy('kecamatan')->orderBy('kecamatan')->get()
+            ->map(fn($r) => ['kecamatan' => $r->kecamatan, 'suspek' => (int)$r->suspek, 'confirmed' => (int)$r->confirmed, 'meninggal' => (int)$r->meninggal])
+            ->toArray();
+
+        // ===== Per Kelurahan =====
+        $perKelurahan = (clone $base)
+            ->select(
+                DB::raw("COALESCE(kec.name, 'Tidak Diketahui') as kecamatan"),
+                DB::raw("COALESCE(kel.name, 'Tidak Diketahui') as kelurahan"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='suspected' THEN 1 ELSE 0 END) as suspek"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.kondisi_akhir='meninggal' THEN 1 ELSE 0 END) as meninggal")
+            )
+            ->leftJoin('kelurahan as kel', 'surveillance_cases.id_kel', '=', 'kel.id')
+            ->leftJoin('kecamatan as kec', 'surveillance_cases.id_kec', '=', 'kec.id')
+            ->groupBy('kecamatan', 'kelurahan')->orderBy('kecamatan')->orderBy('kelurahan')->get()
+            ->map(fn($r) => ['kecamatan' => $r->kecamatan, 'kelurahan' => $r->kelurahan, 'suspek' => (int)$r->suspek, 'confirmed' => (int)$r->confirmed, 'meninggal' => (int)$r->meninggal])
+            ->toArray();
+
+        // ===== Peta =====
+        $peta = (clone $base)
+            ->with('jenisKasus:id,nama_penyakit')
+            ->whereNotNull('latitude')->whereNotNull('longitude')
+            ->get()
+            ->map(fn($r) => [
+                'id'       => $r->id,
+                'lat'      => (float)$r->latitude,
+                'lng'      => (float)$r->longitude,
+                'nama'     => $this->samarkanNama($r->nama_lengkap),
+                'penyakit' => $r->jenisKasus?->nama_penyakit ?? '–',
+                'status'   => $r->status_kasus,
+            ])->toArray();
+
+        return [
+            'per_puskesmas' => $perPuskesmas,
+            'per_kecamatan' => $perKecamatan,
+            'per_kelurahan' => $perKelurahan,
+            'peta'          => $peta,
+        ];
     }
 }
