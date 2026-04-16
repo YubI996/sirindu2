@@ -46,7 +46,7 @@ class ImportKohortJob implements ShouldQueue
             $this->importLog->update([
                 'status'        => 'done',
                 'success_count' => $results['success'],
-                'failure_count' => count($results['failures']),
+                'failure_count' => $results['error_count'],
                 'failures'      => $results['failures'] ?: null,
                 'completed_at'  => now(),
             ]);
@@ -59,8 +59,6 @@ class ImportKohortJob implements ShouldQueue
                 'failures'      => ["Import gagal: " . $e->getMessage()],
                 'completed_at'  => now(),
             ]);
-        } finally {
-            Storage::delete($this->importLog->file_path);
         }
     }
 
@@ -71,7 +69,5 @@ class ImportKohortJob implements ShouldQueue
             'failures'     => ["Job gagal dieksekusi: " . $exception->getMessage()],
             'completed_at' => now(),
         ]);
-
-        Storage::delete($this->importLog->file_path);
     }
 }

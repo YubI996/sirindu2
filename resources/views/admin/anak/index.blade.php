@@ -279,7 +279,6 @@ Anak
 // ===== Import Kohort Status Polling =====
 (function() {
     var statusUrl = '{{ route("admin.importKohortStatus") }}';
-    var hasActive = {{ $kohortImportLogs->whereIn('status', ['pending', 'processing'])->isNotEmpty() ? 'true' : 'false' }};
     var pollTimer = null;
 
     var statusColors = { pending: 'warning', processing: 'info', done: 'success', failed: 'danger' };
@@ -355,10 +354,8 @@ Anak
         $('#modalKohortErrorDetail').modal('show');
     });
 
-    if (hasActive) {
-        pollTimer = setInterval(refreshKohortStatus, 5000);
-        refreshKohortStatus();
-    }
+    pollTimer = setInterval(refreshKohortStatus, 5000);
+    refreshKohortStatus();
 })();
 @endif
 </script>

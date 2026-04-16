@@ -29,7 +29,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
 
     protected int $userId;
     protected int $successCount = 0;
-    protected array $failures = [];
+    protected int $errorCount   = 0;   // hanya baris yang benar-benar gagal disimpan
+    protected array $failures = [];    // semua pesan: [ERROR]/[PERINGATAN]/[INFO] untuk tampilan log
     protected int $rowOffset = 0;
 
     /** Cache jenis vaksin: kode → id */
@@ -254,8 +255,11 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                 // =============================================================
                 // US1: Upsert Anak (identitas)
                 // =============================================================
-                if (!empty($nik)) {
-                    $nikKey = $nik;
+                // Validasi NIK: hanya digit 15-16 karakter yang diterima
+                $nikValid = $nik !== '' && ctype_digit($nik) && strlen($nik) >= 15;
+
+                if ($nikValid) {
+                    $nikKey = substr($nik, 0, 16);
                 } else {
                     // Generate atau temukan NIK dummy terstruktur
                     $tglLahirStr = $this->parseDate($row[3] ?? null) ?? date('Y-m-d');
@@ -265,12 +269,16 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                     $nikKey = $this->nikService->findExisting($nama, $tglLahirStr, $jkStr)
                         ?? $this->nikService->generate($kodeWilayah, $tglLahirStr, $jkStr);
 
-                    $this->failures[] = "Info baris {$rowNum} (Nama: {$nama}): NIK kosong — NIK dummy {$nikKey} di-generate otomatis.";
+                    if (empty($nik)) {
+                        $this->failures[] = "[INFO] Baris {$rowNum} (Nama: {$nama}): NIK kosong — NIK dummy {$nikKey} di-generate otomatis.";
+                    } else {
+                        $this->failures[] = "[PERINGATAN] Baris {$rowNum} (Nama: {$nama}): NIK '{$nik}' tidak valid — NIK dummy {$nikKey} di-generate sebagai pengganti.";
+                    }
                 }
 
                 $jk = strtoupper(trim((string) ($row[4] ?? '')));
-                // jk kolom INT: 1 = Laki-laki, 0 = Perempuan (sesuai z-score lookup)
-                $jkValue = in_array($jk, ['L', 'LAKI', 'LAKI-LAKI']) ? 1 : 0;
+                // jk kolom INT: 1 = Laki-laki, 2 = Perempuan
+                $jkValue = in_array($jk, ['L', 'LAKI', 'LAKI-LAKI']) ? 1 : 2;
 
                 $imd = $this->parseBoolean($row[18] ?? null);
 
@@ -378,7 +386,7 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
 
                     $idVaksin = $this->vaksinCache[$kodeVaksin] ?? null;
                     if (!$idVaksin) {
-                        $this->failures[] = "Peringatan baris {$rowNum}: Kode vaksin '{$kodeVaksin}' tidak ditemukan di database — imunisasi ini dilewati.";
+                        $this->failures[] = "[PERINGATAN] Baris {$rowNum}: Kode vaksin '{$kodeVaksin}' tidak ditemukan di database — imunisasi ini dilewati.";
                         continue;
                     }
 
@@ -403,7 +411,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                 $errMsg = $this->simplifyError($e->getMessage());
                 $nikLabel  = $nik ?: '(kosong)';
                 $namaLabel = $nama ?: '(kosong)';
-                $this->failures[] = "Baris {$rowNum} (NIK: {$nikLabel}, Nama: {$namaLabel}): {$errMsg}";
+                $this->failures[] = "[ERROR] Baris {$rowNum} (NIK: {$nikLabel}, Nama: {$namaLabel}): {$errMsg}";
+                $this->errorCount++;
                 Log::warning("KohortImport skip baris {$rowNum}: " . $e->getMessage());
             }
         }
@@ -454,8 +463,9 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
     public function getResults(): array
     {
         return [
-            'success'  => $this->successCount,
-            'failures' => $this->failures,
+            'success'     => $this->successCount,
+            'error_count' => $this->errorCount,
+            'failures'    => $this->failures,
         ];
     }
 }
