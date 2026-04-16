@@ -507,6 +507,79 @@
         </div>
     </div>
 
+    {{-- ===== Panel Status Import ===== --}}
+    @if(!$isFaskes && $importLogs->isNotEmpty())
+    <div class="st-card mb-4" id="import-status-panel">
+        <div class="st-card__header" style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 class="st-card__header-title" style="margin:0;">
+                <span class="material-symbols-outlined">history</span>
+                Status Import PD3I
+            </h3>
+            <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted mr-2" id="import-last-refresh"></span>
+                @if($importLogs->whereIn('status', ['done','failed'])->isNotEmpty())
+                <button id="btn-hapus-semua-log" class="btn btn-xs btn-outline-danger">
+                    <span class="material-symbols-outlined" style="font-size:.9rem;vertical-align:middle;">delete_sweep</span>
+                    Hapus Semua
+                </button>
+                @endif
+            </div>
+        </div>
+        <div class="st-card__body p-0">
+            <table class="table table-sm mb-0" id="import-log-table">
+                <thead class="thead-light">
+                    <tr>
+                        <th>File</th>
+                        <th>Status</th>
+                        <th>Berhasil</th>
+                        <th>Dilewati</th>
+                        <th>Waktu Selesai</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($importLogs as $log)
+                    <tr data-log-id="{{ $log->id }}" data-status="{{ $log->status }}">
+                        <td class="small">{{ $log->filename }}</td>
+                        <td>
+                            <span class="badge badge-{{ $log->statusColor() }}">{{ $log->statusLabel() }}</span>
+                        </td>
+                        <td>{{ $log->success_count ?? '—' }}</td>
+                        <td>{{ $log->failure_count ?? '—' }}</td>
+                        <td class="small">{{ $log->completed_at ? $log->completed_at->format('d/m/Y H:i') : '—' }}</td>
+                        <td class="text-nowrap">
+                            @if($log->isDone() && $log->failure_count > 0)
+                            <button class="btn btn-xs btn-outline-warning btn-lihat-error mr-1" data-id="{{ $log->id }}" data-failures="{{ json_encode($log->failures) }}">
+                                Lihat Error
+                            </button>
+                            @elseif($log->isFailed())
+                            <button class="btn btn-xs btn-outline-danger btn-lihat-error mr-1" data-id="{{ $log->id }}" data-failures="{{ json_encode($log->failures) }}">
+                                Lihat Detail
+                            </button>
+                            @endif
+                            @if($log->isDone() || $log->isFailed())
+                            <form method="POST" action="{{ route('admin.epidemiologi.reimport', $log->id) }}" class="d-inline" onsubmit="return confirm('Ulangi import file ini? Data PD3I yang sudah ada tidak akan dihapus otomatis.')">
+                                @csrf
+                                <button type="submit" class="btn btn-xs btn-outline-secondary">
+                                    <span class="material-symbols-outlined" style="font-size:.9rem;vertical-align:middle;">replay</span>
+                                    Reimport
+                                </button>
+                            </form>
+                            <button class="btn btn-xs btn-outline-danger btn-hapus-log ml-1"
+                                data-id="{{ $log->id }}"
+                                data-url="{{ route('admin.epidemiologi.destroyImportLog', $log->id) }}">
+                                <span class="material-symbols-outlined" style="font-size:.9rem;vertical-align:middle;">delete</span>
+                            </button>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
     {{-- ===== Filter Card ===== --}}
     <div class="st-card mb-4">
         <div class="st-card__header">
@@ -650,56 +723,6 @@
 </div>
 @endif
 
-{{-- ===== Panel Status Import ===== --}}
-@if(!$isFaskes && $importLogs->isNotEmpty())
-<div class="st-card mt-3" id="import-status-panel">
-    <div class="st-card__header" style="display:flex;justify-content:space-between;align-items:center;">
-        <h3 class="st-card__header-title" style="margin:0;">
-            <span class="material-symbols-outlined">history</span>
-            Status Import PD3I
-        </h3>
-        <span class="small text-muted" id="import-last-refresh"></span>
-    </div>
-    <div class="st-card__body p-0">
-        <table class="table table-sm mb-0" id="import-log-table">
-            <thead class="thead-light">
-                <tr>
-                    <th>File</th>
-                    <th>Status</th>
-                    <th>Berhasil</th>
-                    <th>Dilewati</th>
-                    <th>Waktu Selesai</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($importLogs as $log)
-                <tr data-log-id="{{ $log->id }}" data-status="{{ $log->status }}">
-                    <td class="small">{{ $log->filename }}</td>
-                    <td>
-                        <span class="badge badge-{{ $log->statusColor() }}">{{ $log->statusLabel() }}</span>
-                    </td>
-                    <td>{{ $log->success_count ?? '—' }}</td>
-                    <td>{{ $log->failure_count ?? '—' }}</td>
-                    <td class="small">{{ $log->completed_at ? $log->completed_at->format('d/m/Y H:i') : '—' }}</td>
-                    <td>
-                        @if($log->isDone() && $log->failure_count > 0)
-                        <button class="btn btn-xs btn-outline-warning btn-lihat-error" data-id="{{ $log->id }}" data-failures="{{ htmlspecialchars(json_encode($log->failures), ENT_QUOTES) }}">
-                            Lihat Error
-                        </button>
-                        @elseif($log->isFailed())
-                        <button class="btn btn-xs btn-outline-danger btn-lihat-error" data-id="{{ $log->id }}" data-failures="{{ htmlspecialchars(json_encode($log->failures), ENT_QUOTES) }}">
-                            Lihat Detail
-                        </button>
-                        @endif
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-</div>
-
 {{-- Modal detail error --}}
 <div class="modal fade" id="modalErrorDetail" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
@@ -714,7 +737,6 @@
         </div>
     </div>
 </div>
-@endif
 
 {{-- ===== Modal: Import Excel PD3I ===== --}}
 @if(!$isFaskes)
@@ -878,12 +900,35 @@ $(document).ready(function() {
 @if(!$isFaskes && $importLogs->isNotEmpty())
 // ===== Import Status Polling =====
 (function() {
-    var statusUrl  = '{{ route("admin.epidemiologi.importStatus") }}';
-    var hasActive  = {{ $importLogs->whereIn('status', ['pending', 'processing'])->isNotEmpty() ? 'true' : 'false' }};
-    var pollTimer  = null;
+    var statusUrl    = '{{ route("admin.epidemiologi.importStatus") }}';
+    var deleteLogUrl = '{{ route("admin.epidemiologi.destroyImportLog", "_ID_") }}';
+    var deleteAllUrl = '{{ route("admin.epidemiologi.destroyAllImportLogs") }}';
+    var csrfToken    = '{{ csrf_token() }}';
+    var pollTimer    = null;
 
     var statusColors = { pending: 'warning', processing: 'info', done: 'success', failed: 'danger' };
     var statusLabels = { pending: 'Menunggu', processing: 'Diproses', done: 'Selesai', failed: 'Gagal' };
+
+    function buildActionCell(log) {
+        var html = '';
+        var reimportUrl = '{{ route("admin.epidemiologi.reimport", "_ID_") }}'.replace('_ID_', log.id);
+        var delUrl      = deleteLogUrl.replace('_ID_', log.id);
+
+        if (log.status === 'done' && log.failure_count > 0) {
+            html += '<button class="btn btn-xs btn-outline-warning btn-lihat-error mr-1" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures || []) + '\'>Lihat Error</button>';
+        } else if (log.status === 'failed') {
+            html += '<button class="btn btn-xs btn-outline-danger btn-lihat-error mr-1" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures || []) + '\'>Lihat Detail</button>';
+        }
+        if (log.status === 'done' || log.status === 'failed') {
+            html += '<form method="POST" action="' + reimportUrl + '" class="d-inline" onsubmit="return confirm(\'Ulangi import file ini?\')">'
+                 + '<input type="hidden" name="_token" value="' + csrfToken + '">'
+                 + '<button type="submit" class="btn btn-xs btn-outline-secondary mr-1">'
+                 + '<span class="material-symbols-outlined" style="font-size:.9rem;vertical-align:middle;">replay</span> Reimport</button></form>';
+            html += '<button class="btn btn-xs btn-outline-danger btn-hapus-log" data-id="' + log.id + '" data-url="' + delUrl + '">'
+                 + '<span class="material-symbols-outlined" style="font-size:.9rem;vertical-align:middle;">delete</span></button>';
+        }
+        return html;
+    }
 
     function refreshStatus() {
         $.getJSON(statusUrl, function(logs) {
@@ -893,9 +938,8 @@ $(document).ready(function() {
                 if (!$row.length) return;
 
                 var oldStatus = $row.data('status');
-                if (oldStatus === log.status) return; // tidak berubah
-
                 $row.data('status', log.status);
+
                 $row.find('.badge')
                     .removeClass('badge-warning badge-info badge-success badge-danger')
                     .addClass('badge-' + (statusColors[log.status] || 'secondary'))
@@ -905,18 +949,16 @@ $(document).ready(function() {
                 $row.find('td').eq(3).text(log.failure_count !== null ? log.failure_count : '—');
                 $row.find('td').eq(4).text(log.completed_at ? log.completed_at.substring(0, 16).replace('T', ' ') : '—');
 
-                if (log.status === 'done' && log.failure_count > 0) {
-                    $row.find('td').eq(5).html('<button class="btn btn-xs btn-outline-warning btn-lihat-error" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures) + '\'>Lihat Error</button>');
-                } else if (log.status === 'failed') {
-                    $row.find('td').eq(5).html('<button class="btn btn-xs btn-outline-danger btn-lihat-error" data-id="' + log.id + '" data-failures=\'' + JSON.stringify(log.failures) + '\'>Lihat Detail</button>');
-                }
+                if (oldStatus !== log.status) {
+                    $row.find('td').eq(5).html(buildActionCell(log));
 
-                if (log.status === 'done' && oldStatus !== 'done') {
-                    var msg = log.success_count + ' data berhasil diimpor';
-                    if (log.failure_count > 0) msg += ', ' + log.failure_count + ' baris dilewati';
-                    toastr && toastr.success(msg + '.', 'Import Selesai');
-                } else if (log.status === 'failed' && oldStatus !== 'failed') {
-                    toastr && toastr.error('Import gagal. Lihat detail untuk informasi lebih lanjut.', 'Import Gagal');
+                    if (log.status === 'done' && oldStatus !== 'done') {
+                        var msg = log.success_count + ' data berhasil diimpor';
+                        if (log.failure_count > 0) msg += ', ' + log.failure_count + ' baris gagal';
+                        toastr && toastr.success(msg + '.', 'Import Selesai');
+                    } else if (log.status === 'failed' && oldStatus !== 'failed') {
+                        toastr && toastr.error('Import gagal. Lihat detail untuk informasi lebih lanjut.', 'Import Gagal');
+                    }
                 }
 
                 if (log.status === 'pending' || log.status === 'processing') stillActive = true;
@@ -931,20 +973,50 @@ $(document).ready(function() {
         });
     }
 
-    // Lihat detail error
+    // Lihat detail error — warnai [ERROR]/[PERINGATAN]/[INFO]
     $(document).on('click', '.btn-lihat-error', function() {
         var failures = $(this).data('failures');
         if (typeof failures === 'string') { try { failures = JSON.parse(failures); } catch(e) { failures = [failures]; } }
         var $list = $('#error-list').empty();
-        (failures || []).forEach(function(f) { $list.append('<li>' + $('<span>').text(f).html() + '</li>'); });
+        (failures || []).forEach(function(f) {
+            var cls = f.indexOf('[ERROR]') === 0 ? 'text-danger'
+                    : (f.indexOf('[PERINGATAN]') === 0 ? 'text-warning' : 'text-muted');
+            $list.append('<li class="' + cls + '">' + $('<span>').text(f).html() + '</li>');
+        });
         $('#modalErrorDetail').modal('show');
     });
 
-    // Start polling jika ada job aktif
-    if (hasActive) {
-        pollTimer = setInterval(refreshStatus, 5000);
-        refreshStatus();
-    }
+    // Hapus satu log via AJAX
+    $(document).on('click', '.btn-hapus-log', function() {
+        if (!confirm('Hapus riwayat import ini?')) return;
+        var $btn = $(this);
+        $.ajax({
+            url: $btn.data('url'), method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken },
+            success: function() {
+                $btn.closest('tr').remove();
+                if ($('#import-log-table tbody tr').length === 0) {
+                    $('#import-status-panel').remove();
+                }
+            },
+            error: function() { toastr && toastr.error('Gagal menghapus riwayat.'); }
+        });
+    });
+
+    // Hapus semua log via AJAX
+    $('#btn-hapus-semua-log').on('click', function() {
+        if (!confirm('Hapus semua riwayat import yang sudah selesai?')) return;
+        $.ajax({
+            url: deleteAllUrl, method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken },
+            success: function() { $('#import-status-panel').remove(); },
+            error: function() { toastr && toastr.error('Gagal menghapus riwayat.'); }
+        });
+    });
+
+    // Selalu mulai polling — berhenti sendiri setelah semua log selesai
+    pollTimer = setInterval(refreshStatus, 5000);
+    refreshStatus();
 })();
 @endif
 </script>

@@ -13,17 +13,21 @@ class SurveillanceCaseKontakErat extends Model
         'urutan',
         'nama',
         'hubungan',
+        'tanggal_lahir',
         'no_telepon',
         'alamat',
         'tanggal_kontak_terakhir',
         'ada_gejala',
+        'jumlah_imunisasi_campak_rubella',
         'catatan',
     ];
 
     protected $casts = [
-        'tanggal_kontak_terakhir' => 'date',
-        'ada_gejala'              => 'boolean',
-        'urutan'                  => 'integer',
+        'tanggal_lahir'                   => 'date',
+        'tanggal_kontak_terakhir'         => 'date',
+        'ada_gejala'                      => 'boolean',
+        'urutan'                          => 'integer',
+        'jumlah_imunisasi_campak_rubella' => 'integer',
     ];
 
     public function surveillanceCase()

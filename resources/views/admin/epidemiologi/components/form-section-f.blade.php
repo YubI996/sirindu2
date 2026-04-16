@@ -5,10 +5,12 @@
             <label>Status Pemeriksaan Lab</label>
             <select name="status_lab" id="status_lab" class="form-control">
                 <option value="">-- Pilih --</option>
-                <option value="belum_diperiksa" {{ old('status_lab', $case->status_lab ?? '') == 'belum_diperiksa' ? 'selected' : '' }}>Belum Diperiksa</option>
-                <option value="proses"          {{ old('status_lab', $case->status_lab ?? '') == 'proses'          ? 'selected' : '' }}>Dalam Proses</option>
-                <option value="positif"         {{ old('status_lab', $case->status_lab ?? '') == 'positif'         ? 'selected' : '' }}>Positif</option>
-                <option value="negatif"         {{ old('status_lab', $case->status_lab ?? '') == 'negatif'         ? 'selected' : '' }}>Negatif</option>
+                <option value="diperiksa_lab"       {{ old('status_lab', $case->status_lab ?? '') == 'diperiksa_lab'       ? 'selected' : '' }}>Diperiksa Lab</option>
+                <option value="tidak_diperiksa_lab" {{ old('status_lab', $case->status_lab ?? '') == 'tidak_diperiksa_lab' ? 'selected' : '' }}>Tidak Diperiksa Lab</option>
+                <option value="belum_diperiksa"     {{ old('status_lab', $case->status_lab ?? '') == 'belum_diperiksa'     ? 'selected' : '' }}>Belum Diperiksa</option>
+                <option value="proses"              {{ old('status_lab', $case->status_lab ?? '') == 'proses'              ? 'selected' : '' }}>Dalam Proses</option>
+                <option value="positif"             {{ old('status_lab', $case->status_lab ?? '') == 'positif'             ? 'selected' : '' }}>Positif</option>
+                <option value="negatif"             {{ old('status_lab', $case->status_lab ?? '') == 'negatif'             ? 'selected' : '' }}>Negatif</option>
             </select>
         </div>
     </div>
@@ -21,7 +23,9 @@
 <p class="text-muted mb-3"><i class="fa fa-info-circle"></i> Tambahkan setiap jenis spesimen yang diambil dari pasien.</p>
 
 @php
-    $jenisKasusList = \App\Models\JenisKasusEpidemiologi::active()->orderBy('nama_penyakit')->get();
+    $penyakitTerkonfirmasiOptions = [
+        'Rubella', 'Campak', 'Polio', 'Difteri', 'Pertusis', 'TN', 'Negatif',
+    ];
     $spesimenRows = old('spesimen', []);
     $spesimenExisting = $case->spesimen ?? collect();
     if (empty($spesimenRows)) {
@@ -31,7 +35,7 @@
             'tanggal_kirim_sampel'         => $s->tanggal_kirim_sampel?->format('Y-m-d'),
             'tanggal_terima_lab'           => $s->tanggal_terima_lab?->format('Y-m-d'),
             'status_pemeriksaan'           => $s->status_pemeriksaan,
-            'id_jenis_kasus_terkonfirmasi' => $s->id_jenis_kasus_terkonfirmasi,
+            'penyakit_terkonfirmasi'       => $s->penyakit_terkonfirmasi,
             'nama_variant_genotype'        => $s->nama_variant_genotype,
         ])->toArray();
     }
@@ -81,11 +85,11 @@
             </div>
             <div class="col-md-4">
                 <div class="form-group mb-2">
-                    <label class="small mb-1">Hasil Konfirmasi Penyakit</label>
-                    <select name="spesimen[__IDX__][id_jenis_kasus_terkonfirmasi]" class="form-control form-control-sm">
+                    <label class="small mb-1">Penyakit Terkonfirmasi</label>
+                    <select name="spesimen[__IDX__][penyakit_terkonfirmasi]" class="form-control form-control-sm">
                         <option value="">-- Belum dikonfirmasi --</option>
-                        @foreach($jenisKasusList as $jk)
-                        <option value="{{ $jk->id }}">{{ $jk->nama_penyakit }}</option>
+                        @foreach($penyakitTerkonfirmasiOptions as $opt)
+                        <option value="{{ $opt }}">{{ $opt }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -151,11 +155,11 @@
             </div>
             <div class="col-md-4">
                 <div class="form-group mb-2">
-                    <label class="small mb-1">Hasil Konfirmasi Penyakit</label>
-                    <select name="spesimen[{{ $idx }}][id_jenis_kasus_terkonfirmasi]" class="form-control form-control-sm">
+                    <label class="small mb-1">Penyakit Terkonfirmasi</label>
+                    <select name="spesimen[{{ $idx }}][penyakit_terkonfirmasi]" class="form-control form-control-sm">
                         <option value="">-- Belum dikonfirmasi --</option>
-                        @foreach($jenisKasusList as $jk)
-                        <option value="{{ $jk->id }}" {{ ($sp['id_jenis_kasus_terkonfirmasi'] ?? '') == $jk->id ? 'selected' : '' }}>{{ $jk->nama_penyakit }}</option>
+                        @foreach($penyakitTerkonfirmasiOptions as $opt)
+                        <option value="{{ $opt }}" {{ ($sp['penyakit_terkonfirmasi'] ?? '') === $opt ? 'selected' : '' }}>{{ $opt }}</option>
                         @endforeach
                     </select>
                 </div>

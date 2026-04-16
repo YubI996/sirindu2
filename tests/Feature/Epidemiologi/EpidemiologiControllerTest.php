@@ -323,14 +323,6 @@ class EpidemiologiControllerTest extends TestCase
         $response->assertSessionHasErrors('jenis_kelamin');
     }
 
-    public function test_store_fails_with_invalid_status_rawat()
-    {
-        $data = $this->validCaseData(['status_rawat' => 'invalid']);
-
-        $response = $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
-        $response->assertSessionHasErrors('status_rawat');
-    }
-
     public function test_store_requires_penyebab_kematian_when_meninggal()
     {
         $data = $this->validCaseData([

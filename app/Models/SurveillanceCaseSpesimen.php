@@ -16,6 +16,7 @@ class SurveillanceCaseSpesimen extends Model
         'tanggal_kirim_sampel',
         'tanggal_terima_lab',
         'status_pemeriksaan',
+        'penyakit_terkonfirmasi',
         'id_jenis_kasus_terkonfirmasi',
         'nama_variant_genotype',
     ];

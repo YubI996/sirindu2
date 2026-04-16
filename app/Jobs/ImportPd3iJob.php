@@ -49,7 +49,7 @@ class ImportPd3iJob implements ShouldQueue
             $this->importLog->update([
                 'status'        => 'done',
                 'success_count' => $results['success'],
-                'failure_count' => count($results['failures']),
+                'failure_count' => $results['error_count'],
                 'failures'      => $results['failures'] ?: null,
                 'completed_at'  => now(),
             ]);
@@ -62,9 +62,6 @@ class ImportPd3iJob implements ShouldQueue
                 'failures'      => ["Import gagal: " . $e->getMessage()],
                 'completed_at'  => now(),
             ]);
-        } finally {
-            // Hapus file sementara setelah selesai diproses
-            Storage::delete($this->importLog->file_path);
         }
     }
 
@@ -75,8 +72,5 @@ class ImportPd3iJob implements ShouldQueue
             'failures'     => ["Job gagal dieksekusi: " . $exception->getMessage()],
             'completed_at' => now(),
         ]);
-
-        // Hapus file jika job mati sebelum blok finally di handle() sempat berjalan
-        Storage::delete($this->importLog->file_path);
     }
 }

@@ -633,6 +633,31 @@ class EpidemiologiController extends Controller
     }
 
     /**
+     * Ulangi import menggunakan file yang sama dari log sebelumnya.
+     */
+    public function reimportExcel(ImportLog $log)
+    {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
+
+        if (!\Illuminate\Support\Facades\Storage::exists($log->file_path)) {
+            return redirect()->route('admin.epidemiologi.index')
+                ->with('import_queued', "File \"{$log->filename}\" sudah tidak tersedia. Silakan upload ulang.");
+        }
+
+        $newLog = ImportLog::create([
+            'user_id'   => auth()->id(),
+            'filename'  => $log->filename,
+            'file_path' => $log->file_path,
+            'status'    => 'pending',
+        ]);
+
+        ImportPd3iJob::dispatch($newLog);
+
+        return redirect()->route('admin.epidemiologi.index')
+            ->with('import_queued', "Mengulang import \"{$log->filename}\" di latar belakang. Cek status import di bawah.");
+    }
+
+    /**
      * Kembalikan status import log terbaru (untuk polling AJAX).
      */
     public function importStatus()
@@ -645,6 +670,47 @@ class EpidemiologiController extends Controller
             ->get(['id', 'filename', 'status', 'success_count', 'failure_count', 'failures', 'started_at', 'completed_at', 'created_at']);
 
         return response()->json($logs);
+    }
+
+    /**
+     * Hapus satu log import.
+     */
+    public function destroyImportLog(ImportLog $log)
+    {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
+        abort_if(in_array($log->status, ['pending', 'processing']), 422, 'Tidak bisa menghapus log yang sedang diproses.');
+
+        \Illuminate\Support\Facades\Storage::delete($log->file_path);
+        $log->delete();
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return redirect()->route('admin.epidemiologi.index');
+    }
+
+    /**
+     * Hapus semua log import milik user (kecuali yang masih pending/processing).
+     */
+    public function destroyAllImportLogs()
+    {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
+
+        $logs = ImportLog::where('user_id', auth()->id())
+            ->whereIn('status', ['done', 'failed'])
+            ->get();
+
+        foreach ($logs as $log) {
+            \Illuminate\Support\Facades\Storage::delete($log->file_path);
+            $log->delete();
+        }
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return redirect()->route('admin.epidemiologi.index');
     }
 
     // ==================== EXPORT METHODS ====================

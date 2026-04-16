@@ -61,10 +61,10 @@ class NikDummyService
      */
     public function findExisting(string $nama, string $tanggalLahir, string $jenisKelamin): ?string
     {
-        $jkValue = strtoupper($jenisKelamin) === 'L' ? 1 : 0;
+        $jkValue = strtoupper($jenisKelamin) === 'L' ? 1 : 2;
 
-        $kandidat = Anak::where('tanggal_lahir', $tanggalLahir)
-            ->where('jenis_kelamin', $jkValue)
+        $kandidat = Anak::where('tgl_lahir', $tanggalLahir)
+            ->where('jk', $jkValue)
             ->whereRaw("SUBSTRING(nik, 13, 1) = '9'")
             ->whereRaw("LENGTH(nik) = 16")
             ->get(['nik', 'nama']);
@@ -94,11 +94,20 @@ class NikDummyService
      */
     public function nextUrutan(string $prefix): int
     {
-        $max = Anak::where('nik', 'like', $prefix . '%')
-            ->whereRaw("LENGTH(nik) = 16")
-            ->whereRaw("SUBSTRING(nik, 13, 1) = '9'")
-            ->selectRaw("MAX(CAST(SUBSTRING(nik, 13, 4) AS UNSIGNED)) as max_urutan")
-            ->value('max_urutan');
+        $likePattern = $prefix . '%';
+        $rawLength   = "LENGTH(nik) = 16";
+        $rawDigit    = "SUBSTRING(nik, 13, 1) = '9'";
+        $rawMax      = "MAX(CAST(SUBSTRING(nik, 13, 4) AS UNSIGNED)) as max_urutan";
+
+        $maxAnak = Anak::where('nik', 'like', $likePattern)
+            ->whereRaw($rawLength)->whereRaw($rawDigit)
+            ->selectRaw($rawMax)->value('max_urutan');
+
+        $maxSurv = \App\Models\SurveillanceCase::where('nik', 'like', $likePattern)
+            ->whereRaw($rawLength)->whereRaw($rawDigit)
+            ->selectRaw($rawMax)->value('max_urutan');
+
+        $max = max($maxAnak, $maxSurv);
 
         $next = ($max === null) ? self::URUTAN_MIN : (int) $max + 1;
 

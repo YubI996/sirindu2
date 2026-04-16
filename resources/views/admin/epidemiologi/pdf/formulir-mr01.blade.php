@@ -99,9 +99,17 @@
             <td class="label">Nomor KLB</td>
             <td style="border-bottom:1px solid #000;"></td>
         </tr>
+        @php
+            $instansiUpper = strtoupper($case->instansi_pelapor ?? '');
+            $instansiIsRS  = str_starts_with($instansiUpper, 'RS')
+                          || str_starts_with($instansiUpper, 'RUMAH SAKIT');
+            $sumberLaporan = ($instansiIsRS || $case->petugasInput?->faskes_type === 'rs')
+                ? 'Rumah Sakit'
+                : 'Puskesmas';
+        @endphp
         <tr>
             <td class="label">Sumber Laporan</td>
-            <td style="border-bottom:1px solid #000;">{{ ucfirst($case->sumber_penularan ?? '') }}</td>
+            <td style="border-bottom:1px solid #000;">{{ $sumberLaporan }}</td>
             <td></td>
             <td></td>
             <td class="label">Nama Unit Pelapor</td>
@@ -263,15 +271,15 @@
         @endphp
         @foreach($imunisasiLabels as $field => $label)
         <tr>
-            <td style="width:40%">{{ $label }}</td>
-            <td style="width:25%">
+            <td style="width:35%">{{ $label }}</td>
+            <td style="width:12%">
                 @php $val = $case->$field; @endphp
                 @if($val === 'ya' || $val === 'Ya')
                     Ya
                 @elseif($val === 'tidak' || $val === 'Tidak')
                     Tidak
                 @else
-                    Tidak Tahu/{{ $val ?? '-' }}
+                    Tidak Tahu
                 @endif
             </td>
             <td class="field-label" style="width:15%">Sumber Informasi</td>
@@ -279,9 +287,9 @@
         </tr>
         @endforeach
         <tr>
-            <td>Pernah menerima imunisasi Measles Mumps Rubella (MMR) sebelumnya?</td>
-            <td>{{ $case->imunisasi_4 ?? 'Tidak Tahu' }}</td>
-            <td class="field-label">Sumber Informasi</td>
+            <td style="width:35%">Pernah menerima imunisasi Measles Mumps Rubella (MMR) sebelumnya?</td>
+            <td style="width:12%">{{ $case->imunisasi_4 ?? 'Tidak Tahu' }}</td>
+            <td class="field-label" style="width:15%">Sumber Informasi</td>
             <td colspan="3">{{ $case->sumber_informasi_imunisasi ?? '-' }}</td>
         </tr>
         <tr>
@@ -292,9 +300,9 @@
         </tr>
         <tr>
             <td>Tanggal imunisasi campak-rubela terakhir</td>
-            <td colspan="2">{{ $case->tanggal_imunisasi_terakhir ? $case->tanggal_imunisasi_terakhir->format('d-M-Y') : '-' }}</td>
+            <td>{{ $case->tanggal_imunisasi_terakhir ? $case->tanggal_imunisasi_terakhir->format('d-M-Y') : '-' }}</td>
             <td class="field-label">Sumber Informasi</td>
-            <td colspan="2">{{ $case->sumber_informasi_imunisasi ?? '-' }}</td>
+            <td colspan="3">{{ $case->sumber_informasi_imunisasi ?? '-' }}</td>
         </tr>
     </table>
 
@@ -387,130 +395,89 @@
 <div class="page" style="page-break-before: always;">
 
     {{-- Header halaman 2 --}}
-    <div class="header">
-        <div class="mr-code">MR-01 (Hal. 2)</div>
-        @if(file_exists($logoPath))
-            <img src="{{ $logoPath }}" class="logo" alt="Kemenkes RI">
-        @endif
-        <div style="text-align:center; font-size:10pt; font-weight:bold; margin:4px 0 2px;">
-            FORMULIR PENYELIDIKAN EPIDEMIOLOGI PENYAKIT YANG DAPAT DICEGAH DENGAN IMUNISASI (PD3I)
-        </div>
-        <div style="text-align:center; font-size:9pt; margin-bottom:6px;">
-            Nomor: <strong>{{ $case->no_registrasi }}</strong> &nbsp;|&nbsp; Penyakit: <strong>{{ $case->jenisKasus->nama_penyakit ?? '-' }}</strong>
-        </div>
-    </div>
+    <table style="width:100%; border:none; margin-bottom:8px;" class="info-table">
+        <tr>
+            <td style="width:15%; vertical-align:top; padding-top:2px;">
+                <div class="mr-code">MR-01 (Hal. 2)</div>
+            </td>
+            <td style="vertical-align:middle; text-align:center; padding:0 8px;">
+                <div style="font-size:10pt; font-weight:bold; margin-bottom:3px;">
+                    FORMULIR PENYELIDIKAN EPIDEMIOLOGI PENYAKIT YANG DAPAT DICEGAH DENGAN IMUNISASI (PD3I)
+                </div>
+                <div style="font-size:9pt;">
+                    Nomor: <strong>{{ $case->no_registrasi }}</strong> &nbsp;|&nbsp; Penyakit: <strong>{{ $case->jenisKasus->nama_penyakit ?? '-' }}</strong>
+                </div>
+            </td>
+            <td style="width:85px; vertical-align:top; text-align:right;">
+                @if(file_exists($logoPath))
+                    <img src="{{ $logoPath }}" style="width:75px;" alt="Kemenkes RI">
+                @endif
+            </td>
+        </tr>
+    </table>
 
     {{-- Kontak Erat --}}
+    @php
+        $kontakErat       = $case->kontakErat ?? collect();
+        $namaPenyakit     = $case->jenisKasus->nama_penyakit ?? 'PD3I';
+        // Hilangkan awalan "Suspek " agar tidak dobel dengan kata "suspek" di teks narasi
+        $namaPenyakitBersih = preg_replace('/^Suspek\s+/i', '', $namaPenyakit);
+    @endphp
+
+    {{-- Narasi investigasi kontak --}}
+    <p style="font-size:8.5pt; font-weight:bold; margin:0 0 3px;">Kontak erat suspek {{ $namaPenyakitBersih }}</p>
+    <p style="font-size:8pt; margin:0 0 3px; text-align:justify;">
+        Identifikasi semua orang yang berhubungan (kontak) dengan suspek {{ $namaPenyakitBersih }} selama masa
+        inkubasi (7&ndash;21 hari sebelum timbulnya ruam) dan selama fase menular (7 hari sebelum dan 7 hari setelah
+        timbulnya ruam).
+        Yang termasuk dalam kategori kontak kasus adalah: tinggal satu rumah / asrama, tetangga / kerabat / pengasuh,
+        teman kelas / bermain / guru, teman kerja, petugas kesehatan, yang merawat kasus.
+        Catat kontak tersebut pada tabel di bawah ini, tentukan apakah mereka sedang sakit atau tidak.
+        Apabila ada kontak yang sedang hamil beri tanda bintang (*) pada nama kontak di tabel dan pastikan ibu hamil
+        dijauhkan dari suspek.
+    </p>
+
     <div class="section-header" style="margin-bottom:4px;">DATA KONTAK ERAT</div>
-    @php $kontakErat = $case->kontakErat ?? collect(); @endphp
     <table class="data-table" style="font-size:8pt;">
         <thead>
             <tr style="background:#f0f0f0; font-weight:bold;">
                 <th style="width:4%; text-align:center;">No</th>
-                <th style="width:20%">Nama</th>
-                <th style="width:12%">Hubungan</th>
-                <th style="width:14%">No. HP</th>
-                <th style="width:22%">Alamat</th>
-                <th style="width:13%">Tgl Kontak Terakhir</th>
+                <th style="width:18%">Nama</th>
+                <th style="width:10%">Hubungan</th>
+                <th style="width:8%">Umur (Thn)</th>
+                <th style="width:18%">Alamat</th>
+                <th style="width:12%">Tgl Kontak Terakhir</th>
+                <th style="width:14%">Status Imunisasi {{ $namaPenyakit }}</th>
                 <th style="width:8%; text-align:center;">Bergejala</th>
                 <th>Catatan</th>
             </tr>
         </thead>
         <tbody>
             @forelse($kontakErat as $i => $k)
+            @php
+                $umurThn = $k->tanggal_lahir ? (int) $k->tanggal_lahir->diffInYears(now()) : null;
+                $jml = $k->jumlah_imunisasi_campak_rubella;
+                $statusImunisasi = is_null($jml) ? 'Tidak Tahu' : ($jml === 0 ? 'Belum' : 'Sudah (' . $jml . 'x)');
+            @endphp
             <tr>
                 <td style="text-align:center;">{{ $i + 1 }}</td>
                 <td>{{ $k->nama }}</td>
                 <td>{{ $k->hubungan ?? '-' }}</td>
-                <td>{{ $k->no_telepon ?? '-' }}</td>
+                <td style="text-align:center;">{{ $umurThn ?? '-' }}</td>
                 <td>{{ $k->alamat ?? '-' }}</td>
                 <td style="text-align:center;">{{ $k->tanggal_kontak_terakhir ? $k->tanggal_kontak_terakhir->format('d/m/Y') : '-' }}</td>
+                <td style="text-align:center;">{{ $statusImunisasi }}</td>
                 <td style="text-align:center;">{{ $k->ada_gejala ? 'Ya' : 'Tidak' }}</td>
                 <td>{{ $k->catatan ?? '' }}</td>
             </tr>
             @empty
-            @for($r = 0; $r < 5; $r++)
+            @for($r = 0; $r < 10; $r++)
             <tr>
                 <td style="text-align:center;">{{ $r + 1 }}</td>
-                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
             </tr>
             @endfor
             @endforelse
-        </tbody>
-    </table>
-
-    {{-- Spesimen --}}
-    <div class="section-header" style="margin:8px 0 4px;">DATA SPESIMEN LABORATORIUM</div>
-    @php $spesimenList = $case->spesimen ?? collect(); @endphp
-    <table class="data-table" style="font-size:8pt;">
-        <thead>
-            <tr style="background:#f0f0f0; font-weight:bold;">
-                <th style="width:4%; text-align:center;">No</th>
-                <th style="width:18%">Jenis Spesimen</th>
-                <th style="width:13%">Tgl Ambil</th>
-                <th style="width:13%">Tgl Kirim</th>
-                <th style="width:13%">Tgl Terima Lab</th>
-                <th style="width:15%">Status Pemeriksaan</th>
-                <th>Konfirmasi / Variant</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($spesimenList as $i => $sp)
-            <tr>
-                <td style="text-align:center;">{{ $i + 1 }}</td>
-                <td>{{ $sp->jenis_spesimen }}</td>
-                <td>{{ $sp->tanggal_ambil_spesimen ? $sp->tanggal_ambil_spesimen->format('d/m/Y') : '-' }}</td>
-                <td>{{ $sp->tanggal_kirim_sampel ? $sp->tanggal_kirim_sampel->format('d/m/Y') : '-' }}</td>
-                <td>{{ $sp->tanggal_terima_lab ? $sp->tanggal_terima_lab->format('d/m/Y') : '-' }}</td>
-                <td>{{ $sp->status_pemeriksaan ?? '-' }}</td>
-                <td>{{ $sp->jenisKasusTerkonfirmasi->nama_penyakit ?? '' }}{{ $sp->nama_variant_genotype ? ' / '.$sp->nama_variant_genotype : '' }}</td>
-            </tr>
-            @empty
-            @for($r = 0; $r < 3; $r++)
-            <tr>
-                <td style="text-align:center;">{{ $r + 1 }}</td>
-                <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
-            </tr>
-            @endfor
-            @endforelse
-        </tbody>
-    </table>
-
-    {{-- Riwayat Imunisasi Per Antigen --}}
-    <div class="section-header" style="margin:8px 0 4px;">RIWAYAT IMUNISASI PER ANTIGEN</div>
-    @php
-        $imunisasiDetail = $case->imunisasi ?? collect();
-        $imunisasiByKe = $imunisasiDetail->keyBy('imunisasi_ke');
-    @endphp
-    <table class="data-table" style="font-size:8pt;">
-        <thead>
-            <tr style="background:#f0f0f0; font-weight:bold;">
-                <th style="width:5%; text-align:center;">No</th>
-                <th style="width:35%">Antigen / Dosis</th>
-                <th style="width:15%; text-align:center;">Diberikan</th>
-                <th style="width:20%">Sumber Informasi</th>
-                <th>Tanggal Imunisasi</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-            $antigenPdf = [1 => 'MR1 / DPT-HB-Hib 1 / OPV1', 2 => 'MR2 / DPT-HB-Hib Booster / OPV2', 3 => 'MR3 / DT kelas 1 SD', 4 => 'MMR / TD kelas 2 dan 5', 5 => 'Kampanye / ORI / SUBPIN / PIN'];
-            @endphp
-            @for($ke = 1; $ke <= 5; $ke++)
-            @php $im = $imunisasiByKe->get($ke); @endphp
-            <tr>
-                <td style="text-align:center;">{{ $ke }}</td>
-                <td>{{ $antigenPdf[$ke] }}</td>
-                <td style="text-align:center;">
-                    @if(!$im || $im->diberikan === 'tidak_tahu') Tidak Tahu
-                    @elseif($im->diberikan === 'ya') Ya
-                    @else Tidak
-                    @endif
-                </td>
-                <td>{{ $im->sumber_informasi ?? '' }}</td>
-                <td>{{ isset($im) && $im->tanggal_imunisasi ? $im->tanggal_imunisasi->format('d/m/Y') : '' }}</td>
-            </tr>
-            @endfor
         </tbody>
     </table>
 
