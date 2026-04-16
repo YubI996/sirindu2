@@ -168,7 +168,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'alasan_imunisasi_tidak_lengkap' => 'nullable|string',
 
             // Category F: Laboratory
-            'status_lab' => 'nullable|in:belum_diperiksa,proses,positif,negatif',
+            'status_lab' => 'nullable|in:belum_diperiksa,proses,positif,negatif,diperiksa_lab,tidak_diperiksa_lab',
             'tanggal_pengambilan_spesimen' => 'nullable|date|after_or_equal:tanggal_onset|before_or_equal:today',
             'jenis_spesimen' => 'nullable|string|max:100',
             'hasil_lab' => 'nullable|string',
@@ -185,11 +185,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'jenis_spesimen_3' => 'nullable|string|max:100',
             'tanggal_spesimen_3' => 'nullable|date|before_or_equal:today',
 
-            // Category G: Management (Required fields)
-            'status_rawat' => 'required|in:rawat_jalan,rawat_inap,isolasi_mandiri,rujuk',
-            'nama_faskes_rawat' => 'required|string|max:255',
-            'tanggal_masuk_rawat' => 'nullable|date|after_or_equal:tanggal_onset|before_or_equal:today',
-            'tanggal_keluar_rawat' => 'nullable|date|after_or_equal:tanggal_masuk_rawat|before_or_equal:today',
+            // Category G: Management — auto-derived in SurveillanceRepository::prepareData(), not submitted via form
 
             // Category H: Final Status
             'kondisi_akhir' => 'nullable|in:sembuh,meninggal,dalam_perawatan,pindah,unknown',
@@ -231,6 +227,43 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'status_kasus' => 'nullable|in:suspected,probable,confirmed,discarded',
             'id_faskes_pelapor' => 'nullable|integer|exists:puskesmas,id',
             'catatan_tambahan' => 'nullable|string',
+
+            // MoD: Imunisasi per antigen
+            'imunisasi' => 'nullable|array',
+            'imunisasi.*.diberikan' => 'nullable|in:ya,tidak,tidak_tahu',
+            'imunisasi.*.sumber_informasi' => 'nullable|string|max:255',
+            'imunisasi.*.tanggal_imunisasi' => 'nullable|date|before_or_equal:today',
+
+            // MoD: Faskes berobat
+            'faskes_berobat' => 'nullable|array',
+            'faskes_berobat.*.jenis_faskes' => 'required_with:faskes_berobat.*.nama_faskes|nullable|in:rs,puskesmas,klinik,pengobatan_tradisional,lainnya',
+            'faskes_berobat.*.nama_faskes' => 'required_with:faskes_berobat.*.jenis_faskes|nullable|string|max:255',
+            'faskes_berobat.*.tanggal_berobat' => 'nullable|date|before_or_equal:today',
+            'faskes_berobat.*.jenis_perawatan' => 'nullable|in:inap,jalan',
+            'faskes_berobat.*.tanggal_keluar' => 'nullable|date|after_or_equal:faskes_berobat.*.tanggal_berobat|before_or_equal:today',
+
+            // MoD: Spesimen
+            'spesimen' => 'nullable|array',
+            'spesimen.*.jenis_spesimen' => 'required_with:spesimen.*|nullable|string|max:100',
+            'spesimen.*.tanggal_ambil_spesimen' => 'nullable|date|before_or_equal:today',
+            'spesimen.*.tanggal_kirim_sampel' => 'nullable|date|before_or_equal:today',
+            'spesimen.*.tanggal_terima_lab' => 'nullable|date|before_or_equal:today',
+            'spesimen.*.status_pemeriksaan' => 'nullable|string|max:100',
+            'spesimen.*.penyakit_terkonfirmasi' => 'nullable|string|in:Rubella,Campak,Polio,Difteri,Pertusis,TN,Negatif',
+            'spesimen.*.id_jenis_kasus_terkonfirmasi' => 'nullable|integer|exists:jenis_kasus_epidemiologi,id',
+            'spesimen.*.nama_variant_genotype' => 'nullable|string|max:255',
+
+            // MoD: Kontak erat
+            'kontak_erat' => 'nullable|array',
+            'kontak_erat.*.nama' => 'required_with:kontak_erat.*|nullable|string|max:255',
+            'kontak_erat.*.hubungan' => 'nullable|string|max:100',
+            'kontak_erat.*.tanggal_lahir' => 'nullable|date|before:today',
+            'kontak_erat.*.no_telepon' => 'nullable|string|max:20',
+            'kontak_erat.*.alamat' => 'nullable|string',
+            'kontak_erat.*.tanggal_kontak_terakhir' => 'nullable|date|before_or_equal:today',
+            'kontak_erat.*.ada_gejala' => 'nullable|boolean',
+            'kontak_erat.*.jumlah_imunisasi_campak_rubella' => 'nullable|integer|min:0|max:10',
+            'kontak_erat.*.catatan' => 'nullable|string|max:500',
         ];
     }
 
@@ -264,10 +297,6 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'tanggal_lapor.after_or_equal' => 'Tanggal lapor harus setelah atau sama dengan tanggal konsultasi',
 
             'tanggal_hasil_lab.required_if' => 'Tanggal hasil lab wajib diisi jika status lab positif atau negatif',
-
-            'status_rawat.required' => 'Status rawat wajib dipilih',
-            'nama_faskes_rawat.required' => 'Nama faskes rawat wajib diisi',
-            'tanggal_keluar_rawat.after_or_equal' => 'Tanggal keluar rawat harus setelah atau sama dengan tanggal masuk rawat',
 
             'penyebab_kematian.required_if' => 'Penyebab kematian wajib diisi jika kondisi akhir meninggal',
         ];

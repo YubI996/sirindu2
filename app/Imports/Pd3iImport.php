@@ -4,9 +4,8 @@ namespace App\Imports;
 
 use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
-use App\Models\Kecamatan;
-use App\Models\Kelurahan;
-use App\Models\Rt;
+use App\Services\NikDummyService;
+use App\Traits\ResolvesWilayah;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithStartRow;
@@ -24,92 +23,32 @@ use Illuminate\Support\Facades\Log;
  */
 class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 {
+    use ResolvesWilayah;
+
     protected int $userId;
     protected int $successCount = 0;
-    protected array $failures = [];
+    protected int $errorCount   = 0;   // hanya baris yang benar-benar gagal disimpan
+    protected array $failures = [];    // semua pesan: error + peringatan + info (untuk tampilan log)
 
     /** Offset baris absolut untuk pelaporan nomor baris yang akurat lintas chunk */
     protected int $rowOffset = 0;
 
-    /** Cache wilayah & jenis kasus — dimuat sekali di konstruktor, bukan per chunk */
-    protected array $kecamatanCache = [];
-    protected array $kelurahanCache = [];
+    /** Cache jenis kasus epidemiologi */
     protected array $jenisKasusCache = [];
-    protected array $rtCache = [];
+
+    protected NikDummyService $nikService;
 
     public function __construct(int $userId)
     {
         $this->userId = $userId;
+        $this->nikService = new NikDummyService();
 
-        // Pra-muat cache dari DB yang sudah ada (bukan per-chunk)
-        $this->kecamatanCache = Kecamatan::pluck('id', 'name')->mapWithKeys(function ($id, $name) {
-            return [strtoupper($name) => $id];
-        })->toArray();
-
-        $this->kelurahanCache = Kelurahan::pluck('id', 'name')->mapWithKeys(function ($id, $name) {
-            return [strtoupper($name) => $id];
-        })->toArray();
+        // Pra-muat cache wilayah (via trait ResolvesWilayah)
+        $this->initWilayahCache();
 
         $this->jenisKasusCache = JenisKasusEpidemiologi::pluck('id', 'nama_penyakit')->mapWithKeys(function ($id, $nama) {
             return [strtoupper($nama) => $id];
         })->toArray();
-    }
-
-    /**
-     * Dapatkan atau buat Kecamatan dari nama. Update cache setelah dibuat.
-     */
-    protected function resolveKecamatan(string $name): ?int
-    {
-        $key = strtoupper(trim($name));
-        if (empty($key)) return null;
-
-        if (!isset($this->kecamatanCache[$key])) {
-            $kec = Kecamatan::firstOrCreate(['name' => ucwords(strtolower(trim($name)))]);
-            $this->kecamatanCache[$key] = $kec->id;
-            Log::info("Import PD3I: auto-create Kecamatan '{$name}' → id={$kec->id}");
-        }
-
-        return $this->kecamatanCache[$key];
-    }
-
-    /**
-     * Dapatkan atau buat Kelurahan dari nama + id kecamatan. Update cache setelah dibuat.
-     */
-    protected function resolveKelurahan(string $name, ?int $idKec): ?int
-    {
-        $key = strtoupper(trim($name));
-        if (empty($key)) return null;
-
-        if (!isset($this->kelurahanCache[$key])) {
-            $attrs = ['name' => ucwords(strtolower(trim($name)))];
-            if ($idKec) $attrs['id_kecamatan'] = $idKec;
-
-            $kel = Kelurahan::firstOrCreate($attrs);
-            $this->kelurahanCache[$key] = $kel->id;
-            Log::info("Import PD3I: auto-create Kelurahan '{$name}' → id={$kel->id}");
-        }
-
-        return $this->kelurahanCache[$key];
-    }
-
-    /**
-     * Cari RT dalam kelurahan berdasarkan nama — TIDAK auto-create (butuh id_posyandu).
-     * id_rt di surveillance_cases sudah nullable.
-     */
-    protected function resolveRt(string $name, ?int $idKel): ?int
-    {
-        $key = strtoupper(trim($name));
-        if (empty($key) || !$idKel) return null;
-
-        $cacheKey = $key . '_' . $idKel;
-        if (!array_key_exists($cacheKey, $this->rtCache)) {
-            $rt = Rt::where('id_kelurahan', $idKel)
-                    ->where('name', 'like', '%' . trim($name) . '%')
-                    ->first();
-            $this->rtCache[$cacheKey] = $rt?->id;
-        }
-
-        return $this->rtCache[$cacheKey];
     }
 
     /**
@@ -248,14 +187,15 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
         // Enum: ['lengkap', 'tidak_lengkap', 'tidak_tahu', 'tidak_ada']
         // =====================================================================
         $parseRiwayatImunisasi = function ($value): ?string {
+            if ($value === null || trim((string) $value) === '') return null;
             $val = strtolower(trim((string) $value));
             // Urutan: spesifik dulu (tidak_lengkap, tidak_ada) sebelum yang umum (lengkap)
             return match (true) {
                 str_contains($val, 'tidak_lengkap') || str_contains($val, 'tidak lengkap') => 'tidak_lengkap',
                 str_contains($val, 'tidak_ada')     || str_contains($val, 'tidak ada') || $val === 'tidak' => 'tidak_ada',
-                str_contains($val, 'tidak_tahu')    || str_contains($val, 'tidak tahu') || $val === '' => 'tidak_tahu',
+                str_contains($val, 'tidak_tahu')    || str_contains($val, 'tidak tahu') => 'tidak_tahu',
                 str_contains($val, 'lengkap') => 'lengkap',
-                default => 'tidak_tahu',
+                default => null,
             };
         };
 
@@ -306,7 +246,8 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
             // T039: Cek nama_lengkap kosong secara eksplisit sebelum DB
             if (empty($row[9])) {
                 $noReg = $row[0] ?? '(kosong)';
-                $this->failures[] = "Baris {$rowNum} (No. Reg: {$noReg}): Nama pasien wajib diisi.";
+                $this->failures[] = "[ERROR] Baris {$rowNum} (No. Reg: {$noReg}): Nama pasien wajib diisi.";
+                $this->errorCount++;
                 Log::warning("Import PD3I skip baris {$rowNum}: nama_lengkap kosong.");
                 continue;
             }
@@ -323,7 +264,7 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                 // Kunci upsert
                 $noReg = !empty($row[0]) ? (string) $row[0] : ('TEMP-' . uniqid());
                 if (empty($row[0])) {
-                    $this->failures[] = "Baris {$rowNum}: No. registrasi kosong — data disimpan dengan ID sementara '{$noReg}', tidak bisa di-update ulang.";
+                    $this->failures[] = "[PERINGATAN] Baris {$rowNum}: No. registrasi kosong — data disimpan dengan ID sementara '{$noReg}', tidak bisa di-update ulang.";
                 }
 
                 // Bangun nilai untuk kolom tanggal yang wajib NOT NULL
@@ -343,7 +284,7 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                 // Peringatan non-fatal: tanggal_lahir kosong → kategori_umur tidak dapat dihitung
                 if (empty($row[11])) {
                     $noRegWarn = $row[0] ?? '(kosong)';
-                    $this->failures[] = "Peringatan baris {$rowNum} (No. Reg: {$noRegWarn}): Tanggal lahir tidak diisi — kategori_umur tidak dapat dihitung (disimpan null).";
+                    $this->failures[] = "[PERINGATAN] Baris {$rowNum} (No. Reg: {$noRegWarn}): Tanggal lahir tidak diisi — kategori_umur tidak dapat dihitung (disimpan null).";
                 }
 
                 $namaFaskes       = !empty($row[79]) ? (string) $row[79]  // nama_rs
@@ -361,7 +302,20 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // =================================================
                         // GRUP A: Identitas Pasien
                         // =================================================
-                        'nik'                    => !empty($row[8]) ? substr((string) $row[8], 0, 16) : substr($noReg, 0, 16),
+                        'nik'                    => (function() use ($row, $noReg, $parseDate) {
+                            $rawNik = trim((string) ($row[8] ?? ''));
+                            if ($rawNik !== '' && ctype_digit($rawNik) && strlen($rawNik) >= 15) {
+                                return substr($rawNik, 0, 16);
+                            }
+                            // Generate atau temukan NIK dummy
+                            $nama    = trim((string) ($row[9] ?? ''));
+                            $tglLhir = $parseDate($row[11] ?? null) ?? date('Y-m-d');
+                            $jk      = in_array($row[10] ?? '', ['L', 'Laki-laki', 'laki-laki', 'l']) ? 'L' : 'P';
+                            $nik = $this->nikService->findExisting($nama, $tglLhir, $jk)
+                                ?? $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tglLhir, $jk);
+                            $this->failures[] = "[INFO] NIK kosong untuk {$nama} — NIK dummy {$nik} di-generate.";
+                            return $nik;
+                        })(),
                         'nama_lengkap'           => $row[9]  ?? null,
                         'jenis_kelamin'          => in_array($row[10] ?? '', ['L', 'Laki-laki', 'laki-laki', 'l']) ? 'L' : 'P',
                         'tanggal_lahir'          => $parseDate($row[11] ?? null),
@@ -560,7 +514,8 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                 $noReg  = $row[0] ?? '(kosong)';
                 $nama   = $row[9] ?? '(tidak ada nama)';
                 $errMsg = $this->simplifyError($e->getMessage());
-                $this->failures[] = "Baris {$rowNum} (No. Reg: {$noReg}, Nama: {$nama}): {$errMsg}";
+                $this->failures[] = "[ERROR] Baris {$rowNum} (No. Reg: {$noReg}, Nama: {$nama}): {$errMsg}";
+                $this->errorCount++;
                 Log::warning("Import PD3I skip baris {$rowNum} [{$noReg}]: " . $e->getMessage());
             }
         }
@@ -592,8 +547,9 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
     public function getResults(): array
     {
         return [
-            'success'  => $this->successCount,
-            'failures' => $this->failures,
+            'success'      => $this->successCount,
+            'error_count'  => $this->errorCount,
+            'failures'     => $this->failures,
         ];
     }
 }

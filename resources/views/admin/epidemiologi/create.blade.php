@@ -283,17 +283,13 @@
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary btn-lg" aria-label="Simpan kasus baru">
-                        <i class="fa fa-save" aria-hidden="true"></i> Simpan Kasus
+                        <i class="fa fa-save" aria-hidden="true"></i>
+                        <span class="d-none d-sm-inline"> Simpan Kasus</span>
                     </button>
-                    <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-outline-secondary btn-lg">
-                        <i class="fa fa-times" aria-hidden="true"></i> Batal
+                    <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-outline-secondary btn-lg" aria-label="Batal">
+                        <i class="fa fa-times" aria-hidden="true"></i>
+                        <span class="d-none d-sm-inline"> Batal</span>
                     </a>
-                    <button type="button" class="btn btn-outline-info btn-lg" id="expandAll" aria-label="Buka semua section accordion">
-                        <i class="fa fa-expand" aria-hidden="true"></i> Buka Semua
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-lg" id="collapseAll" aria-label="Tutup semua section accordion">
-                        <i class="fa fa-compress" aria-hidden="true"></i> Tutup Semua
-                    </button>
                 </div>
             </div>
         </div>
@@ -306,15 +302,6 @@
 @parent
 <script>
 $(document).ready(function() {
-    // Expand/Collapse all sections
-    $('#expandAll').on('click', function() {
-        $('#formAccordion .collapse').collapse('show');
-    });
-
-    $('#collapseAll').on('click', function() {
-        $('#formAccordion .collapse').collapse('hide');
-    });
-
     // ── Disease-specific card visibility ──
     function toggleDiseaseCards() {
         var kode = $('#id_jenis_kasus').find('option:selected').data('kode') || '';

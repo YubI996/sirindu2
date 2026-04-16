@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Exports\AllExport;
+use App\Imports\KohortImport;
+use App\Jobs\ImportKohortJob;
+use App\Models\ImportLog;
 use App\Repositories\Admin\User\UserRepository as UserInterface;
 use App\Repositories\Admin\Anak\AnakRepository as AnakInterface;
 use App\Http\Requests\Admin\User\storeUserRequest;
@@ -56,7 +59,63 @@ ANAK
 
     public function anak()
     {
-        return view('admin.anak.index');
+        $isSuperAdmin = auth()->user()?->isSuperAdmin() ?? false;
+        $kohortImportLogs = collect();
+
+        if ($isSuperAdmin) {
+            $kohortImportLogs = ImportLog::where('user_id', auth()->id())
+                ->where('type', 'kohort')
+                ->latest()
+                ->take(5)
+                ->get();
+        }
+
+        return view('admin.anak.index', compact('isSuperAdmin', 'kohortImportLogs'));
+    }
+
+    /**
+     * Simpan file Excel kohort dan antrikan job import di latar belakang.
+     */
+    public function importKohort(Request $request)
+    {
+        abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
+
+        $request->validate([
+            'file_kohort' => 'required|file|mimes:xlsx|max:20480',
+        ]);
+
+        $file     = $request->file('file_kohort');
+        $filename = $file->getClientOriginalName();
+        $path     = $file->store('imports/kohort');
+
+        $log = ImportLog::create([
+            'user_id'   => auth()->id(),
+            'filename'  => $filename,
+            'file_path' => $path,
+            'type'      => 'kohort',
+            'status'    => 'pending',
+        ]);
+
+        ImportKohortJob::dispatch($log);
+
+        return redirect()->route('admin.anak')
+            ->with('import_queued', "File \"{$filename}\" telah diterima dan sedang diproses di latar belakang. Cek status import di bawah.");
+    }
+
+    /**
+     * Kembalikan status import kohort terbaru untuk polling AJAX.
+     */
+    public function importKohortStatus()
+    {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
+
+        $logs = ImportLog::where('user_id', auth()->id())
+            ->where('type', 'kohort')
+            ->latest()
+            ->take(5)
+            ->get(['id', 'filename', 'status', 'success_count', 'failure_count', 'failures', 'started_at', 'completed_at', 'created_at']);
+
+        return response()->json($logs);
     }
 
     public function getAnak()
@@ -116,6 +175,12 @@ ANAK
     public function getRtAnak($id)
     {
         $rt = Rt::where('id_posyandu', $id)->pluck('name', 'id');
+        return response()->json($rt);
+    }
+
+    public function getRtByKelAnak($id)
+    {
+        $rt = Rt::where('id_kelurahan', $id)->pluck('name', 'id');
         return response()->json($rt);
     }
     public function getPosyanduAnak($id)

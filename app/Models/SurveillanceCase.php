@@ -379,6 +379,32 @@ class SurveillanceCase extends Model
         return $this->belongsTo(User::class, 'updated_by', 'id');
     }
 
+    // ===== Relasi ke entitas MoD =====
+
+    public function imunisasi()
+    {
+        return $this->hasMany(SurveillanceCaseImunisasi::class, 'id_surveillance_case')
+                    ->orderBy('imunisasi_ke');
+    }
+
+    public function faskesBerobat()
+    {
+        return $this->hasMany(SurveillanceCaseFaskesBerobat::class, 'id_surveillance_case')
+                    ->orderBy('urutan');
+    }
+
+    public function spesimen()
+    {
+        return $this->hasMany(SurveillanceCaseSpesimen::class, 'id_surveillance_case')
+                    ->orderBy('urutan');
+    }
+
+    public function kontakErat()
+    {
+        return $this->hasMany(SurveillanceCaseKontakErat::class, 'id_surveillance_case')
+                    ->orderBy('urutan');
+    }
+
     /**
      * Scope to filter by disease type
      */

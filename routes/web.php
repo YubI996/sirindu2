@@ -70,8 +70,10 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('get-puskesmas-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPuskesmasAnak'])->name('admin.getPuskesmasAnak');
     Route::get('get-posyandu-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduAnak'])->name('admin.getPosyanduAnak');
     Route::get('get-rt-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtAnak'])->name('admin.getRtAnak');
-    Route::get('get-posyandu-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduAnak'])->name('admin.getPosyanduAnak');
+    Route::get('get-rt-by-kel-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtByKelAnak'])->name('admin.getRtByKelAnak');
     Route::post('store-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'storeAnak'])->name('admin.storeAnak');
+    Route::post('import-kohort', [App\Http\Controllers\AdminController::class, 'importKohort'])->name('admin.importKohort');
+    Route::get('import-kohort-status', [App\Http\Controllers\AdminController::class, 'importKohortStatus'])->name('admin.importKohortStatus');
     Route::get('edit-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'editAnak'])->name('admin.editAnak');
     Route::get('show-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'showAnak'])->name('admin.showAnak');
     Route::get('chart-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'chartAnak'])->name('admin.chartAnak');
@@ -199,6 +201,12 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         // Imports
         Route::post('import-excel', [App\Http\Controllers\EpidemiologiController::class, 'importExcel'])
              ->name('admin.epidemiologi.importExcel');
+        Route::post('reimport/{log}', [App\Http\Controllers\EpidemiologiController::class, 'reimportExcel'])
+             ->name('admin.epidemiologi.reimport');
+        Route::delete('import-log/{log}', [App\Http\Controllers\EpidemiologiController::class, 'destroyImportLog'])
+             ->name('admin.epidemiologi.destroyImportLog');
+        Route::delete('import-log', [App\Http\Controllers\EpidemiologiController::class, 'destroyAllImportLogs'])
+             ->name('admin.epidemiologi.destroyAllImportLogs');
         Route::get('import-status', [App\Http\Controllers\EpidemiologiController::class, 'importStatus'])
              ->name('admin.epidemiologi.importStatus');
 
@@ -207,6 +215,24 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.exportExcel');
         Route::get('export-pdf/{id}', [App\Http\Controllers\EpidemiologiController::class, 'exportPdfMR01'])
              ->name('admin.epidemiologi.exportPdf');
+
+        /*------------------------------------------
+        PD3I Dashboard (super-admin / Dinas Kesehatan)
+        --------------------------------------------*/
+        Route::prefix('pd3i-dashboard/')->middleware('module.role:superadmin')->group(function () {
+            Route::get('/', [App\Http\Controllers\Pd3iDashboardController::class, 'index'])
+                 ->name('admin.pd3i.dashboard');
+            Route::get('api/kinerja', [App\Http\Controllers\Pd3iDashboardController::class, 'kinerja'])
+                 ->name('admin.pd3i.apiKinerja');
+            Route::get('api/demografi', [App\Http\Controllers\Pd3iDashboardController::class, 'demografi'])
+                 ->name('admin.pd3i.apiDemografi');
+            Route::get('api/tren', [App\Http\Controllers\Pd3iDashboardController::class, 'tren'])
+                 ->name('admin.pd3i.apiTren');
+            Route::get('api/wilayah', [App\Http\Controllers\Pd3iDashboardController::class, 'wilayah'])
+                 ->name('admin.pd3i.apiWilayah');
+            Route::post('export-pdf', [App\Http\Controllers\Pd3iDashboardController::class, 'exportPdf'])
+                 ->name('admin.pd3i.exportPdf');
+        });
     });
 });
 

@@ -377,6 +377,9 @@ Detail
                     <p class="text-accessible-muted mb-0">
                         <span class="sr-only">Nomor Induk Kependudukan:</span>
                         NIK: {{ $anak->nik }}
+                        @if($anak->isDummyNik())
+                            <span class="badge badge-warning ml-1"><i class="fa fa-exclamation-triangle"></i> NIK Dummy</span>
+                        @endif
                     </p>
                     <p class="text-accessible-muted mb-0">
                         <span class="sr-only">Usia:</span>
@@ -429,7 +432,12 @@ Detail
                         <dd class="col-sm-7">{{ $anak->no_kk }}</dd>
 
                         <dt class="col-sm-5 text-accessible-muted">NIK</dt>
-                        <dd class="col-sm-7">{{ $anak->nik }}</dd>
+                        <dd class="col-sm-7">
+                            {{ $anak->nik }}
+                            @if($anak->isDummyNik())
+                                <span class="badge badge-warning ml-1"><i class="fa fa-exclamation-triangle"></i> NIK Dummy</span>
+                            @endif
+                        </dd>
 
                         <dt class="col-sm-5 text-accessible-muted">Tempat Lahir</dt>
                         <dd class="col-sm-7">{{ $anak->tempat_lahir }}</dd>

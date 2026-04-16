@@ -555,15 +555,12 @@ select.form-control {
     }
 
     .form-actions-card .d-flex {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: nowrap;
     }
 
     .form-actions-card .btn {
-        width: 100%;
-        margin-bottom: 0.35rem;
-    }
-
-    .form-actions-card .btn:last-child {
+        flex: 1;
         margin-bottom: 0;
     }
 }

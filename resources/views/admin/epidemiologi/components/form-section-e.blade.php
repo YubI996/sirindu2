@@ -93,60 +93,63 @@
     </div>
 </div>
 
-{{-- Detail Imunisasi --}}
-<div class="row">
-    <div class="col-md-12">
-        <p class="text-muted mb-2"><i class="fa fa-info-circle"></i> Isi sesuai riwayat imunisasi pasien (opsional)</p>
-    </div>
-</div>
-<div class="row">
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Imunisasi 1</label>
-            <input type="text" name="imunisasi_1" class="form-control"
-                   value="{{ old('imunisasi_1', $case->imunisasi_1 ?? '') }}"
-                   placeholder="MR1 - 9 bulan / DPT-HB-Hib 1,2,3 / OPV1">
-            <small class="form-text text-muted">MR1 - 9 bulan / DPT-HB-Hib 1,2,3 / OPV1</small>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Imunisasi 2</label>
-            <input type="text" name="imunisasi_2" class="form-control"
-                   value="{{ old('imunisasi_2', $case->imunisasi_2 ?? '') }}"
-                   placeholder="MR2 - 18 bulan / DPT-HB-Hib Booster / OPV2">
-            <small class="form-text text-muted">MR2 - 18 bulan / Booster / OPV2</small>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Imunisasi 3</label>
-            <input type="text" name="imunisasi_3" class="form-control"
-                   value="{{ old('imunisasi_3', $case->imunisasi_3 ?? '') }}"
-                   placeholder="MR3 - kelas 1 SD / DT kelas 1 / OPV2">
-            <small class="form-text text-muted">MR3 - kelas 1 SD / DT kelas 1</small>
-        </div>
-    </div>
-</div>
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label>Imunisasi 4</label>
-            <input type="text" name="imunisasi_4" class="form-control"
-                   value="{{ old('imunisasi_4', $case->imunisasi_4 ?? '') }}"
-                   placeholder="MMR / TD kelas 2 dan 5">
-            <small class="form-text text-muted">MMR / TD kelas 2 dan 5</small>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="form-group">
-            <label>Imunisasi 5 (Tambahan)</label>
-            <input type="text" name="imunisasi_5" class="form-control"
-                   value="{{ old('imunisasi_5', $case->imunisasi_5 ?? '') }}"
-                   placeholder="Kampanye / ORI / SUBPIN / PIN">
-            <small class="form-text text-muted">Kampanye / ORI / SUBPIN / PIN</small>
-        </div>
-    </div>
+{{-- Detail Imunisasi Per Antigen --}}
+@php
+    $antigenLabels = [
+        1 => 'MR1 / DPT-HB-Hib 1 / OPV1 (9 bln)',
+        2 => 'MR2 / DPT-HB-Hib Booster / OPV2 (18 bln)',
+        3 => 'MR3 / DT kelas 1 SD',
+        4 => 'MMR / TD kelas 2 dan 5',
+        5 => 'Kampanye / ORI / SUBPIN / PIN',
+    ];
+    $imunisasiRows = collect($case->imunisasi ?? [])->keyBy('imunisasi_ke');
+    $oldImunisasi = old('imunisasi', []);
+@endphp
+
+<p class="text-muted mb-2"><i class="fa fa-info-circle"></i> Isi riwayat imunisasi per antigen (opsional)</p>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="thead-light">
+            <tr>
+                <th style="width:30%">Antigen / Dosis</th>
+                <th style="width:20%">Diberikan</th>
+                <th style="width:25%">Sumber Informasi</th>
+                <th style="width:25%">Tanggal Imunisasi</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for ($ke = 1; $ke <= 5; $ke++)
+                @php
+                    $rowDb    = $imunisasiRows->get($ke);
+                    $rowOld   = $oldImunisasi[$ke] ?? [];
+                    $diberikan      = $rowOld['diberikan']        ?? ($rowDb->diberikan ?? 'tidak_tahu');
+                    $sumber         = $rowOld['sumber_informasi'] ?? ($rowDb->sumber_informasi ?? '');
+                    $tglImunisasi   = $rowOld['tanggal_imunisasi'] ?? (isset($rowDb->tanggal_imunisasi) ? $rowDb->tanggal_imunisasi->format('Y-m-d') : '');
+                @endphp
+                <tr>
+                    <td class="align-middle"><strong>{{ $ke }}.</strong> {{ $antigenLabels[$ke] }}</td>
+                    <td>
+                        <select name="imunisasi[{{ $ke }}][diberikan]" class="form-control form-control-sm">
+                            <option value="tidak_tahu" {{ $diberikan === 'tidak_tahu' ? 'selected' : '' }}>Tidak Tahu</option>
+                            <option value="ya"         {{ $diberikan === 'ya'         ? 'selected' : '' }}>Ya</option>
+                            <option value="tidak"      {{ $diberikan === 'tidak'      ? 'selected' : '' }}>Tidak</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" name="imunisasi[{{ $ke }}][sumber_informasi]"
+                               class="form-control form-control-sm"
+                               value="{{ $sumber }}"
+                               placeholder="KMS, KIA, wawancara…">
+                    </td>
+                    <td>
+                        <input type="date" name="imunisasi[{{ $ke }}][tanggal_imunisasi]"
+                               class="form-control form-control-sm"
+                               value="{{ $tglImunisasi }}">
+                    </td>
+                </tr>
+            @endfor
+        </tbody>
+    </table>
 </div>
 
 @push('js')

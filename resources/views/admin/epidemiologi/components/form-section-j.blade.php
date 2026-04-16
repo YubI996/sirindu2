@@ -1,31 +1,15 @@
-{{-- Section J: Metadata (5 fields) --}}
+{{-- Section J: Status Kasus & Catatan --}}
 <div class="row">
     <div class="col-md-6">
         <div class="form-group">
             <label>Status Kasus</label>
             <select name="status_kasus" class="form-control">
                 <option value="suspected" {{ old('status_kasus', $case->status_kasus ?? 'suspected') == 'suspected' ? 'selected' : '' }}>Suspected (Suspek)</option>
-                <option value="probable" {{ old('status_kasus', $case->status_kasus ?? '') == 'probable' ? 'selected' : '' }}>Probable (Kemungkinan)</option>
+                <option value="probable"  {{ old('status_kasus', $case->status_kasus ?? '') == 'probable'  ? 'selected' : '' }}>Probable (Kemungkinan)</option>
                 <option value="confirmed" {{ old('status_kasus', $case->status_kasus ?? '') == 'confirmed' ? 'selected' : '' }}>Confirmed (Terkonfirmasi)</option>
                 <option value="discarded" {{ old('status_kasus', $case->status_kasus ?? '') == 'discarded' ? 'selected' : '' }}>Discarded (Dibuang/Bukan Kasus)</option>
             </select>
-            <small class="form-text text-muted">
-                Klasifikasi berdasarkan kriteria WHO/Kemenkes
-            </small>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="form-group">
-            <label>Fasilitas Kesehatan Pelapor</label>
-            <select name="id_faskes_pelapor" class="form-control">
-                <option value="">-- Pilih Puskesmas (Opsional) --</option>
-                @foreach($puskesmasList ?? [] as $puskesmas)
-                    <option value="{{ $puskesmas->id }}" {{ old('id_faskes_pelapor', $case->id_faskes_pelapor ?? '') == $puskesmas->id ? 'selected' : '' }}>
-                        {{ $puskesmas->name }}
-                    </option>
-                @endforeach
-            </select>
-            <small class="form-text text-muted">Opsional - Pilih puskesmas yang melaporkan kasus</small>
+            <small class="form-text text-muted">Klasifikasi berdasarkan kriteria WHO/Kemenkes</small>
         </div>
     </div>
 </div>
@@ -42,22 +26,14 @@
     </div>
 </div>
 
-<div class="alert alert-secondary">
-    <strong>Informasi:</strong> Petugas yang menginput data akan tercatat secara otomatis dalam sistem.
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-        <div class="card bg-light">
-            <div class="card-body">
-                <h6 class="card-title"><i class="fa fa-book"></i> Panduan Klasifikasi Status Kasus</h6>
-                <ul class="mb-0">
-                    <li><strong>Suspected:</strong> Memenuhi kriteria klinis/epidemiologi, belum ada konfirmasi lab</li>
-                    <li><strong>Probable:</strong> Memenuhi kriteria klinis + epidemiologi, lab tidak konklusif/tidak dilakukan</li>
-                    <li><strong>Confirmed:</strong> Dikonfirmasi melalui pemeriksaan laboratorium</li>
-                    <li><strong>Discarded:</strong> Hasil lab negatif atau diagnosis alternatif ditemukan</li>
-                </ul>
-            </div>
-        </div>
+<div class="card bg-light mt-3">
+    <div class="card-body">
+        <h6 class="card-title"><i class="fa fa-book"></i> Panduan Klasifikasi Status Kasus</h6>
+        <ul class="mb-0">
+            <li><strong>Suspected:</strong> Memenuhi kriteria klinis/epidemiologi, belum ada konfirmasi lab</li>
+            <li><strong>Probable:</strong> Memenuhi kriteria klinis + epidemiologi, lab tidak konklusif/tidak dilakukan</li>
+            <li><strong>Confirmed:</strong> Dikonfirmasi melalui pemeriksaan laboratorium</li>
+            <li><strong>Discarded:</strong> Hasil lab negatif atau diagnosis alternatif ditemukan</li>
+        </ul>
     </div>
 </div>

@@ -559,6 +559,66 @@
         </div>
     </section>
 
+    {{-- Data Lama (backward compat — tampil jika tabel MoD kosong) --}}
+    @if($case->spesimen->isEmpty() && ($case->jenis_spesimen || $case->jenis_spesimen_2 || $case->jenis_spesimen_3 || $case->status_rawat || $case->nama_faskes_rawat))
+    <section aria-labelledby="data-lama-title" class="row mb-4">
+        <div class="col-12">
+            <article class="card info-card border-warning">
+                <div class="card-header" style="background: linear-gradient(135deg, #fff3cd 0%, #fef9e7 100%) !important;">
+                    <h2 id="data-lama-title" style="color: #856404 !important;">
+                        <i class="fa fa-history mr-2" aria-hidden="true"></i> Data Sebelum Migrasi
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">Data di bawah ini berasal dari format lama sebelum sistem diperbarui. Data baru menggunakan tab Tempat Berobat dan Spesimen.</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                @if($case->status_rawat)
+                                <dt class="col-sm-5 text-accessible-muted">Status Rawat</dt>
+                                <dd class="col-sm-7">{{ $case->status_rawat }}</dd>
+                                @endif
+                                @if($case->nama_faskes_rawat)
+                                <dt class="col-sm-5 text-accessible-muted">Faskes Rawat</dt>
+                                <dd class="col-sm-7">{{ $case->nama_faskes_rawat }}</dd>
+                                @endif
+                                @if($case->tanggal_masuk_rawat)
+                                <dt class="col-sm-5 text-accessible-muted">Masuk Rawat</dt>
+                                <dd class="col-sm-7">{{ $case->tanggal_masuk_rawat->format('d/m/Y') }}</dd>
+                                @endif
+                                @if($case->tanggal_keluar_rawat)
+                                <dt class="col-sm-5 text-accessible-muted">Keluar Rawat</dt>
+                                <dd class="col-sm-7">{{ $case->tanggal_keluar_rawat->format('d/m/Y') }}</dd>
+                                @endif
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                @if($case->jenis_spesimen)
+                                <dt class="col-sm-5 text-accessible-muted">Spesimen 1</dt>
+                                <dd class="col-sm-7">{{ $case->jenis_spesimen }}{{ $case->tanggal_pengambilan_spesimen ? ' (' . $case->tanggal_pengambilan_spesimen->format('d/m/Y') . ')' : '' }}</dd>
+                                @endif
+                                @if($case->jenis_spesimen_2)
+                                <dt class="col-sm-5 text-accessible-muted">Spesimen 2</dt>
+                                <dd class="col-sm-7">{{ $case->jenis_spesimen_2 }}{{ isset($case->tanggal_spesimen_2) && $case->tanggal_spesimen_2 ? ' (' . $case->tanggal_spesimen_2->format('d/m/Y') . ')' : '' }}</dd>
+                                @endif
+                                @if($case->jenis_spesimen_3)
+                                <dt class="col-sm-5 text-accessible-muted">Spesimen 3</dt>
+                                <dd class="col-sm-7">{{ $case->jenis_spesimen_3 }}{{ isset($case->tanggal_spesimen_3) && $case->tanggal_spesimen_3 ? ' (' . $case->tanggal_spesimen_3->format('d/m/Y') . ')' : '' }}</dd>
+                                @endif
+                                @if($case->hasil_lab)
+                                <dt class="col-sm-5 text-accessible-muted">Hasil Lab</dt>
+                                <dd class="col-sm-7">{{ $case->hasil_lab }}</dd>
+                                @endif
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </section>
+    @endif
+
     {{-- Audit Information --}}
     <section aria-labelledby="audit-title" class="row mb-4">
         <div class="col-12">

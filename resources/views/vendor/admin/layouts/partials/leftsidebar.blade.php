@@ -20,7 +20,7 @@
 				@php
 					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
-					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
+					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit', 'admin.pd3i.dashboard');
 					$export = request()->routeIs('admin.export.*');
 					$master = request()->routeIs('admin.masterdata.*');
 					$admin = request()->routeIs('super.admin.*');
@@ -55,6 +55,7 @@
 						<span class="micon fa fa-clipboard-list"></span><span class="mtext">PD3I</span>
 					</a>
 					<ul class="submenu" {!! $pd3i ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}"><i class="fa fa-chart-bar mr-1" style="font-size:.8rem;"></i>Dashboard PD3I</a></li>
 						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
 						<li><a href="{{route('admin.epidemiologi.create')}}" class="{{ request()->routeIs('admin.epidemiologi.create') ? 'active' : '' }}">Tambah Kasus</a></li>
 					</ul>
@@ -95,7 +96,7 @@
 
 				@php
 					$beranda = request()->routeIs('admin.epidemiologi.dashboard', 'admin.epidemiologi.map');
-					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
+					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit', 'admin.pd3i.dashboard');
 				@endphp
 
 				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">

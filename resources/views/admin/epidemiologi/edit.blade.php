@@ -316,17 +316,17 @@
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-primary btn-lg" aria-label="Simpan perubahan kasus">
-                        <i class="fa fa-save" aria-hidden="true"></i> Simpan Perubahan
+                        <i class="fa fa-save" aria-hidden="true"></i>
+                        <span class="d-none d-sm-inline"> Simpan Perubahan</span>
                     </button>
-                    <a href="{{ route('admin.epidemiologi.show', $case->id) }}" class="btn btn-outline-info btn-lg">
-                        <i class="fa fa-eye" aria-hidden="true"></i> Lihat Detail
+                    <a href="{{ route('admin.epidemiologi.show', $case->id) }}" class="btn btn-outline-info btn-lg" aria-label="Lihat Detail">
+                        <i class="fa fa-eye" aria-hidden="true"></i>
+                        <span class="d-none d-sm-inline"> Lihat Detail</span>
                     </a>
-                    <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-outline-secondary btn-lg">
-                        <i class="fa fa-times" aria-hidden="true"></i> Batal
+                    <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-outline-secondary btn-lg" aria-label="Batal">
+                        <i class="fa fa-times" aria-hidden="true"></i>
+                        <span class="d-none d-sm-inline"> Batal</span>
                     </a>
-                    <button type="button" class="btn btn-outline-info btn-lg" id="expandAll" aria-label="Buka semua section accordion">
-                        <i class="fa fa-expand" aria-hidden="true"></i> Buka Semua
-                    </button>
                 </div>
             </div>
         </div>
@@ -352,11 +352,6 @@
 @parent
 <script>
 $(document).ready(function() {
-    // Expand all sections
-    $('#expandAll').on('click', function() {
-        $('#formAccordion .collapse').collapse('show');
-    });
-
     // ── Disease-specific card visibility ──
     function toggleDiseaseCards() {
         var kode = $('#id_jenis_kasus').find('option:selected').data('kode') || '';
