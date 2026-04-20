@@ -262,6 +262,7 @@
         }
         .header {
             left: 0 !important;
+            width: 100% !important;
         }
 
         /* Thin hover-trigger strip anchored to left edge */
