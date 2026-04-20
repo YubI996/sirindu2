@@ -311,6 +311,32 @@
         .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(4) { animation-delay: 0.15s; }
         .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(5) { animation-delay: 0.18s; }
         .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(n+6) { animation-delay: 0.21s; }
+
+        /* ── Burger icon — visible & interactive on desktop ─────── */
+        .menu-icon {
+            display: flex !important;
+            color: var(--srd-text-2) !important;
+            cursor: pointer;
+            transition: color 0.15s ease-out, transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .menu-icon:hover {
+            color: var(--srd-green) !important;
+        }
+
+        /* Pin mode: burger turns green + slight rotate when sidebar is pinned */
+        body.sidebar-pinned .menu-icon {
+            color: var(--srd-green) !important;
+            transform: rotate(90deg);
+        }
+
+        /* Pin mode: sidebar stays open — override exit transition */
+        body.sidebar-pinned .left-side-bar {
+            transform: translateX(0) !important;
+            box-shadow: 8px 0 40px oklch(0 0 0 / 0.22) !important;
+            transition:
+                transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.32s ease-out !important;
+        }
     }
 </style>
 @endpush
@@ -383,9 +409,10 @@
         sync(mq);
     })();
 
-    /* Desktop auto-hide sidebar — show on hover ─────────────── */
+    /* Desktop auto-hide sidebar — show on hover, pin on click ── */
     (function () {
-        var sidebar = document.querySelector('.left-side-bar');
+        var sidebar  = document.querySelector('.left-side-bar');
+        var menuIcon = document.querySelector('.menu-icon');
         if (!sidebar) return;
 
         /* Thin trigger strip anchored to the left edge */
@@ -393,8 +420,9 @@
         trigger.className = 'sidebar-hover-trigger';
         document.body.appendChild(trigger);
 
-        var hideTimer = null;
-        var mqDesktop = window.matchMedia('(min-width: 1301px)');
+        var hideTimer  = null;
+        var pinned     = false;
+        var mqDesktop  = window.matchMedia('(min-width: 1301px)');
 
         function show() {
             clearTimeout(hideTimer);
@@ -402,10 +430,24 @@
         }
 
         function scheduleHide() {
+            if (pinned) return;          /* pinned — never auto-hide */
             clearTimeout(hideTimer);
             hideTimer = setTimeout(function () {
                 sidebar.classList.remove('sidebar-expanded');
             }, 180);
+        }
+
+        function togglePin() {
+            pinned = !pinned;
+            document.body.classList.toggle('sidebar-pinned', pinned);
+            if (pinned) { show(); } else { scheduleHide(); }
+        }
+
+        /* Intercept vendor mini-sidebar click in capture phase (runs first) */
+        function onMenuIconClick(e) {
+            if (!mqDesktop.matches) return;
+            e.stopPropagation();         /* prevent vendor jQuery handler */
+            togglePin();
         }
 
         function attachDesktop() {
@@ -413,12 +455,16 @@
             sidebar.addEventListener('mouseenter', show);
             trigger.addEventListener('mouseleave', scheduleHide);
             sidebar.addEventListener('mouseleave', scheduleHide);
+            if (menuIcon) menuIcon.addEventListener('click', onMenuIconClick, true);
             trigger.style.display = '';
         }
 
         function detachDesktop() {
             clearTimeout(hideTimer);
+            pinned = false;
+            document.body.classList.remove('sidebar-pinned');
             sidebar.classList.remove('sidebar-expanded');
+            if (menuIcon) menuIcon.removeEventListener('click', onMenuIconClick, true);
             trigger.style.display = 'none';
         }
 
