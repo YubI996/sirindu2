@@ -312,6 +312,13 @@
         .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(5) { animation-delay: 0.18s; }
         .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(n+6) { animation-delay: 0.21s; }
 
+        /* ── Close button — visible on desktop ─────────────────── */
+        .left-side-bar .close-sidebar {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* ── Burger icon — visible & interactive on desktop ─────── */
         .menu-icon {
             display: flex !important;
@@ -450,12 +457,22 @@
             togglePin();
         }
 
+        /* Close button inside sidebar — hide & unpin */
+        var closeBtn = sidebar.querySelector('.close-sidebar');
+        function onCloseBtnClick() {
+            if (!mqDesktop.matches) return;
+            pinned = false;
+            document.body.classList.remove('sidebar-pinned');
+            sidebar.classList.remove('sidebar-expanded');
+        }
+
         function attachDesktop() {
             trigger.addEventListener('mouseenter', show);
             sidebar.addEventListener('mouseenter', show);
             trigger.addEventListener('mouseleave', scheduleHide);
             sidebar.addEventListener('mouseleave', scheduleHide);
             if (menuIcon) menuIcon.addEventListener('click', onMenuIconClick, true);
+            if (closeBtn) closeBtn.addEventListener('click', onCloseBtnClick);
             trigger.style.display = '';
         }
 
@@ -465,6 +482,7 @@
             document.body.classList.remove('sidebar-pinned');
             sidebar.classList.remove('sidebar-expanded');
             if (menuIcon) menuIcon.removeEventListener('click', onMenuIconClick, true);
+            if (closeBtn) closeBtn.removeEventListener('click', onCloseBtnClick);
             trigger.style.display = 'none';
         }
 
