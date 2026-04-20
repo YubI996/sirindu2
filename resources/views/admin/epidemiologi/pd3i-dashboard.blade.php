@@ -23,12 +23,28 @@
     .panel-difteri { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
     .panel-pertusis{ background: linear-gradient(135deg, #7c3aed, #6d28d9); }
 
-    .kinerja-card { border-radius: 8px; border: 1px solid #e5e7eb; padding: 0.75rem 1rem; text-align: center; background: #fff; }
-    .kinerja-card .k-label { font-size: 0.72rem; color: #6b7280; margin-bottom: 2px; font-weight: 500; }
-    .kinerja-card .k-value { font-size: 1.6rem; font-weight: 700; color: #1e40af; line-height: 1.1; }
-    .kinerja-card .k-value.pct { font-size: 1.3rem; color: #047857; }
-    .kinerja-card .k-value.danger { color: #be123c; }
+    .kinerja-card { border-radius: 8px; border: 1px solid var(--srd-border, #e5e7eb); padding: 0.75rem 1rem; text-align: center; background: var(--srd-surface, #fff); }
+    .kinerja-card .k-label { font-size: 0.72rem; color: var(--text-secondary, #6b7280); margin-bottom: 2px; font-weight: 500; letter-spacing: 0.2px; }
+    .kinerja-card .k-value { font-size: 1.6rem; font-weight: 700; color: var(--primary-blue-dark, #1e40af); line-height: 1.1; }
+    .kinerja-card .k-value.pct { font-size: 1.3rem; color: var(--success-green, #047857); }
+    .kinerja-card .k-value.danger { color: var(--danger-rose, #be123c); }
     .kinerja-card.disabled .k-value { color: #9ca3af; font-size: 1rem; }
+
+    /* Lead metric — primary stat in each disease panel */
+    .kinerja-card.primary { border-color: var(--srd-border, #e5e7eb); }
+    .kinerja-card.primary .k-value { font-size: 2.4rem; }
+    .kinerja-card.primary .k-label { font-size: 0.75rem; font-weight: 600; }
+
+    /* Quality metrics row (rates, %) — visually secondary */
+    .pd3i-quality-row {
+        padding-top: 0.625rem;
+        margin-top: 0.375rem;
+        border-top: 1px solid var(--srd-border, #f3f4f6);
+    }
+    .pd3i-quality-row .kinerja-card {
+        background: var(--srd-surface-subtle, #f8fafc);
+    }
+    .pd3i-quality-row .k-value { font-size: 1.25rem; }
 
     .skeleton { background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
                 background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; }
@@ -154,9 +170,10 @@
                     <i class="fa fa-circle mr-1" style="font-size:.6rem;"></i> Campak-Rubella
                 </div>
                 <div class="pd3i-panel-body">
+                    {{-- Primary counts --}}
                     <div class="row g-2">
                         <div class="col-6 col-md-3">
-                            <div class="kinerja-card">
+                            <div class="kinerja-card primary">
                                 <div class="k-label">Suspek</div>
                                 <div class="k-value" id="cr-suspek"><div class="skeleton skel-value"></div></div>
                             </div>
@@ -180,7 +197,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="row g-2 mt-1">
+                    {{-- Quality metrics (rates & mortality) — visually secondary --}}
+                    <div class="row g-2 pd3i-quality-row">
                         <div class="col-6 col-md-3">
                             <div class="kinerja-card">
                                 <div class="k-label">Kematian</div>

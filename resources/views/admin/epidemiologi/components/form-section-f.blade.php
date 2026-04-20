@@ -195,8 +195,8 @@ $(document).ready(function() {
     });
 
     $(document).on('click', '.remove-spesimen-row', function() {
-        $(this).closest('.spesimen-row').remove();
     });
+        $(this).closest('.spesimen-row').remove();
 });
 </script>
 @endpush
