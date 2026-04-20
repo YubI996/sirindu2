@@ -23,6 +23,11 @@ class IsAdmin
             return $next($request);
         }
 
+        // Faskes roles (puskesmas / RS) — punya akses ke rute admin/
+        if ($user->isFaskesSurveilans() || $user->isFaskesImunisasi()) {
+            return $next($request);
+        }
+
         // Legacy type-based check (type is tinyInteger: 0=super-admin, 1=admin)
         if (in_array($user->type, [0, 1])) {
             return $next($request);

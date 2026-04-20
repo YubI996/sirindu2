@@ -6,6 +6,7 @@ use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
+use App\Models\Rt;
 use App\Services\NikDummyService;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
@@ -240,16 +241,22 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
         $chunkSize = count($rows);
 
         foreach ($rows as $index => $row) {
-            // Skip baris jika NIK (index 1) DAN nama (index 2) keduanya kosong
             $nik  = trim((string) ($row[1] ?? ''));
             $nama = trim((string) ($row[2] ?? ''));
 
-            if (empty($nik) && empty($nama)) {
+            // Skip baris tanpa nama (termasuk baris kosong & baris total/catatan)
+            if (empty($nama)) {
                 continue;
             }
 
             // rowNum: offset + posisi dalam chunk + startRow (4 header) + 1 baris header dalam chunk pertama
             $rowNum = $this->rowOffset + $index + $this->startRow() + ($isFirstChunk ? 1 : 0);
+
+            // Skip baris yang namanya mengandung kata "pindah" (anak pindah domisili)
+            if (stripos($nama, 'pindah') !== false) {
+                $this->failures[] = "[INFO] Baris {$rowNum} (Nama: {$nama}): Dilewati — nama mengandung kata 'pindah'.";
+                continue;
+            }
 
             try {
                 // =============================================================
