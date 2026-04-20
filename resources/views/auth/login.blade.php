@@ -345,36 +345,34 @@ body.login-page {
       <div class="col-md-6 col-lg-7 d-none d-md-block">
         <div class="srd-hero">
 
-          <span class="srd-badge" aria-hidden="true">
+          {{-- <span class="srd-badge" aria-hidden="true">
             <span class="srd-badge-dot"></span>
             Sistem Aktif
-          </span>
+          </span> --}}
 
           {{-- Supplementary heading; card h1 is the primary heading for all viewports --}}
           <h2 class="srd-hero-title">
-            Sistem Informasi<br>Kesehatan Anak Rindu
+            Sistem Informasi<br>Realtime Reporting Terpadu
           </h2>
 
           <p class="srd-hero-desc">
-            Platform terpadu pencatatan tumbuh kembang anak, imunisasi,
-            dan analisis status gizi berbasis standar WHO untuk petugas
-            kesehatan di seluruh wilayah.
+            Platform terpadu layanan kesehatan luar ruangan Kota Bontang.
           </p>
 
           <div class="srd-stats" aria-label="Fitur unggulan">
             <div>
-              <span class="srd-stat-val">WHO</span>
-              <span class="srd-stat-lbl">Standar Z-score</span>
+              <span class="srd-stat-val">Gizi</span>
+              <span class="srd-stat-lbl">Monitoring Gizi Anak</span>
             </div>
             <div class="srd-divider" aria-hidden="true"></div>
             <div>
-              <span class="srd-stat-val">4</span>
-              <span class="srd-stat-lbl">Indikator gizi</span>
+              <span class="srd-stat-val">Imunisasi</span>
+              <span class="srd-stat-lbl">Monitoring Imunisasi</span>
             </div>
             <div class="srd-divider" aria-hidden="true"></div>
             <div>
-              <span class="srd-stat-val">Live</span>
-              <span class="srd-stat-lbl">Data terkini</span>
+              <span class="srd-stat-val">PD3I</span>
+              <span class="srd-stat-lbl">Monitoring PD3I</span>
             </div>
           </div>
 

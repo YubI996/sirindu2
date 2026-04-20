@@ -15,7 +15,10 @@
       "Bash(git commit:*)",
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(grep -E 'refs/heads/[0-9]+-pd3i-form-surveilans$')",
+      "Bash(grep -E '^[* ]*[0-9]+-pd3i-form-surveilans$')",
+      "Bash(grep -E '^[0-9]+-pd3i-form-surveilans$')"
     ]
   }
 }
