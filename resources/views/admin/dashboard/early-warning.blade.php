@@ -1,6 +1,6 @@
 @extends('admin::layouts.app')
 @section('title')
-Proyeksi - Si Rindu
+Proyeksi — SIRINDU
 @endsection
 @section('title-content')
 Proyeksi & Early Warning System

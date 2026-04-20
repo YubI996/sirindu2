@@ -1,8 +1,8 @@
 <div class="left-side-bar">
 	<div class="brand-logo">
-		<a href="{{ route('admin.home') }}" aria-label="Beranda Si Rindu">
-			<img src="{{asset('logo/Sirindu-allblack.png')}}" alt="Si Rindu" class="dark-logo">
-			<img src="{{asset('logo/Sirindu-white.png')}}" alt="Si Rindu" class="light-logo">
+		<a href="{{ route('admin.home') }}" aria-label="Beranda SIRINDU">
+			<img src="{{asset('logo/Sirindu-allblack.png')}}" alt="SIRINDU" class="dark-logo">
+			<img src="{{asset('logo/Sirindu-white.png')}}" alt="SIRINDU" class="light-logo">
 		</a>
 		<div class="close-sidebar" data-toggle="left-sidebar-close">
 			<i class="ion-close-round"></i>

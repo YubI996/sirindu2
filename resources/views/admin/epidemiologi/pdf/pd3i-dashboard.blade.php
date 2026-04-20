@@ -303,7 +303,7 @@
 </div>
 
 <div class="footer">
-    Dokumen ini digenerate otomatis oleh SIRINDU — Sistem Informasi Anak Rindu &amp; Surveilans PD3I &nbsp;|&nbsp;
+    Dokumen ini digenerate otomatis oleh SIRINDU — Sistem Informasi Realtime Reporting Terpadu &nbsp;|&nbsp;
     Filter aktif: Tahun {{ $tahun }}, Penyakit: {{ $namaJenisKasus ?? 'Semua' }}, Wilker: {{ $wilker ?? 'Semua' }}, Kelurahan: {{ $namaKelurahan ?? 'Semua' }}
 </div>
 

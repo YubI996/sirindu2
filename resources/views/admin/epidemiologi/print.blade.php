@@ -169,7 +169,7 @@
 
     <div class="header">
         <h1>LAPORAN KASUS SURVEILLANCE EPIDEMIOLOGI</h1>
-        <h2>Sistem Informasi Anak Rindu - Dinas Kesehatan</h2>
+        <h2>Sistem Informasi Realtime Reporting Terpadu — Dinas Kesehatan</h2>
         <p>Dicetak pada: {{ now()->format('d/m/Y H:i:s') }}</p>
     </div>
 

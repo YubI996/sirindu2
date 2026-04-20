@@ -379,7 +379,7 @@
                 <div class="footer-content">
                     <div class="footer-brand">
                         <i class="fa fa-heartbeat footer-icon"></i>
-                        <span>Si Rindu</span>
+                        <span>SIRINDU</span>
                     </div>
                     <div class="footer-info">
                         &copy; {{ date('Y') }} Diskominfo Kota Bontang

@@ -1,6 +1,6 @@
 @extends('admin::layouts.app')
 @section('title')
-Peta Sebaran Anak - Si Rindu
+Peta Sebaran Anak — SIRINDU
 @endsection
 @section('title-content')
 Peta Sebaran Anak

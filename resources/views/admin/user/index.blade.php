@@ -1,6 +1,6 @@
 @extends('admin::layouts.app')
 @section('title')
-Admin - Si Rindu
+Admin — SIRINDU
 @endsection
 @section('title-content')
 User

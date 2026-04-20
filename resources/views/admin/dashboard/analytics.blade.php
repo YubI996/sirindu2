@@ -1,6 +1,6 @@
 @extends('admin::layouts.app')
 @section('title')
-Dashboard Analytics - Si Rindu
+Dashboard Analytics — SIRINDU
 @endsection
 @section('title-content')
 Dashboard Analytics

@@ -1,6 +1,6 @@
 @extends('admin::layouts.login')
 
-@section('title', 'Si Rindu — Sistem Informasi Anak Rindu')
+@section('title', 'SIRINDU — Sistem Informasi Realtime Reporting Terpadu')
 
 @section('content')
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -394,7 +394,7 @@ body.login-page {
           <p class="srd-greeting" id="js-greeting">Selamat datang kembali</p>
 
           {{-- h1 on every viewport — hero h2 is supplementary on desktop only --}}
-          <h1 class="srd-card-title">Masuk ke <em>Si Rindu</em></h1>
+          <h1 class="srd-card-title">Masuk ke <em>SIRINDU</em></h1>
 
           @if ($errors->any())
           <div class="srd-error" role="alert" aria-live="assertive">
@@ -415,7 +415,7 @@ body.login-page {
             method="POST"
             action="{{ route('login') }}"
             id="login-form"
-            aria-label="Form masuk ke Si Rindu"
+            aria-label="Form masuk ke SIRINDU"
             novalidate
           >
             @csrf
@@ -473,7 +473,7 @@ body.login-page {
               type="submit"
               class="srd-btn"
               id="btn-submit"
-              aria-label="Masuk ke Si Rindu"
+              aria-label="Masuk ke SIRINDU"
             >
               <span class="srd-btn-text">Masuk</span>
               <span class="srd-spinner" aria-hidden="true"></span>

@@ -7,7 +7,7 @@
 <script src="{{ asset('admin/src/plugins/datatables/js/responsive.bootstrap4.min.js') }}"></script>
 @endpush
 @section('title')
-Admin - Si Rindu
+Admin — SIRINDU
 @endsection
 @section('title-content')
 Data

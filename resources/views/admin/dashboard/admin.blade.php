@@ -1,5 +1,5 @@
 @extends('admin::layouts.app')
-@section('title', 'Beranda — Si Rindu')
+@section('title', 'Beranda — SIRINDU')
 @section('title-content', 'Beranda')
 @section('item', 'Admin')
 @section('item-active', 'Beranda')
@@ -73,11 +73,11 @@
 </style>
 
 <div class="srd-welcome">
-    <img class="srd-welcome-img img-fluid" src="{{ asset('admin/vendors/images/banner-img.png') }}" alt="Ilustrasi Si Rindu">
+    <img class="srd-welcome-img img-fluid" src="{{ asset('admin/vendors/images/banner-img.png') }}" alt="Ilustrasi SIRINDU">
     <div>
         <p class="srd-welcome-greeting" id="js-home-greeting">Selamat datang kembali,</p>
         <h1 class="srd-welcome-name">{{ Auth::user()->name }}</h1>
-        <p class="srd-welcome-sub">Sistem Informasi Anak Rindu &mdash; Kota Bontang</p>
+        <p class="srd-welcome-sub">Sistem Informasi Realtime Reporting Terpadu &mdash; Kota Bontang</p>
     </div>
 </div>
 
