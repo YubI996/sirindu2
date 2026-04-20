@@ -158,18 +158,24 @@
 
     /* ── Sidebar animation ──────────────────────────────────────── */
     /*
+     * @keyframes defined globally so both mobile and desktop can use it.
      * GPU-accelerated transform-based slide. Asymmetric timing:
      * slow ease-out entrance, fast ease-in exit.
      * will-change is managed via JS — added pre-transition, removed post-transition.
      */
+    @keyframes srd-nav-in {
+        from { opacity: 0; transform: translateX(-8px); }
+        to   { opacity: 1; transform: translateX(0); }
+    }
+
     @media (max-width: 1300px) {
         /* Base (closed / exit state) */
         .left-side-bar {
             left: 0 !important;                /* neutralize vendor left: -281px */
             transform: translateX(-105%);      /* 105% agar box-shadow ikut tersembunyi */
             transition:
-                transform 0.22s cubic-bezier(0.55, 0, 1, 0.45),
-                box-shadow 0.18s ease-in !important;
+                transform 0.20s cubic-bezier(0.4, 0, 1, 1),
+                box-shadow 0.14s ease-in !important;
             box-shadow: none !important;
         }
 
@@ -191,7 +197,7 @@
 
         /* Nav items — stagger entrance saat sidebar terbuka */
         .left-side-bar.open .sidebar-menu > ul > li {
-            animation: srd-nav-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+            animation: srd-nav-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         .left-side-bar.open .sidebar-menu > ul > li:nth-child(1) { animation-delay: 0.07s; }
         .left-side-bar.open .sidebar-menu > ul > li:nth-child(2) { animation-delay: 0.10s; }
@@ -200,11 +206,6 @@
         .left-side-bar.open .sidebar-menu > ul > li:nth-child(5) { animation-delay: 0.19s; }
         .left-side-bar.open .sidebar-menu > ul > li:nth-child(6) { animation-delay: 0.22s; }
         .left-side-bar.open .sidebar-menu > ul > li:nth-child(n+7) { animation-delay: 0.24s; }
-
-        @keyframes srd-nav-in {
-            from { opacity: 0; transform: translateX(-10px); }
-            to   { opacity: 1; transform: translateX(0); }
-        }
     }
 
     /* Close button (×) — rotate on hover */
@@ -233,26 +234,40 @@
         .mobile-menu-overlay,
         .left-side-bar .close-sidebar,
         .menu-icon,
-        .left-side-bar.open .sidebar-menu > ul > li {
+        .left-side-bar.open .sidebar-menu > ul > li,
+        .left-side-bar .sidebar-menu > ul > li,
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li {
             transition-duration: 0.01ms !important;
             animation-duration: 0.01ms !important;
             animation-delay: 0ms !important;
+            opacity: 1 !important;
         }
     }
 
     /* ── Desktop auto-hide sidebar ──────────────────────────────── */
     @media (min-width: 1301px) {
-        /* Collapsed by default — overlays content, no layout shift */
+        /*
+         * EXIT state (default). ease-in so sidebar accelerates away —
+         * perceived as instant, not sluggish. Shadow fades faster than slide.
+         */
         .left-side-bar {
             transform: translateX(-100%);
             transition:
-                transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-                box-shadow 0.28s ease-out !important;
+                transform 0.20s cubic-bezier(0.4, 0, 1, 1),
+                box-shadow 0.13s ease-in !important;
             box-shadow: none !important;
             z-index: 1050;
         }
+
+        /*
+         * ENTER state. ease-out-quint — sidebar decelerates into its rest
+         * position, feeling confident rather than abrupt.
+         */
         .left-side-bar.sidebar-expanded {
             transform: translateX(0);
+            transition:
+                transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.32s ease-out !important;
             box-shadow: 8px 0 40px oklch(0 0 0 / 0.22) !important;
         }
 
@@ -275,16 +290,27 @@
             z-index: 1049;
         }
 
-        /* Nav-item stagger entrance when expanded on desktop */
-        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li {
-            animation: srd-nav-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+        /*
+         * Nav items: opacity: 0 at rest so they fade out cleanly on hide
+         * (transition kicks in when .sidebar-expanded is removed).
+         * animation: none prevents srd-nav-in from being cancelled mid-flight.
+         */
+        .left-side-bar .sidebar-menu > ul > li {
+            opacity: 0;
+            transition: opacity 0.10s ease-in;
         }
-        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(1) { animation-delay: 0.05s; }
-        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(2) { animation-delay: 0.08s; }
-        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(3) { animation-delay: 0.11s; }
-        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(4) { animation-delay: 0.14s; }
-        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(5) { animation-delay: 0.17s; }
-        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(n+6) { animation-delay: 0.20s; }
+
+        /* Entrance: animation overrides transition; stagger gives depth */
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li {
+            animation: srd-nav-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+            transition: none;
+        }
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(1) { animation-delay: 0.06s; }
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(2) { animation-delay: 0.09s; }
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(3) { animation-delay: 0.12s; }
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(4) { animation-delay: 0.15s; }
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(5) { animation-delay: 0.18s; }
+        .left-side-bar.sidebar-expanded .sidebar-menu > ul > li:nth-child(n+6) { animation-delay: 0.21s; }
     }
 </style>
 @endpush
