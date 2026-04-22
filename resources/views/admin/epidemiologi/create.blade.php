@@ -42,7 +42,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('admin.epidemiologi.store') }}" id="surveillanceForm">
+    <form method="POST" action="{{ route('admin.epidemiologi.store') }}" id="surveillanceForm" enctype="multipart/form-data">
         @csrf
 
         <!-- Accordion Form -->

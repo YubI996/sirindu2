@@ -3,12 +3,18 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>No. Epid</label>
-            @if(isset($case) && $case->no_registrasi)
+            @if(Auth::user()->isSuperAdmin())
+                <input type="text" name="no_registrasi" class="form-control"
+                       value="{{ old('no_registrasi', $case->no_registrasi ?? '') }}"
+                       placeholder="Otomatis di-generate saat simpan">
+                <small class="form-text text-muted">Dapat diedit oleh Super Admin</small>
+            @elseif(isset($case) && $case->no_registrasi)
                 <input type="text" class="form-control" value="{{ $case->no_registrasi }}" readonly>
+                <small class="form-text text-muted">Nomor epidemiologi otomatis</small>
             @else
                 <input type="text" class="form-control" value="" readonly placeholder="Otomatis di-generate saat simpan">
+                <small class="form-text text-muted">Nomor epidemiologi otomatis</small>
             @endif
-            <small class="form-text text-muted">Nomor epidemiologi otomatis</small>
         </div>
     </div>
     <div class="col-md-4">

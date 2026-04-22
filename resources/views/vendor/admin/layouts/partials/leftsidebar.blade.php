@@ -77,6 +77,7 @@
 					<ul class="submenu" {!! $master ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.masterdata.vaksin.index')}}" class="{{ request()->routeIs('admin.masterdata.vaksin.*') ? 'active' : '' }}">Antigen</a></li>
 						<li><a href="{{route('admin.masterdata.penyakit.index')}}" class="{{ request()->routeIs('admin.masterdata.penyakit.*') ? 'active' : '' }}">Surveilans PD3I</a></li>
+						<li><a href="{{route('admin.masterdata.penduduk.index')}}" class="{{ request()->routeIs('admin.masterdata.penduduk.*') ? 'active' : '' }}">Jumlah Penduduk</a></li>
 					</ul>
 				</li>
 

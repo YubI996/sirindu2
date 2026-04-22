@@ -761,9 +761,9 @@
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="file_import" class="form-label fw-semibold">Pilih File Excel PD3I</label>
-                        <input type="file" name="file_import" id="file_import" class="form-control" accept=".xlsx,.xls" required>
-                        <div class="form-text">Format: .xlsx atau .xls. Maksimal ukuran file: 20 MB.</div>
+                        <label for="file_import" class="form-label fw-semibold">Pilih File Excel / CSV PD3I</label>
+                        <input type="file" name="file_import" id="file_import" class="form-control" accept=".xlsx,.xls,.csv" required>
+                        <div class="form-text">Format: .xlsx, .xls, atau .csv. Maksimal ukuran file: 20 MB.</div>
                     </div>
                     <div class="alert alert-info small mb-0">
                         <strong>Catatan:</strong>

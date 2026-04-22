@@ -74,7 +74,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('admin.epidemiologi.update', $case->id) }}" id="surveillanceForm">
+    <form method="POST" action="{{ route('admin.epidemiologi.update', $case->id) }}" id="surveillanceForm" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 

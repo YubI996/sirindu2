@@ -281,10 +281,38 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                               ?? $parseDate($row[82] ?? null)   // Tanggal Kunjungan FKTP
                               ?? $tglLapor;
 
-                // Peringatan non-fatal: tanggal_lahir kosong → kategori_umur tidak dapat dihitung
+                // Estimasi tanggal_lahir dari kolom umur jika kosong
+                $tglLahirIsEstimated = false;
                 if (empty($row[11])) {
-                    $noRegWarn = $row[0] ?? '(kosong)';
-                    $this->failures[] = "[PERINGATAN] Baris {$rowNum} (No. Reg: {$noRegWarn}): Tanggal lahir tidak diisi — kategori_umur tidak dapat dihitung (disimpan null).";
+                    // Prioritas: Umur(Bulan) [187] → AGEYEAR [189] + AGEMONTH [190]
+                    $totalBulan = is_numeric($row[187] ?? null) ? (int) $row[187] : null;
+                    if ($totalBulan === null) {
+                        $ageYear = is_numeric($row[189] ?? null) ? (int) $row[189] : null;
+                        $ageMon  = is_numeric($row[190] ?? null) ? (int) $row[190] : null;
+                        if ($ageYear !== null || $ageMon !== null) {
+                            $totalBulan = (($ageYear ?? 0) * 12) + ($ageMon ?? 0);
+                        }
+                    }
+
+                    $tglPenyidikan = $parseDate($row[7] ?? null);
+                    if ($totalBulan !== null && $totalBulan > 0 && $tglPenyidikan) {
+                        try {
+                            $row[11] = Carbon::parse($tglPenyidikan)
+                                ->subMonths($totalBulan)
+                                ->startOfMonth()
+                                ->format('Y-m-d');
+                            $tglLahirIsEstimated = true;
+                        } catch (\Exception $e) {
+                            // proceed, row[11] stays empty
+                        }
+                    }
+                }
+
+                $noRegWarn = $row[0] ?? '(kosong)';
+                if (empty($row[11])) {
+                    $this->failures[] = "[PERINGATAN] Baris {$rowNum} (No. Reg: {$noRegWarn}): Tanggal lahir tidak diisi dan data umur tidak tersedia — kategori_umur tidak dapat dihitung (disimpan null).";
+                } elseif ($tglLahirIsEstimated) {
+                    $this->failures[] = "[INFO] Baris {$rowNum} (No. Reg: {$noRegWarn}): Tanggal lahir kosong — diestimasi dari umur ({$totalBulan} bulan) menjadi {$row[11]} (perkiraan awal bulan).";
                 }
 
                 $namaFaskes       = !empty($row[79]) ? (string) $row[79]  // nama_rs

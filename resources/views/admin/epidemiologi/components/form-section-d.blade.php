@@ -1,39 +1,51 @@
 {{-- Section D: Clinical Symptoms (expanded with Google Form fields) --}}
 <p class="text-muted mb-3">
-    <i class="fa fa-info-circle"></i> Centang semua gejala yang dialami pasien sejak onset penyakit.
+    <i class="fa fa-info-circle"></i> Centang semua gejala yang dialami pasien sejak onset penyakit. Tanggal onset akan muncul setelah dicentang.
 </p>
 
 <h6 class="section-subtitle"><i class="fa fa-thermometer-half"></i> Gejala Utama</h6>
 <div class="check-grid mb-4">
     @php
     $mainSymptoms = [
-        ['name' => 'gejala_demam', 'label' => 'Demam', 'icon' => 'fa-thermometer-full'],
-        ['name' => 'gejala_batuk', 'label' => 'Batuk', 'icon' => 'fa-head-side-cough'],
-        ['name' => 'gejala_pilek', 'label' => 'Pilek', 'icon' => 'fa-head-side-virus'],
-        ['name' => 'gejala_sakit_kepala', 'label' => 'Sakit Kepala', 'icon' => 'fa-brain'],
-        ['name' => 'gejala_mual', 'label' => 'Mual', 'icon' => 'fa-dizzy'],
-        ['name' => 'gejala_muntah', 'label' => 'Muntah', 'icon' => 'fa-procedures'],
-        ['name' => 'gejala_diare', 'label' => 'Diare', 'icon' => 'fa-toiletpaper'],
-        ['name' => 'gejala_ruam', 'label' => 'Ruam', 'icon' => 'fa-allergies'],
-        ['name' => 'gejala_sesak_napas', 'label' => 'Sesak Napas', 'icon' => 'fa-lungs-virus'],
-        ['name' => 'gejala_nyeri_otot', 'label' => 'Nyeri Otot', 'icon' => 'fa-running'],
-        ['name' => 'gejala_nyeri_sendi', 'label' => 'Nyeri Sendi', 'icon' => 'fa-bone'],
-        ['name' => 'gejala_lemas', 'label' => 'Lemas', 'icon' => 'fa-battery-quarter'],
-        ['name' => 'gejala_kehilangan_nafsu_makan', 'label' => 'Hilang Nafsu Makan', 'icon' => 'fa-utensils'],
-        ['name' => 'gejala_mata_merah', 'label' => 'Mata Merah', 'icon' => 'fa-eye'],
-        ['name' => 'gejala_pembengkakan_kelenjar', 'label' => 'Pembengkakan Kelenjar', 'icon' => 'fa-expand-arrows-alt'],
-        ['name' => 'gejala_kejang', 'label' => 'Kejang', 'icon' => 'fa-bolt'],
-        ['name' => 'gejala_penurunan_kesadaran', 'label' => 'Penurunan Kesadaran', 'icon' => 'fa-bed'],
+        ['name' => 'gejala_demam',                  'label' => 'Demam',                    'icon' => 'fa-thermometer-full',    'date_field' => 'tanggal_demam'],
+        ['name' => 'gejala_batuk',                  'label' => 'Batuk',                    'icon' => 'fa-head-side-cough',     'date_field' => 'tanggal_batuk'],
+        ['name' => 'gejala_pilek',                  'label' => 'Pilek',                    'icon' => 'fa-head-side-virus',     'date_field' => 'tanggal_pilek'],
+        ['name' => 'gejala_sakit_kepala',            'label' => 'Sakit Kepala',             'icon' => 'fa-brain',               'date_field' => 'tanggal_sakit_kepala'],
+        ['name' => 'gejala_mual',                   'label' => 'Mual',                     'icon' => 'fa-dizzy',               'date_field' => 'tanggal_mual'],
+        ['name' => 'gejala_muntah',                 'label' => 'Muntah',                   'icon' => 'fa-procedures',          'date_field' => 'tanggal_muntah'],
+        ['name' => 'gejala_diare',                  'label' => 'Diare',                    'icon' => 'fa-toiletpaper',         'date_field' => 'tanggal_diare'],
+        ['name' => 'gejala_ruam',                   'label' => 'Ruam',                     'icon' => 'fa-allergies',           'date_field' => 'tanggal_ruam'],
+        ['name' => 'gejala_sesak_napas',             'label' => 'Sesak Napas',              'icon' => 'fa-lungs-virus',         'date_field' => 'tanggal_sesak_nafas'],
+        ['name' => 'gejala_nyeri_otot',              'label' => 'Nyeri Otot',               'icon' => 'fa-running',             'date_field' => 'tanggal_nyeri_otot'],
+        ['name' => 'gejala_nyeri_sendi',             'label' => 'Nyeri Sendi',              'icon' => 'fa-bone',                'date_field' => 'tanggal_nyeri_sendi'],
+        ['name' => 'gejala_lemas',                  'label' => 'Lemas',                    'icon' => 'fa-battery-quarter',     'date_field' => 'tanggal_lemas'],
+        ['name' => 'gejala_kehilangan_nafsu_makan',  'label' => 'Hilang Nafsu Makan',       'icon' => 'fa-utensils',            'date_field' => 'tanggal_kehilangan_nafsu_makan'],
+        ['name' => 'gejala_mata_merah',              'label' => 'Mata Merah',               'icon' => 'fa-eye',                 'date_field' => 'tanggal_mata_merah'],
+        ['name' => 'gejala_pembengkakan_kelenjar',   'label' => 'Pembengkakan Kelenjar',    'icon' => 'fa-expand-arrows-alt',   'date_field' => 'tanggal_pembengkakan_kelenjar'],
+        ['name' => 'gejala_kejang',                 'label' => 'Kejang',                   'icon' => 'fa-bolt',                'date_field' => 'tanggal_kejang'],
+        ['name' => 'gejala_penurunan_kesadaran',     'label' => 'Penurunan Kesadaran',      'icon' => 'fa-bed',                 'date_field' => 'tanggal_penurunan_kesadaran'],
+        ['name' => 'gejala_pseudomembran',           'label' => 'Pseudomembran',            'icon' => 'fa-layer-group',         'date_field' => 'tanggal_pseudomembran'],
+        ['name' => 'gejala_leher_bengkak',           'label' => 'Leher Bengkak',            'icon' => 'fa-arrows-alt-v',        'date_field' => 'tanggal_leher_bengkak'],
+        ['name' => 'gejala_apnea',                  'label' => 'Apnea',                    'icon' => 'fa-wind',                'date_field' => 'tanggal_apnea'],
     ];
     @endphp
 
     @foreach ($mainSymptoms as $symptom)
-    <div class="check-card {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}">
-        <span class="check-icon"><i class="fas {{ $symptom['icon'] }}"></i></span>
-        <input type="hidden" name="{{ $symptom['name'] }}" value="0">
-        <input type="checkbox" name="{{ $symptom['name'] }}" value="1" id="{{ $symptom['name'] }}"
-               {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}>
-        <label for="{{ $symptom['name'] }}">{{ $symptom['label'] }}</label>
+    @php $isChecked = old($symptom['name'], $case->{$symptom['name']} ?? false); @endphp
+    <div class="check-card {{ $isChecked ? 'checked' : '' }}">
+        <div class="check-card-top">
+            <span class="check-icon"><i class="fas {{ $symptom['icon'] }}"></i></span>
+            <input type="hidden" name="{{ $symptom['name'] }}" value="0">
+            <input type="checkbox" name="{{ $symptom['name'] }}" value="1" id="{{ $symptom['name'] }}"
+                   {{ $isChecked ? 'checked' : '' }}>
+            <label for="{{ $symptom['name'] }}">{{ $symptom['label'] }}</label>
+        </div>
+        <div class="symptom-date-wrap" style="{{ $isChecked ? '' : 'display:none;' }}">
+            <input type="date" name="{{ $symptom['date_field'] }}" class="form-control symptom-date"
+                   value="{{ old($symptom['date_field'], isset($case) && $case->{$symptom['date_field']} ? $case->{$symptom['date_field']}->format('Y-m-d') : '') }}"
+                   max="{{ date('Y-m-d') }}"
+                   placeholder="Tanggal onset">
+        </div>
     </div>
     @endforeach
 </div>
@@ -53,75 +65,15 @@
 
     @foreach ($additionalSymptoms as $symptom)
     <div class="check-card {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}">
-        <span class="check-icon"><i class="fas {{ $symptom['icon'] }}"></i></span>
-        <input type="hidden" name="{{ $symptom['name'] }}" value="0">
-        <input type="checkbox" name="{{ $symptom['name'] }}" value="1" id="{{ $symptom['name'] }}"
-               {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}>
-        <label for="{{ $symptom['name'] }}">{{ $symptom['label'] }}</label>
+        <div class="check-card-top">
+            <span class="check-icon"><i class="fas {{ $symptom['icon'] }}"></i></span>
+            <input type="hidden" name="{{ $symptom['name'] }}" value="0">
+            <input type="checkbox" name="{{ $symptom['name'] }}" value="1" id="{{ $symptom['name'] }}"
+                   {{ old($symptom['name'], $case->{$symptom['name']} ?? false) ? 'checked' : '' }}>
+            <label for="{{ $symptom['name'] }}">{{ $symptom['label'] }}</label>
+        </div>
     </div>
     @endforeach
-</div>
-</div>
-
-{{-- Disease-specific dates: Campak/Rubella --}}
-<div class="disease-field" data-diseases="CAMPAK_RUBELLA"
-     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? '', ['CAMPAK_RUBELLA']) ? '' : 'display:none;' }}">
-<h6 class="section-subtitle"><i class="fa fa-calendar-alt"></i> Tanggal Onset Gejala (Campak/Rubella)</h6>
-<div class="row">
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Tanggal Demam</label>
-            <small class="form-text text-muted">Sudah diisi di Section C</small>
-        </div>
-    </div>
-</div>
-</div>
-
-{{-- Disease-specific dates: Difteri --}}
-<div class="disease-field" data-diseases="DIFTERI_OBS"
-     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? '', ['DIFTERI_OBS']) ? '' : 'display:none;' }}">
-<h6 class="section-subtitle"><i class="fa fa-calendar-alt"></i> Tanggal Onset Gejala (Difteri)</h6>
-<div class="row">
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Tanggal Leher Bengkak</label>
-            <input type="date" name="tanggal_leher_bengkak" class="form-control"
-                   value="{{ old('tanggal_leher_bengkak', isset($case) && $case->tanggal_leher_bengkak ? $case->tanggal_leher_bengkak->format('Y-m-d') : '') }}"
-                   max="{{ date('Y-m-d') }}">
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Tanggal Sesak Napas</label>
-            <input type="date" name="tanggal_sesak_nafas" class="form-control"
-                   value="{{ old('tanggal_sesak_nafas', isset($case) && $case->tanggal_sesak_nafas ? $case->tanggal_sesak_nafas->format('Y-m-d') : '') }}"
-                   max="{{ date('Y-m-d') }}">
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Tanggal Pseudomembran</label>
-            <input type="date" name="tanggal_pseudomembran" class="form-control"
-                   value="{{ old('tanggal_pseudomembran', isset($case) && $case->tanggal_pseudomembran ? $case->tanggal_pseudomembran->format('Y-m-d') : '') }}"
-                   max="{{ date('Y-m-d') }}">
-        </div>
-    </div>
-</div>
-</div>
-
-{{-- Disease-specific dates: Pertusis --}}
-<div class="disease-field" data-diseases="PERTUSIS"
-     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? '', ['PERTUSIS']) ? '' : 'display:none;' }}">
-<h6 class="section-subtitle"><i class="fa fa-calendar-alt"></i> Tanggal Onset Gejala (Pertusis)</h6>
-<div class="row">
-    <div class="col-md-4">
-        <div class="form-group">
-            <label>Tanggal Apnea</label>
-            <input type="date" name="tanggal_apnea" class="form-control"
-                   value="{{ old('tanggal_apnea', isset($case) && $case->tanggal_apnea ? $case->tanggal_apnea->format('Y-m-d') : '') }}"
-                   max="{{ date('Y-m-d') }}">
-        </div>
-    </div>
 </div>
 </div>
 
@@ -135,18 +87,100 @@
     </div>
 </div>
 
+<hr class="my-3">
+
+<h6 class="section-subtitle"><i class="fa fa-camera"></i> Foto Dokumentasi Gejala</h6>
+<div class="row">
+    <div class="col-md-8">
+        <div class="form-group mb-0">
+            <label for="foto_dokumentasi" class="form-label">
+                Upload Foto <span class="text-muted fw-normal">(opsional)</span>
+            </label>
+            <input type="file" class="form-control @error('foto_dokumentasi') is-invalid @enderror"
+                   id="foto_dokumentasi" name="foto_dokumentasi"
+                   accept="image/jpeg,image/png">
+            <div class="form-text text-muted">Format: JPG atau PNG. Maksimal 2 MB.</div>
+            @error('foto_dokumentasi')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+    </div>
+
+    {{-- Live preview saat memilih file baru --}}
+    <div class="col-md-4" id="foto-new-preview-wrap" style="display:none;">
+        <label class="form-label">Preview</label>
+        <img id="foto-new-preview" src="#" alt="Preview"
+             class="img-fluid rounded border" style="max-height:160px; object-fit:contain;">
+    </div>
+</div>
+
+@if (!empty($case->foto_dokumentasi ?? null))
+<div class="row mt-3" id="foto-existing-wrap">
+    <div class="col-md-12">
+        <label class="form-label d-block">Foto Tersimpan</label>
+        <div class="d-flex align-items-start gap-3">
+            <img src="{{ route('admin.epidemiologi.foto', $case->id) }}"
+                 alt="Foto dokumentasi" class="img-fluid rounded border"
+                 style="max-height:180px; object-fit:contain;">
+            <div>
+                <p class="text-muted small mb-2">Upload foto baru untuk mengganti foto ini.</p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="hapus_foto_dokumentasi"
+                           id="hapus_foto_dokumentasi" value="1">
+                    <label class="form-check-label text-danger" for="hapus_foto_dokumentasi">
+                        <i class="fa fa-trash"></i> Hapus foto ini
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 @push('js')
 <script>
 $(document).ready(function() {
-    // Toggle checked class on symptom item click
+    // Toggle checked + date field on card click (not on date input itself)
     $('.check-card').on('click', function(e) {
+        if ($(e.target).closest('.symptom-date-wrap').length) return;
         if ($(e.target).is('input[type="checkbox"]') || $(e.target).is('label')) return;
         var cb = $(this).find('input[type="checkbox"]');
         cb.prop('checked', !cb.prop('checked')).trigger('change');
     });
 
     $('input[type="checkbox"]').on('change', function() {
-        $(this).closest('.check-card').toggleClass('checked', this.checked);
+        var $card = $(this).closest('.check-card');
+        var checked = this.checked;
+        $card.toggleClass('checked', checked);
+        var $dateWrap = $card.find('.symptom-date-wrap');
+        if ($dateWrap.length) {
+            $dateWrap.toggle(checked);
+            if (!checked) {
+                $dateWrap.find('input[type="date"]').val('');
+            }
+        }
+    });
+
+    // Foto dokumentasi: live preview + client-side size guard
+    $('#foto_dokumentasi').on('change', function() {
+        var file = this.files[0];
+        if (!file) {
+            $('#foto-new-preview-wrap').hide();
+            return;
+        }
+        var maxBytes = 2 * 1024 * 1024;
+        if (file.size > maxBytes) {
+            alert('Ukuran file melebihi 2 MB. Silakan pilih file yang lebih kecil.');
+            $(this).val('');
+            $('#foto-new-preview-wrap').hide();
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            $('#foto-new-preview').attr('src', e.target.result);
+            $('#foto-new-preview-wrap').show();
+        };
+        reader.readAsDataURL(file);
     });
 });
 </script>

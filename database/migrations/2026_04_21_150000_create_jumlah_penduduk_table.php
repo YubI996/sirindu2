@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('jumlah_penduduk', function (Blueprint $table) {
+            $table->id();
+            $table->smallInteger('tahun')->unsigned();
+            $table->enum('kategori', ['Total', 'Dibawah 15 Tahun','Bayi Lahir Hidup']);
+            $table->foreignId('id_kelurahan')->constrained('kelurahan')->cascadeOnDelete();
+            $table->bigInteger('jumlah_penduduk')->unsigned();
+            $table->timestamps();
+
+            $table->unique(['tahun', 'kategori', 'id_kelurahan']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('jumlah_penduduk');
+    }
+};

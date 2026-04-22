@@ -457,14 +457,30 @@ select.form-control {
 
 .check-card {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 0;
     padding: 8px 12px;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     transition: all 0.2s ease;
     cursor: pointer;
     background: #fafbfc;
+}
+.check-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.symptom-date-wrap {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0,0,0,0.07);
+}
+.symptom-date-wrap input[type="date"] {
+    font-size: 0.78rem;
+    padding: 2px 6px;
+    height: auto;
+    cursor: default;
 }
 
 .check-card:hover {

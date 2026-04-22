@@ -60,7 +60,7 @@
         }
         .data-table .field-label { font-weight: bold; background-color: #fafafa; width: 30%; }
 
-        .cb { display: inline-block; width: 11px; height: 11px; border: 1px solid #000; text-align: center; font-size: 8pt; line-height: 11px; margin-right: 2px; vertical-align: middle; }
+        .cb { display: inline-block; width: 11px; height: 11px; border: 1px solid #000; text-align: center; font-size: 8pt; line-height: 11px; margin-right: 2px; vertical-align: middle; font-family: 'DejaVu Sans', sans-serif; }
         .cb-checked { background-color: #000; color: #fff; }
 
         .underline-field { border-bottom: 1px solid #000; min-width: 80px; display: inline-block; padding: 0 3px; }

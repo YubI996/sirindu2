@@ -194,6 +194,7 @@
                             <div class="kinerja-card">
                                 <div class="k-label">Discarded / Negatif</div>
                                 <div class="k-value" id="cr-discarded"><div class="skeleton skel-value"></div></div>
+                                <div id="cr-discarded-note" style="font-size:0.65rem; color:#6b7280; margin-top:2px;"></div>
                             </div>
                         </div>
                     </div>
@@ -247,10 +248,10 @@
                             </div>
                         </div>
                         <div class="col-6 col-md-4">
-                            <div class="kinerja-card disabled" title="Data populasi belum tersedia">
+                            <div class="kinerja-card">
                                 <div class="k-label">Non-Polio AFP Rate</div>
-                                <div class="k-value" id="afp-npafp">–</div>
-                                <div style="font-size:0.65rem; color:#9ca3af; margin-top:2px;">Data populasi belum tersedia</div>
+                                <div class="k-value" id="afp-npafp"><div class="skeleton skel-value"></div></div>
+                                <div id="afp-npafp-note" style="font-size:0.65rem; color:#6b7280; margin-top:2px;"></div>
                             </div>
                         </div>
                     </div>
@@ -506,10 +507,12 @@
     // ======= SKELETON =======
     function showSkeletons() {
         document.querySelectorAll('.k-value').forEach(el => {
-            if (!el.id.includes('npafp')) {
-                el.innerHTML = '<div class="skeleton skel-value"></div>';
-            }
+            el.innerHTML = '<div class="skeleton skel-value"></div>';
         });
+        const crNote = document.getElementById('cr-discarded-note');
+        const afpNote = document.getElementById('afp-npafp-note');
+        if (crNote)  crNote.textContent  = '';
+        if (afpNote) afpNote.textContent = '';
         ['skel-kelompok-umur','skel-vaksinasi','skel-komplikasi',
          'skel-epiweek','skel-bulanan','skel-per-faskes','skel-per-kecamatan','skel-per-kelurahan'
         ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; });
@@ -588,7 +591,18 @@
         setVal('cr-suspek',        cr.suspek ?? 0);
         setVal('cr-conf-campak',   cr.confirmed_campak ?? 0);
         setVal('cr-conf-rubella',  cr.confirmed_rubella ?? 0);
-        setVal('cr-discarded',     cr.discarded ?? 0);
+        // Discarded: tampilkan rate, dengan jumlah kasus sebagai catatan
+        const crDiscardedRate = cr.discarded_rate;
+        setVal('cr-discarded', crDiscardedRate !== null && crDiscardedRate !== undefined
+            ? crDiscardedRate.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+            : '–');
+        const crNote = document.getElementById('cr-discarded-note');
+        if (crNote) {
+            crNote.textContent = crDiscardedRate !== null && crDiscardedRate !== undefined
+                ? 'per 100.000 pddk (' + (cr.discarded ?? 0) + ' kasus)'
+                : 'Data penduduk belum tersedia (' + (cr.discarded ?? 0) + ' kasus)';
+        }
+
         setVal('cr-meninggal',     cr.meninggal ?? 0);
         setVal('cr-pct-sampel',    (cr.pct_sampel ?? 0) + '%');
         setVal('cr-pct-lab',       (cr.pct_lab_diterima ?? 0) + '%');
@@ -597,7 +611,16 @@
         const afp = data.afp || {};
         setVal('afp-total',     afp.total ?? 0);
         setVal('afp-confirmed', afp.confirmed ?? 0);
-        // afp-npafp stays as '–'
+        const npafpRate = afp.npafp_rate;
+        setVal('afp-npafp', npafpRate !== null && npafpRate !== undefined
+            ? npafpRate.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+            : '–');
+        const afpNote = document.getElementById('afp-npafp-note');
+        if (afpNote) {
+            afpNote.textContent = npafpRate !== null && npafpRate !== undefined
+                ? 'per 100.000 pddk <15 tahun'
+                : 'Data penduduk <15 tahun belum tersedia';
+        }
 
         const difteri = data.difteri || {};
         setVal('difteri-observasi', difteri.observasi ?? 0);
@@ -609,8 +632,12 @@
 
     function renderKinerjaError() {
         ['cr-suspek','cr-conf-campak','cr-conf-rubella','cr-discarded','cr-meninggal',
-         'cr-pct-sampel','cr-pct-lab','cr-positivity','afp-total','afp-confirmed',
+         'cr-pct-sampel','cr-pct-lab','cr-positivity','afp-total','afp-confirmed','afp-npafp',
          'difteri-observasi','difteri-confirmed','pertusis-suspek'].forEach(id => setVal(id, '–'));
+        const crNote = document.getElementById('cr-discarded-note');
+        const afpNote = document.getElementById('afp-npafp-note');
+        if (crNote)  crNote.textContent = '';
+        if (afpNote) afpNote.textContent = '';
     }
 
     // ======= RENDER DEMOGRAFI =======

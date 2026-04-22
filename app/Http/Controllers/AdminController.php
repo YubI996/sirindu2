@@ -19,6 +19,7 @@ use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Posyandu;
 use App\Models\Puskesmas;
+use App\Models\RumahSakit;
 use App\Models\Rt;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -2542,43 +2543,57 @@ All User Controller
 --------------------------------------------*/
     public function user()
     {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
         $user = User::all();
         $kec = Kecamatan::all();
-        return view('admin.user.index', compact('user', 'kec'));
+        $puskesmas = Puskesmas::orderBy('name')->get();
+        $rs = RumahSakit::orderBy('name')->get();
+        return view('admin.user.index', compact('user', 'kec', 'puskesmas', 'rs'));
     }
 
     public function storeUser(storeUserRequest $request)
     {
         try {
-            $user = $this->userRepository->storeUser($request);
+            $plainPassword = $this->userRepository->storeUser($request);
+            Alert::success('User Dibuat', "Password awal: <strong>{$plainPassword}</strong><br>Simpan sebelum menutup halaman ini.")->html();
             return redirect()->route('super.admin.user');
         } catch (Throwable $e) {
+            Alert::error('Gagal', 'User gagal dibuat: ' . $e->getMessage());
             return redirect()->route('super.admin.user');
         }
     }
 
     public function editUser($id)
     {
-        $user = User::find($id);
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
+        $user = User::findOrFail($id);
         $kec = Kecamatan::all();
-        return view('admin.user.edit', compact('user', 'kec'));
+        $puskesmas = Puskesmas::orderBy('name')->get();
+        $rs = RumahSakit::orderBy('name')->get();
+        return view('admin.user.edit', compact('user', 'kec', 'puskesmas', 'rs'));
     }
 
     public function updateUser(storeUserRequest $request, $id)
     {
         try {
-            $user = $this->userRepository->updateUser($request, $id);
+            $this->userRepository->updateUser($request, $id);
+            Alert::success('Berhasil', 'Data user berhasil diperbarui.');
             return redirect()->route('super.admin.user');
         } catch (Throwable $e) {
+            Alert::error('Gagal', 'User gagal diperbarui: ' . $e->getMessage());
             return redirect()->route('super.admin.user');
         }
     }
+
     public function destroyUser($id)
     {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
         try {
-            $user = $this->userRepository->destroyUser($id);
+            $this->userRepository->destroyUser($id);
+            Alert::success('Berhasil', 'User berhasil dihapus.');
             return redirect()->route('super.admin.user');
         } catch (Throwable $e) {
+            Alert::error('Gagal', 'User gagal dihapus: ' . $e->getMessage());
             return redirect()->route('super.admin.user');
         }
     }

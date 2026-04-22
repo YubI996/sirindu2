@@ -48,12 +48,16 @@ Data User
                 <th scope="row">{{$data->name}}</th>
                 <th scope="row">{{$data->email}}</th>
                 <th scope="row">
-                    @if ($data->type == 'user')
-                    <span class="badge badge-primary">User</span>
-                    @elseif ($data->type == 'super-admin')
+                    @if ($data->role === 'superadmin')
                     <span class="badge badge-info">Super Admin</span>
-                    @elseif ($data->type == 'admin')
-                    <span class="badge badge-success">Admin</span>
+                    @elseif ($data->role === 'surveilans_puskesmas')
+                    <span class="badge badge-success">Surveilans – Puskesmas</span>
+                    @elseif ($data->role === 'surveilans_rs')
+                    <span class="badge badge-warning">Surveilans – RS</span>
+                    @elseif ($data->role === 'imunisasi_faskes')
+                    <span class="badge badge-primary">Imunisasi Faskes</span>
+                    @else
+                    <span class="badge badge-secondary">{{ $data->role ?? 'Legacy (type='.$data->type.')' }}</span>
                     @endif
                 </th>
                 <th scope="row">

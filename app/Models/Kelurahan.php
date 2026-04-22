@@ -11,4 +11,9 @@ class Kelurahan extends Model
 
     protected $table = 'kelurahan';
     protected $fillable = ['id_kecamatan', 'name'];
+
+    public function jumlahPenduduk()
+    {
+        return $this->hasMany(JumlahPenduduk::class, 'id_kelurahan');
+    }
 }

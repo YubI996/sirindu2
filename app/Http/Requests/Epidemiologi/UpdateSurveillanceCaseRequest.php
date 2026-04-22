@@ -89,17 +89,34 @@ class UpdateSurveillanceCaseRequest extends FormRequest
             'gejala_pembengkakan_kelenjar' => 'nullable|boolean',
             'gejala_kejang' => 'nullable|boolean',
             'gejala_penurunan_kesadaran' => 'nullable|boolean',
+            'gejala_pseudomembran' => 'nullable|boolean',
+            'gejala_leher_bengkak' => 'nullable|boolean',
+            'gejala_apnea' => 'nullable|boolean',
             // Symptoms — Google Form additions
             'tanggal_demam' => 'nullable|date|before_or_equal:today',
             'gejala_adenopathy' => 'nullable|boolean',
             'gejala_arthralgia' => 'nullable|boolean',
             'gejala_kehamilan' => 'nullable|boolean',
             'gejala_lainnya' => 'nullable|string',
-            // Difteri-specific symptom dates
+            // Tanggal onset per gejala
+            'tanggal_batuk' => 'nullable|date|before_or_equal:today',
+            'tanggal_pilek' => 'nullable|date|before_or_equal:today',
+            'tanggal_sakit_kepala' => 'nullable|date|before_or_equal:today',
+            'tanggal_mual' => 'nullable|date|before_or_equal:today',
+            'tanggal_muntah' => 'nullable|date|before_or_equal:today',
+            'tanggal_diare' => 'nullable|date|before_or_equal:today',
+            'tanggal_ruam' => 'nullable|date|before_or_equal:today',
+            'tanggal_nyeri_otot' => 'nullable|date|before_or_equal:today',
+            'tanggal_nyeri_sendi' => 'nullable|date|before_or_equal:today',
+            'tanggal_lemas' => 'nullable|date|before_or_equal:today',
+            'tanggal_kehilangan_nafsu_makan' => 'nullable|date|before_or_equal:today',
+            'tanggal_mata_merah' => 'nullable|date|before_or_equal:today',
+            'tanggal_pembengkakan_kelenjar' => 'nullable|date|before_or_equal:today',
+            'tanggal_kejang' => 'nullable|date|before_or_equal:today',
+            'tanggal_penurunan_kesadaran' => 'nullable|date|before_or_equal:today',
             'tanggal_leher_bengkak' => 'nullable|date|before_or_equal:today',
             'tanggal_sesak_nafas' => 'nullable|date|before_or_equal:today',
             'tanggal_pseudomembran' => 'nullable|date|before_or_equal:today',
-            // Pertusis
             'tanggal_apnea' => 'nullable|date|before_or_equal:today',
 
             // Category D2: Komplikasi
@@ -235,6 +252,8 @@ class UpdateSurveillanceCaseRequest extends FormRequest
             'status_kasus' => 'nullable|in:suspected,probable,confirmed,discarded',
             'id_faskes_pelapor' => 'nullable|integer|exists:puskesmas,id',
             'catatan_tambahan' => 'nullable|string',
+            'foto_dokumentasi' => 'nullable|image|mimes:jpg,jpeg,png|max:2048|dimensions:min_width=1,max_width=4096,min_height=1,max_height=4096',
+            'hapus_foto_dokumentasi' => 'nullable|boolean',
 
             // MoD: Imunisasi per antigen
             'imunisasi' => 'nullable|array',

@@ -6,6 +6,7 @@ use App\Repositories\Admin\Core\Epidemiologi\SurveillanceRepositoryInterface;
 use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
 use App\Models\EpidCounter;
+use App\Models\JumlahPenduduk;
 use App\Models\LokasiPenularanMaster;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         'gejala_sesak_napas', 'gejala_nyeri_otot', 'gejala_nyeri_sendi',
         'gejala_lemas', 'gejala_kehilangan_nafsu_makan', 'gejala_mata_merah',
         'gejala_pembengkakan_kelenjar', 'gejala_kejang', 'gejala_penurunan_kesadaran',
+        'gejala_pseudomembran', 'gejala_leher_bengkak', 'gejala_apnea',
         'gejala_adenopathy', 'gejala_arthralgia', 'gejala_kehamilan',
         'komplikasi_diare', 'komplikasi_kebutaan', 'komplikasi_pneumonia',
         'komplikasi_malnutrisi', 'komplikasi_bronchopneumonia', 'komplikasi_otitis_media',
@@ -42,6 +44,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     private function prepareData($request)
     {
         $data = $request->validated();
+
+        // Remove file fields — handled at controller level, not stored as UploadedFile
+        unset($data['foto_dokumentasi'], $data['hapus_foto_dokumentasi']);
 
         // Handle boolean checkbox fields: unchecked checkboxes are absent from request
         foreach (self::BOOLEAN_FIELDS as $field) {
@@ -84,10 +89,14 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Store a new surveillance case
      */
-    public function storeCase($request)
+    public function storeCase($request, ?string $fotoPath = null)
     {
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $fotoPath) {
             $data = $this->prepareData($request);
+
+            if ($fotoPath !== null) {
+                $data['foto_dokumentasi'] = $fotoPath;
+            }
 
             // Defaults for new cases
             $data['tanggal_lapor'] = $data['tanggal_lapor'] ?? now()->toDateString();
@@ -145,13 +154,23 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Update an existing surveillance case
      */
-    public function updateCase($request, $id)
+    public function updateCase($request, $id, ?string $fotoPath = null, bool $deleteFoto = false)
     {
-        return DB::transaction(function () use ($request, $id) {
+        return DB::transaction(function () use ($request, $id, $fotoPath, $deleteFoto) {
             $case = SurveillanceCase::findOrFail($id);
 
             $data = $this->prepareData($request);
             $data['updated_by'] = Auth::id();
+
+            if ($fotoPath !== null) {
+                if ($case->foto_dokumentasi) {
+                    \Illuminate\Support\Facades\Storage::delete($case->foto_dokumentasi);
+                }
+                $data['foto_dokumentasi'] = $fotoPath;
+            } elseif ($deleteFoto && $case->foto_dokumentasi) {
+                \Illuminate\Support\Facades\Storage::delete($case->foto_dokumentasi);
+                $data['foto_dokumentasi'] = null;
+            }
 
             $case->update($data);
 
@@ -519,6 +538,10 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     {
         $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId);
 
+        // Populasi Kota Bontang untuk tahun terpilih (selalu kota penuh, tanpa filter wilker/kelurahan)
+        $totalPenduduk    = JumlahPenduduk::where('tahun', $tahun)->where('kategori', 'Total')->sum('jumlah_penduduk');
+        $pendudukBawah15  = JumlahPenduduk::where('tahun', $tahun)->where('kategori', 'Dibawah 15 Tahun')->sum('jumlah_penduduk');
+
         // ===== Campak-Rubella (id=1) =====
         $cr = (clone $base)->where('id_jenis_kasus', 1);
         $crTotal = (clone $cr)->count();
@@ -527,6 +550,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         $crLabDiterima = (clone $cr)->whereNotNull('tanggal_hasil_lab')->count();
         $crLabDiperiksa = (clone $cr)->whereIn('status_lab', ['diperiksa_lab','proses','positif','negatif'])->count();
         $crLabPositif = (clone $cr)->where('status_lab', 'positif')->count();
+        $crDiscarded = (clone $cr)->where('status_kasus', 'discarded')->count();
 
         $campakRubella = [
             'suspek'            => (clone $cr)->where('status_kasus', 'suspected')->count(),
@@ -536,7 +560,10 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             'confirmed_rubella' => (clone $cr)->where('status_kasus', 'confirmed')
                                               ->whereRaw('LOWER(hasil_lab) LIKE ?', ['%rubella%'])
                                               ->count(),
-            'discarded'         => (clone $cr)->where('status_kasus', 'discarded')->count(),
+            'discarded'         => $crDiscarded,
+            'discarded_rate'    => $totalPenduduk > 0
+                                    ? round($crDiscarded / $totalPenduduk * 100000, 2)
+                                    : null,
             'meninggal'         => (clone $cr)->where('kondisi_akhir', 'meninggal')->count(),
             'pct_sampel'        => $crTotal > 0 ? round($crSampel / $crTotal * 100, 1) : 0,
             'pct_lab_diterima'  => $crTotal > 0 ? round($crLabDiterima / $crTotal * 100, 1) : 0,
@@ -545,10 +572,13 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
 
         // ===== AFP/Polio (id=3) =====
         $afp = (clone $base)->where('id_jenis_kasus', 3);
+        $afpTotal = (clone $afp)->count();
         $afpData = [
-            'total'      => (clone $afp)->count(),
+            'total'      => $afpTotal,
             'confirmed'  => (clone $afp)->where('status_kasus', 'confirmed')->count(),
-            'npafp_rate' => null, // Butuh data populasi eksternal
+            'npafp_rate' => $pendudukBawah15 > 0
+                            ? round($afpTotal / $pendudukBawah15 * 100000, 2)
+                            : null,
         ];
 
         // ===== Difteri (id=2) =====

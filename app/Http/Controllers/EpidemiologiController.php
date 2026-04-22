@@ -8,6 +8,9 @@ use App\Http\Requests\Epidemiologi\UpdateSurveillanceCaseRequest;
 use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
 use App\Models\LokasiPenularanMaster;
+use App\Models\SekolahDasar;
+use App\Models\SekolahMenengahPertama;
+use App\Models\SekolahMenengahAtas;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Rt;
@@ -23,6 +26,8 @@ use App\Models\ImportLog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
 
 class EpidemiologiController extends Controller
@@ -445,8 +450,12 @@ class EpidemiologiController extends Controller
                 $request->merge(['wilker_puskesmas' => $this->resolveWilker((int) $request->id_kel)]);
             }
 
-            $case = DB::transaction(function () use ($request) {
-                $case = $this->surveillanceRepository->storeCase($request);
+            $fotoPath = $request->hasFile('foto_dokumentasi')
+                ? $this->processAndStoreImage($request->file('foto_dokumentasi'))
+                : null;
+
+            $case = DB::transaction(function () use ($request, $fotoPath) {
+                $case = $this->surveillanceRepository->storeCase($request, $fotoPath);
                 $this->surveillanceRepository->syncImunisasi($case, $request->input('imunisasi', []));
                 $this->surveillanceRepository->syncFaskesBerobat($case, $request->input('faskes_berobat', []));
                 $this->surveillanceRepository->syncSpesimen($case, $request->input('spesimen', []));
@@ -518,8 +527,13 @@ class EpidemiologiController extends Controller
                 $request->merge(['wilker_puskesmas' => $this->resolveWilker((int) $request->id_kel)]);
             }
 
-            $case = DB::transaction(function () use ($request, $id) {
-                $case = $this->surveillanceRepository->updateCase($request, $id);
+            $fotoPath = $request->hasFile('foto_dokumentasi')
+                ? $this->processAndStoreImage($request->file('foto_dokumentasi'))
+                : null;
+            $deleteFoto = $request->boolean('hapus_foto_dokumentasi');
+
+            $case = DB::transaction(function () use ($request, $id, $fotoPath, $deleteFoto) {
+                $case = $this->surveillanceRepository->updateCase($request, $id, $fotoPath, $deleteFoto);
                 $this->surveillanceRepository->syncImunisasi($case, $request->input('imunisasi', []));
                 $this->surveillanceRepository->syncFaskesBerobat($case, $request->input('faskes_berobat', []));
                 $this->surveillanceRepository->syncSpesimen($case, $request->input('spesimen', []));
@@ -547,6 +561,10 @@ class EpidemiologiController extends Controller
         abort_if(auth()->user()->isFaskesSurveilans(), 403, 'Faskes tidak memiliki izin menghapus kasus.');
 
         try {
+            $case = SurveillanceCase::findOrFail($id);
+            if ($case->foto_dokumentasi) {
+                Storage::delete($case->foto_dokumentasi);
+            }
             $this->surveillanceRepository->deleteCase($id);
 
             $this->clearEpiCache();
@@ -561,6 +579,60 @@ class EpidemiologiController extends Controller
                 'message' => 'Gagal menghapus kasus: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Re-encode uploaded image via GD to strip metadata and embedded payloads.
+     * Uses UUID filename to prevent path traversal and enumeration.
+     */
+    private function processAndStoreImage(UploadedFile $file): string
+    {
+        $tmp = $file->getRealPath();
+        $ext = strtolower($file->getClientOriginalExtension());
+        $dest = 'dokumentasi/' . Str::uuid() . '.' . $ext;
+
+        if (in_array($ext, ['jpg', 'jpeg'])) {
+            $img = imagecreatefromjpeg($tmp);
+            ob_start();
+            imagejpeg($img, null, 85);
+            $data = ob_get_clean();
+            imagedestroy($img);
+        } else {
+            $img = imagecreatefrompng($tmp);
+            imagesavealpha($img, true);
+            ob_start();
+            imagepng($img, null, 6);
+            $data = ob_get_clean();
+            imagedestroy($img);
+        }
+
+        Storage::put($dest, $data);
+        return $dest;
+    }
+
+    /**
+     * Serve a case photo via authenticated route with security headers.
+     * File is on private local disk — not accessible via /storage/.
+     */
+    public function servePhoto($id)
+    {
+        $case = SurveillanceCase::findOrFail($id);
+        $this->authorizeFaskesAccess($case);
+
+        abort_unless(
+            $case->foto_dokumentasi && Storage::exists($case->foto_dokumentasi),
+            404
+        );
+
+        $ext = strtolower(pathinfo($case->foto_dokumentasi, PATHINFO_EXTENSION));
+        $mime = $ext === 'png' ? 'image/png' : 'image/jpeg';
+
+        return response(Storage::get($case->foto_dokumentasi), 200, [
+            'Content-Type'           => $mime,
+            'Content-Disposition'    => 'inline',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control'          => 'private, max-age=3600',
+        ]);
     }
 
     // ==================== AJAX HELPER METHODS ====================
@@ -612,7 +684,7 @@ class EpidemiologiController extends Controller
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
 
         $request->validate([
-            'file_import' => 'required|file|mimes:xlsx,xls|max:20480',
+            'file_import' => 'required|file|mimes:xlsx,xls,csv|max:20480',
         ]);
 
         $file     = $request->file('file_import');
@@ -857,20 +929,37 @@ class EpidemiologiController extends Controller
     {
         $search = $request->get('q', '');
 
-        $query = LokasiPenularanMaster::orderBy('kategori')->orderBy('nama');
-
+        $lokasiQuery = LokasiPenularanMaster::orderBy('kategori')->orderBy('nama');
         if ($search) {
-            $query->where('nama', 'like', "%{$search}%");
+            $lokasiQuery->where('nama', 'like', "%{$search}%");
         }
 
-        $results = $query->get()->groupBy('kategori')->map(function ($items, $kategori) {
+        $results = $lokasiQuery->get()->groupBy('kategori')->map(function ($items, $kategori) {
             return [
                 'text' => $kategori,
-                'children' => $items->map(function ($item) {
-                    return ['id' => $item->nama, 'text' => $item->nama];
-                })->values(),
+                'children' => $items->map(fn($item) => ['id' => $item->nama, 'text' => $item->nama])->values(),
             ];
-        })->values();
+        })->values()->toArray();
+
+        $sekolahGroups = [
+            'SD/Sederajat'      => SekolahDasar::class,
+            'SMP/Sederajat'     => SekolahMenengahPertama::class,
+            'SMA/SMK/Sederajat' => SekolahMenengahAtas::class,
+        ];
+
+        foreach ($sekolahGroups as $label => $model) {
+            $query = $model::orderBy('nama');
+            if ($search) {
+                $query->where('nama', 'like', "%{$search}%");
+            }
+            $items = $query->get();
+            if ($items->isNotEmpty()) {
+                $results[] = [
+                    'text'     => $label,
+                    'children' => $items->map(fn($s) => ['id' => $s->nama, 'text' => $s->nama])->values()->toArray(),
+                ];
+            }
+        }
 
         return response()->json(['results' => $results]);
     }

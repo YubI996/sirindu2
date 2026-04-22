@@ -138,6 +138,19 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.masterdata.penyakit.restore');
     });
 
+    Route::prefix('master-data/penduduk')->group(function () {
+        Route::get('/', [App\Http\Controllers\MasterDataPendudukController::class, 'index'])
+             ->name('admin.masterdata.penduduk.index');
+        Route::get('get-data', [App\Http\Controllers\MasterDataPendudukController::class, 'getData'])
+             ->name('admin.masterdata.penduduk.getData');
+        Route::post('store', [App\Http\Controllers\MasterDataPendudukController::class, 'store'])
+             ->name('admin.masterdata.penduduk.store');
+        Route::put('update/{id}', [App\Http\Controllers\MasterDataPendudukController::class, 'update'])
+             ->name('admin.masterdata.penduduk.update');
+        Route::delete('destroy/{id}', [App\Http\Controllers\MasterDataPendudukController::class, 'destroy'])
+             ->name('admin.masterdata.penduduk.destroy');
+    });
+
     /*------------------------------------------
     Export Data Routes
     --------------------------------------------*/
@@ -183,6 +196,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.update');
         Route::delete('destroy/{id}', [App\Http\Controllers\EpidemiologiController::class, 'destroy'])
              ->name('admin.epidemiologi.destroy');
+        Route::get('{id}/foto', [App\Http\Controllers\EpidemiologiController::class, 'servePhoto'])
+             ->name('admin.epidemiologi.foto');
 
         // AJAX Helpers
         Route::get('get-kelurahan/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getKelurahan'])
