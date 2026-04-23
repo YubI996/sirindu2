@@ -90,11 +90,13 @@
 <hr class="my-3">
 
 <h6 class="section-subtitle"><i class="fa fa-camera"></i> Foto Dokumentasi Gejala</h6>
-<div class="row">
+
+{{-- Foto 1 --}}
+<div class="row mb-3">
     <div class="col-md-8">
         <div class="form-group mb-0">
             <label for="foto_dokumentasi" class="form-label">
-                Upload Foto <span class="text-muted fw-normal">(opsional)</span>
+                Foto 1 <span class="text-muted fw-normal">(opsional)</span>
             </label>
             <input type="file" class="form-control @error('foto_dokumentasi') is-invalid @enderror"
                    id="foto_dokumentasi" name="foto_dokumentasi"
@@ -105,8 +107,6 @@
             @enderror
         </div>
     </div>
-
-    {{-- Live preview saat memilih file baru --}}
     <div class="col-md-4" id="foto-new-preview-wrap" style="display:none;">
         <label class="form-label">Preview</label>
         <img id="foto-new-preview" src="#" alt="Preview"
@@ -115,12 +115,12 @@
 </div>
 
 @if (!empty($case->foto_dokumentasi ?? null))
-<div class="row mt-3" id="foto-existing-wrap">
+<div class="row mb-3" id="foto-existing-wrap">
     <div class="col-md-12">
-        <label class="form-label d-block">Foto Tersimpan</label>
+        <label class="form-label d-block">Foto 1 Tersimpan</label>
         <div class="d-flex align-items-start gap-3">
-            <img src="{{ route('admin.epidemiologi.foto', $case->id) }}"
-                 alt="Foto dokumentasi" class="img-fluid rounded border"
+            <img src="{{ route('admin.epidemiologi.foto', [$case->id, 1]) }}"
+                 alt="Foto dokumentasi 1" class="img-fluid rounded border"
                  style="max-height:180px; object-fit:contain;">
             <div>
                 <p class="text-muted small mb-2">Upload foto baru untuk mengganti foto ini.</p>
@@ -128,6 +128,52 @@
                     <input class="form-check-input" type="checkbox" name="hapus_foto_dokumentasi"
                            id="hapus_foto_dokumentasi" value="1">
                     <label class="form-check-label text-danger" for="hapus_foto_dokumentasi">
+                        <i class="fa fa-trash"></i> Hapus foto ini
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Foto 2 --}}
+<div class="row mb-3">
+    <div class="col-md-8">
+        <div class="form-group mb-0">
+            <label for="foto_dokumentasi_2" class="form-label">
+                Foto 2 <span class="text-muted fw-normal">(opsional)</span>
+            </label>
+            <input type="file" class="form-control @error('foto_dokumentasi_2') is-invalid @enderror"
+                   id="foto_dokumentasi_2" name="foto_dokumentasi_2"
+                   accept="image/jpeg,image/png">
+            <div class="form-text text-muted">Format: JPG atau PNG. Maksimal 2 MB.</div>
+            @error('foto_dokumentasi_2')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+    </div>
+    <div class="col-md-4" id="foto2-new-preview-wrap" style="display:none;">
+        <label class="form-label">Preview</label>
+        <img id="foto2-new-preview" src="#" alt="Preview"
+             class="img-fluid rounded border" style="max-height:160px; object-fit:contain;">
+    </div>
+</div>
+
+@if (!empty($case->foto_dokumentasi_2 ?? null))
+<div class="row mb-3" id="foto2-existing-wrap">
+    <div class="col-md-12">
+        <label class="form-label d-block">Foto 2 Tersimpan</label>
+        <div class="d-flex align-items-start gap-3">
+            <img src="{{ route('admin.epidemiologi.foto', [$case->id, 2]) }}"
+                 alt="Foto dokumentasi 2" class="img-fluid rounded border"
+                 style="max-height:180px; object-fit:contain;">
+            <div>
+                <p class="text-muted small mb-2">Upload foto baru untuk mengganti foto ini.</p>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="hapus_foto_dokumentasi_2"
+                           id="hapus_foto_dokumentasi_2" value="1">
+                    <label class="form-check-label text-danger" for="hapus_foto_dokumentasi_2">
                         <i class="fa fa-trash"></i> Hapus foto ini
                     </label>
                 </div>
@@ -162,26 +208,29 @@ $(document).ready(function() {
     });
 
     // Foto dokumentasi: live preview + client-side size guard
-    $('#foto_dokumentasi').on('change', function() {
-        var file = this.files[0];
-        if (!file) {
-            $('#foto-new-preview-wrap').hide();
-            return;
-        }
-        var maxBytes = 2 * 1024 * 1024;
-        if (file.size > maxBytes) {
-            alert('Ukuran file melebihi 2 MB. Silakan pilih file yang lebih kecil.');
-            $(this).val('');
-            $('#foto-new-preview-wrap').hide();
-            return;
-        }
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            $('#foto-new-preview').attr('src', e.target.result);
-            $('#foto-new-preview-wrap').show();
-        };
-        reader.readAsDataURL(file);
-    });
+    function setupFotoPreview(inputId, previewWrapId, previewImgId) {
+        $('#' + inputId).on('change', function() {
+            var file = this.files[0];
+            if (!file) {
+                $('#' + previewWrapId).hide();
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Ukuran file melebihi 2 MB. Silakan pilih file yang lebih kecil.');
+                $(this).val('');
+                $('#' + previewWrapId).hide();
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                $('#' + previewImgId).attr('src', e.target.result);
+                $('#' + previewWrapId).show();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    setupFotoPreview('foto_dokumentasi',   'foto-new-preview-wrap',  'foto-new-preview');
+    setupFotoPreview('foto_dokumentasi_2', 'foto2-new-preview-wrap', 'foto2-new-preview');
 });
 </script>
 @endpush

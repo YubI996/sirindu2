@@ -196,8 +196,9 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.update');
         Route::delete('destroy/{id}', [App\Http\Controllers\EpidemiologiController::class, 'destroy'])
              ->name('admin.epidemiologi.destroy');
-        Route::get('{id}/foto', [App\Http\Controllers\EpidemiologiController::class, 'servePhoto'])
-             ->name('admin.epidemiologi.foto');
+        Route::get('{id}/foto/{slot}', [App\Http\Controllers\EpidemiologiController::class, 'servePhoto'])
+             ->name('admin.epidemiologi.foto')
+             ->where('slot', '[12]');
 
         // AJAX Helpers
         Route::get('get-kelurahan/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getKelurahan'])

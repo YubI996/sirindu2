@@ -244,7 +244,8 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'status_kasus' => 'nullable|in:suspected,probable,confirmed,discarded',
             'id_faskes_pelapor' => 'nullable|integer|exists:puskesmas,id',
             'catatan_tambahan' => 'nullable|string',
-            'foto_dokumentasi' => 'nullable|image|mimes:jpg,jpeg,png|max:2048|dimensions:min_width=1,max_width=4096,min_height=1,max_height=4096',
+            'foto_dokumentasi'   => 'nullable|image|mimes:jpg,jpeg,png|max:2048|dimensions:min_width=1,max_width=4096,min_height=1,max_height=4096',
+            'foto_dokumentasi_2' => 'nullable|image|mimes:jpg,jpeg,png|max:2048|dimensions:min_width=1,max_width=4096,min_height=1,max_height=4096',
 
             // MoD: Imunisasi per antigen
             'imunisasi' => 'nullable|array',

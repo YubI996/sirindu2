@@ -234,6 +234,7 @@ class SurveillanceCase extends Model
         'id_faskes_pelapor',
         'catatan_tambahan',
         'foto_dokumentasi',
+        'foto_dokumentasi_2',
         'created_by',
         'updated_by',
 

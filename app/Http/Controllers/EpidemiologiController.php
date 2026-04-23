@@ -450,12 +450,15 @@ class EpidemiologiController extends Controller
                 $request->merge(['wilker_puskesmas' => $this->resolveWilker((int) $request->id_kel)]);
             }
 
-            $fotoPath = $request->hasFile('foto_dokumentasi')
+            $fotoPath  = $request->hasFile('foto_dokumentasi')
                 ? $this->processAndStoreImage($request->file('foto_dokumentasi'))
                 : null;
+            $fotoPath2 = $request->hasFile('foto_dokumentasi_2')
+                ? $this->processAndStoreImage($request->file('foto_dokumentasi_2'))
+                : null;
 
-            $case = DB::transaction(function () use ($request, $fotoPath) {
-                $case = $this->surveillanceRepository->storeCase($request, $fotoPath);
+            $case = DB::transaction(function () use ($request, $fotoPath, $fotoPath2) {
+                $case = $this->surveillanceRepository->storeCase($request, $fotoPath, $fotoPath2);
                 $this->surveillanceRepository->syncImunisasi($case, $request->input('imunisasi', []));
                 $this->surveillanceRepository->syncFaskesBerobat($case, $request->input('faskes_berobat', []));
                 $this->surveillanceRepository->syncSpesimen($case, $request->input('spesimen', []));
@@ -527,13 +530,18 @@ class EpidemiologiController extends Controller
                 $request->merge(['wilker_puskesmas' => $this->resolveWilker((int) $request->id_kel)]);
             }
 
-            $fotoPath = $request->hasFile('foto_dokumentasi')
+            $fotoPath  = $request->hasFile('foto_dokumentasi')
                 ? $this->processAndStoreImage($request->file('foto_dokumentasi'))
                 : null;
             $deleteFoto = $request->boolean('hapus_foto_dokumentasi');
 
-            $case = DB::transaction(function () use ($request, $id, $fotoPath, $deleteFoto) {
-                $case = $this->surveillanceRepository->updateCase($request, $id, $fotoPath, $deleteFoto);
+            $fotoPath2  = $request->hasFile('foto_dokumentasi_2')
+                ? $this->processAndStoreImage($request->file('foto_dokumentasi_2'))
+                : null;
+            $deleteFoto2 = $request->boolean('hapus_foto_dokumentasi_2');
+
+            $case = DB::transaction(function () use ($request, $id, $fotoPath, $deleteFoto, $fotoPath2, $deleteFoto2) {
+                $case = $this->surveillanceRepository->updateCase($request, $id, $fotoPath, $deleteFoto, $fotoPath2, $deleteFoto2);
                 $this->surveillanceRepository->syncImunisasi($case, $request->input('imunisasi', []));
                 $this->surveillanceRepository->syncFaskesBerobat($case, $request->input('faskes_berobat', []));
                 $this->surveillanceRepository->syncSpesimen($case, $request->input('spesimen', []));
@@ -564,6 +572,9 @@ class EpidemiologiController extends Controller
             $case = SurveillanceCase::findOrFail($id);
             if ($case->foto_dokumentasi) {
                 Storage::delete($case->foto_dokumentasi);
+            }
+            if ($case->foto_dokumentasi_2) {
+                Storage::delete($case->foto_dokumentasi_2);
             }
             $this->surveillanceRepository->deleteCase($id);
 
@@ -614,20 +625,19 @@ class EpidemiologiController extends Controller
      * Serve a case photo via authenticated route with security headers.
      * File is on private local disk — not accessible via /storage/.
      */
-    public function servePhoto($id)
+    public function servePhoto($id, $slot = 1)
     {
         $case = SurveillanceCase::findOrFail($id);
         $this->authorizeFaskesAccess($case);
 
-        abort_unless(
-            $case->foto_dokumentasi && Storage::exists($case->foto_dokumentasi),
-            404
-        );
+        $path = $slot == 2 ? $case->foto_dokumentasi_2 : $case->foto_dokumentasi;
 
-        $ext = strtolower(pathinfo($case->foto_dokumentasi, PATHINFO_EXTENSION));
+        abort_unless($path && Storage::exists($path), 404);
+
+        $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $mime = $ext === 'png' ? 'image/png' : 'image/jpeg';
 
-        return response(Storage::get($case->foto_dokumentasi), 200, [
+        return response(Storage::get($path), 200, [
             'Content-Type'           => $mime,
             'Content-Disposition'    => 'inline',
             'X-Content-Type-Options' => 'nosniff',

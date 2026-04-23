@@ -46,7 +46,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         $data = $request->validated();
 
         // Remove file fields — handled at controller level, not stored as UploadedFile
-        unset($data['foto_dokumentasi'], $data['hapus_foto_dokumentasi']);
+        unset($data['foto_dokumentasi'], $data['hapus_foto_dokumentasi'], $data['foto_dokumentasi_2'], $data['hapus_foto_dokumentasi_2']);
 
         // Handle boolean checkbox fields: unchecked checkboxes are absent from request
         foreach (self::BOOLEAN_FIELDS as $field) {
@@ -89,13 +89,16 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Store a new surveillance case
      */
-    public function storeCase($request, ?string $fotoPath = null)
+    public function storeCase($request, ?string $fotoPath = null, ?string $fotoPath2 = null)
     {
-        return DB::transaction(function () use ($request, $fotoPath) {
+        return DB::transaction(function () use ($request, $fotoPath, $fotoPath2) {
             $data = $this->prepareData($request);
 
             if ($fotoPath !== null) {
                 $data['foto_dokumentasi'] = $fotoPath;
+            }
+            if ($fotoPath2 !== null) {
+                $data['foto_dokumentasi_2'] = $fotoPath2;
             }
 
             // Defaults for new cases
@@ -154,9 +157,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Update an existing surveillance case
      */
-    public function updateCase($request, $id, ?string $fotoPath = null, bool $deleteFoto = false)
+    public function updateCase($request, $id, ?string $fotoPath = null, bool $deleteFoto = false, ?string $fotoPath2 = null, bool $deleteFoto2 = false)
     {
-        return DB::transaction(function () use ($request, $id, $fotoPath, $deleteFoto) {
+        return DB::transaction(function () use ($request, $id, $fotoPath, $deleteFoto, $fotoPath2, $deleteFoto2) {
             $case = SurveillanceCase::findOrFail($id);
 
             $data = $this->prepareData($request);
@@ -170,6 +173,16 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             } elseif ($deleteFoto && $case->foto_dokumentasi) {
                 \Illuminate\Support\Facades\Storage::delete($case->foto_dokumentasi);
                 $data['foto_dokumentasi'] = null;
+            }
+
+            if ($fotoPath2 !== null) {
+                if ($case->foto_dokumentasi_2) {
+                    \Illuminate\Support\Facades\Storage::delete($case->foto_dokumentasi_2);
+                }
+                $data['foto_dokumentasi_2'] = $fotoPath2;
+            } elseif ($deleteFoto2 && $case->foto_dokumentasi_2) {
+                \Illuminate\Support\Facades\Storage::delete($case->foto_dokumentasi_2);
+                $data['foto_dokumentasi_2'] = null;
             }
 
             $case->update($data);
