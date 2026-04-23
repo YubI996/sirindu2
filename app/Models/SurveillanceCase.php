@@ -340,12 +340,20 @@ class SurveillanceCase extends Model
     protected $appends = ['umur', 'lama_rawat'];
 
     /**
-     * Get age (umur) calculated from tanggal_lahir
+     * Get age (umur) at time of investigation/onset, not current age.
+     * Uses tanggal_penyidikan → tanggal_onset → tanggal_lapor → today as reference.
      */
     protected function umur(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->tanggal_lahir ? $this->tanggal_lahir->age : null,
+            get: function () {
+                if (!$this->tanggal_lahir) return null;
+                $ref = $this->tanggal_penyidikan
+                    ?? $this->tanggal_onset
+                    ?? $this->tanggal_lapor
+                    ?? now();
+                return $this->tanggal_lahir->diffInYears($ref);
+            },
         );
     }
 
