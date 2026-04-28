@@ -5,13 +5,13 @@ namespace App\Imports;
 use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
 use App\Services\NikDummyService;
+use App\Traits\CleansImportData;
 use App\Traits\ResolvesWilayah;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 {
-    use ResolvesWilayah;
+    use ResolvesWilayah, CleansImportData;
 
     protected int $userId;
     protected int $successCount = 0;
@@ -101,51 +101,13 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
         }
 
         // =====================================================================
-        // T002: Helper parseDate
-        // Menangani: numeric Excel date, string tanggal, atau kosong → null
-        // =====================================================================
-        $parseDate = function ($value) {
-            if ($value === null || $value === '') return null;
-            if (is_numeric($value)) {
-                try {
-                    return Carbon::instance(Date::excelToDateTimeObject((float) $value))->format('Y-m-d');
-                } catch (\Exception $e) {
-                    return null;
-                }
-            }
-            try {
-                return Carbon::parse((string) $value)->format('Y-m-d');
-            } catch (\Exception $e) {
-                return null;
-            }
-        };
-
-        // =====================================================================
-        // T003: Helper parseBoolean
-        // "Ya"/"y"/"yes"/"true"/"1" → true; selain itu → false
-        // =====================================================================
-        $parseBoolean = function ($value): bool {
-            return in_array(strtolower(trim((string) $value)), ['ya', 'y', 'yes', 'true', '1']);
-        };
-
-        // =====================================================================
-        // T004: Helper parseIntOrNull
-        // intval, return null jika 0 atau kosong
-        // =====================================================================
-        $parseIntOrNull = function ($value): ?int {
-            if ($value === null || $value === '') return null;
-            $int = intval($value);
-            return $int > 0 ? $int : null;
-        };
-
-        // =====================================================================
         // T005: Helper calcKategoriUmur
         // Hitung dari tanggal_lahir dan tanggal_onset
         // Enum: ['bayi','balita','anak','remaja','dewasa','lansia']
         // =====================================================================
-        $calcKategoriUmur = function ($tanggalLahir, $tanggalOnset) use ($parseDate): ?string {
-            $lahirStr  = $parseDate($tanggalLahir);
-            $onsetStr  = $parseDate($tanggalOnset);
+        $calcKategoriUmur = function ($tanggalLahir, $tanggalOnset): ?string {
+            $lahirStr  = $this->parseDate($tanggalLahir);
+            $onsetStr  = $this->parseDate($tanggalOnset);
             if (!$lahirStr) return null;
 
             try {
@@ -164,69 +126,6 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
             } catch (\Exception $e) {
                 return null;
             }
-        };
-
-        // =====================================================================
-        // Helper parseYaTidak
-        // Untuk field enum ['ya', 'tidak'] atau ['ya', 'tidak', 'tidak_tahu']
-        // Mengonversi "Ya"/"Tidak"/"Tidak Tahu" → lowercase enum value atau null
-        // =====================================================================
-        $parseYaTidak = function ($value): ?string {
-            $val = strtolower(trim((string) $value));
-            return match (true) {
-                in_array($val, ['ya', 'y', 'yes', '1'])                 => 'ya',
-                in_array($val, ['tidak', 'no', 'n', '0'])               => 'tidak',
-                in_array($val, ['tidak tahu', 'tidak_tahu', 'unknown']) => 'tidak_tahu',
-                in_array($val, ['kadang', 'kadang-kadang', 'kadang_kadang']) => 'kadang_kadang',
-                default => null,
-            };
-        };
-
-        // =====================================================================
-        // Helper parseRiwayatImunisasi
-        // Enum: ['lengkap', 'tidak_lengkap', 'tidak_tahu', 'tidak_ada']
-        // =====================================================================
-        $parseRiwayatImunisasi = function ($value): ?string {
-            if ($value === null || trim((string) $value) === '') return null;
-            $val = strtolower(trim((string) $value));
-            // Urutan: spesifik dulu (tidak_lengkap, tidak_ada) sebelum yang umum (lengkap)
-            return match (true) {
-                str_contains($val, 'tidak_lengkap') || str_contains($val, 'tidak lengkap') => 'tidak_lengkap',
-                str_contains($val, 'tidak_ada')     || str_contains($val, 'tidak ada') || $val === 'tidak' => 'tidak_ada',
-                str_contains($val, 'tidak_tahu')    || str_contains($val, 'tidak tahu') => 'tidak_tahu',
-                str_contains($val, 'lengkap') => 'lengkap',
-                default => null,
-            };
-        };
-
-        // =====================================================================
-        // Helper parseStatusGizi
-        // Enum: ['baik', 'kurang', 'buruk', 'lebih']
-        // =====================================================================
-        $parseStatusGizi = function ($value): ?string {
-            if (empty($value)) return null;
-            $val = strtolower(trim((string) $value));
-            return match (true) {
-                in_array($val, ['baik', 'normal', 'gizi baik'])   => 'baik',
-                str_contains($val, 'kurang')                       => 'kurang',
-                str_contains($val, 'buruk')                        => 'buruk',
-                in_array($val, ['lebih', 'obesitas', 'gemuk'])     => 'lebih',
-                default => null,
-            };
-        };
-
-        // =====================================================================
-        // Helper parseVitaminA
-        // Enum: ['ya', 'tidak', 'tidak_tahu']
-        // =====================================================================
-        $parseVitaminA = function ($value): ?string {
-            $val = strtolower(trim((string) $value));
-            return match (true) {
-                in_array($val, ['ya', 'y', 'yes', '1'])                      => 'ya',
-                in_array($val, ['tidak', 'no', 'n', '0'])                    => 'tidak',
-                in_array($val, ['tidak tahu', 'tidak_tahu', 'unknown', ''])  => 'tidak_tahu',
-                default => null, // nilai tidak dikenal → null, bukan 'tidak_tahu' diam-diam
-            };
         };
 
         // =====================================================================
@@ -269,16 +168,16 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 
                 // Bangun nilai untuk kolom tanggal yang wajib NOT NULL
                 // Kolom [2] Timestamp sering kosong → fallback ke tanggal_terima_laporan [6]
-                $tglLapor      = $parseDate($row[2]  ?? null)
-                              ?? $parseDate($row[6]  ?? null)   // Tanggal Terima Laporan
-                              ?? $parseDate($row[22] ?? null)   // Tanggal Onset
+                $tglLapor      = $this->parseDate($row[2]  ?? null)
+                              ?? $this->parseDate($row[6]  ?? null)   // Tanggal Terima Laporan
+                              ?? $this->parseDate($row[22] ?? null)   // Tanggal Onset
                               ?? Carbon::today()->format('Y-m-d');
 
-                $tglOnset      = $parseDate($row[22] ?? null)
+                $tglOnset      = $this->parseDate($row[22] ?? null)
                               ?? $tglLapor;
 
-                $tglKonsultasi = $parseDate($row[80] ?? null)   // Tanggal Kunjungan RS
-                              ?? $parseDate($row[82] ?? null)   // Tanggal Kunjungan FKTP
+                $tglKonsultasi = $this->parseDate($row[80] ?? null)   // Tanggal Kunjungan RS
+                              ?? $this->parseDate($row[82] ?? null)   // Tanggal Kunjungan FKTP
                               ?? $tglLapor;
 
                 // Estimasi tanggal_lahir dari kolom umur jika kosong
@@ -294,7 +193,7 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         }
                     }
 
-                    $tglPenyidikan = $parseDate($row[7] ?? null);
+                    $tglPenyidikan = $this->parseDate($row[7] ?? null);
                     if ($totalBulan !== null && $totalBulan > 0 && $tglPenyidikan) {
                         try {
                             $row[11] = Carbon::parse($tglPenyidikan)
@@ -330,23 +229,23 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // =================================================
                         // GRUP A: Identitas Pasien
                         // =================================================
-                        'nik'                    => (function() use ($row, $noReg, $parseDate) {
-                            $rawNik = trim((string) ($row[8] ?? ''));
-                            if ($rawNik !== '' && ctype_digit($rawNik) && strlen($rawNik) >= 15) {
+                        'nik'                    => (function() use ($row) {
+                            $rawNik = $this->cleanNikRaw($row[8] ?? '');
+                            if ($rawNik !== '' && strlen($rawNik) >= 15) {
                                 return substr($rawNik, 0, 16);
                             }
                             // Generate atau temukan NIK dummy
                             $nama    = trim((string) ($row[9] ?? ''));
-                            $tglLhir = $parseDate($row[11] ?? null) ?? date('Y-m-d');
-                            $jk      = in_array($row[10] ?? '', ['L', 'Laki-laki', 'laki-laki', 'l']) ? 'L' : 'P';
+                            $tglLhir = $this->parseDate($row[11] ?? null) ?? date('Y-m-d');
+                            $jk      = $this->parseGenderString($row[10] ?? null) ?? 'L';
                             $nik = $this->nikService->findExisting($nama, $tglLhir, $jk)
                                 ?? $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tglLhir, $jk);
                             $this->failures[] = "[INFO] NIK kosong untuk {$nama} — NIK dummy {$nik} di-generate.";
                             return $nik;
                         })(),
                         'nama_lengkap'           => $row[9]  ?? null,
-                        'jenis_kelamin'          => in_array($row[10] ?? '', ['L', 'Laki-laki', 'laki-laki', 'l']) ? 'L' : 'P',
-                        'tanggal_lahir'          => $parseDate($row[11] ?? null),
+                        'jenis_kelamin'          => $this->parseGenderString($row[10] ?? null),
+                        'tanggal_lahir'          => $this->parseDate($row[11] ?? null),
                         'kategori_umur'          => $calcKategoriUmur($row[11] ?? null, $row[22] ?? null),
                         'tempat_kerja_sekolah'   => $row[12] ?? null,
                         'nama_orang_tua'         => $row[13] ?? null,
@@ -365,13 +264,13 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         'nama_pelapor'           => !empty($row[3]) ? (string) $row[3] : 'Tidak Diketahui',
                         'instansi_pelapor'       => $row[4]  ?? null,
                         'wilker_puskesmas'       => $row[5]  ?? null,
-                        'tanggal_terima_laporan' => $parseDate($row[6]  ?? null),
-                        'tanggal_penyidikan'     => $parseDate($row[7]  ?? null),
+                        'tanggal_terima_laporan' => $this->parseDate($row[6]  ?? null),
+                        'tanggal_penyidikan'     => $this->parseDate($row[7]  ?? null),
 
                         // =================================================
                         // GRUP C: Data Kasus
                         // =================================================
-                        'tanggal_demam'          => $parseDate($row[21] ?? null),
+                        'tanggal_demam'          => $this->parseDate($row[21] ?? null),
                         'tanggal_onset'          => $tglOnset,
                         'tanggal_konsultasi'     => $tglKonsultasi,               // wajib NOT NULL — fallback ke tanggal_lapor/onset
                         'id_jenis_kasus'         => $idJenisKasus,
@@ -385,36 +284,36 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // =================================================
                         'gejala_demam'           => !empty($row[21]),             // T015: dari kehadiran tanggal_demam
                         // T016: gejala_ruam dihapus (tidak ada kolom di Excel)
-                        'gejala_batuk'           => $parseBoolean($row[24] ?? ''), // T012: fix [26]→[24]
-                        'gejala_pilek'           => $parseBoolean($row[25] ?? ''), // T013: fix [27]→[25]
-                        'gejala_mata_merah'      => $parseBoolean($row[26] ?? ''), // T014: fix [28]→[26]
-                        'gejala_adenopathy'      => $parseBoolean($row[27] ?? ''), // T023
-                        'gejala_arthralgia'      => $parseBoolean($row[28] ?? ''), // T023
-                        'gejala_kehamilan'       => $parseBoolean($row[29] ?? ''), // T023
+                        'gejala_batuk'           => $this->parseBoolean($row[24] ?? '') ?? false, // T012: fix [26]→[24]
+                        'gejala_pilek'           => $this->parseBoolean($row[25] ?? '') ?? false, // T013: fix [27]→[25]
+                        'gejala_mata_merah'      => $this->parseBoolean($row[26] ?? '') ?? false, // T014: fix [28]→[26]
+                        'gejala_adenopathy'      => $this->parseBoolean($row[27] ?? '') ?? false, // T023
+                        'gejala_arthralgia'      => $this->parseBoolean($row[28] ?? '') ?? false, // T023
+                        'gejala_kehamilan'       => $this->parseBoolean($row[29] ?? '') ?? false, // T023
                         'gejala_lainnya'         => $row[42] ?? null,             // T023
 
                         // Tanggal gejala lanjutan (T024)
-                        'tanggal_leher_bengkak'  => $parseDate($row[43] ?? null),
-                        'tanggal_sesak_nafas'    => $parseDate($row[44] ?? null),
-                        'tanggal_pseudomembran'  => $parseDate($row[45] ?? null),
-                        'tanggal_apnea'          => $parseDate($row[68] ?? null),
+                        'tanggal_leher_bengkak'  => $this->parseDate($row[43] ?? null),
+                        'tanggal_sesak_nafas'    => $this->parseDate($row[44] ?? null),
+                        'tanggal_pseudomembran'  => $this->parseDate($row[45] ?? null),
+                        'tanggal_apnea'          => $this->parseDate($row[68] ?? null),
 
                         // =================================================
                         // GRUP D2: Komplikasi (T025)
                         // =================================================
-                        'komplikasi_diare'              => $parseBoolean($row[30] ?? ''),
-                        'komplikasi_kebutaan'           => $parseBoolean($row[31] ?? ''),
-                        'komplikasi_pneumonia'          => $parseBoolean($row[32] ?? ''),
-                        'komplikasi_malnutrisi'         => $parseBoolean($row[33] ?? ''),
-                        'komplikasi_bronchopneumonia'   => $parseBoolean($row[34] ?? ''),
-                        'komplikasi_otitis_media'       => $parseBoolean($row[35] ?? ''),
-                        'komplikasi_encephalitis'       => $parseBoolean($row[36] ?? ''),
-                        'komplikasi_ulkus_mukosa_mulut' => $parseBoolean($row[37] ?? ''),
+                        'komplikasi_diare'              => $this->parseBoolean($row[30] ?? '') ?? false,
+                        'komplikasi_kebutaan'           => $this->parseBoolean($row[31] ?? '') ?? false,
+                        'komplikasi_pneumonia'          => $this->parseBoolean($row[32] ?? '') ?? false,
+                        'komplikasi_malnutrisi'         => $this->parseBoolean($row[33] ?? '') ?? false,
+                        'komplikasi_bronchopneumonia'   => $this->parseBoolean($row[34] ?? '') ?? false,
+                        'komplikasi_otitis_media'       => $this->parseBoolean($row[35] ?? '') ?? false,
+                        'komplikasi_encephalitis'       => $this->parseBoolean($row[36] ?? '') ?? false,
+                        'komplikasi_ulkus_mukosa_mulut' => $this->parseBoolean($row[37] ?? '') ?? false,
 
                         // =================================================
                         // GRUP D3-D4: Gizi & Pengobatan (T026)
                         // =================================================
-                        'vitamin_a'              => $parseVitaminA($row[38] ?? null),
+                        'vitamin_a'              => $this->parseVitaminA($row[38] ?? null),
                         'berat_badan'            => is_numeric($row[40] ?? null) ? (float) $row[40] : null,
                         'tinggi_badan'           => is_numeric($row[41] ?? null) ? (float) $row[41] : null,
                         'jenis_antibiotik'       => $row[46] ?? null,
@@ -425,9 +324,9 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // GRUP D5: AFP/Polio (T027)
                         // Enum: ['ya', 'tidak']
                         // =================================================
-                        'kelumpuhan_akut'        => $parseYaTidak($row[49] ?? null),
-                        'kelumpuhan_flaccid'     => $parseYaTidak($row[50] ?? null),
-                        'kelumpuhan_rudapaksa'   => $parseYaTidak($row[51] ?? null),
+                        'kelumpuhan_akut'        => $this->parseYaTidak($row[49] ?? null),
+                        'kelumpuhan_flaccid'     => $this->parseYaTidak($row[50] ?? null),
+                        'kelumpuhan_rudapaksa'   => $this->parseYaTidak($row[51] ?? null),
 
                         // =================================================
                         // GRUP D6: Diagnosis & Pemeriksaan Fisik (T017, T028)
@@ -437,7 +336,7 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         'tanda_tungkai_kiri'     => $row[54] ?? null,
                         'tanda_lengan_kanan'     => $row[55] ?? null,
                         'tanda_lengan_kiri'      => $row[56] ?? null,
-                        'kekuatan_otot'          => $parseIntOrNull($row[57] ?? null),
+                        'kekuatan_otot'          => $this->parseIntOrNull($row[57] ?? null),
                         'lokasi_kelemahan_lain'  => $row[58] ?? null,
                         'tanda_penyakit_observasi' => $row[96] ?? null,
 
@@ -445,15 +344,15 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // GRUP D7: Kontak Polio (T029)
                         // Enum: ['ya', 'tidak', 'tidak_tahu']
                         // =================================================
-                        'kontak_polio_oral'      => $parseYaTidak($row[59] ?? null),
+                        'kontak_polio_oral'      => $this->parseYaTidak($row[59] ?? null),
 
                         // =================================================
                         // GRUP D8: Sanitasi (T029)
                         // =================================================
-                        'jamban_sendiri'         => $parseYaTidak($row[60] ?? null),
-                        'jamban_saluran_kedap'   => $parseYaTidak($row[61] ?? null),
+                        'jamban_sendiri'         => $this->parseYaTidak($row[60] ?? null),
+                        'jamban_saluran_kedap'   => $this->parseYaTidak($row[61] ?? null),
                         'jenis_jamban'           => $row[62] ?? null,
-                        'selalu_gunakan_jamban'  => $parseYaTidak($row[63] ?? null),
+                        'selalu_gunakan_jamban'  => $this->parseYaTidak($row[63] ?? null),
                         'pembuangan_diapers'     => $row[64] ?? null,
 
                         // =================================================
@@ -466,7 +365,7 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // =================================================
                         // GRUP E: Riwayat Imunisasi (T031)
                         // =================================================
-                        'riwayat_imunisasi'              => $parseRiwayatImunisasi($row[39] ?? null),
+                        'riwayat_imunisasi'              => $this->parseRiwayatImunisasi($row[39] ?? null),
                         'imunisasi_1'                    => $row[70] ?? null,
                         'imunisasi_2'                    => $row[71] ?? null,
                         'imunisasi_3'                    => $row[72] ?? null,
@@ -478,50 +377,50 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // =================================================
                         // GRUP G: Status Gizi & Tempat Berobat (T032)
                         // =================================================
-                        'status_gizi'                    => $parseStatusGizi($row[77] ?? null),
+                        'status_gizi'                    => $this->parseStatusGizi($row[77] ?? null),
                         'tempat_berobat'                 => $row[78] ?? null,
                         'nama_rs'                        => $row[79] ?? null,
-                        'tanggal_kunjungan_rs'           => $parseDate($row[80] ?? null),
+                        'tanggal_kunjungan_rs'           => $this->parseDate($row[80] ?? null),
                         'nama_fktp'                      => $row[81] ?? null,
-                        'tanggal_kunjungan_fktp'         => $parseDate($row[82] ?? null),
+                        'tanggal_kunjungan_fktp'         => $this->parseDate($row[82] ?? null),
                         'nama_pengobatan_tradisional'    => $row[83] ?? null,
-                        'tanggal_kunjungan_tradisional'  => $parseDate($row[84] ?? null),
+                        'tanggal_kunjungan_tradisional'  => $this->parseDate($row[84] ?? null),
 
                         // =================================================
                         // GRUP F: Laboratorium (T033)
                         // =================================================
                         'jenis_spesimen'              => $row[85] ?? null,
-                        'tanggal_pengambilan_spesimen' => $parseDate($row[86] ?? null),
+                        'tanggal_pengambilan_spesimen' => $this->parseDate($row[86] ?? null),
                         'jenis_spesimen_2'            => $row[87] ?? null,
-                        'tanggal_spesimen_2'          => $parseDate($row[88] ?? null),
+                        'tanggal_spesimen_2'          => $this->parseDate($row[88] ?? null),
                         'jenis_spesimen_3'            => $row[89] ?? null,
-                        'tanggal_spesimen_3'          => $parseDate($row[90] ?? null),
+                        'tanggal_spesimen_3'          => $this->parseDate($row[90] ?? null),
 
                         // =================================================
                         // GRUP I: Kontak & Perjalanan (T034)
                         // =================================================
-                        'keluarga_sakit_sama'    => $parseYaTidak($row[91] ?? null),
-                        'jumlah_keluarga_sakit'  => $parseIntOrNull($row[92] ?? null),
-                        'riwayat_bepergian'      => $parseYaTidak($row[93] ?? null),
+                        'keluarga_sakit_sama'    => $this->parseYaTidak($row[91] ?? null),
+                        'jumlah_keluarga_sakit'  => $this->parseIntOrNull($row[92] ?? null),
+                        'riwayat_bepergian'      => $this->parseYaTidak($row[93] ?? null),
                         'lokasi_bepergian'       => $row[94] ?? null,
-                        'tanggal_bepergian'      => $parseDate($row[95] ?? null),
+                        'tanggal_bepergian'      => $this->parseDate($row[95] ?? null),
 
                         // =================================================
                         // GRUP TN: Tetanus Neonatorum (T035)
                         // =================================================
                         'lama_tinggal_desa'      => $row[97]  ?? null,
-                        'bayi_lahir_hidup'       => $parseYaTidak($row[98]  ?? null),
-                        'umur_bayi_meninggal_hari' => $parseIntOrNull($row[99] ?? null),
-                        'bayi_menangis_lahir'    => $parseYaTidak($row[100] ?? null),
-                        'tanda_kelahiran_hidup'  => $parseYaTidak($row[102] ?? null),
-                        'bayi_bisa_menyusu'      => $parseYaTidak($row[103] ?? null),
-                        'bayi_mulut_mencucu'     => $parseYaTidak($row[104] ?? null),
-                        'bayi_mudah_kejang'      => $parseYaTidak($row[105] ?? null),
-                        'jumlah_kunjungan_anc'   => $parseIntOrNull($row[106] ?? null),
+                        'bayi_lahir_hidup'       => $this->parseYaTidak($row[98]  ?? null),
+                        'umur_bayi_meninggal_hari' => $this->parseIntOrNull($row[99] ?? null),
+                        'bayi_menangis_lahir'    => $this->parseYaTidak($row[100] ?? null),
+                        'tanda_kelahiran_hidup'  => $this->parseYaTidak($row[102] ?? null),
+                        'bayi_bisa_menyusu'      => $this->parseYaTidak($row[103] ?? null),
+                        'bayi_mulut_mencucu'     => $this->parseYaTidak($row[104] ?? null),
+                        'bayi_mudah_kejang'      => $this->parseYaTidak($row[105] ?? null),
+                        'jumlah_kunjungan_anc'   => $this->parseIntOrNull($row[106] ?? null),
                         'tempat_pemeriksaan_hamil' => $row[107] ?? null,
                         'pemeriksa_kehamilan'    => $row[108] ?? null,
                         'tempat_persalinan'      => $row[109] ?? null,
-                        'usia_kehamilan_bulan'   => $parseIntOrNull($row[110] ?? null),
+                        'usia_kehamilan_bulan'   => $this->parseIntOrNull($row[110] ?? null),
                         'penolong_persalinan'    => $row[111] ?? null,
                         'alat_potong_tali_pusat' => $row[112] ?? null,
                         'perawatan_tali_pusat'   => $row[113] ?? null,
@@ -550,21 +449,6 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 
         // Naikkan offset agar chunk berikutnya melaporkan nomor baris yang benar
         $this->rowOffset += $chunkSize;
-    }
-
-    /**
-     * T037: Sederhanakan pesan error teknis menjadi pesan yang ramah pengguna.
-     */
-    protected function simplifyError(string $message): string
-    {
-        return match (true) {
-            str_contains($message, 'Data too long')         => 'Data terlalu panjang untuk salah satu kolom.',
-            str_contains($message, 'Incorrect date value')  => 'Format tanggal tidak valid.',
-            str_contains($message, 'Incorrect integer')     => 'Format angka tidak valid.',
-            str_contains($message, 'Integrity constraint')  => 'Data referensi tidak ditemukan di sistem.',
-            str_contains($message, 'ENUM')                  => 'Nilai pilihan tidak valid untuk salah satu kolom.',
-            default => 'Gagal menyimpan data — periksa isian baris ini.',
-        };
     }
 
     /**

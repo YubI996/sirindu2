@@ -8,15 +8,13 @@ use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Models\Rt;
 use App\Services\NikDummyService;
+use App\Traits\CleansImportData;
 use App\Traits\ResolvesWilayah;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 /**
  * Import data anak, kunjungan posyandu, dan imunisasi dari file Excel kohort puskesmas.
@@ -26,7 +24,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  */
 class KohortImport implements ToCollection, WithStartRow, WithChunkReading
 {
-    use ResolvesWilayah;
+    use ResolvesWilayah, CleansImportData;
 
     protected int $userId;
     protected int $successCount = 0;
@@ -91,47 +89,6 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
     public function chunkSize(): int
     {
         return 200;
-    }
-
-    // =========================================================================
-    // Helper methods
-    // =========================================================================
-
-    protected function parseDate($value): ?string
-    {
-        if ($value === null || $value === '') return null;
-        if (is_string($value) && str_starts_with($value, '#')) return null;
-        if (is_numeric($value)) {
-            try {
-                return Carbon::instance(Date::excelToDateTimeObject((float) $value))->format('Y-m-d');
-            } catch (\Exception $e) {
-                return null;
-            }
-        }
-        try {
-            return Carbon::parse((string) $value)->format('Y-m-d');
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-    protected function parseBoolean($value): ?bool
-    {
-        if ($value === null || $value === '') return null;
-        return in_array(strtolower(trim((string) $value)), ['ya', 'y', 'yes', 'true', '1']);
-    }
-
-    protected function parseDecimalOrNull($value): ?float
-    {
-        if ($value === null || $value === '') return null;
-        if (is_string($value) && str_contains($value, '#')) return null;
-        return is_numeric($value) ? (float) $value : null;
-    }
-
-    protected function parseIntOrNull($value): ?int
-    {
-        if ($value === null || $value === '') return null;
-        return is_numeric($value) ? (int) $value : null;
     }
 
     /**
@@ -241,8 +198,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
         $chunkSize = count($rows);
 
         foreach ($rows as $index => $row) {
-            $nik  = trim((string) ($row[1] ?? ''));
-            $nama = trim((string) ($row[2] ?? ''));
+            $nik  = $this->cleanNikRaw($row[1] ?? '');
+            $nama = $this->cleanNama($row[2] ?? '') ?? '';
 
             // Skip baris tanpa nama (termasuk baris kosong & baris total/catatan)
             if (empty($nama)) {
@@ -262,15 +219,15 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                 // =============================================================
                 // US1: Upsert Anak (identitas)
                 // =============================================================
-                // Validasi NIK: hanya digit 15-16 karakter yang diterima
-                $nikValid = $nik !== '' && ctype_digit($nik) && strlen($nik) >= 15;
+                // Validasi NIK: hanya digit 15-16 karakter yang diterima (non-digit sudah distrip di atas)
+                $nikValid = $nik !== '' && strlen($nik) >= 15;
 
                 if ($nikValid) {
                     $nikKey = substr($nik, 0, 16);
                 } else {
                     // Generate atau temukan NIK dummy terstruktur
                     $tglLahirStr = $this->parseDate($row[3] ?? null) ?? date('Y-m-d');
-                    $jkStr       = in_array(strtoupper(trim((string) ($row[4] ?? ''))), ['L', 'LAKI', 'LAKI-LAKI']) ? 'L' : 'P';
+                    $jkStr       = $this->parseGenderString($row[4] ?? null) ?? 'P';
                     $kodeWilayah = NikDummyService::DEFAULT_KODE_WILAYAH;
 
                     $nikKey = $this->nikService->findExisting($nama, $tglLahirStr, $jkStr)
@@ -283,9 +240,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                     }
                 }
 
-                $jk = strtoupper(trim((string) ($row[4] ?? '')));
                 // jk kolom INT: 1 = Laki-laki, 2 = Perempuan
-                $jkValue = in_array($jk, ['L', 'LAKI', 'LAKI-LAKI']) ? 1 : 2;
+                $jkValue = $this->parseGenderInt($row[4] ?? null) ?? 2;
 
                 $imd = $this->parseBoolean($row[18] ?? null);
 
@@ -343,15 +299,28 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                     $base = $tglCol;
                     $extra = $monthExtra[$monthIdx] ?? [];
 
+                    $lk  = $this->parseDecimalOrNull($row[$base + 2] ?? null) ?? 0;
+                    $lla = $this->parseDecimalOrNull($row[$base + 4] ?? null) ?? 0;
+                    $bb  = $this->parseDecimalOrNull($row[$base + 6] ?? null) ?? 0;
+                    $tb  = $this->parseDecimalOrNull($row[$base + 7] ?? null) ?? 0;
+
+                    $this->validateAntropometri(
+                        $bb > 0 ? $bb : null,
+                        $tb > 0 ? $tb : null,
+                        $lk > 0 ? $lk : null,
+                        $lla > 0 ? $lla : null,
+                        $rowNum
+                    );
+
                     DataAnak::updateOrCreate(
                         ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglPosy],
                         [
                             // NOT NULL tanpa default — fallback ke 0/'L' jika kosong
                             'bln'         => $this->parseIntOrNull($row[$base + 1] ?? null) ?? 0,
-                            'lk'          => $this->parseDecimalOrNull($row[$base + 2] ?? null) ?? 0,
-                            'lla'         => $this->parseDecimalOrNull($row[$base + 4] ?? null) ?? 0,
-                            'bb'          => $this->parseDecimalOrNull($row[$base + 6] ?? null) ?? 0,
-                            'tb'          => $this->parseDecimalOrNull($row[$base + 7] ?? null) ?? 0,
+                            'lk'          => $lk,
+                            'lla'         => $lla,
+                            'bb'          => $bb,
+                            'tb'          => $tb,
                             'posisi'      => !empty($row[$base + 10]) ? (string) $row[$base + 10] : 'L',
                             'id_user'     => $this->userId,
                             // Nullable fields
@@ -425,46 +394,6 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
         }
 
         $this->rowOffset += $chunkSize + ($isFirstChunk ? 1 : 0);
-    }
-
-    protected function simplifyError(string $message): string
-    {
-        // Coba ekstrak nama kolom dan nilai dari pesan MySQL (Incorrect integer/date/Data too long)
-        // Contoh: "Incorrect integer value: 'xyz' for column 'anak' at row 1"
-        // Contoh: "Data too long for column 'komplikasi_persalinan' at row 1"
-        $extractColumn = function (string $msg): string {
-            if (preg_match("/for column '([^']+)'/i", $msg, $m)) {
-                return " (kolom: {$m[1]})";
-            }
-            return '';
-        };
-
-        $extractValue = function (string $msg): string {
-            if (preg_match("/value:\s*'([^']*)'/i", $msg, $m)) {
-                $val = mb_substr($m[1], 0, 30);
-                return " — nilai: '{$val}'";
-            }
-            return '';
-        };
-
-        return match (true) {
-            str_contains($message, 'Data too long') =>
-                'Data terlalu panjang' . $extractColumn($message) . '.',
-
-            str_contains($message, 'Incorrect date value') =>
-                'Format tanggal tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
-
-            str_contains($message, 'Incorrect integer') || str_contains($message, 'Incorrect decimal') =>
-                'Format angka tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
-
-            str_contains($message, 'Integrity constraint') =>
-                'Data referensi tidak ditemukan di sistem' . $extractColumn($message) . '.',
-
-            str_contains($message, 'ENUM') =>
-                'Nilai pilihan tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
-
-            default => 'Gagal menyimpan' . $extractColumn($message) . ' — ' . mb_substr($message, 0, 120),
-        };
     }
 
     public function getResults(): array
