@@ -1,5 +1,8 @@
 @extends('admin::layouts.app')
-@push('styles')<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}"><link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">@endpush
+@push('styles')
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">
+@endpush
 @push('js')
 <script src="{{ asset('admin/src/plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('admin/src/plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
@@ -24,28 +27,31 @@ Detail
 <a href="#main-content" class="sr-only sr-only-focusable skip-link">Langsung ke konten utama</a>
 
 <style>
-    /* WCAG AA Compliant Styles - Blue & Green Theme */
+    /* Kemenkes Green Design System — WCAG AA Compliant */
     /* All colors tested for 4.5:1 contrast ratio minimum on white (#fff) */
 
     :root {
-        /* Primary Blues - WCAG AA Compliant */
-        --primary-blue: #0066cc;          /* 5.5:1 contrast */
-        --primary-blue-dark: #004d99;     /* 7.8:1 contrast */
+        /* Brand primary — Kemenkes RI green */
+        --primary: oklch(0.48 0.14 145);          /* 4.6:1 on white */
+        --primary-dark: oklch(0.38 0.13 145);     /* 7.2:1 on white */
+        --primary-light: oklch(0.96 0.022 145);   /* light tint */
+
+        /* Blue kept for link color only (UX convention) */
+        --primary-blue: #0066cc;          /* 5.5:1 — links only */
+        --primary-blue-dark: #004d99;     /* 7.8:1 — link hover */
         --primary-blue-light: #e6f2ff;
 
-        /* Greens - WCAG AA Compliant */
-        --success-green: #047857;         /* 5.9:1 contrast */
-        --success-green-dark: #065f46;    /* 7.5:1 contrast */
+        /* Status Colors */
+        --success-green: #047857;         /* 5.9:1 */
+        --success-green-dark: #065f46;    /* 7.5:1 */
         --success-green-light: #d1fae5;
+        --info-teal: #0891b2;             /* 4.5:1 */
+        --warning-amber: #b45309;         /* 5.2:1 */
+        --danger-rose: #be123c;           /* 5.6:1 */
 
-        /* Secondary Colors - WCAG AA Compliant */
-        --info-teal: #0891b2;             /* 4.5:1 contrast */
-        --warning-amber: #b45309;         /* 5.2:1 contrast */
-        --danger-rose: #be123c;           /* 5.6:1 contrast */
-
-        /* Neutral - WCAG AA Compliant */
-        --text-muted: #4b5563;            /* 7.5:1 contrast */
-        --text-secondary: #6b7280;        /* 5.0:1 contrast */
+        /* Neutral */
+        --text-muted: #4b5563;            /* 7.5:1 */
+        --text-secondary: #6b7280;        /* 5.0:1 */
     }
 
     /* Skip Link */
@@ -53,7 +59,7 @@ Detail
         position: absolute;
         top: -40px;
         left: 0;
-        background: var(--primary-blue-dark);
+        background: var(--primary-dark);
         color: #fff;
         padding: 8px 16px;
         z-index: 9999;
@@ -71,9 +77,9 @@ Detail
     select:focus,
     textarea:focus,
     [tabindex]:focus {
-        outline: 3px solid var(--primary-blue) !important;
+        outline: 3px solid var(--primary) !important;
         outline-offset: 2px !important;
-        box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.25) !important;
+        box-shadow: 0 0 0 4px oklch(0.48 0.14 145 / 0.25) !important;
     }
 
     /* High Contrast Text - WCAG 1.4.3 */
@@ -100,7 +106,7 @@ Detail
 
     .stat-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(0, 102, 204, 0.15);
+        box-shadow: 0 8px 25px oklch(0.48 0.14 145 / 0.18);
     }
 
     .stat-card::before {
@@ -110,7 +116,7 @@ Detail
         left: 0;
         width: 5px;
         height: 100%;
-        background: linear-gradient(180deg, var(--primary-blue) 0%, var(--success-green) 100%);
+        background: var(--primary);
     }
 
     /* Status colors with gradients - All WCAG AA Compliant */
@@ -131,14 +137,14 @@ Detail
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
+        background: var(--primary);
         display: flex;
         align-items: center;
         justify-content: center;
         color: #ffffff;
         font-size: 32px;
         font-weight: bold;
-        box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+        box-shadow: 0 4px 15px oklch(0.48 0.14 145 / 0.30);
     }
 
     .info-card {
@@ -149,7 +155,7 @@ Detail
     }
 
     .info-card .card-header {
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
+        background: var(--primary);
         color: #ffffff;
         border-radius: 0 !important;
         font-weight: 600;
@@ -207,9 +213,9 @@ Detail
         width: 16px;
         height: 16px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
+        background: var(--primary);
         border: 3px solid #ffffff;
-        box-shadow: 0 2px 4px rgba(0, 102, 204, 0.3);
+        box-shadow: 0 2px 4px oklch(0.48 0.14 145 / 0.30);
     }
 
     /* WCAG AA Compliant Badge Colors - Vibrant but Accessible */
@@ -256,10 +262,10 @@ Detail
         color: #ffffff !important;
     }
 
-    /* Table with Blue-Green Theme */
+    /* Table with Kemenkes Green Theme */
     .table th {
         font-weight: 700;
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
+        background: var(--primary);
         color: #ffffff;
     }
 
@@ -270,11 +276,11 @@ Detail
     }
 
     .table-striped tbody tr:nth-of-type(odd) {
-        background-color: rgba(0, 102, 204, 0.03);
+        background-color: oklch(0.96 0.022 145 / 0.4);
     }
 
     .table-hover tbody tr:hover {
-        background-color: rgba(0, 102, 204, 0.08);
+        background-color: oklch(0.96 0.022 145 / 0.7);
     }
 
     /* Button group with Blue-Green Theme */
@@ -283,30 +289,32 @@ Detail
     }
 
     .btn-group .btn.active {
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
-        border-color: var(--primary-blue);
+        background: var(--primary);
+        border-color: var(--primary);
         color: #ffffff;
     }
 
     .btn-outline-primary {
-        color: var(--primary-blue);
-        border-color: var(--primary-blue);
+        color: var(--primary);
+        border-color: var(--primary);
     }
 
     .btn-outline-primary:hover,
     .btn-outline-primary:focus {
-        background-color: var(--primary-blue);
-        border-color: var(--primary-blue);
+        background-color: var(--primary);
+        border-color: var(--primary);
         color: #ffffff;
     }
 
     .btn-primary {
-        background: linear-gradient(135deg, var(--primary-blue) 0%, #0077dd 100%);
-        border-color: var(--primary-blue);
+        background: var(--primary);
+        border-color: var(--primary);
     }
 
-    .btn-primary:hover {
-        background: linear-gradient(135deg, var(--primary-blue-dark) 0%, var(--primary-blue) 100%);
+    .btn-primary:hover,
+    .btn-primary:focus {
+        background: var(--primary-dark);
+        border-color: var(--primary-dark);
     }
 
     /* Screen reader only class */
@@ -355,16 +363,16 @@ Detail
         color: var(--primary-blue-dark);
     }
 
-    /* Card hover effects with color */
+    /* Card hover effects */
     .info-card:hover {
-        box-shadow: 0 8px 30px rgba(0, 102, 204, 0.12);
+        box-shadow: 0 8px 30px oklch(0.48 0.14 145 / 0.12);
     }
 
-    /* Section dividers with gradient */
+    /* Section dividers */
     hr {
         border: 0;
         height: 2px;
-        background: linear-gradient(90deg, var(--primary-blue-light) 0%, var(--success-green-light) 100%);
+        background: var(--primary-light);
         opacity: 1;
     }
 </style>

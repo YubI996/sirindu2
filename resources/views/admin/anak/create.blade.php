@@ -26,65 +26,65 @@ Anak
     <div class="row">
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>No KK <font color="red">*</font></label>
-                <input type="number" name="no_kk" class="form-control" require>
+                <label for="no_kk">No KK <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="no_kk" id="no_kk" class="form-control" pattern="[0-9]+" maxlength="16" inputmode="numeric" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>NIK <font color="red">*</font></label>
-                <input type="number" name="nik" class="form-control" require>
+                <label for="nik">NIK <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="nik" id="nik" class="form-control" pattern="[0-9]+" maxlength="16" inputmode="numeric" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Nama <font color="red">*</font></label>
-                <input type="text" name="nama" class="form-control" require>
+                <label for="nama">Nama <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="nama" id="nama" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Nik Orang Tua <font color="red">*</font></label>
-                <input type="number" name="nik_ortu" class="form-control" require>
+                <label for="nik_ortu">NIK Orang Tua <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="nik_ortu" id="nik_ortu" class="form-control" pattern="[0-9]+" maxlength="16" inputmode="numeric" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Nama Ibu <font color="red">*</font></label>
-                <input type="text" name="nama_ibu" class="form-control" require>
+                <label for="nama_ibu">Nama Ibu <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="nama_ibu" id="nama_ibu" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Nama Ayah <font color="red">*</font></label>
-                <input type="text" name="nama_ayah" class="form-control" require>
+                <label for="nama_ayah">Nama Ayah <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="nama_ayah" id="nama_ayah" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Jenis Kelamin <font color="red">*</font></label>
-                <select name="jk" class="form-control">
-                    <option value="1">Laki - Laki</option>
+                <label for="jk">Jenis Kelamin <span class="text-danger" aria-hidden="true">*</span></label>
+                <select name="jk" id="jk" class="form-control" required>
+                    <option value="1">Laki-Laki</option>
                     <option value="2">Perempuan</option>
                 </select>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Tempat Lahir <font color="red">*</font></label>
-                <input type="text" name="tempat_lahir" class="form-control" require>
+                <label for="tempat_lahir">Tempat Lahir <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="tempat_lahir" id="tempat_lahir" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Tanggal Lahir <font color="red">*</font></label>
-                <input type="date" name="tgl_lahir" class="form-control" require>
+                <label for="tgl_lahir">Tanggal Lahir <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="date" name="tgl_lahir" id="tgl_lahir" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Golongan Darah <font color="red">*</font></label>
-                <select name="golda" class="form-control" require>
+                <label for="golda">Golongan Darah <span class="text-danger" aria-hidden="true">*</span></label>
+                <select name="golda" id="golda" class="form-control" required>
                     <option value="A">A</option>
                     <option value="B">B</option>
                     <option value="AB">AB</option>
@@ -94,21 +94,21 @@ Anak
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Anak Ke - <font color="red">*</font></label>
-                <input type="number" name="anak" class="form-control" require>
+                <label for="anak_ke">Anak Ke - <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="number" name="anak" id="anak_ke" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>No HP</label>
-                <input type="number" name="no" class="form-control">
+                <label for="no_hp">No HP</label>
+                <input type="number" name="no" id="no_hp" class="form-control">
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Kecamatan <font color="red">*</font></label>
-                <select id="kec" name="id_kec" class="form-control" require>
-                    <option value="">== Select Kecamatan ==</option>
+                <label for="kec">Kecamatan <span class="text-danger" aria-hidden="true">*</span></label>
+                <select id="kec" name="id_kec" class="form-control" required>
+                    <option value="">== Pilih Kecamatan ==</option>
                     @foreach ($kec as $id => $data)
                     <option value="{{$data->id}}">{{$data->name}}</option>
                     @endforeach
@@ -117,88 +117,96 @@ Anak
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Puskesmas <font color="red">*</font></label>
-                <select id="puskesmas" name="id_puskesmas" class="form-control" require>
-                    <option value="">== Select Puskesmas ==</option>
+                <label for="puskesmas">Puskesmas <span class="text-danger" aria-hidden="true">*</span></label>
+                <select id="puskesmas" name="id_puskesmas" class="form-control" required>
+                    <option value="">== Pilih Puskesmas ==</option>
                 </select>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Kelurahan <font color="red">*</font></label>
-                <select id="kel" name="id_kel" class="form-control" require>
-                    <option value="">== Select Kelurahan ==</option>
+                <label for="kel">Kelurahan <span class="text-danger" aria-hidden="true">*</span></label>
+                <select id="kel" name="id_kel" class="form-control" required>
+                    <option value="">== Pilih Kelurahan ==</option>
                 </select>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Posyandu <font color="red">*</font></label>
-                <select id="posyandu" name="id_posyandu" class="form-control" require>
-                    <option value="">== Select Posyandu ==</option>
+                <label for="posyandu">Posyandu <span class="text-danger" aria-hidden="true">*</span></label>
+                <select id="posyandu" name="id_posyandu" class="form-control" required>
+                    <option value="">== Pilih Posyandu ==</option>
                 </select>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>RT <font color="red">*</font></label>
-                <select id="rt" name="id_rt" class="form-control" require>
-                    <option value="">== Select RT ==</option>
+                <label for="rt">RT <span class="text-danger" aria-hidden="true">*</span></label>
+                <select id="rt" name="id_rt" class="form-control" required>
+                    <option value="">== Pilih RT ==</option>
                 </select>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Tinggi Badan Lahir <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="text" name="tb" class="form-control" require>
+                <label for="tb">Tinggi Badan Lahir <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="tb" id="tb" class="form-control" required>
+                <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Berat Badan Lahir <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="text" name="bb" class="form-control" require>
+                <label for="bb">Berat Badan Lahir <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="bb" id="bb" class="form-control" required>
+                <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Lingkar Lengan Atas <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="text" name="lla" class="form-control" require>
+                <label for="lla">Lingkar Lengan Atas <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="lla" id="lla" class="form-control" required>
+                <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Lingkar Kepala <font color="red">* gunakan titik (.) untuk angka desimal</font></label>
-                <input type="text" name="lk" class="form-control" require>
+                <label for="lk">Lingkar Kepala <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" name="lk" id="lk" class="form-control" required>
+                <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
-            <label>Asi Ekslusif <font color="red">*</font></label>
-            <select name="asi" class="form-control" require>
-                <option value="0">Tidak</option>
-                <option value="1">Ya</option>
-            </select>
-        </div>
-        <div class="col-md-4 col-sm-12">
-            <label>Obat Cacing <font color="red">*</font></label>
-            <select name="obat_cacing" class="form-control" require>
-                <option value="0">Tidak</option>
-                <option value="1">Ya</option>
-            </select>
+            <div class="form-group">
+                <label for="asi">ASI Eksklusif <span class="text-danger" aria-hidden="true">*</span></label>
+                <select name="asi" id="asi" class="form-control" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>Tanggal Kunjungan <font color="red">*</font></label>
-                <input type="date" name="tgl_kunjungan" class="form-control" require>
+                <label for="obat_cacing">Obat Cacing <span class="text-danger" aria-hidden="true">*</span></label>
+                <select name="obat_cacing" id="obat_cacing" class="form-control" required>
+                    <option value="0">Tidak</option>
+                    <option value="1">Ya</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <label for="tgl_kunjungan">Tanggal Kunjungan <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="date" name="tgl_kunjungan" id="tgl_kunjungan" class="form-control" required>
             </div>
         </div>
         <div class="col-md-12 col-sm-12">
             <div class="form-group">
-                <label>Catatan</label>
-                <textarea class="form-control" name="catatan" id="" cols="30" rows="10"></textarea>
+                <label for="catatan">Catatan</label>
+                <textarea class="form-control" name="catatan" id="catatan" cols="30" rows="10"></textarea>
             </div>
         </div>
         <div class="col-md-12 col-sm-12">
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
         </div>
     </div>
 </form>
@@ -218,7 +226,7 @@ Anak
                     url: '{{url("admin/get-kel-dasar-anak")}}' + '/' + id,
                     success: function(response) {
                         $('#kel').empty();
-                        $('#kel').append(new Option('====== Kelurahan ======',0));
+                        $('#kel').append(new Option('====== Kelurahan ======', 0));
                         $.each(response, function(id, name) {
                             $('#kel').append(new Option(name, id))
                         })
@@ -228,7 +236,7 @@ Anak
                     url: '{{url("admin/get-puskesmas-dasar-anak")}}' + '/' + id,
                     success: function(response) {
                         $('#puskesmas').empty();
-                        $('#puskesmas').append(new Option('====== Puskesmas ======',0));
+                        $('#puskesmas').append(new Option('====== Puskesmas ======', 0));
                         $.each(response, function(id, name) {
                             $('#puskesmas').append(new Option(name, id))
                         })
@@ -242,7 +250,7 @@ Anak
                 url: '{{url("admin/get-posyandu-dasar-anak")}}' + '/' + id,
                 success: function(response) {
                     $('#posyandu').empty();
-                    $('#posyandu').append(new Option('====== Posyandu ======',0));
+                    $('#posyandu').append(new Option('====== Posyandu ======', 0));
                     $.each(response, function(id, name) {
                         $('#posyandu').append(new Option(name, id))
                     })
@@ -256,8 +264,7 @@ Anak
                 url: '{{url("admin/get-rt-dasar-anak")}}' + '/' + id,
                 success: function(response) {
                     $('#rt').empty();
-                    $('#rt').append(new Option('====== RT ======',0));
-
+                    $('#rt').append(new Option('====== RT ======', 0));
                     $.each(response, function(id, name) {
                         $('#rt').append(new Option(name, id))
                     })

@@ -1,5 +1,8 @@
 @extends('admin::layouts.app')
-@push('styles')<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}"><link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">@endpush
+@push('styles')
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">
+@endpush
 @push('js')
 <script src="{{ asset('admin/src/plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('admin/src/plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
@@ -93,7 +96,7 @@ Anak
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fa fa-exclamation-triangle text-warning mr-1"></i> Detail Baris Bermasalah</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body p-0">
                 <div class="px-3 pt-3 pb-2 border-bottom">
@@ -235,48 +238,31 @@ Anak
         let token = '{{ csrf_token() }}';
 
         Swal.fire({
-            title: 'Are you sure?',
-            text: "You won't be able to revert this!",
+            title: 'Hapus data ini?',
+            text: 'Data anak yang dihapus tidak dapat dikembalikan.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'No, cancel!',
+            confirmButtonText: 'Ya, hapus',
+            cancelButtonText: 'Batal',
             reverseButtons: true
         }).then((result) => {
-            if (result.value) {
-                if (result.isConfirmed) {
-
-                    $.ajax({
-                        type: "DELETE",
-                        url: '{{ url("admin/destroy-data-dasar-anak")}}' + '/' + id,
-                        data: {
-                            id: id,
-                            '_token': token
-                        },
-                        success: function(data) {
-                            if (data.success) {
-                                Swal.fire(
-                                    'Deleted!',
-                                    'Your file has been deleted.',
-                                    "success"
-                                );
-                                $("#" + id + "").remove();
-                                window.location.reload(true); // you can add name div to remove
-                            }
-
+            if (result.isConfirmed) {
+                $.ajax({
+                    type: "DELETE",
+                    url: '{{ url("admin/destroy-data-dasar-anak")}}' + '/' + id,
+                    data: {
+                        id: id,
+                        '_token': token
+                    },
+                    success: function(data) {
+                        if (data.success) {
+                            Swal.fire('Dihapus!', 'Data anak berhasil dihapus.', 'success');
+                            window.location.reload(true);
                         }
-                    });
-
-                }
-
-            } else if (
-                result.dismiss === Swal.DismissReason.cancel
-            ) {
-                Swal.fire(
-                    'Cancelled',
-                    'Your imaginary file is safe :)',
-                    'error'
-                );
+                    }
+                });
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                Swal.fire('Dibatalkan', 'Data tidak jadi dihapus.', 'info');
             }
         });
 
@@ -315,13 +301,13 @@ Anak
                 $row.find('td').eq(4).text(log.completed_at ? log.completed_at.substring(0, 16).replace('T', ' ') : '—');
 
                 if (log.status === 'done' && log.failure_count > 0) {
-                    var $btn = $('<button>').addClass('btn btn-xs btn-outline-warning btn-lihat-error-kohort')
+                    var $btnErr = $('<button>').addClass('btn btn-xs btn-outline-warning btn-lihat-error-kohort')
                         .attr('data-id', log.id).text('Lihat Error').data('failures', log.failures || []);
-                    $row.find('td').eq(5).empty().append($btn);
+                    $row.find('td').eq(5).empty().append($btnErr);
                 } else if (log.status === 'failed') {
-                    var $btn = $('<button>').addClass('btn btn-xs btn-outline-danger btn-lihat-error-kohort')
+                    var $btnFail = $('<button>').addClass('btn btn-xs btn-outline-danger btn-lihat-error-kohort')
                         .attr('data-id', log.id).text('Lihat Detail').data('failures', log.failures || []);
-                    $row.find('td').eq(5).empty().append($btn);
+                    $row.find('td').eq(5).empty().append($btnFail);
                 }
 
                 if (log.status === 'done' && oldStatus !== 'done') {

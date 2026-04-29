@@ -36,7 +36,7 @@ Chart Data Anak
 </div>
 @endsection
 @push('js')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.bundle.js" charset="utf-8"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script type="text/javascript">
     var id1 = document.getElementById("id-anak").value; 
     var Bln = new Array();
@@ -67,11 +67,9 @@ Chart Data Anak
                 },
                 options: {
                     scales: {
-                        yAxes: [{
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        }]
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
             });
@@ -108,11 +106,9 @@ Chart Data Anak
                 },
                 options: {
                     scales: {
-                        yAxes: [{
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        }]
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
             });

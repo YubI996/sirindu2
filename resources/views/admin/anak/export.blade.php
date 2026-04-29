@@ -17,14 +17,14 @@ Export Data Anak
     <div class="row">
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>From Date <font color="red">*</font></label>
-                <input type="date" name="from_date" class="form-control" required>
+                <label for="from_date">Dari Tanggal <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="date" name="from_date" id="from_date" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label>To Date <font color="red">*</font></label>
-                <input type="date" name="to_date" class="form-control" required>
+                <label for="to_date">Sampai Tanggal <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="date" name="to_date" id="to_date" class="form-control" required>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
