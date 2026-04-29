@@ -248,31 +248,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
                  ->name('admin.pd3i.apiWilayah');
             Route::post('export-pdf', [App\Http\Controllers\Pd3iDashboardController::class, 'exportPdf'])
                  ->name('admin.pd3i.exportPdf');
+            Route::get('export-excel', [App\Http\Controllers\Pd3iDashboardController::class, 'exportExcel'])
+                 ->name('admin.pd3i.exportExcel');
         });
     });
-});
-
-/*------------------------------------------
---------------------------------------------
-Claude Dummy Routes (for view testing)
---------------------------------------------
---------------------------------------------*/
-Route::prefix('claude/')->group(function () {
-    Route::get('dashboard', [App\Http\Controllers\DummyController::class, 'dashboard'])->name('claude.dashboard');
-
-    // Children routes
-    Route::get('children', [App\Http\Controllers\DummyController::class, 'childrenIndex'])->name('children.index');
-    Route::get('children/{id}', [App\Http\Controllers\DummyController::class, 'showChild'])->name('children.show');
-    Route::get('children/{id}/edit', [App\Http\Controllers\DummyController::class, 'editChild'])->name('children.edit');
-
-    // Growth routes
-    Route::get('growth', [App\Http\Controllers\DummyController::class, 'growthIndex'])->name('growth.index');
-    Route::get('growth/create/{id}', [App\Http\Controllers\DummyController::class, 'createGrowth'])->name('growth.create');
-
-    // Immunizations routes
-    Route::get('immunizations', [App\Http\Controllers\DummyController::class, 'immunizationsIndex'])->name('immunizations.index');
-    Route::get('immunizations/create/{id}', [App\Http\Controllers\DummyController::class, 'createImmunization'])->name('immunizations.create');
-
-    // Visits routes
-    Route::get('visits/create/{id}', [App\Http\Controllers\DummyController::class, 'createVisit'])->name('visits.create');
 });
