@@ -106,6 +106,13 @@ class ExportImunisasiController extends Controller
 
     public function download(Request $request)
     {
+        $request->validate([
+            'bulan'    => 'nullable|date_format:Y-m',
+            'kelurahan'=> 'nullable|integer|exists:kelurahan,id',
+            'antigen'  => 'nullable|integer|exists:jenis_vaksin,id',
+            'status'   => 'nullable|in:belum,sudah,terlambat',
+        ]);
+
         $export = new ImunisasiExport(
             $request->bulan,
             $request->kelurahan,

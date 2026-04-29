@@ -557,30 +557,34 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
 
         // ===== Campak-Rubella (id=1) =====
         $cr = (clone $base)->where('id_jenis_kasus', 1);
-        $crTotal = (clone $cr)->count();
-        // pct_sampel: kasus yang status_lab = 'diperiksa_lab' (sampel diambil & dikirim ke lab)
-        $crSampel = (clone $cr)->where('status_lab', 'diperiksa_lab')->count();
-        $crLabDiterima = (clone $cr)->whereNotNull('tanggal_hasil_lab')->count();
-        $crLabDiperiksa = (clone $cr)->whereIn('status_lab', ['diperiksa_lab','proses','positif','negatif'])->count();
-        $crLabPositif = (clone $cr)->where('status_lab', 'positif')->count();
-        $crDiscarded = (clone $cr)->where('status_kasus', 'discarded')->count();
+        $crTotal = (clone $cr)->count(); // semua kasus CR = suspek
+
+        // Konfirmasi berdasarkan penyakit_terkonfirmasi di spesimen (Bagian F)
+        $casesCampak  = (clone $cr)->whereHas('spesimen', fn($q) => $q->where('penyakit_terkonfirmasi', 'Campak'))->count();
+        $casesRubella = (clone $cr)->whereHas('spesimen', fn($q) => $q->where('penyakit_terkonfirmasi', 'Rubella'))->count();
+        $casesNegatif = (clone $cr)->whereHas('spesimen', fn($q) => $q->where('penyakit_terkonfirmasi', 'Negatif'))->count();
+
+        // Kondisi akhir (Bagian H)
+        $crMeninggal = (clone $cr)->where('kondisi_akhir', 'meninggal')->count();
+        $crAktif     = (clone $cr)->where('kondisi_akhir', 'dalam_perawatan')->count();
+
+        // Pengambilan & penerimaan hasil lab (status_lab Bagian F header)
+        $crSampel      = (clone $cr)->where('status_lab', 'diperiksa_lab')->count();
+        $crLabDiterima = (clone $cr)->where('status_lab', 'diperiksa_lab')->whereNotNull('tanggal_hasil_lab')->count();
 
         $campakRubella = [
-            'suspek'            => (clone $cr)->where('status_kasus', 'suspected')->count(),
-            'confirmed_campak'  => (clone $cr)->where('status_kasus', 'confirmed')
-                                              ->whereRaw('LOWER(hasil_lab) LIKE ?', ['%campak%'])
-                                              ->count(),
-            'confirmed_rubella' => (clone $cr)->where('status_kasus', 'confirmed')
-                                              ->whereRaw('LOWER(hasil_lab) LIKE ?', ['%rubella%'])
-                                              ->count(),
-            'discarded'         => $crDiscarded,
-            'discarded_rate'    => $totalPenduduk > 0
-                                    ? round($crDiscarded / $totalPenduduk * 100000, 2)
-                                    : null,
-            'meninggal'         => (clone $cr)->where('kondisi_akhir', 'meninggal')->count(),
-            'pct_sampel'        => $crTotal > 0 ? round($crSampel / $crTotal * 100, 1) : 0,
-            'pct_lab_diterima'  => $crTotal > 0 ? round($crLabDiterima / $crTotal * 100, 1) : 0,
-            'positivity_rate'   => $crLabDiperiksa > 0 ? round($crLabPositif / $crLabDiperiksa * 100, 1) : 0,
+            'suspek'           => $crTotal,
+            'kasus_campak'     => $casesCampak,
+            'kasus_rubella'    => $casesRubella,
+            'discarded'        => $casesNegatif,
+            'discarded_rate'   => $totalPenduduk > 0
+                                  ? round($casesNegatif / $totalPenduduk * 100000, 2)
+                                  : null,
+            'kematian'         => $crMeninggal,
+            'kasus_aktif'      => $crAktif,
+            'pct_sampel'       => $crTotal > 0 ? round($crSampel / $crTotal * 100, 1) : 0,
+            'pct_lab_diterima' => $crSampel > 0 ? round($crLabDiterima / $crSampel * 100, 1) : 0,
+            'positivity_rate'  => $crSampel > 0 ? round(($casesCampak + $casesRubella) / $crSampel * 100, 1) : 0,
         ];
 
         // ===== AFP/Polio (id=3) =====
@@ -621,6 +625,34 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     public function getPd3iTren(int $tahun, ?int $jenisKasusId, ?string $wilker, ?int $kelurahanId = null): array
     {
         $bulanLabels = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+        // ===== Tahunan (5 tahun terakhir) =====
+        $tahunBase = SurveillanceCase::query()
+            ->whereNotNull('tanggal_lapor')
+            ->whereRaw('YEAR(tanggal_lapor) BETWEEN ? AND ?', [$tahun - 4, $tahun]);
+        if ($jenisKasusId) $tahunBase->where('id_jenis_kasus', $jenisKasusId);
+        if ($wilker)       $tahunBase->where('wilker_puskesmas', $wilker);
+        if ($kelurahanId)  $tahunBase->where('id_kel', $kelurahanId);
+
+        $tahunanRaw = $tahunBase
+            ->select(
+                DB::raw('YEAR(tanggal_lapor) as tahun_data'),
+                DB::raw('COUNT(*) as total'),
+                DB::raw("SUM(CASE WHEN status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed")
+            )
+            ->groupBy('tahun_data')
+            ->orderBy('tahun_data')
+            ->get()->keyBy('tahun_data');
+
+        $tahunan = [];
+        for ($y = $tahun - 4; $y <= $tahun; $y++) {
+            $row = $tahunanRaw->get($y);
+            $tahunan[] = [
+                'tahun'     => $y,
+                'total'     => $row ? (int)$row->total : 0,
+                'confirmed' => $row ? (int)$row->confirmed : 0,
+            ];
+        }
 
         // ===== Epiweek (based on tanggal_onset, tahun-1 to tahun) =====
         $epiBase = SurveillanceCase::query()
@@ -715,6 +747,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             ->toArray();
 
         return [
+            'tahunan'       => $tahunan,
             'epiweek'       => $epiweek,
             'bulanan'       => $bulanan,
             'per_faskes'    => $perFaskes,
@@ -780,8 +813,34 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             'tidak_tahu'    => (int)($vaksinasiRaw->get('tidak_tahu')?->total ?? 0),
         ];
 
+        // ===== Jenis Kelamin =====
+        $genderRaw = (clone $base)
+            ->select('jenis_kelamin', DB::raw('COUNT(*) as total'))
+            ->groupBy('jenis_kelamin')
+            ->get()->keyBy('jenis_kelamin');
+
+        $jenisKelamin = [
+            'L'       => (int)($genderRaw->get('L')?->total ?? 0),
+            'P'       => (int)($genderRaw->get('P')?->total ?? 0),
+            'unknown' => (int)($genderRaw->filter(fn($r) => !in_array($r->jenis_kelamin, ['L', 'P']))->sum('total')),
+        ];
+
+        // ===== Distribusi Gejala =====
+        $gejalaFields = [
+            'demam', 'batuk', 'pilek', 'sakit_kepala', 'mual', 'muntah', 'diare',
+            'ruam', 'sesak_napas', 'nyeri_otot', 'nyeri_sendi', 'lemas',
+            'kehilangan_nafsu_makan', 'mata_merah', 'pembengkakan_kelenjar',
+            'kejang', 'penurunan_kesadaran',
+        ];
+        $gejalaSelects = array_map(fn($g) => DB::raw("SUM(`gejala_{$g}`) as `{$g}`"), $gejalaFields);
+        $gejalaRow = (clone $base)->select($gejalaSelects)->first();
+        $gejala = [];
+        foreach ($gejalaFields as $g) {
+            $gejala[$g] = (int)($gejalaRow?->$g ?? 0);
+        }
+
         // ===== Severity =====
-        $total    = (clone $base)->count();
+        $total     = (clone $base)->count();
         $rawatInap = (clone $base)->where('status_rawat', 'rawat_inap')->count();
         $meninggal = (clone $base)->where('kondisi_akhir', 'meninggal')->count();
 
@@ -797,7 +856,8 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         )->first();
 
         $severity = [
-            'pct_rawat_inap' => $total > 0 ? round($rawatInap / $total * 100, 1) : 0,
+            'jumlah_dirawat'  => $rawatInap,
+            'pct_rawat_inap'  => $total > 0 ? round($rawatInap / $total * 100, 1) : 0,
             'komplikasi' => [
                 'diare'              => (int)($komp?->diare ?? 0),
                 'kebutaan'           => (int)($komp?->kebutaan ?? 0),
@@ -813,6 +873,8 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
 
         return [
             'kelompok_umur'    => array_values($kelompokUmur),
+            'jenis_kelamin'    => $jenisKelamin,
+            'gejala'           => $gejala,
             'status_vaksinasi' => $statusVaksinasi,
             'severity'         => $severity,
         ];
@@ -865,6 +927,53 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             ->map(fn($r) => ['kecamatan' => $r->kecamatan, 'kelurahan' => $r->kelurahan, 'suspek' => (int)$r->suspek, 'confirmed' => (int)$r->confirmed, 'meninggal' => (int)$r->meninggal])
             ->toArray();
 
+        // ===== Per RT =====
+        $perRt = (clone $base)
+            ->select(
+                DB::raw("COALESCE(rt.name, 'Tidak Diketahui') as rt"),
+                DB::raw("COALESCE(kel.name, 'Tidak Diketahui') as kelurahan"),
+                DB::raw("COALESCE(kec.name, 'Tidak Diketahui') as kecamatan"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='suspected' THEN 1 ELSE 0 END) as suspek"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.kondisi_akhir='meninggal' THEN 1 ELSE 0 END) as meninggal"),
+                DB::raw("COUNT(*) as total")
+            )
+            ->leftJoin('rt as rt', 'surveillance_cases.id_rt', '=', 'rt.id')
+            ->leftJoin('kelurahan as kel', 'surveillance_cases.id_kel', '=', 'kel.id')
+            ->leftJoin('kecamatan as kec', 'surveillance_cases.id_kec', '=', 'kec.id')
+            ->groupBy('rt.name', 'kel.name', 'kec.name')
+            ->orderBy('kecamatan')->orderBy('kelurahan')->orderBy('rt')
+            ->get()
+            ->map(fn($r) => [
+                'rt'         => $r->rt,
+                'kelurahan'  => $r->kelurahan,
+                'kecamatan'  => $r->kecamatan,
+                'suspek'     => (int)$r->suspek,
+                'confirmed'  => (int)$r->confirmed,
+                'meninggal'  => (int)$r->meninggal,
+                'total'      => (int)$r->total,
+            ])->toArray();
+
+        // ===== Per Faskes Pelapor =====
+        $perFaskesPelapor = (clone $base)
+            ->select(
+                DB::raw("COALESCE(surveillance_cases.instansi_pelapor, 'Tidak Diketahui') as faskes"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='suspected' THEN 1 ELSE 0 END) as suspek"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.status_kasus='confirmed' THEN 1 ELSE 0 END) as confirmed"),
+                DB::raw("SUM(CASE WHEN surveillance_cases.kondisi_akhir='meninggal' THEN 1 ELSE 0 END) as meninggal"),
+                DB::raw("COUNT(*) as total")
+            )
+            ->groupBy('surveillance_cases.instansi_pelapor')
+            ->orderBy('faskes')
+            ->get()
+            ->map(fn($r) => [
+                'faskes'    => $r->faskes,
+                'suspek'    => (int)$r->suspek,
+                'confirmed' => (int)$r->confirmed,
+                'meninggal' => (int)$r->meninggal,
+                'total'     => (int)$r->total,
+            ])->toArray();
+
         // ===== Peta =====
         $peta = (clone $base)
             ->with('jenisKasus:id,nama_penyakit')
@@ -880,10 +989,12 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             ])->toArray();
 
         return [
-            'per_puskesmas' => $perPuskesmas,
-            'per_kecamatan' => $perKecamatan,
-            'per_kelurahan' => $perKelurahan,
-            'peta'          => $peta,
+            'per_puskesmas'     => $perPuskesmas,
+            'per_kecamatan'     => $perKecamatan,
+            'per_kelurahan'     => $perKelurahan,
+            'per_rt'            => $perRt,
+            'per_faskes_pelapor'=> $perFaskesPelapor,
+            'peta'              => $peta,
         ];
     }
 }

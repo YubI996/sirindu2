@@ -8,7 +8,6 @@
 <style>
     @include('admin.epidemiologi.components.shared-styles')
 
-    /* === PD3I Dashboard Styles === */
     .pd3i-panel-header {
         padding: 0.75rem 1.25rem;
         font-weight: 700;
@@ -28,22 +27,18 @@
     .kinerja-card .k-value { font-size: 1.6rem; font-weight: 700; color: var(--primary-blue-dark, #1e40af); line-height: 1.1; }
     .kinerja-card .k-value.pct { font-size: 1.3rem; color: var(--success-green, #047857); }
     .kinerja-card .k-value.danger { color: var(--danger-rose, #be123c); }
+    .kinerja-card .k-value.active-case { color: #d97706; }
     .kinerja-card.disabled .k-value { color: #9ca3af; font-size: 1rem; }
-
-    /* Lead metric — primary stat in each disease panel */
     .kinerja-card.primary { border-color: var(--srd-border, #e5e7eb); }
     .kinerja-card.primary .k-value { font-size: 2.4rem; }
     .kinerja-card.primary .k-label { font-size: 0.75rem; font-weight: 600; }
 
-    /* Quality metrics row (rates, %) — visually secondary */
     .pd3i-quality-row {
         padding-top: 0.625rem;
         margin-top: 0.375rem;
         border-top: 1px solid var(--srd-border, #f3f4f6);
     }
-    .pd3i-quality-row .kinerja-card {
-        background: var(--srd-surface-subtle, #f8fafc);
-    }
+    .pd3i-quality-row .kinerja-card { background: var(--srd-surface-subtle, #f8fafc); }
     .pd3i-quality-row .k-value { font-size: 1.25rem; }
 
     .skeleton { background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
@@ -56,11 +51,6 @@
     .nav-tabs .nav-link { font-weight: 600; font-size: 0.85rem; padding: 0.6rem 1.1rem; color: #374151; border-radius: 8px 8px 0 0; }
     .nav-tabs .nav-link.active { color: #1e40af; border-color: #e5e7eb #e5e7eb #fff; background: #fff; }
     .tab-content { border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px; padding: 1.25rem; background: #fff; }
-    .tab-placeholder { padding: 3rem; text-align: center; color: #9ca3af; }
-    .tab-placeholder i { font-size: 2.5rem; margin-bottom: 0.5rem; }
-
-    .loading-overlay { position:relative; }
-    .loading-overlay::after { content:''; position:absolute; inset:0; background:rgba(255,255,255,0.6); z-index:5; border-radius:8px; }
 </style>
 
 <div class="container-fluid" id="main-content">
@@ -74,12 +64,15 @@
             </h2>
             <small class="text-muted">Kota Bontang — Data real-time dari sistem surveilans</small>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
             <a href="{{ route('admin.epidemiologi.dashboard') }}" class="btn btn-sm btn-outline-secondary">
                 <i class="fa fa-chart-line mr-1"></i> Dashboard Umum
             </a>
             <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-sm btn-outline-primary">
                 <i class="fa fa-list mr-1"></i> Daftar Kasus
+            </a>
+            <a id="btnExportExcel" href="#" class="btn btn-sm btn-success">
+                <i class="fa fa-file-excel mr-1"></i> Export Excel
             </a>
             <form id="formExportPdf" method="POST" action="{{ route('admin.pd3i.exportPdf') }}" style="display:inline;">
                 @csrf
@@ -99,7 +92,7 @@
         <div class="row align-items-end g-2">
             <div class="col-6 col-md-2">
                 <label for="filter-tahun" class="mb-1"><i class="fa fa-calendar-alt mr-1"></i> Tahun</label>
-                <select id="filter-tahun" class="form-control form-control-sm">
+                <select id="filter-tahun" class="form-control">
                     @for($y = now()->year; $y >= now()->year - 5; $y--)
                         <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
                     @endfor
@@ -107,7 +100,7 @@
             </div>
             <div class="col-6 col-md-3">
                 <label for="filter-penyakit" class="mb-1"><i class="fa fa-virus mr-1"></i> Jenis Penyakit</label>
-                <select id="filter-penyakit" class="form-control form-control-sm">
+                <select id="filter-penyakit" class="form-control">
                     <option value="">Semua PD3I</option>
                     @foreach($diseases as $d)
                         <option value="{{ $d->id }}">{{ $d->nama_penyakit }}</option>
@@ -116,7 +109,7 @@
             </div>
             <div class="col-6 col-md-3">
                 <label for="filter-wilker" class="mb-1"><i class="fa fa-hospital mr-1"></i> Wilker Puskesmas</label>
-                <select id="filter-wilker" class="form-control form-control-sm">
+                <select id="filter-wilker" class="form-control">
                     <option value="">Semua Puskesmas</option>
                     @foreach($wilkers as $w)
                         <option value="{{ $w }}">{{ $w }}</option>
@@ -125,7 +118,7 @@
             </div>
             <div class="col-6 col-md-4">
                 <label for="filter-kelurahan" class="mb-1"><i class="fa fa-map-marker-alt mr-1"></i> Kelurahan</label>
-                <select id="filter-kelurahan" class="form-control form-control-sm">
+                <select id="filter-kelurahan" class="form-control">
                     <option value="">Semua Kelurahan</option>
                     @foreach($kelurahans as $kel)
                         <option value="{{ $kel->id }}">{{ $kel->name }}</option>
@@ -153,8 +146,13 @@
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" id="tab-wilayah-link" data-toggle="tab" href="#tab-wilayah" role="tab">
-                <i class="fa fa-map-marked-alt mr-1"></i> Wilayah
+            <a class="nav-link" id="tab-tempat-link" data-toggle="tab" href="#tab-tempat" role="tab">
+                <i class="fa fa-map-marked-alt mr-1"></i> Tempat
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="tab-peta-link" data-toggle="tab" href="#tab-peta" role="tab">
+                <i class="fa fa-map mr-1"></i> Peta
             </a>
         </li>
     </ul>
@@ -170,7 +168,7 @@
                     <i class="fa fa-circle mr-1" style="font-size:.6rem;"></i> Campak-Rubella
                 </div>
                 <div class="pd3i-panel-body">
-                    {{-- Primary counts --}}
+                    {{-- Baris utama: 4 metrik kasus --}}
                     <div class="row g-2">
                         <div class="col-6 col-md-3">
                             <div class="kinerja-card primary">
@@ -180,14 +178,14 @@
                         </div>
                         <div class="col-6 col-md-3">
                             <div class="kinerja-card">
-                                <div class="k-label">Konfirmasi Campak</div>
-                                <div class="k-value" id="cr-conf-campak"><div class="skeleton skel-value"></div></div>
+                                <div class="k-label">Kasus Campak</div>
+                                <div class="k-value" id="cr-kasus-campak"><div class="skeleton skel-value"></div></div>
                             </div>
                         </div>
                         <div class="col-6 col-md-3">
                             <div class="kinerja-card">
-                                <div class="k-label">Konfirmasi Rubella</div>
-                                <div class="k-value" id="cr-conf-rubella"><div class="skeleton skel-value"></div></div>
+                                <div class="k-label">Kasus Rubella</div>
+                                <div class="k-value" id="cr-kasus-rubella"><div class="skeleton skel-value"></div></div>
                             </div>
                         </div>
                         <div class="col-6 col-md-3">
@@ -198,27 +196,33 @@
                             </div>
                         </div>
                     </div>
-                    {{-- Quality metrics (rates & mortality) — visually secondary --}}
+                    {{-- Baris kualitas: status akhir + indikator rate --}}
                     <div class="row g-2 pd3i-quality-row">
-                        <div class="col-6 col-md-3">
+                        <div class="col-sm-6 col-md-4">
                             <div class="kinerja-card">
                                 <div class="k-label">Kematian</div>
-                                <div class="k-value danger" id="cr-meninggal"><div class="skeleton skel-value"></div></div>
+                                <div class="k-value danger" id="cr-kematian"><div class="skeleton skel-value"></div></div>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-sm-6 col-md-4">
                             <div class="kinerja-card">
-                                <div class="k-label">% Pengambilan Sampel</div>
+                                <div class="k-label">Kasus Aktif (Dalam Perawatan)</div>
+                                <div class="k-value active-case" id="cr-kasus-aktif"><div class="skeleton skel-value"></div></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-md-4">
+                            <div class="kinerja-card">
+                                <div class="k-label">% Pengambilan Spesimen</div>
                                 <div class="k-value pct" id="cr-pct-sampel"><div class="skeleton skel-value"></div></div>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-sm-6 col-md-6">
                             <div class="kinerja-card">
                                 <div class="k-label">% Hasil Lab Diterima</div>
                                 <div class="k-value pct" id="cr-pct-lab"><div class="skeleton skel-value"></div></div>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-sm-6 col-md-6">
                             <div class="kinerja-card">
                                 <div class="k-label">Positivity Rate</div>
                                 <div class="k-value pct" id="cr-positivity"><div class="skeleton skel-value"></div></div>
@@ -306,13 +310,25 @@
 
         {{-- ===== TAB 2: DEMOGRAFI ===== --}}
         <div class="tab-pane fade" id="tab-demografi" role="tabpanel">
+
+            {{-- Jenis Kelamin + Kelompok Umur --}}
             <div class="row g-3 mb-3">
-                {{-- Kelompok Umur --}}
-                <div class="col-12">
-                    <div class="info-card">
+                <div class="col-md-4">
+                    <div class="info-card h-100">
+                        <div class="card-header"><i class="fa fa-venus-mars mr-1"></i> Proporsi Jenis Kelamin</div>
+                        <div class="card-body d-flex align-items-center justify-content-center">
+                            <div style="height:200px; width:200px; position:relative;">
+                                <canvas id="chart-gender"></canvas>
+                                <div id="skel-gender" class="skeleton" style="position:absolute;inset:0;border-radius:50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="info-card h-100">
                         <div class="card-header"><i class="fa fa-birthday-cake mr-1"></i> Distribusi Kelompok Umur</div>
                         <div class="card-body">
-                            <div style="height:260px; position:relative;">
+                            <div style="height:220px; position:relative;">
                                 <canvas id="chart-kelompok-umur"></canvas>
                                 <div id="skel-kelompok-umur" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
                             </div>
@@ -320,11 +336,23 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Gejala --}}
+            <div class="info-card mb-3">
+                <div class="card-header"><i class="fa fa-thermometer-half mr-1"></i> Distribusi Gejala</div>
+                <div class="card-body">
+                    <div style="height:240px; position:relative;">
+                        <canvas id="chart-gejala"></canvas>
+                        <div id="skel-gejala" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Vaksinasi + Severity --}}
             <div class="row g-3 mb-3">
-                {{-- Status Vaksinasi --}}
                 <div class="col-md-5">
                     <div class="info-card h-100">
-                        <div class="card-header"><i class="fa fa-syringe mr-1"></i> Status Vaksinasi</div>
+                        <div class="card-header"><i class="fa fa-syringe mr-1"></i> Status Imunisasi</div>
                         <div class="card-body d-flex align-items-center justify-content-center">
                             <div style="height:220px; width:220px; position:relative;">
                                 <canvas id="chart-status-vaksinasi"></canvas>
@@ -333,19 +361,24 @@
                         </div>
                     </div>
                 </div>
-                {{-- Severity --}}
                 <div class="col-md-7">
                     <div class="info-card h-100">
-                        <div class="card-header"><i class="fa fa-heartbeat mr-1"></i> Severity & Komplikasi</div>
+                        <div class="card-header"><i class="fa fa-heartbeat mr-1"></i> Rawat Inap &amp; Komplikasi</div>
                         <div class="card-body">
                             <div class="row g-2 mb-3">
-                                <div class="col-6">
+                                <div class="col-4">
+                                    <div class="kinerja-card">
+                                        <div class="k-label">Jumlah Dirawat</div>
+                                        <div class="k-value" id="sev-jumlah-dirawat"><div class="skeleton skel-value"></div></div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
                                     <div class="kinerja-card">
                                         <div class="k-label">% Rawat Inap</div>
                                         <div class="k-value pct" id="sev-rawat-inap"><div class="skeleton skel-value"></div></div>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="kinerja-card">
                                         <div class="k-label">Kematian</div>
                                         <div class="k-value danger" id="sev-meninggal"><div class="skeleton skel-value"></div></div>
@@ -360,11 +393,24 @@
                     </div>
                 </div>
             </div>
-        </div>
+
+        </div>{{-- /tab-demografi --}}
 
         {{-- ===== TAB 3: TREN ===== --}}
         <div class="tab-pane fade" id="tab-tren" role="tabpanel">
-            {{-- Kurva Epidemi --}}
+
+            {{-- Tren Tahunan --}}
+            <div class="info-card mb-3">
+                <div class="card-header"><i class="fa fa-chart-bar mr-1"></i> Tren Kasus Tahunan (5 Tahun Terakhir)</div>
+                <div class="card-body">
+                    <div style="height:220px; position:relative;">
+                        <canvas id="chart-tahunan"></canvas>
+                        <div id="skel-tahunan" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Kurva Epidemi (Mingguan) --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-chart-bar mr-1"></i> Kurva Epidemi (Mingguan — Epiweek)</div>
                 <div class="card-body">
@@ -374,6 +420,7 @@
                     </div>
                 </div>
             </div>
+
             {{-- Tren Bulanan --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-chart-line mr-1"></i> Tren Laporan Bulanan</div>
@@ -384,6 +431,7 @@
                     </div>
                 </div>
             </div>
+
             {{-- Tren per Faskes --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-hospital mr-1"></i> Tren per Faskes Pelapor</div>
@@ -394,8 +442,8 @@
                     </div>
                 </div>
             </div>
+
             <div class="row g-3">
-                {{-- Per Kecamatan --}}
                 <div class="col-md-6">
                     <div class="info-card">
                         <div class="card-header"><i class="fa fa-map-pin mr-1"></i> Tren per Kecamatan</div>
@@ -407,7 +455,6 @@
                         </div>
                     </div>
                 </div>
-                {{-- Per Kelurahan --}}
                 <div class="col-md-6">
                     <div class="info-card">
                         <div class="card-header"><i class="fa fa-map-marker-alt mr-1"></i> Tren per Kelurahan</div>
@@ -420,11 +467,13 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        {{-- ===== TAB 4: WILAYAH ===== --}}
-        <div class="tab-pane fade" id="tab-wilayah" role="tabpanel">
-            {{-- Tabel Per Puskesmas --}}
+        </div>{{-- /tab-tren --}}
+
+        {{-- ===== TAB 4: TEMPAT ===== --}}
+        <div class="tab-pane fade" id="tab-tempat" role="tabpanel">
+
+            {{-- Per Wilker Puskesmas --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-clinic-medical mr-1"></i> Per Wilker Puskesmas</div>
                 <div class="card-body p-0">
@@ -436,6 +485,20 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Per Faskes Pelapor --}}
+            <div class="info-card mb-3">
+                <div class="card-header"><i class="fa fa-hospital mr-1"></i> Per Faskes Pelapor</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-accessible mb-0">
+                            <thead><tr><th>Faskes Pelapor</th><th class="text-center">Total</th><th class="text-center">Suspek</th><th class="text-center">Confirmed</th><th class="text-center">Meninggal</th></tr></thead>
+                            <tbody id="tbody-per-faskes-pelapor"><tr><td colspan="5" class="text-center py-3 text-muted">Memuat data...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div class="row g-3 mb-3">
                 {{-- Per Kecamatan --}}
                 <div class="col-md-6">
@@ -466,14 +529,31 @@
                     </div>
                 </div>
             </div>
-            {{-- Peta --}}
+
+            {{-- Per RT --}}
+            <div class="info-card">
+                <div class="card-header"><i class="fa fa-home mr-1"></i> Per RT</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-accessible mb-0">
+                            <thead><tr><th>RT</th><th>Kelurahan</th><th>Kecamatan</th><th class="text-center">Total</th><th class="text-center">Suspek</th><th class="text-center">Confirmed</th><th class="text-center">Meninggal</th></tr></thead>
+                            <tbody id="tbody-per-rt"><tr><td colspan="7" class="text-center py-3 text-muted">Memuat data...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>{{-- /tab-tempat --}}
+
+        {{-- ===== TAB 5: PETA ===== --}}
+        <div class="tab-pane fade" id="tab-peta" role="tabpanel">
             <div class="info-card">
                 <div class="card-header"><i class="fa fa-map mr-1"></i> Peta Persebaran Kasus</div>
                 <div class="card-body p-0">
-                    <div id="map-wilayah" style="height:420px; border-radius:0 0 10px 10px;"></div>
+                    <div id="map-wilayah" style="height:500px; border-radius:0 0 10px 10px;"></div>
                 </div>
             </div>
-        </div>
+        </div>{{-- /tab-peta --}}
 
     </div>{{-- /tab-content --}}
 
@@ -489,12 +569,12 @@
 (function () {
     'use strict';
 
-    // ======= CONFIG =======
     const API = {
         kinerja:  '{{ route("admin.pd3i.apiKinerja") }}',
         demografi:'{{ route("admin.pd3i.apiDemografi") }}',
         tren:     '{{ route("admin.pd3i.apiTren") }}',
         wilayah:  '{{ route("admin.pd3i.apiWilayah") }}',
+        excel:    '{{ route("admin.pd3i.exportExcel") }}',
     };
 
     const charts = {};
@@ -509,12 +589,12 @@
         document.querySelectorAll('.k-value').forEach(el => {
             el.innerHTML = '<div class="skeleton skel-value"></div>';
         });
-        const crNote = document.getElementById('cr-discarded-note');
-        const afpNote = document.getElementById('afp-npafp-note');
-        if (crNote)  crNote.textContent  = '';
-        if (afpNote) afpNote.textContent = '';
-        ['skel-kelompok-umur','skel-vaksinasi','skel-komplikasi',
-         'skel-epiweek','skel-bulanan','skel-per-faskes','skel-per-kecamatan','skel-per-kelurahan'
+        ['cr-discarded-note','afp-npafp-note'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '';
+        });
+        ['skel-gender','skel-kelompok-umur','skel-gejala','skel-vaksinasi','skel-komplikasi',
+         'skel-tahunan','skel-epiweek','skel-bulanan','skel-per-faskes','skel-per-kecamatan','skel-per-kelurahan'
         ].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; });
     }
 
@@ -540,28 +620,31 @@
 
     // ======= PARAMS =======
     function buildParams() {
-        const params     = new URLSearchParams();
-        const tahun      = document.getElementById('filter-tahun').value;
-        const penyakit   = document.getElementById('filter-penyakit').value;
-        const wilker     = document.getElementById('filter-wilker').value;
-        const kelurahan  = document.getElementById('filter-kelurahan').value;
+        const params    = new URLSearchParams();
+        const tahun     = document.getElementById('filter-tahun').value;
+        const penyakit  = document.getElementById('filter-penyakit').value;
+        const wilker    = document.getElementById('filter-wilker').value;
+        const kelurahan = document.getElementById('filter-kelurahan').value;
 
-        if (tahun)      params.set('tahun', tahun);
-        if (penyakit)   params.set('jenis_kasus_id', penyakit);
-        if (wilker)     params.set('wilker', wilker);
-        if (kelurahan)  params.set('kelurahan_id', kelurahan);
+        if (tahun)     params.set('tahun', tahun);
+        if (penyakit)  params.set('jenis_kasus_id', penyakit);
+        if (wilker)    params.set('wilker', wilker);
+        if (kelurahan) params.set('kelurahan_id', kelurahan);
 
-        // sync PDF hidden inputs
+        // PDF hidden inputs
         document.getElementById('pdf_tahun').value = tahun;
         document.getElementById('pdf_jenis_kasus_id').value = penyakit;
         document.getElementById('pdf_wilker').value = wilker;
-        const pdfKelEl = document.getElementById('pdf_kelurahan_id');
-        if (pdfKelEl) pdfKelEl.value = kelurahan;
+        document.getElementById('pdf_kelurahan_id').value = kelurahan;
+
+        // Excel href
+        const excelBtn = document.getElementById('btnExportExcel');
+        if (excelBtn) excelBtn.href = API.excel + '?' + params.toString();
 
         return params.toString();
     }
 
-    // ======= FETCH ALL TABS PARALLEL =======
+    // ======= FETCH ALL =======
     async function fetchAllTabs() {
         showSkeletons();
         const qs = buildParams();
@@ -576,7 +659,8 @@
             renderKinerja(kinerjaData);
             renderDemografi(demografiData);
             renderTren(trenData);
-            renderWilayah(wilayahData);
+            renderTempat(wilayahData);
+            renderPeta(wilayahData);
         } catch (err) {
             console.error('Gagal memuat data dashboard:', err);
             renderKinerjaError();
@@ -588,25 +672,26 @@
         if (!data) { renderKinerjaError(); return; }
 
         const cr = data.campak_rubella || {};
-        setVal('cr-suspek',        cr.suspek ?? 0);
-        setVal('cr-conf-campak',   cr.confirmed_campak ?? 0);
-        setVal('cr-conf-rubella',  cr.confirmed_rubella ?? 0);
-        // Discarded: tampilkan rate, dengan jumlah kasus sebagai catatan
-        const crDiscardedRate = cr.discarded_rate;
-        setVal('cr-discarded', crDiscardedRate !== null && crDiscardedRate !== undefined
-            ? crDiscardedRate.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+        setVal('cr-suspek',       cr.suspek ?? 0);
+        setVal('cr-kasus-campak', cr.kasus_campak ?? 0);
+        setVal('cr-kasus-rubella',cr.kasus_rubella ?? 0);
+
+        const discardedRate = cr.discarded_rate;
+        setVal('cr-discarded', discardedRate !== null && discardedRate !== undefined
+            ? discardedRate.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})
             : '–');
         const crNote = document.getElementById('cr-discarded-note');
         if (crNote) {
-            crNote.textContent = crDiscardedRate !== null && crDiscardedRate !== undefined
+            crNote.textContent = discardedRate !== null && discardedRate !== undefined
                 ? 'per 100.000 pddk (' + (cr.discarded ?? 0) + ' kasus)'
                 : 'Data penduduk belum tersedia (' + (cr.discarded ?? 0) + ' kasus)';
         }
 
-        setVal('cr-meninggal',     cr.meninggal ?? 0);
-        setVal('cr-pct-sampel',    (cr.pct_sampel ?? 0) + '%');
-        setVal('cr-pct-lab',       (cr.pct_lab_diterima ?? 0) + '%');
-        setVal('cr-positivity',    (cr.positivity_rate ?? 0) + '%');
+        setVal('cr-kematian',    cr.kematian ?? 0);
+        setVal('cr-kasus-aktif', cr.kasus_aktif ?? 0);
+        setVal('cr-pct-sampel',  (cr.pct_sampel ?? 0) + '%');
+        setVal('cr-pct-lab',     (cr.pct_lab_diterima ?? 0) + '%');
+        setVal('cr-positivity',  (cr.positivity_rate ?? 0) + '%');
 
         const afp = data.afp || {};
         setVal('afp-total',     afp.total ?? 0);
@@ -631,24 +716,44 @@
     }
 
     function renderKinerjaError() {
-        ['cr-suspek','cr-conf-campak','cr-conf-rubella','cr-discarded','cr-meninggal',
+        ['cr-suspek','cr-kasus-campak','cr-kasus-rubella','cr-discarded','cr-kematian','cr-kasus-aktif',
          'cr-pct-sampel','cr-pct-lab','cr-positivity','afp-total','afp-confirmed','afp-npafp',
          'difteri-observasi','difteri-confirmed','pertusis-suspek'].forEach(id => setVal(id, '–'));
-        const crNote = document.getElementById('cr-discarded-note');
-        const afpNote = document.getElementById('afp-npafp-note');
-        if (crNote)  crNote.textContent = '';
-        if (afpNote) afpNote.textContent = '';
+        ['cr-discarded-note','afp-npafp-note'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '';
+        });
     }
 
     // ======= RENDER DEMOGRAFI =======
     function renderDemografi(data) {
         if (!data) return;
 
+        hideSkel('skel-gender');
         hideSkel('skel-kelompok-umur');
+        hideSkel('skel-gejala');
         hideSkel('skel-vaksinasi');
         hideSkel('skel-komplikasi');
 
-        // Kelompok Umur — grouped bar (suspek / confirmed / discarded)
+        // Jenis Kelamin — pie
+        const jk = data.jenis_kelamin || {};
+        destroyChart('gender');
+        charts.gender = new Chart(document.getElementById('chart-gender'), {
+            type: 'pie',
+            data: {
+                labels: ['Laki-laki', 'Perempuan'],
+                datasets: [{
+                    data: [jk.L || 0, jk.P || 0],
+                    backgroundColor: ['#3b82f6', '#ec4899'],
+                }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+            },
+        });
+
+        // Kelompok Umur — grouped bar
         const ku = data.kelompok_umur || [];
         destroyChart('kelompokUmur');
         charts.kelompokUmur = new Chart(document.getElementById('chart-kelompok-umur'), {
@@ -665,6 +770,39 @@
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { position: 'top' } },
                 scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+            },
+        });
+
+        // Gejala — horizontal bar
+        const gejala = data.gejala || {};
+        const gejalaMap = {
+            demam: 'Demam', batuk: 'Batuk', pilek: 'Pilek', sakit_kepala: 'Sakit Kepala',
+            mual: 'Mual', muntah: 'Muntah', diare: 'Diare', ruam: 'Ruam',
+            sesak_napas: 'Sesak Napas', nyeri_otot: 'Nyeri Otot', nyeri_sendi: 'Nyeri Sendi',
+            lemas: 'Lemas', kehilangan_nafsu_makan: 'Tdk Nafsu Makan',
+            mata_merah: 'Mata Merah', pembengkakan_kelenjar: 'Pmbkk Kelenjar',
+            kejang: 'Kejang', penurunan_kesadaran: 'Penur. Kesadaran',
+        };
+        const gejalaKeys = Object.keys(gejalaMap);
+        const gejalaValues = gejalaKeys.map(k => gejala[k] || 0);
+        const gejalaLabels = gejalaKeys.map(k => gejalaMap[k]);
+
+        // Sort descending
+        const gejalaIdx = gejalaKeys.map((_, i) => i).sort((a, b) => gejalaValues[b] - gejalaValues[a]);
+        const sortedLabels = gejalaIdx.map(i => gejalaLabels[i]);
+        const sortedValues = gejalaIdx.map(i => gejalaValues[i]);
+
+        destroyChart('gejala');
+        charts.gejala = new Chart(document.getElementById('chart-gejala'), {
+            type: 'bar',
+            data: {
+                labels: sortedLabels,
+                datasets: [{ label: 'Jumlah Kasus', data: sortedValues, backgroundColor: 'rgba(245,158,11,0.75)' }],
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
             },
         });
 
@@ -688,6 +826,7 @@
 
         // Severity cards
         const sev = data.severity || {};
+        setVal('sev-jumlah-dirawat', sev.jumlah_dirawat ?? 0);
         setVal('sev-rawat-inap', (sev.pct_rawat_inap ?? 0) + '%');
         setVal('sev-meninggal',  sev.meninggal ?? 0);
 
@@ -717,13 +856,33 @@
     function renderTren(data) {
         if (!data) return;
 
+        hideSkel('skel-tahunan');
         hideSkel('skel-epiweek');
         hideSkel('skel-bulanan');
         hideSkel('skel-per-faskes');
         hideSkel('skel-per-kecamatan');
         hideSkel('skel-per-kelurahan');
 
-        // Kurva Epidemi — grouped bar (suspek + confirmed per epiweek)
+        // Tahunan — grouped bar
+        const tah = data.tahunan || [];
+        destroyChart('tahunan');
+        charts.tahunan = new Chart(document.getElementById('chart-tahunan'), {
+            type: 'bar',
+            data: {
+                labels: tah.map(r => r.tahun),
+                datasets: [
+                    { label: 'Total Laporan', data: tah.map(r => r.total),     backgroundColor: 'rgba(59,130,246,0.65)'  },
+                    { label: 'Confirmed',     data: tah.map(r => r.confirmed), backgroundColor: 'rgba(16,185,129,0.85)'  },
+                ],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            },
+        });
+
+        // Kurva Epidemi — grouped bar epiweek
         const epi = data.epiweek || [];
         destroyChart('epiweek');
         charts.epiweek = new Chart(document.getElementById('chart-epiweek'), {
@@ -761,7 +920,6 @@
             },
         });
 
-        // Per Faskes / Kecamatan / Kelurahan — multi-line (flat rows → group by entity)
         destroyChart('perFaskes');
         charts.perFaskes = buildGroupedLineChart('chart-per-faskes', data.per_faskes || [], 'faskes');
 
@@ -772,9 +930,6 @@
         charts.perKelurahan = buildGroupedLineChart('chart-per-kelurahan', data.per_kelurahan || [], 'kelurahan');
     }
 
-    /**
-     * Build a multi-line Chart.js from flat rows like [{bulan, <groupKey>, jumlah}].
-     */
     function buildGroupedLineChart(canvasId, rows, groupKey) {
         const groups = {};
         rows.forEach(r => {
@@ -803,12 +958,13 @@
         });
     }
 
-    // ======= RENDER WILAYAH =======
-    function renderWilayah(data) {
+    // ======= RENDER TEMPAT =======
+    function renderTempat(data) {
         if (!data) return;
 
         const empty4 = '<tr><td colspan="4" class="text-center text-muted py-3">Tidak ada data</td></tr>';
         const empty5 = '<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada data</td></tr>';
+        const empty7 = '<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada data</td></tr>';
 
         // Per Puskesmas
         const tbPusk = document.getElementById('tbody-per-puskesmas');
@@ -817,6 +973,21 @@
             tbPusk.innerHTML = rows.length === 0 ? empty4 : rows.map(r =>
                 `<tr>
                     <td>${esc(r.wilker)}</td>
+                    <td class="text-center">${r.suspek}</td>
+                    <td class="text-center">${r.confirmed}</td>
+                    <td class="text-center${r.meninggal > 0 ? ' text-danger fw-bold' : ''}">${r.meninggal}</td>
+                </tr>`
+            ).join('');
+        }
+
+        // Per Faskes Pelapor
+        const tbFaskes = document.getElementById('tbody-per-faskes-pelapor');
+        if (tbFaskes) {
+            const rows = data.per_faskes_pelapor || [];
+            tbFaskes.innerHTML = rows.length === 0 ? empty5 : rows.map(r =>
+                `<tr>
+                    <td>${esc(r.faskes)}</td>
+                    <td class="text-center">${r.total}</td>
                     <td class="text-center">${r.suspek}</td>
                     <td class="text-center">${r.confirmed}</td>
                     <td class="text-center${r.meninggal > 0 ? ' text-danger fw-bold' : ''}">${r.meninggal}</td>
@@ -853,8 +1024,29 @@
             ).join('');
         }
 
-        // Leaflet map
+        // Per RT
+        const tbRt = document.getElementById('tbody-per-rt');
+        if (tbRt) {
+            const rows = data.per_rt || [];
+            tbRt.innerHTML = rows.length === 0 ? empty7 : rows.map(r =>
+                `<tr>
+                    <td>${esc(r.rt)}</td>
+                    <td>${esc(r.kelurahan)}</td>
+                    <td>${esc(r.kecamatan)}</td>
+                    <td class="text-center">${r.total}</td>
+                    <td class="text-center">${r.suspek}</td>
+                    <td class="text-center">${r.confirmed}</td>
+                    <td class="text-center${r.meninggal > 0 ? ' text-danger fw-bold' : ''}">${r.meninggal}</td>
+                </tr>`
+            ).join('');
+        }
+    }
+
+    // ======= RENDER PETA =======
+    function renderPeta(data) {
+        if (!data) return;
         const peta = data.peta || [];
+
         if (!leafletMap) {
             leafletMap = L.map('map-wilayah').setView([0.1236, 117.4753], 12);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -865,6 +1057,7 @@
         } else {
             markersLayer.clearLayers();
         }
+
         peta.forEach(p => {
             const colorMap = { confirmed: '#ef4444', discarded: '#9ca3af', suspected: '#3b82f6' };
             const color = colorMap[p.status] || '#6b7280';
@@ -882,7 +1075,7 @@
         if (el) el.addEventListener('change', fetchAllTabs);
     });
 
-    // ======= TAB SHOWN: resize charts + invalidate map =======
+    // ======= TAB SHOWN =======
     document.querySelectorAll('[data-toggle="tab"]').forEach(tabEl => {
         tabEl.addEventListener('shown.bs.tab', function () {
             Object.values(charts).forEach(c => { try { c.resize(); } catch(e) {} });
@@ -892,7 +1085,7 @@
 
     // ======= INITIAL LOAD =======
     document.addEventListener('DOMContentLoaded', function () {
-        buildParams(); // sync PDF inputs on load
+        buildParams();
         fetchAllTabs();
     });
 

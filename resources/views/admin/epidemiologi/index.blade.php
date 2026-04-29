@@ -1,5 +1,10 @@
 ﻿@extends('admin::layouts.app')
-@push('styles')<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}"><link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">@endpush
+@push('styles')
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+@endpush
 @push('js')
 <script src="{{ asset('admin/src/plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('admin/src/plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
@@ -16,13 +21,11 @@
 <a href="#main-content" class="sr-only sr-only-focusable skip-link">Langsung ke konten utama</a>
 
 <style>
-    /* ===== Stitch Design System â€” Surveillance Case List ===== */
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-
     :root {
-        --st-primary: #0066cc;
-        --st-primary-dark: #0052a3;
+        /* Brand primary — Kemenkes RI green */
+        --st-primary: oklch(0.48 0.14 145);
+        --st-primary-dark: oklch(0.38 0.13 145);
+        --st-primary-light: oklch(0.96 0.022 145);
         --st-secondary: #047857;
         --st-bg: #f5f7f8;
         --st-surface: #ffffff;
@@ -36,7 +39,7 @@
     }
 
     .epi-page {
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         color: var(--st-text);
     }
 
@@ -59,7 +62,7 @@
         align-items: center;
         justify-content: center;
         width: 48px; height: 48px;
-        background: rgba(0, 102, 204, 0.1);
+        background: var(--st-primary-light);
         border-radius: 12px;
         color: var(--st-primary);
     }
@@ -91,7 +94,7 @@
         padding: 0 18px;
         height: 42px;
         border-radius: var(--st-radius);
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         font-weight: 700;
         font-size: 0.8125rem;
         border: 1.5px solid transparent;
@@ -111,7 +114,7 @@
         background: var(--st-primary-dark);
         border-color: var(--st-primary-dark);
         color: #fff;
-        box-shadow: 0 6px 12px -3px rgba(0, 102, 204, 0.35);
+        box-shadow: 0 6px 12px -3px oklch(0.48 0.14 145 / 0.35);
         transform: translateY(-1px);
     }
     .st-btn-outline-teal {
@@ -151,7 +154,7 @@
         overflow: hidden;
     }
     .st-card__header {
-        background: linear-gradient(135deg, var(--st-primary) 0%, #059669 100%);
+        background: var(--st-primary);
         padding: 14px 24px;
         display: flex;
         align-items: center;
@@ -194,7 +197,7 @@
         border: 1px solid #cbd5e1;
         background: #f8fafc;
         color: #334155;
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         font-size: 0.875rem;
         font-weight: 500;
         transition: border-color 0.2s, box-shadow 0.2s;
@@ -211,7 +214,7 @@
     .filter-group input:focus {
         outline: none;
         border-color: var(--st-primary);
-        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12);
+        box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15);
     }
     .filter-actions {
         display: flex;
@@ -249,7 +252,7 @@
 
     /* -- DataTable Override Styles -- */
     .st-card .dataTables_wrapper {
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
     }
     .st-card .dataTables_wrapper .dataTables_filter input {
         height: 38px;
@@ -258,13 +261,13 @@
         border: 1px solid #cbd5e1;
         background: #fff;
         font-size: 0.8125rem;
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         min-width: 250px;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
     .st-card .dataTables_wrapper .dataTables_filter input:focus {
         border-color: var(--st-primary);
-        box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12);
+        box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15);
         outline: none;
     }
     .st-card .dataTables_wrapper .dataTables_length select {
@@ -272,7 +275,7 @@
         padding: 0 28px 0 10px;
         border-radius: 8px;
         border: 1px solid #cbd5e1;
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         font-weight: 600;
         font-size: 0.8125rem;
     }
@@ -303,7 +306,7 @@
         background: rgba(248, 250, 252, 0.5);
     }
     .st-card table.dataTable tbody tr:hover {
-        background: rgba(219, 234, 254, 0.3) !important;
+        background: oklch(0.96 0.022 145 / 0.5) !important;
     }
 
     /* -- Badge overrides for DataTable content -- */
@@ -318,7 +321,7 @@
         border-radius: 9999px;
         font-size: 0.6875rem;
         font-weight: 700;
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         letter-spacing: 0.01em;
         border: 1px solid transparent;
     }
@@ -398,7 +401,7 @@
         color: var(--st-text-muted) !important;
         font-size: 0.8125rem;
         font-weight: 600;
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         margin: 0 2px;
         transition: all 0.15s ease;
         padding: 0 8px !important;
@@ -421,7 +424,7 @@
         font-size: 0.8125rem;
         font-weight: 500;
         color: var(--st-text-muted);
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         padding: 16px 24px;
     }
     .st-card .dataTables_wrapper .dataTables_paginate {
@@ -442,13 +445,13 @@
         padding: 18px 24px;
     }
     .st-modal .modal-title {
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         font-weight: 700;
         font-size: 1.05rem;
     }
     .st-modal .modal-body {
         padding: 24px;
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
     }
     .st-modal .modal-body p {
         font-size: 0.9375rem;
@@ -460,7 +463,7 @@
     }
     .st-modal .modal-footer .btn {
         border-radius: var(--st-radius);
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
         font-weight: 700;
         font-size: 0.8125rem;
         padding: 8px 20px;
@@ -573,9 +576,10 @@
                                 </button>
                             </form>
                             <button class="btn btn-xs btn-outline-danger btn-hapus-log ml-1"
+                                aria-label="Hapus log import"
                                 data-id="{{ $log->id }}"
                                 data-url="{{ route('admin.epidemiologi.destroyImportLog', $log->id) }}">
-                                <span class="material-symbols-outlined" style="font-size:.9rem;vertical-align:middle;">delete</span>
+                                <span class="material-symbols-outlined" style="font-size:.9rem;vertical-align:middle;" aria-hidden="true">delete</span>
                             </button>
                             @endif
                         </td>
@@ -712,7 +716,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn st-btn st-btn-outline-secondary" data-dismiss="modal">Batal</button>
-                <button type="button" class="btn" id="confirmDelete" style="background: #dc2626; color: #fff; border-radius: var(--st-radius); font-family: 'Manrope', sans-serif; font-weight: 700;">
+                <button type="button" class="btn" id="confirmDelete" style="background: #dc2626; color: #fff; border-radius: var(--st-radius); font-family: 'Barlow', sans-serif; font-weight: 700;">
                     <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">delete</span>
                     Hapus
                 </button>
@@ -736,7 +740,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Detail Baris Bermasalah</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
             </div>
             <div class="modal-body">
                 <ul id="error-list" class="small mb-0"></ul>
@@ -823,8 +827,8 @@ $(document).ready(function() {
             url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json'
         },
         drawCallback: function() {
-            // Re-apply Manrope font to dynamically loaded content
-            $('#casesTable td').css('font-family', "'Manrope', sans-serif");
+            // Re-apply Barlow font to dynamically loaded content
+            $('#casesTable td').css('font-family', "'Barlow', sans-serif");
         }
     });
 

@@ -28,8 +28,8 @@
         width: 100%;
     }
     .filter-active {
-        border: 2px solid var(--primary-blue) !important;
-        box-shadow: 0 0 0 0.15rem rgba(0, 102, 204, 0.25);
+        border: 2px solid var(--primary) !important;
+        box-shadow: 0 0 0 0.15rem oklch(0.48 0.14 145 / 0.25);
     }
     .dashboard-loading {
         position: relative;
@@ -45,7 +45,7 @@
         height: 32px;
         margin: -16px 0 0 -16px;
         border: 3px solid #e5e7eb;
-        border-top-color: var(--primary-blue);
+        border-top-color: var(--primary);
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
         z-index: 10;
@@ -56,7 +56,7 @@
 <div class="container-fluid" id="main-content" role="main" aria-label="Dashboard Analytics Surveillance">
     <!-- Header Section -->
     <header class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0" style="color: var(--primary-blue-dark);">
+        <h2 class="mb-0" style="color: var(--primary-dark);">
             <i class="fa fa-chart-line mr-2" aria-hidden="true"></i>
             Dashboard Analytics Surveillance
         </h2>

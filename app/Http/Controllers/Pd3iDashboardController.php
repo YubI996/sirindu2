@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\SurveillanceExport;
 use App\Models\JenisKasusEpidemiologi;
 use App\Models\Kelurahan;
 use App\Models\SurveillanceCase;
@@ -11,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Pd3iDashboardController extends Controller
 {
@@ -122,6 +124,27 @@ class Pd3iDashboardController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download("pd3i-dashboard-{$filters['tahun']}.pdf");
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $filters = $this->parsePd3iFilters($request);
+
+        $namaFile = 'surveilans-pd3i-' . $filters['tahun'];
+        if ($filters['wilker']) {
+            $namaFile .= '-' . str_replace(' ', '_', $filters['wilker']);
+        }
+        $namaFile .= '.xlsx';
+
+        return Excel::download(
+            new SurveillanceExport(
+                $filters['tahun'],
+                $filters['jenis_kasus_id'],
+                $filters['wilker'],
+                $filters['kelurahan_id']
+            ),
+            $namaFile
+        );
     }
 
     // ==================== HELPERS ====================

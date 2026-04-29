@@ -1,5 +1,8 @@
 @extends('admin::layouts.app')
-@push('styles')<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}"><link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">@endpush
+@push('styles')
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">
+@endpush
 @push('js')
 <script src="{{ asset('admin/src/plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('admin/src/plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
@@ -13,12 +16,10 @@
 
 @section('content')
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-
     :root {
-        --st-primary: #0066cc;
-        --st-primary-dark: #0052a3;
+        --st-primary: oklch(0.48 0.14 145);
+        --st-primary-dark: oklch(0.38 0.13 145);
+        --st-primary-light: oklch(0.96 0.022 145);
         --st-bg: #f5f7f8;
         --st-surface: #ffffff;
         --st-text: #0f172a;
@@ -30,7 +31,7 @@
         --st-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
     }
 
-    .ex-page { font-family: 'Manrope', sans-serif; color: var(--st-text); }
+    .ex-page { font-family: 'Barlow', sans-serif; color: var(--st-text); }
 
     .ex-header {
         display: flex; flex-wrap: wrap; justify-content: space-between;
@@ -39,7 +40,7 @@
     .ex-header__left { display: flex; align-items: center; gap: 14px; }
     .ex-header__icon {
         display: flex; align-items: center; justify-content: center;
-        width: 48px; height: 48px; background: rgba(0, 102, 204, 0.1);
+        width: 48px; height: 48px; background: var(--st-primary-light);
         border-radius: 12px; color: var(--st-primary);
     }
     .ex-header__icon .material-symbols-outlined { font-size: 28px; }
@@ -51,7 +52,7 @@
 
     .st-btn {
         display: inline-flex; align-items: center; gap: 8px; padding: 0 18px;
-        height: 42px; border-radius: var(--st-radius); font-family: 'Manrope', sans-serif;
+        height: 42px; border-radius: var(--st-radius); font-family: 'Barlow', sans-serif;
         font-weight: 700; font-size: 0.8125rem; border: 1.5px solid transparent;
         cursor: pointer; transition: all 0.2s ease; text-decoration: none !important; white-space: nowrap;
     }
@@ -80,18 +81,18 @@
     .st-form-group label { font-size: 0.8125rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block; }
     .st-form-group select, .st-form-group input {
         width: 100%; padding: 10px 14px; border-radius: var(--st-radius); border: 1px solid #cbd5e1;
-        background: #f8fafc; color: #334155; font-family: 'Manrope', sans-serif; font-size: 0.875rem; font-weight: 500;
+        background: #f8fafc; color: #334155; font-family: 'Barlow', sans-serif; font-size: 0.875rem; font-weight: 500;
     }
     .st-form-group select:focus, .st-form-group input:focus {
-        outline: none; border-color: var(--st-primary); box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12);
+        outline: none; border-color: var(--st-primary); box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15);
     }
 
     .filter-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-height: 32px; }
     .filter-badge {
         display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
-        background: rgba(0, 102, 204, 0.08); border: 1px solid rgba(0, 102, 204, 0.2);
+        background: var(--st-primary-light); border: 1px solid oklch(0.48 0.14 145 / 0.25);
         border-radius: 9999px; font-size: 0.75rem; font-weight: 600; color: var(--st-primary);
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
     }
     .filter-badge .badge-label { color: var(--st-text-muted); font-weight: 500; }
 
@@ -99,30 +100,30 @@
         display: flex; align-items: center; gap: 8px; padding: 12px 24px;
         background: #f8fafc; border-bottom: 1px solid var(--st-border-light);
         font-size: 0.8125rem; font-weight: 600; color: var(--st-text-muted);
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
     }
     .record-info .material-symbols-outlined { font-size: 18px; }
     .record-count { color: var(--st-primary); font-weight: 700; }
 
     .empty-state {
         text-align: center; padding: 48px 24px; color: var(--st-text-muted);
-        font-family: 'Manrope', sans-serif;
+        font-family: 'Barlow', sans-serif;
     }
     .empty-state .material-symbols-outlined { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
     .empty-state p { font-size: 0.875rem; font-weight: 500; margin: 0; }
 
-    .st-card .dataTables_wrapper { font-family: 'Manrope', sans-serif; }
+    .st-card .dataTables_wrapper { font-family: 'Barlow', sans-serif; }
     .st-card .dataTables_wrapper .dataTables_filter input {
         height: 38px; padding: 0 14px; border-radius: var(--st-radius);
         border: 1px solid #cbd5e1; background: #fff; font-size: 0.8125rem;
-        font-family: 'Manrope', sans-serif; min-width: 250px;
+        font-family: 'Barlow', sans-serif; min-width: 250px;
     }
     .st-card .dataTables_wrapper .dataTables_filter input:focus {
-        border-color: var(--st-primary); box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12); outline: none;
+        border-color: var(--st-primary); box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15); outline: none;
     }
     .st-card .dataTables_wrapper .dataTables_length select {
         height: 32px; padding: 0 28px 0 10px; border-radius: 8px;
-        border: 1px solid #cbd5e1; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.8125rem;
+        border: 1px solid #cbd5e1; font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 0.8125rem;
     }
     .st-card table.dataTable { border-collapse: collapse !important; width: 100% !important; }
     .st-card table.dataTable thead th {
@@ -137,7 +138,7 @@
     .st-card table.dataTable tbody tr:nth-child(even) { background: rgba(248, 250, 252, 0.5); }
     .st-card table.dataTable tbody tr:hover { background: rgba(219, 234, 254, 0.3) !important; }
 
-    .st-card .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; font-family: 'Manrope', sans-serif; border: 1px solid transparent; }
+    .st-card .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; font-family: 'Barlow', sans-serif; border: 1px solid transparent; }
     .st-card .badge.bg-success { background: #ecfdf5 !important; color: #047857 !important; border-color: #a7f3d0; }
     .st-card .badge.bg-warning { background: #fffbeb !important; color: #b45309 !important; border-color: #fde68a; }
     .st-card .badge.bg-danger { background: #fef2f2 !important; color: #dc2626 !important; border-color: #fecaca; }
@@ -146,12 +147,12 @@
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button {
         min-width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
         border-radius: 8px !important; border: 1px solid var(--st-border) !important; background: #fff !important;
-        color: var(--st-text-muted) !important; font-size: 0.8125rem; font-weight: 600; font-family: 'Manrope', sans-serif; margin: 0 2px; padding: 0 8px !important;
+        color: var(--st-text-muted) !important; font-size: 0.8125rem; font-weight: 600; font-family: 'Barlow', sans-serif; margin: 0 2px; padding: 0 8px !important;
     }
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #f1f5f9 !important; color: var(--st-text) !important; }
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: var(--st-primary) !important; color: #fff !important; border-color: var(--st-primary) !important; }
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button.disabled { opacity: 0.4; }
-    .st-card .dataTables_wrapper .dataTables_info { font-size: 0.8125rem; font-weight: 500; color: var(--st-text-muted); font-family: 'Manrope', sans-serif; padding: 16px 24px; }
+    .st-card .dataTables_wrapper .dataTables_info { font-size: 0.8125rem; font-weight: 500; color: var(--st-text-muted); font-family: 'Barlow', sans-serif; padding: 16px 24px; }
     .st-card .dataTables_wrapper .dataTables_paginate { padding: 16px 24px; }
 
     @media (max-width: 768px) {
@@ -294,7 +295,7 @@
                 <span class="material-symbols-outlined">preview</span>
                 Preview Data
             </h3>
-            <span id="recordCount" style="color: rgba(255,255,255,0.85); font-size: 0.8125rem; font-weight: 600; font-family: 'Manrope', sans-serif;"></span>
+            <span id="recordCount" style="color: rgba(255,255,255,0.85); font-size: 0.8125rem; font-weight: 600; font-family: 'Barlow', sans-serif;"></span>
         </div>
         <div class="table-responsive" style="padding: 0;">
             <table id="previewTable" class="table" style="width:100%; margin-bottom: 0;">

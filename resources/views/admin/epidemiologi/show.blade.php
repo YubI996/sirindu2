@@ -16,14 +16,14 @@
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
+        background: var(--primary);
         display: flex;
         align-items: center;
         justify-content: center;
         color: #ffffff;
         font-size: 32px;
         font-weight: bold;
-        box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+        box-shadow: 0 4px 15px oklch(0.48 0.14 145 / 0.30);
     }
     .symptom-item {
         padding: 0.5rem 0.75rem;
@@ -514,7 +514,7 @@
                     <div class="row mb-3" role="list" aria-label="Statistik kontak">
                         <div class="col-md-4" role="listitem">
                             <div class="card contact-stat-card bg-light text-center p-3">
-                                <h3 class="h2 mb-1" style="color: var(--primary-blue);">{{ $case->jumlah_kontak_serumah }}</h3>
+                                <h3 class="h2 mb-1" style="color: var(--primary);">{{ $case->jumlah_kontak_serumah }}</h3>
                                 <p class="text-accessible-muted mb-0 small">Kontak Serumah</p>
                             </div>
                         </div>

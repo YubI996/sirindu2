@@ -101,8 +101,11 @@ class AgregatImunisasiExport implements FromCollection, ShouldAutoSize, WithTitl
                 $grouped[$kelId][$vaksinId] = ['L' => 0, 'P' => 0];
             }
 
-            // jk: 'L' or 1 = male, 'P' or 2 = female
-            if ($gender === 'L' || $gender === 1 || $gender === '1') {
+            // jk: 1 = male, 2 = female; skip records with unknown gender
+            if ($gender === null) {
+                continue;
+            }
+            if ($gender === 1 || $gender === '1') {
                 $grouped[$kelId][$vaksinId]['L']++;
             } else {
                 $grouped[$kelId][$vaksinId]['P']++;

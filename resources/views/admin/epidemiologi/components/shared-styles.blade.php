@@ -1,25 +1,28 @@
-{{-- WCAG AA Compliant Styles - Blue & Green Theme for Epidemiologi Module --}}
+{{-- Styles — Epidemiologi Module — Kemenkes Green Design System --}}
 {{-- All colors tested for 4.5:1 contrast ratio minimum on white (#fff) --}}
 
 :root {
-    /* Primary Blues - WCAG AA Compliant */
-    --primary-blue: #0066cc;          /* 5.5:1 contrast */
-    --primary-blue-dark: #004d99;     /* 7.8:1 contrast */
-    --primary-blue-light: #e6f2ff;
+    /* === Brand Primary — Kemenkes RI Green === */
+    --primary: oklch(0.48 0.14 145);          /* 4.6:1 on white — UI chrome, buttons */
+    --primary-dark: oklch(0.38 0.13 145);     /* 7.2:1 on white — hover, dark text */
+    --primary-light: oklch(0.96 0.022 145);   /* light tint for backgrounds */
 
-    /* Greens - WCAG AA Compliant */
-    --success-green: #047857;         /* 5.9:1 contrast */
-    --success-green-dark: #065f46;    /* 7.5:1 contrast */
+    /* Blue kept for link color only (universal UX convention) */
+    --primary-blue: #0066cc;          /* 5.5:1 — links only */
+    --primary-blue-dark: #004d99;     /* 7.8:1 — link hover */
+    --primary-blue-light: #e6f2ff;    /* section-A bg tint */
+
+    /* Status Colors — WCAG AA Compliant */
+    --success-green: #047857;         /* 5.9:1 */
+    --success-green-dark: #065f46;    /* 7.5:1 */
     --success-green-light: #d1fae5;
+    --info-teal: #0891b2;             /* 4.5:1 */
+    --warning-amber: #b45309;         /* 5.2:1 */
+    --danger-rose: #be123c;           /* 5.6:1 */
 
-    /* Secondary Colors - WCAG AA Compliant */
-    --info-teal: #0891b2;             /* 4.5:1 contrast */
-    --warning-amber: #b45309;         /* 5.2:1 contrast */
-    --danger-rose: #be123c;           /* 5.6:1 contrast */
-
-    /* Neutral - WCAG AA Compliant */
-    --text-muted: #4b5563;            /* 7.5:1 contrast */
-    --text-secondary: #6b7280;        /* 5.0:1 contrast */
+    /* Neutral */
+    --text-muted: #4b5563;            /* 7.5:1 */
+    --text-secondary: #6b7280;        /* 5.0:1 */
 }
 
 /* Skip Link */
@@ -27,7 +30,7 @@
     position: absolute;
     top: -40px;
     left: 0;
-    background: var(--primary-blue-dark);
+    background: var(--primary-dark);
     color: #fff;
     padding: 8px 16px;
     z-index: 9999;
@@ -45,9 +48,9 @@ input:focus,
 select:focus,
 textarea:focus,
 [tabindex]:focus {
-    outline: 3px solid var(--primary-blue) !important;
+    outline: 3px solid var(--primary) !important;
     outline-offset: 2px !important;
-    box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.25) !important;
+    box-shadow: 0 0 0 4px oklch(0.48 0.14 145 / 0.25) !important;
 }
 
 /* High Contrast Text - WCAG 1.4.3 */
@@ -87,7 +90,7 @@ textarea:focus,
     left: 0;
     width: 5px;
     height: 100%;
-    background: linear-gradient(180deg, var(--primary-blue) 0%, var(--success-green) 100%);
+    background: var(--primary);
 }
 
 .stat-card.status-success::before {
@@ -112,7 +115,7 @@ textarea:focus,
 }
 
 .info-card .card-header {
-    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
+    background: var(--primary);
     color: #ffffff;
     border-radius: 0 !important;
     font-weight: 600;
@@ -158,10 +161,10 @@ textarea:focus,
     border-radius: 6px;
 }
 
-/* Table with Blue-Green Theme */
+/* Table with Kemenkes Green Theme */
 .table th {
     font-weight: 700;
-    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--success-green) 100%);
+    background: var(--primary);
     color: #ffffff;
 }
 
@@ -181,14 +184,14 @@ textarea:focus,
 
 /* Button Styles */
 .btn-outline-primary {
-    color: var(--primary-blue);
-    border-color: var(--primary-blue);
+    color: var(--primary);
+    border-color: var(--primary);
 }
 
 .btn-outline-primary:hover,
 .btn-outline-primary:focus {
-    background-color: var(--primary-blue);
-    border-color: var(--primary-blue);
+    background-color: var(--primary);
+    border-color: var(--primary);
     color: #ffffff;
 }
 
@@ -217,16 +220,18 @@ textarea:focus,
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-blue) 0%, #0077dd 100%);
-    border-color: var(--primary-blue);
+    background: var(--primary);
+    border-color: var(--primary);
 }
 
-.btn-primary:hover {
-    background: linear-gradient(135deg, var(--primary-blue-dark) 0%, var(--primary-blue) 100%);
+.btn-primary:hover,
+.btn-primary:focus {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, var(--danger-rose) 0%, #e11d48 100%);
+    background: var(--danger-rose);
     border-color: var(--danger-rose);
 }
 
@@ -290,8 +295,8 @@ a:not(.btn):hover {
 
 .form-control:focus {
     background-color: #fff;
-    border-color: var(--primary-blue);
-    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15) !important;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15) !important;
     outline: none !important;
 }
 
@@ -348,16 +353,16 @@ select.form-control {
     width: 100%;
     text-align: left;
     padding: 0.85rem 1.25rem;
-    color: var(--primary-blue-dark);
+    color: var(--primary-dark);
 }
 
 .accordion .card-header .btn-link:not(.collapsed):hover {
     text-decoration: none;
-    background-color: #f0f7ff;
+    background-color: var(--primary-light);
 }
 
 .accordion .card-header .btn-link i:first-child {
-    color: var(--primary-blue);
+    color: var(--primary);
     margin-right: 0.5rem;
     width: 20px;
     text-align: center;
@@ -435,14 +440,14 @@ select.form-control {
 .section-subtitle {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--primary-blue-dark);
-    border-bottom: 2px solid var(--primary-blue-light);
+    color: var(--primary-dark);
+    border-bottom: 2px solid var(--primary-light);
     padding-bottom: 0.5rem;
     margin-bottom: 1rem;
 }
 
 .section-subtitle i {
-    color: var(--primary-blue);
+    color: var(--primary);
     margin-right: 0.35rem;
 }
 
@@ -484,13 +489,13 @@ select.form-control {
 }
 
 .check-card:hover {
-    background: var(--primary-blue-light);
-    border-color: var(--primary-blue);
+    background: var(--primary-light);
+    border-color: var(--primary);
 }
 
 .check-card.checked {
-    background: var(--primary-blue-light);
-    border-color: var(--primary-blue);
+    background: var(--primary-light);
+    border-color: var(--primary);
 }
 
 .check-card input[type="checkbox"] {
@@ -507,7 +512,7 @@ select.form-control {
 
 .check-card .check-icon {
     font-size: 1rem;
-    color: var(--primary-blue);
+    color: var(--primary);
     width: 20px;
     text-align: center;
     flex-shrink: 0;
@@ -553,8 +558,10 @@ select.form-control {
    RESPONSIVE — MOBILE FIRST
    ============================================= */
 @media (max-width: 768px) {
-    .form-control {
-        font-size: 1rem; /* prevent iOS zoom */
+    .form-control,
+    .form-control-sm {
+        font-size: 1rem !important; /* prevent iOS zoom */
+        min-height: 44px !important; /* WCAG 2.5.5 touch target */
     }
 
     .accordion .card-body {
