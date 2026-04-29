@@ -15,7 +15,11 @@ Peta
 @section('content')
 <style>
     :root {
-        --primary-blue: #0066cc;
+        /* Brand primary — Kemenkes RI green */
+        --primary: oklch(0.48 0.14 145);
+        --primary-dark: oklch(0.38 0.13 145);
+        --primary-light: oklch(0.96 0.022 145);
+        /* Status colors */
         --success-green: #047857;
         --warning-amber: #b45309;
         --danger-rose: #be123c;
@@ -38,7 +42,7 @@ Peta
     }
 
     .stat-mini {
-        background: linear-gradient(135deg, var(--primary-blue) 0%, var(--info-teal) 100%);
+        background: var(--primary);
         color: #fff;
         border-radius: 10px;
         padding: 1rem;
@@ -90,9 +94,9 @@ Peta
     }
 
     .layer-toggle .btn.active {
-        background: var(--primary-blue);
+        background: var(--primary);
         color: #fff;
-        border-color: var(--primary-blue);
+        border-color: var(--primary);
     }
 
     .info-panel {
@@ -113,7 +117,7 @@ Peta
 
     .info-panel h5 {
         margin: 0 0 0.5rem 0;
-        color: var(--primary-blue);
+        color: var(--primary);
         font-weight: 600;
         font-size: 0.95rem;
     }
@@ -134,7 +138,7 @@ Peta
 
     .popup-content h6 {
         margin: 0 0 0.5rem 0;
-        color: var(--primary-blue);
+        color: var(--primary);
         font-weight: 600;
     }
 
@@ -146,7 +150,7 @@ Peta
     }
 
     .badge-count {
-        background: var(--primary-blue);
+        background: var(--primary);
         color: #fff;
         padding: 0.2rem 0.5rem;
         border-radius: 10px;

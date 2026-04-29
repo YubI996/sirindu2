@@ -17,9 +17,15 @@ Proyeksi
 <a href="#main-content" class="sr-only sr-only-focusable skip-link">Langsung ke konten utama</a>
 <style>
     :root {
+        /* Brand primary — Kemenkes RI green */
+        --primary: oklch(0.48 0.14 145);
+        --primary-dark: oklch(0.38 0.13 145);
+        --primary-light: oklch(0.96 0.022 145);
+        /* Keep blue for links only */
         --primary-blue: #0066cc;
         --primary-blue-dark: #004d99;
         --primary-blue-light: #e6f2ff;
+        /* Status colors */
         --success-green: #047857;
         --success-green-dark: #065f46;
         --success-green-light: #d1fae5;
@@ -35,7 +41,7 @@ Proyeksi
         position: absolute;
         top: -40px;
         left: 0;
-        background: var(--primary-blue-dark);
+        background: var(--primary-dark);
         color: #fff;
         padding: 8px 16px;
         z-index: 9999;
@@ -53,9 +59,9 @@ Proyeksi
     select:focus,
     textarea:focus,
     [tabindex]:focus {
-        outline: 3px solid var(--primary-blue) !important;
+        outline: 3px solid var(--primary) !important;
         outline-offset: 2px !important;
-        box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.25) !important;
+        box-shadow: 0 0 0 4px oklch(0.48 0.14 145 / 0.25) !important;
     }
 
     .text-accessible-muted {
@@ -223,8 +229,8 @@ Proyeksi
         transition: all 0.2s;
     }
 
-    .filter-btn:hover { border-color: var(--primary-blue); color: var(--primary-blue); }
-    .filter-btn.active { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
+    .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
     .section-title {
         font-size: 1.25rem;
@@ -235,7 +241,7 @@ Proyeksi
         align-items: center;
     }
 
-    .section-title i { margin-right: 0.5rem; color: var(--primary-blue); }
+    .section-title i { margin-right: 0.5rem; color: var(--primary); }
 
     .empty-state {
         text-align: center;
@@ -296,9 +302,9 @@ Proyeksi
     }
 
     .page-btn:hover:not(:disabled) {
-        background: var(--primary-blue);
+        background: var(--primary);
         color: #fff;
-        border-color: var(--primary-blue);
+        border-color: var(--primary);
     }
 
     .page-btn:disabled {
@@ -307,9 +313,9 @@ Proyeksi
     }
 
     .page-btn.active {
-        background: var(--primary-blue);
+        background: var(--primary);
         color: #fff;
-        border-color: var(--primary-blue);
+        border-color: var(--primary);
     }
 
     .per-page-select {
@@ -418,18 +424,18 @@ Proyeksi
     }
 
     .tab-btn:hover {
-        color: var(--primary-blue);
+        color: var(--primary);
     }
 
     .tab-btn.active {
-        color: var(--primary-blue);
-        border-bottom-color: var(--primary-blue);
+        color: var(--primary);
+        border-bottom-color: var(--primary);
     }
 
     .badge-light {
-        background: var(--primary-blue-light);
-        color: var(--primary-blue-dark);
-        border: 1px solid rgba(0, 77, 153, 0.15);
+        background: oklch(0.96 0.022 145);
+        color: var(--primary-dark);
+        border: 1px solid oklch(0.48 0.14 145 / 0.20);
     }
 
     .badge-secondary {
@@ -840,35 +846,35 @@ Proyeksi
         <div class="child-card-body">
             <div class="child-info">
                 <div class="child-info-item">
-                    <label>Posyandu</label>
+                    <strong>Posyandu</strong>
                     <span>{{ $child['posyandu'] }}</span>
                 </div>
                 <div class="child-info-item">
-                    <label>Kelurahan</label>
+                    <strong>Kelurahan</strong>
                     <span>{{ $child['kelurahan'] }}</span>
                 </div>
                 <div class="child-info-item">
-                    <label>Kecamatan</label>
+                    <strong>Kecamatan</strong>
                     <span>{{ $child['kecamatan'] }}</span>
                 </div>
                 <div class="child-info-item">
-                    <label>Kunjungan Terakhir</label>
+                    <strong>Kunjungan Terakhir</strong>
                     <span>{{ $child['last_visit'] ? \Carbon\Carbon::parse($child['last_visit'])->format('d M Y') : 'Belum pernah' }}</span>
                 </div>
                 @if(isset($child['bb']))
                 <div class="child-info-item">
-                    <label>Berat Badan</label>
+                    <strong>Berat Badan</strong>
                     <span>{{ $child['bb'] }} kg</span>
                 </div>
                 @endif
                 @if(isset($child['tb']))
                 <div class="child-info-item">
-                    <label>Tinggi Badan</label>
+                    <strong>Tinggi Badan</strong>
                     <span>{{ $child['tb'] }} cm</span>
                 </div>
                 @endif
                 <div class="child-info-item">
-                    <label>Imunisasi</label>
+                    <strong>Imunisasi</strong>
                     <span>{{ $child['imunisasi_lengkap'] }}/11 lengkap</span>
                 </div>
             </div>

@@ -15,8 +15,11 @@ Analytics
 @section('content')
 <style>
     :root {
-        --primary-blue: #0066cc;
-        --primary-blue-dark: #004d99;
+        /* Brand primary — Kemenkes RI green */
+        --primary: oklch(0.48 0.14 145);
+        --primary-dark: oklch(0.38 0.13 145);
+        --primary-light: oklch(0.96 0.022 145);
+        /* Status colors */
         --success-green: #047857;
         --warning-amber: #b45309;
         --danger-rose: #be123c;
@@ -33,7 +36,7 @@ Analytics
 
     .stat-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 102, 204, 0.15);
+        box-shadow: 0 8px 25px oklch(0.48 0.14 145 / 0.18);
     }
 
     .stat-card .stat-icon {
@@ -46,10 +49,10 @@ Analytics
         font-size: 24px;
     }
 
-    .stat-card.primary .stat-icon { background: linear-gradient(135deg, #0066cc 0%, #0891b2 100%); color: #fff; }
-    .stat-card.success .stat-icon { background: linear-gradient(135deg, #047857 0%, #10b981 100%); color: #fff; }
-    .stat-card.warning .stat-icon { background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%); color: #fff; }
-    .stat-card.danger .stat-icon { background: linear-gradient(135deg, #be123c 0%, #f43f5e 100%); color: #fff; }
+    .stat-card.primary .stat-icon { background: var(--primary); color: #fff; }
+    .stat-card.success .stat-icon { background: var(--success-green); color: #fff; }
+    .stat-card.warning .stat-icon { background: var(--warning-amber); color: #fff; }
+    .stat-card.danger .stat-icon  { background: var(--danger-rose); color: #fff; }
 
     .stat-value { font-size: 2rem; font-weight: 700; color: #1f2937; }
     .stat-label { color: #6b7280; font-size: 0.875rem; }
@@ -136,14 +139,14 @@ Analytics
         color: #1f2937;
         margin: 2rem 0 1rem 0;
         padding-bottom: 0.5rem;
-        border-bottom: 3px solid var(--primary-blue);
+        border-bottom: 3px solid var(--primary);
         display: inline-block;
     }
 </style>
 
 {{-- Filter --}}
 <div class="card mb-4" style="border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, var(--primary-blue) 0%, #0891b2 100%); border-radius: 12px 12px 0 0; border: none;">
+    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: var(--primary); border-radius: 12px 12px 0 0; border: none;">
         <h5 class="mb-0"><i class="fa fa-filter mr-2"></i> Filter Data Imunisasi</h5>
         <span id="filterLoading" style="display:none;"><i class="fa fa-spinner fa-spin"></i> Memuat...</span>
     </div>

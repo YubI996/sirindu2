@@ -1,5 +1,10 @@
 @extends('admin::layouts.app')
-@push('styles')<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}"><link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">@endpush
+@push('styles')
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+@endpush
 @push('js')
 <script src="{{ asset('admin/src/plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('admin/src/plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
@@ -13,12 +18,10 @@
 
 @section('content')
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-
     :root {
-        --st-primary: #0066cc;
-        --st-primary-dark: #0052a3;
+        --st-primary: oklch(0.48 0.14 145);
+        --st-primary-dark: oklch(0.38 0.13 145);
+        --st-primary-light: oklch(0.96 0.022 145);
         --st-bg: #f5f7f8;
         --st-surface: #ffffff;
         --st-text: #0f172a;
@@ -30,7 +33,7 @@
         --st-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
     }
 
-    .md-page { font-family: 'Manrope', sans-serif; color: var(--st-text); }
+    .md-page { font-family: 'Barlow', sans-serif; color: var(--st-text); }
 
     .md-header {
         display: flex; flex-wrap: wrap; justify-content: space-between;
@@ -51,7 +54,7 @@
 
     .st-btn {
         display: inline-flex; align-items: center; gap: 8px; padding: 0 18px;
-        height: 42px; border-radius: var(--st-radius); font-family: 'Manrope', sans-serif;
+        height: 42px; border-radius: var(--st-radius); font-family: 'Barlow', sans-serif;
         font-weight: 700; font-size: 0.8125rem; border: 1.5px solid transparent;
         cursor: pointer; transition: all 0.2s ease; text-decoration: none !important; white-space: nowrap;
     }
@@ -73,18 +76,18 @@
     }
     .st-card__header-title .material-symbols-outlined { font-size: 22px; }
 
-    .st-card .dataTables_wrapper { font-family: 'Manrope', sans-serif; }
+    .st-card .dataTables_wrapper { font-family: 'Barlow', sans-serif; }
     .st-card .dataTables_wrapper .dataTables_filter input {
         height: 38px; padding: 0 14px; border-radius: var(--st-radius);
         border: 1px solid #cbd5e1; background: #fff; font-size: 0.8125rem;
-        font-family: 'Manrope', sans-serif; min-width: 250px;
+        font-family: 'Barlow', sans-serif; min-width: 250px;
     }
     .st-card .dataTables_wrapper .dataTables_filter input:focus {
-        border-color: var(--st-primary); box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12); outline: none;
+        border-color: var(--st-primary); box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15); outline: none;
     }
     .st-card .dataTables_wrapper .dataTables_length select {
         height: 32px; padding: 0 28px 0 10px; border-radius: 8px;
-        border: 1px solid #cbd5e1; font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 0.8125rem;
+        border: 1px solid #cbd5e1; font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 0.8125rem;
     }
     .st-card table.dataTable { border-collapse: collapse !important; width: 100% !important; }
     .st-card table.dataTable thead th {
@@ -99,7 +102,7 @@
     .st-card table.dataTable tbody tr:nth-child(even) { background: rgba(248, 250, 252, 0.5); }
     .st-card table.dataTable tbody tr:hover { background: rgba(219, 234, 254, 0.3) !important; }
 
-    .st-card .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; font-family: 'Manrope', sans-serif; border: 1px solid transparent; }
+    .st-card .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; font-family: 'Barlow', sans-serif; border: 1px solid transparent; }
     .st-card .badge.bg-success { background: #ecfdf5 !important; color: #047857 !important; border-color: #a7f3d0; }
     .st-card .badge.bg-secondary { background: #f1f5f9 !important; color: #475569 !important; border-color: #e2e8f0; }
     .st-card .badge.bg-danger { background: #fef2f2 !important; color: #b91c1c !important; border-color: #fecaca; }
@@ -124,30 +127,30 @@
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button {
         min-width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
         border-radius: 8px !important; border: 1px solid var(--st-border) !important; background: #fff !important;
-        color: var(--st-text-muted) !important; font-size: 0.8125rem; font-weight: 600; font-family: 'Manrope', sans-serif; margin: 0 2px; padding: 0 8px !important;
+        color: var(--st-text-muted) !important; font-size: 0.8125rem; font-weight: 600; font-family: 'Barlow', sans-serif; margin: 0 2px; padding: 0 8px !important;
     }
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #f1f5f9 !important; color: var(--st-text) !important; }
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: var(--st-primary) !important; color: #fff !important; border-color: var(--st-primary) !important; }
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button.disabled { opacity: 0.4; }
-    .st-card .dataTables_wrapper .dataTables_info { font-size: 0.8125rem; font-weight: 500; color: var(--st-text-muted); font-family: 'Manrope', sans-serif; padding: 16px 24px; }
+    .st-card .dataTables_wrapper .dataTables_info { font-size: 0.8125rem; font-weight: 500; color: var(--st-text-muted); font-family: 'Barlow', sans-serif; padding: 16px 24px; }
     .st-card .dataTables_wrapper .dataTables_paginate { padding: 16px 24px; }
 
     .st-modal .modal-content { border-radius: var(--st-radius); border: none; box-shadow: 0 20px 60px -15px rgba(0,0,0,0.25); overflow: hidden; }
     .st-modal .modal-header { background: linear-gradient(135deg, #047857, var(--st-primary)); color: #fff; border: none; padding: 18px 24px; }
     .st-modal .modal-header.modal-header-danger { background: linear-gradient(135deg, #dc2626, #e11d48); }
-    .st-modal .modal-title { font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 1.05rem; }
-    .st-modal .modal-body { padding: 24px; font-family: 'Manrope', sans-serif; }
+    .st-modal .modal-title { font-family: 'Barlow', sans-serif; font-weight: 700; font-size: 1.05rem; }
+    .st-modal .modal-body { padding: 24px; font-family: 'Barlow', sans-serif; }
     .st-modal .modal-footer { border-top: 1px solid var(--st-border-light); padding: 16px 24px; }
-    .st-modal .modal-footer .btn { border-radius: var(--st-radius); font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 0.8125rem; padding: 8px 20px; }
+    .st-modal .modal-footer .btn { border-radius: var(--st-radius); font-family: 'Barlow', sans-serif; font-weight: 700; font-size: 0.8125rem; padding: 8px 20px; }
 
     .st-form-group { margin-bottom: 16px; }
     .st-form-group label { font-size: 0.8125rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block; }
     .st-form-group input, .st-form-group textarea, .st-form-group select {
         width: 100%; padding: 10px 14px; border-radius: var(--st-radius); border: 1px solid #cbd5e1;
-        background: #f8fafc; color: #334155; font-family: 'Manrope', sans-serif; font-size: 0.875rem; font-weight: 500;
+        background: #f8fafc; color: #334155; font-family: 'Barlow', sans-serif; font-size: 0.875rem; font-weight: 500;
     }
     .st-form-group input:focus, .st-form-group textarea:focus, .st-form-group select:focus {
-        outline: none; border-color: var(--st-primary); box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12);
+        outline: none; border-color: var(--st-primary); box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15);
     }
     .st-form-group .text-danger { font-size: 0.75rem; margin-top: 4px; }
 
@@ -249,8 +252,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn" data-dismiss="modal" style="background:#fff; color:var(--st-text-muted); border:1px solid var(--st-border); border-radius:var(--st-radius); font-family:'Manrope',sans-serif; font-weight:700;">Batal</button>
-                <button type="button" class="btn" id="btnSimpan" style="background:var(--st-primary); color:#fff; border-radius:var(--st-radius); font-family:'Manrope',sans-serif; font-weight:700;">
+                <button type="button" class="btn" data-dismiss="modal" style="background:#fff; color:var(--st-text-muted); border:1px solid var(--st-border); border-radius:var(--st-radius); font-family:'Barlow',sans-serif; font-weight:700;">Batal</button>
+                <button type="button" class="btn" id="btnSimpan" style="background:var(--st-primary); color:#fff; border-radius:var(--st-radius); font-family:'Barlow',sans-serif; font-weight:700;">
                     <span class="material-symbols-outlined" style="font-size:18px; vertical-align:middle; margin-right:4px;">save</span>
                     Simpan
                 </button>
@@ -278,8 +281,8 @@
                 </p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn" data-dismiss="modal" style="background:#fff; color:var(--st-text-muted); border:1px solid var(--st-border); border-radius:var(--st-radius); font-family:'Manrope',sans-serif; font-weight:700;">Batal</button>
-                <button type="button" class="btn" id="confirmDelete" style="background:#dc2626; color:#fff; border-radius:var(--st-radius); font-family:'Manrope',sans-serif; font-weight:700;">
+                <button type="button" class="btn" data-dismiss="modal" style="background:#fff; color:var(--st-text-muted); border:1px solid var(--st-border); border-radius:var(--st-radius); font-family:'Barlow',sans-serif; font-weight:700;">Batal</button>
+                <button type="button" class="btn" id="confirmDelete" style="background:#dc2626; color:#fff; border-radius:var(--st-radius); font-family:'Barlow',sans-serif; font-weight:700;">
                     <span class="material-symbols-outlined" style="font-size:18px; vertical-align:middle; margin-right:4px;">delete</span>
                     Hapus
                 </button>
