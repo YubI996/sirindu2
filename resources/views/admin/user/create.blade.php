@@ -11,15 +11,15 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Nama</label>
-                                <input name="name" class="form-control" type="text" placeholder="Nama Lengkap">
+                                <label for="create_name">Nama</label>
+                                <input name="name" id="create_name" class="form-control" type="text" placeholder="Nama Lengkap">
                                 @error('name') <span class="text-danger">{{ $message }}</span> @enderror
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Email</label>
-                                <input name="email" class="form-control" type="email" placeholder="email@contoh.com">
+                                <label for="create_email">Email</label>
+                                <input name="email" id="create_email" class="form-control" type="email" placeholder="email@contoh.com">
                                 @error('email') <span class="text-danger">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -27,7 +27,7 @@
 
                     {{-- Role --}}
                     <div class="form-group">
-                        <label>Role</label>
+                        <label for="create_role">Role</label>
                         <select class="form-control" name="role" id="create_role">
                             <option value="">== Pilih Role ==</option>
                             <option value="superadmin">Super Admin (Dinkes – akses penuh)</option>
@@ -40,7 +40,7 @@
 
                     {{-- Faskes Type (hanya untuk imunisasi_faskes) --}}
                     <div class="form-group d-none" id="create_faskes_type_group">
-                        <label>Tipe Faskes</label>
+                        <label for="create_faskes_type">Tipe Faskes</label>
                         <select class="form-control" name="faskes_type" id="create_faskes_type">
                             <option value="">== Pilih Tipe Faskes ==</option>
                             <option value="puskesmas">Puskesmas</option>
@@ -51,8 +51,8 @@
 
                     {{-- Puskesmas (surveilans_puskesmas atau imunisasi_faskes+puskesmas) --}}
                     <div class="form-group d-none" id="create_puskesmas_group">
-                        <label>Puskesmas</label>
-                        <select class="form-control" name="id_puskesmas">
+                        <label for="create_puskesmas">Puskesmas</label>
+                        <select class="form-control" name="id_puskesmas" id="create_puskesmas">
                             <option value="">== Pilih Puskesmas ==</option>
                             @foreach($puskesmas as $p)
                             <option value="{{ $p->id }}">{{ $p->name }}</option>
@@ -63,8 +63,8 @@
 
                     {{-- Rumah Sakit (surveilans_rs atau imunisasi_faskes+rs) --}}
                     <div class="form-group d-none" id="create_rs_group">
-                        <label>Rumah Sakit</label>
-                        <select class="form-control" name="id_rs">
+                        <label for="create_rs">Rumah Sakit</label>
+                        <select class="form-control" name="id_rs" id="create_rs">
                             <option value="">== Pilih Rumah Sakit ==</option>
                             @foreach($rs as $r)
                             <option value="{{ $r->id }}">{{ $r->name }}</option>
@@ -79,7 +79,7 @@
                     <div class="row mt-2">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Kecamatan</label>
+                                <label for="create_kec">Kecamatan</label>
                                 <select id="create_kec" name="id_kec" class="form-control">
                                     <option value="">== Pilih Kecamatan ==</option>
                                     @foreach ($kec as $data)
@@ -90,7 +90,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Kelurahan</label>
+                                <label for="create_kel">Kelurahan</label>
                                 <select id="create_kel" name="id_kel" class="form-control">
                                     <option value="">== Pilih Kelurahan ==</option>
                                 </select>

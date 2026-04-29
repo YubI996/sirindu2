@@ -65,6 +65,8 @@ class UserRepository implements UserRepositoryInterface
             'type'        => $this->typeFromRole($role),
             'role'        => $role,
             'faskes_type' => $this->deriveFaskesType($role, $request),
+            'id_puskesmas'=> $request->id_puskesmas ?: null,
+            'id_rs'       => $request->id_rs ?: null,
         ];
 
         if ($request->filled('password')) {
@@ -72,11 +74,9 @@ class UserRepository implements UserRepositoryInterface
         }
 
         if ($request->id_kecx) {
-            $data['id_kec']       = $request->id_kecx;
-            $data['id_kel']       = $request->id_kelx;
-            $data['id_puskesmas'] = $request->id_puskesmasx ?: null;
-            $data['id_rs']        = $request->id_rsx ?: null;
-            $data['id_posyandu']  = $request->id_posyandux ?: null;
+            $data['id_kec']      = $request->id_kecx;
+            $data['id_kel']      = $request->id_kelx;
+            $data['id_posyandu'] = $request->id_posyandux ?: null;
         }
 
         $user->update($data);
