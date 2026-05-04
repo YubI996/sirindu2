@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithCalculatedFormulas;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 /**
@@ -24,7 +25,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  * Struktur file: sheet "balita", header di baris 1–4, data mulai baris 5.
  * Upsert anak by NIK; data_anak by (id_anak, tgl_kunjungan); imunisasi by (id_anak, id_jenis_vaksin).
  */
-class KohortImport implements ToCollection, WithStartRow, WithChunkReading
+class KohortImport implements ToCollection, WithStartRow, WithChunkReading, WithCalculatedFormulas
 {
     use ResolvesWilayah;
 
@@ -33,11 +34,12 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
     protected int $errorCount   = 0;   // hanya baris yang benar-benar gagal disimpan
     protected array $failures = [];    // semua pesan: [ERROR]/[PERINGATAN]/[INFO] untuk tampilan log
     protected int $rowOffset = 0;
+    protected int $dataStartIndex = 0;
 
     /** Cache jenis vaksin: kode → id */
     protected array $vaksinCache = [];
 
-    /** Column map dari baris header (baris 4) — diisi saat chunk pertama, dipakai di chunk berikutnya */
+    /** Column map dari baris header — diisi saat chunk pertama, dipakai di chunk berikutnya */
     protected ?array $columnMap = null;
 
     /**
@@ -83,9 +85,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
 
     public function startRow(): int
     {
-        // Baris 4 adalah header, data mulai baris 5.
-        // WithStartRow(4) agar chunk pertama berisi baris header (index 0) + data (index 1+).
-        return 4;
+        // Ubah ke 1 agar tidak skip data jika file berupa 'values_only' dengan header di baris 1.
+        return 1;
     }
 
     public function chunkSize(): int
@@ -197,6 +198,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                     $monthExtra[$monthIdx]['mkn_buah_vita'] = $idx;
                 } elseif (str_contains($headerLower, 'buah') && str_contains($headerLower, 'lain')) {
                     $monthExtra[$monthIdx]['mkn_buah_lain'] = $idx;
+                } elseif (in_array($headerLower, ['garam yodium', 'yodium'])) {
+                    $monthExtra[$monthIdx]['garam_yodium'] = $idx;
                 }
             }
         }
@@ -215,20 +218,37 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
 
     public function collection(Collection $rows)
     {
-        // Baris pertama chunk pertama adalah header (baris 4 Excel)
         $isFirstChunk = $this->rowOffset === 0;
+        $originalChunkSize = count($rows);
         $columnMap = null;
 
         if ($isFirstChunk) {
-            // Baris pertama = header, detect columns dari sini
-            $headerRow = $rows->first();
+            $headerRowIndex = null;
+            $headerRow = null;
+
+            // Cari baris header secara dinamis (mengandung NIK atau Tgl posy)
+            foreach ($rows as $index => $row) {
+                $rowArray = $row instanceof Collection ? $row->toArray() : (array) $row;
+                $colB = strtolower(trim((string) ($rowArray[1] ?? '')));
+                $rowValues = array_map(fn($v) => strtolower(trim((string)$v)), $rowArray);
+                
+                if ($colB === 'nik' || in_array('tgl posy', $rowValues)) {
+                    $headerRowIndex = $index;
+                    $headerRow = $row;
+                    break;
+                }
+            }
+
+            if ($headerRowIndex === null) {
+                throw new \Exception("Header tidak ditemukan. Pastikan file memiliki kolom 'NIK' atau 'Tgl posy'.");
+            }
+
             $columnMap = $this->detectColumns($headerRow);
-
-            // Simpan column map di instance untuk chunk berikutnya
             $this->columnMap = $columnMap;
+            $this->dataStartIndex = $headerRowIndex;
 
-            // Hapus baris header dari rows yang akan diproses
-            $rows = $rows->slice(1)->values();
+            // Hapus baris header dan baris-baris kosong sebelumnya
+            $rows = $rows->slice($headerRowIndex + 1)->values();
         } else {
             $columnMap = $this->columnMap ?? ['vaccine_columns' => [], 'alasan_col' => null, 'month_tgl_cols' => [], 'month_extra' => []];
         }
@@ -249,8 +269,9 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                 continue;
             }
 
-            // rowNum: offset + posisi dalam chunk + startRow (4 header) + 1 baris header dalam chunk pertama
-            $rowNum = $this->rowOffset + $index + $this->startRow() + ($isFirstChunk ? 1 : 0);
+            // rowNum: offset dinamis berdasarkan lokasi header
+            $baseOffset = $isFirstChunk ? ($this->dataStartIndex + 1) : 0;
+            $rowNum = $this->rowOffset + $index + 1 + $baseOffset;
 
             // Skip baris yang namanya mengandung kata "pindah" (anak pindah domisili)
             if (stripos($nama, 'pindah') !== false) {
@@ -369,6 +390,7 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
                             'vit_a'       => isset($extra['vit_a']) ? ($this->parseBoolean($row[$extra['vit_a']] ?? null) ? 1 : 0) : null,
                             'popm'        => isset($extra['popm']) ? $this->parseBoolean($row[$extra['popm']] ?? null) : null,
                             'taburia'     => isset($extra['taburia']) ? $this->parseBoolean($row[$extra['taburia']] ?? null) : null,
+                            'garam_yodium'=> isset($extra['garam_yodium']) ? $this->parseBoolean($row[$extra['garam_yodium']] ?? null) : null,
                             'makanan_pokok' => isset($extra['makanan_pokok']) ? $this->parseBoolean($row[$extra['makanan_pokok']] ?? null) : null,
                             'mkn_kacang'  => isset($extra['mkn_kacang']) ? $this->parseBoolean($row[$extra['mkn_kacang']] ?? null) : null,
                             'mkn_susu'    => isset($extra['mkn_susu']) ? $this->parseBoolean($row[$extra['mkn_susu']] ?? null) : null,
@@ -424,7 +446,7 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading
             }
         }
 
-        $this->rowOffset += $chunkSize + ($isFirstChunk ? 1 : 0);
+        $this->rowOffset += $originalChunkSize;
     }
 
     protected function simplifyError(string $message): string
