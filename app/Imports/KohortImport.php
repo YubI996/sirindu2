@@ -22,7 +22,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 /**
  * Import data anak, kunjungan posyandu, dan imunisasi dari file Excel kohort puskesmas.
  *
- * Struktur file: sheet "balita", header di baris 1–4, data mulai baris 5.
+ * Header dideteksi dinamis (mencari baris yang mengandung 'NIK' di kolom B atau 'Tgl posy').
+ * File asli (header bertingkat) maupun file values_only (header baris 1) sama-sama didukung.
  * Upsert anak by NIK; data_anak by (id_anak, tgl_kunjungan); imunisasi by (id_anak, id_jenis_vaksin).
  */
 class KohortImport implements ToCollection, WithStartRow, WithChunkReading, WithCalculatedFormulas
@@ -136,12 +137,37 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
     }
 
     /**
-     * Deteksi kolom dari baris header (baris 4 Excel = index 0 dalam chunk pertama).
+     * Parse string pendek untuk kolom kategorikal (mis. hasil_lk, hasil_lila).
+     * Buang formula yang tidak bisa dievaluasi (`_xludf.ifs(...)`, `#N/A`, `=...`)
+     * agar tidak menabrak batas varchar(30).
+     */
+    protected function parseShortString($value, int $maxLength = 30): ?string
+    {
+        if ($value === null || $value === '') return null;
+        $str = trim((string) $value);
+        if ($str === '') return null;
+
+        // Buang nilai formula yang tidak ter-resolve atau error cell
+        if (str_starts_with($str, '=')
+            || str_starts_with($str, '_xlfn')
+            || str_starts_with($str, '_xludf')
+            || str_starts_with($str, '#')
+            || stripos($str, '_xludf.') !== false
+            || stripos($str, 'ifs(') !== false
+        ) {
+            return null;
+        }
+
+        return mb_substr($str, 0, $maxLength);
+    }
+
+    /**
+     * Deteksi kolom dari baris header (lokasi baris ditemukan secara dinamis).
      *
      * Mengembalikan:
      * - vaccine_columns: array [colIndex => kodeVaksin]
      * - alasan_col: int|null (index kolom "Alasan tidak imunisasi")
-     * - month_cols: array [monthIndex => startColIndex] (12 bulan, tiap bulan offset dari Tgl posy)
+     * - month_tgl_cols: array [monthIndex => startColIndex] (12 bulan, tiap bulan offset dari Tgl posy)
      * - month_extra: array [monthIndex => [colName => colIndex]] (Vit A, POPM, Taburia, makanan)
      */
     protected function detectColumns(Collection $headerRow): array
@@ -355,6 +381,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
 
                 // =============================================================
                 // US2: Upsert DataAnak (kunjungan posyandu per bulan)
+                // Inner try-catch per bulan: kegagalan satu bulan tidak men-skip anak
+                // dan tidak menghapus bulan-bulan lain yang valid.
                 // =============================================================
                 foreach ($monthTglCols as $monthIdx => $tglCol) {
                     $tglPosy = $this->parseDate($row[$tglCol] ?? null);
@@ -364,42 +392,49 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
                     $base = $tglCol;
                     $extra = $monthExtra[$monthIdx] ?? [];
 
-                    DataAnak::updateOrCreate(
-                        ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglPosy],
-                        [
-                            // NOT NULL tanpa default — fallback ke 0/'L' jika kosong
-                            'bln'         => $this->parseIntOrNull($row[$base + 1] ?? null) ?? 0,
-                            'lk'          => $this->parseDecimalOrNull($row[$base + 2] ?? null) ?? 0,
-                            'lla'         => $this->parseDecimalOrNull($row[$base + 4] ?? null) ?? 0,
-                            'bb'          => $this->parseDecimalOrNull($row[$base + 6] ?? null) ?? 0,
-                            'tb'          => $this->parseDecimalOrNull($row[$base + 7] ?? null) ?? 0,
-                            'posisi'      => !empty($row[$base + 10]) ? (string) $row[$base + 10] : 'L',
-                            'id_user'     => $this->userId,
-                            // Nullable fields
-                            'hasil_lk'    => !empty($row[$base + 3]) ? (string) $row[$base + 3] : null,
-                            'hasil_lila'  => !empty($row[$base + 5]) ? (string) $row[$base + 5] : null,
-                            'zscore_bb_u' => $this->parseDecimalOrNull($row[$base + 8] ?? null),
-                            'zscore_pb_u' => $this->parseDecimalOrNull($row[$base + 9] ?? null),
-                            'zscore_bb_pb'=> $this->parseDecimalOrNull($row[$base + 11] ?? null),
-                            'pb_meter'    => $this->parseDecimalOrNull($row[$base + 12] ?? null),
-                            'imt'         => $this->parseDecimalOrNull($row[$base + 13] ?? null),
-                            'imt_u'       => $this->parseDecimalOrNull($row[$base + 14] ?? null),
-                            'asi'         => $this->parseBoolean($row[$base + 15] ?? null) ? 1 : 0,
-                            'rujuk'       => $this->parseBoolean($row[$base + 16] ?? null),
-                            // Kolom ekstra yang ada di bulan tertentu (detected by header)
-                            'vit_a'       => isset($extra['vit_a']) ? ($this->parseBoolean($row[$extra['vit_a']] ?? null) ? 1 : 0) : null,
-                            'popm'        => isset($extra['popm']) ? $this->parseBoolean($row[$extra['popm']] ?? null) : null,
-                            'taburia'     => isset($extra['taburia']) ? $this->parseBoolean($row[$extra['taburia']] ?? null) : null,
-                            'garam_yodium'=> isset($extra['garam_yodium']) ? $this->parseBoolean($row[$extra['garam_yodium']] ?? null) : null,
-                            'makanan_pokok' => isset($extra['makanan_pokok']) ? $this->parseBoolean($row[$extra['makanan_pokok']] ?? null) : null,
-                            'mkn_kacang'  => isset($extra['mkn_kacang']) ? $this->parseBoolean($row[$extra['mkn_kacang']] ?? null) : null,
-                            'mkn_susu'    => isset($extra['mkn_susu']) ? $this->parseBoolean($row[$extra['mkn_susu']] ?? null) : null,
-                            'mkn_daging'  => isset($extra['mkn_daging']) ? $this->parseBoolean($row[$extra['mkn_daging']] ?? null) : null,
-                            'mkn_telur'   => isset($extra['mkn_telur']) ? $this->parseBoolean($row[$extra['mkn_telur']] ?? null) : null,
-                            'mkn_buah_vita' => isset($extra['mkn_buah_vita']) ? $this->parseBoolean($row[$extra['mkn_buah_vita']] ?? null) : null,
-                            'mkn_buah_lain' => isset($extra['mkn_buah_lain']) ? $this->parseBoolean($row[$extra['mkn_buah_lain']] ?? null) : null,
-                        ]
-                    );
+                    try {
+                        DataAnak::updateOrCreate(
+                            ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglPosy],
+                            [
+                                // NOT NULL tanpa default — fallback ke 0 jika kosong
+                                'bln'         => $this->parseIntOrNull($row[$base + 1] ?? null) ?? 0,
+                                'lk'          => $this->parseDecimalOrNull($row[$base + 2] ?? null) ?? 0,
+                                'lla'         => $this->parseDecimalOrNull($row[$base + 4] ?? null) ?? 0,
+                                'bb'          => $this->parseDecimalOrNull($row[$base + 6] ?? null) ?? 0,
+                                'tb'          => $this->parseDecimalOrNull($row[$base + 7] ?? null) ?? 0,
+                                // Kohort tidak punya kolom posisi pengukuran → default 'L'
+                                'posisi'      => 'L',
+                                'id_user'     => $this->userId,
+                                // Nullable fields — pakai parseShortString untuk filter formula/error cell
+                                'hasil_lk'    => $this->parseShortString($row[$base + 3] ?? null),
+                                'hasil_lila'  => $this->parseShortString($row[$base + 5] ?? null),
+                                'zscore_bb_u' => $this->parseDecimalOrNull($row[$base + 8] ?? null),
+                                'zscore_pb_u' => $this->parseDecimalOrNull($row[$base + 9] ?? null),
+                                'zscore_bb_pb'=> $this->parseDecimalOrNull($row[$base + 11] ?? null),
+                                'pb_meter'    => $this->parseDecimalOrNull($row[$base + 12] ?? null),
+                                'imt'         => $this->parseDecimalOrNull($row[$base + 13] ?? null),
+                                'imt_u'       => $this->parseDecimalOrNull($row[$base + 14] ?? null),
+                                'asi'         => $this->parseBoolean($row[$base + 15] ?? null) ? 1 : 0,
+                                'rujuk'       => $this->parseBoolean($row[$base + 16] ?? null),
+                                // Kolom ekstra yang ada di bulan tertentu (detected by header)
+                                'vit_a'       => isset($extra['vit_a']) ? ($this->parseBoolean($row[$extra['vit_a']] ?? null) ? 1 : 0) : null,
+                                'popm'        => isset($extra['popm']) ? $this->parseBoolean($row[$extra['popm']] ?? null) : null,
+                                'taburia'     => isset($extra['taburia']) ? $this->parseBoolean($row[$extra['taburia']] ?? null) : null,
+                                'garam_yodium'=> isset($extra['garam_yodium']) ? $this->parseBoolean($row[$extra['garam_yodium']] ?? null) : null,
+                                'makanan_pokok' => isset($extra['makanan_pokok']) ? $this->parseBoolean($row[$extra['makanan_pokok']] ?? null) : null,
+                                'mkn_kacang'  => isset($extra['mkn_kacang']) ? $this->parseBoolean($row[$extra['mkn_kacang']] ?? null) : null,
+                                'mkn_susu'    => isset($extra['mkn_susu']) ? $this->parseBoolean($row[$extra['mkn_susu']] ?? null) : null,
+                                'mkn_daging'  => isset($extra['mkn_daging']) ? $this->parseBoolean($row[$extra['mkn_daging']] ?? null) : null,
+                                'mkn_telur'   => isset($extra['mkn_telur']) ? $this->parseBoolean($row[$extra['mkn_telur']] ?? null) : null,
+                                'mkn_buah_vita' => isset($extra['mkn_buah_vita']) ? $this->parseBoolean($row[$extra['mkn_buah_vita']] ?? null) : null,
+                                'mkn_buah_lain' => isset($extra['mkn_buah_lain']) ? $this->parseBoolean($row[$extra['mkn_buah_lain']] ?? null) : null,
+                            ]
+                        );
+                    } catch (\Exception $eMonth) {
+                        $errMsg = $this->simplifyError($eMonth->getMessage());
+                        $this->failures[] = "[PERINGATAN] Baris {$rowNum} (NIK: {$nik}, Nama: {$nama}): Bulan ke-" . ($monthIdx + 1) . " ({$tglPosy}) gagal disimpan — {$errMsg}";
+                        Log::warning("KohortImport skip data_anak baris {$rowNum} bulan {$monthIdx}: " . $eMonth->getMessage());
+                    }
                 }
 
                 // =============================================================
