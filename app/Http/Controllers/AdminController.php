@@ -125,30 +125,26 @@ ANAK
         return DataTables::of($data)
             ->addIndexColumn()
             ->editColumn('edit', function ($data) {
-                //$btn = '<a class="btn btn-warning" href="#" target="_blank">edit</a>';
                 $btn = '
                 <div class="dropdown">
-                <button class="btn btn-warning dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                   Edit
+                <button class="btn btn-warning btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                   Pilihan
                 </button>
-                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                <div class="dropdown-menu dropdown-menu-right">
                     <a class="dropdown-item" href="' . route('admin.editAnak', $data->hashid) . '">Edit Data Anak</a>
+                    <a class="dropdown-item" href="' . route('admin.showAnak', $data->hashid) . '">Lihat Detail</a>
                     <a class="dropdown-item" href="' . route('admin.chartAnak', $data->hashid) . '">Grafik Data Anak</a>
-                    <a class="dropdown-item" href="' . route('admin.showAnak', $data->hashid) . '">Show Data Anak</a>
-                    <a class="dropdown-item" href="' . route('admin.dataAnak', $data->hashid) . '">Tambah Data Berkala Anak</a>
-                    <a class="dropdown-item" href="' . route('admin.imunisasiLengkap', $data->hashid) . '">Data Imunisasi Lengkap</a>
+                    <a class="dropdown-item" href="' . route('admin.dataAnak', $data->hashid) . '">Tambah Data Berkala</a>
+                    <a class="dropdown-item" href="' . route('admin.imunisasiLengkap', $data->hashid) . '">Data Imunisasi</a>
                     <a class="dropdown-item" href="' . route('admin.jadwalImunisasi', $data->hashid) . '">Jadwal Imunisasi</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item text-danger" href="#" onclick="deleteItemAnak(this); return false;" data-id="' . $data->hashid . '">Hapus Data</a>
                 </div>
                 </div>
                 ';
                 return $btn;
             })
-            ->editColumn('delete', function ($data) {
-                $btn = ' <button onclick="deleteItemAnak(this)" class="btn btn-danger" data-id="' . $data->hashid . '">Delete</button>';
-                return $btn;
-            })
             ->rawColumns(['edit'])
-            ->rawColumns(['delete'])
             ->escapeColumns([])
             ->make(true);
     }

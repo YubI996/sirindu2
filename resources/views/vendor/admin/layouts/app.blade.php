@@ -234,6 +234,8 @@
         .mobile-menu-overlay,
         .left-side-bar .close-sidebar,
         .menu-icon,
+        .main-container,
+        .header,
         .left-side-bar.open .sidebar-menu > ul > li,
         .left-side-bar .sidebar-menu > ul > li,
         .left-side-bar.sidebar-expanded .sidebar-menu > ul > li {
@@ -271,13 +273,25 @@
             box-shadow: 8px 0 40px oklch(0 0 0 / 0.22) !important;
         }
 
-        /* Main area and header reclaim full width */
+        /* Main area: full width by default, push when pinned */
         .main-container {
-            margin-left: 0 !important;
+            padding-left: 20px !important;
+            transition: padding-left 0.32s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .header {
             left: 0 !important;
             width: 100% !important;
+            transition: left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                        width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Pinned: sidebar is persistent, push content to the right */
+        body.sidebar-pinned .main-container {
+            padding-left: 300px !important;
+        }
+        body.sidebar-pinned .header {
+            left: 280px !important;
+            width: calc(100% - 280px) !important;
         }
 
         /* Thin hover-trigger strip anchored to left edge */
@@ -353,6 +367,13 @@
 @show
 
 <body>
+    <script>
+    /* Apply sidebar-pinned BEFORE first paint so there is no layout flash */
+    (function () {
+        var saved = localStorage.getItem('srd-sidebar-pinned');
+        if (saved !== '0') { document.body.classList.add('sidebar-pinned'); }
+    })();
+    </script>
     <a class="srd-skip-link" href="#main-content">Lompat ke konten utama</a>
     @include('admin::layouts.partials.mainheader')
     @include('admin::layouts.partials.rightsidebar')
@@ -444,9 +465,21 @@
             }, 180);
         }
 
+        function notifyResize() {
+            var mc = document.querySelector('.main-container');
+            if (!mc) return;
+            mc.addEventListener('transitionend', function handler(e) {
+                if (e.propertyName !== 'padding-left') return;
+                mc.removeEventListener('transitionend', handler);
+                window.dispatchEvent(new Event('resize'));
+            });
+        }
+
         function togglePin() {
             pinned = !pinned;
             document.body.classList.toggle('sidebar-pinned', pinned);
+            localStorage.setItem('srd-sidebar-pinned', pinned ? '1' : '0');
+            notifyResize();
             if (pinned) { show(); } else { scheduleHide(); }
         }
 
@@ -464,6 +497,8 @@
             pinned = false;
             document.body.classList.remove('sidebar-pinned');
             sidebar.classList.remove('sidebar-expanded');
+            localStorage.setItem('srd-sidebar-pinned', '0');
+            notifyResize();
         }
 
         function attachDesktop() {
@@ -474,6 +509,9 @@
             if (menuIcon) menuIcon.addEventListener('click', onMenuIconClick, true);
             if (closeBtn) closeBtn.addEventListener('click', onCloseBtnClick);
             trigger.style.display = '';
+            /* Sync pinned state from inline script — default: pinned */
+            pinned = document.body.classList.contains('sidebar-pinned');
+            if (pinned) { show(); }
         }
 
         function detachDesktop() {
@@ -484,6 +522,7 @@
             if (menuIcon) menuIcon.removeEventListener('click', onMenuIconClick, true);
             if (closeBtn) closeBtn.removeEventListener('click', onCloseBtnClick);
             trigger.style.display = 'none';
+            /* localStorage preference is intentionally preserved for next desktop visit */
         }
 
         function onBreakpoint(e) {

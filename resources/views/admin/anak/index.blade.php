@@ -151,18 +151,14 @@ Anak
 @endif
 
 <div class="table-responsive">
-    <table id="tabel-anak" class="table table-striped">
+    <table id="tabel-anak" class="table table-striped table-sm">
         <thead>
             <tr>
                 <th scope="col">No</th>
-                <th scope="col">No KK</th>
                 <th scope="col">NIK</th>
                 <th scope="col">Nama</th>
-                <th scope="col">NIK Orang Tua</th>
                 <th scope="col">Nama Ibu</th>
-                <th scope="col">Nama Ayah</th>
-                <th scope="col">Edit</th>
-                <th scope="col">Delete</th>
+                <th scope="col">Pilihan</th>
             </tr>
         </thead>
         <tbody>
@@ -174,59 +170,17 @@ Anak
 <script type="text/javascript">
     $(function() {
         var table = $('#tabel-anak').DataTable({
-            responsive: true,
+            responsive: false,
             processing: true,
             serverSide: true,
             ajax: "{{ route('admin.getAnak') }}",
-            columns: [{
-                    data: 'DT_RowIndex',
-                    name: 'DT_RowIndex',
-                    orderable: false,
-                    searchable: false
-                },
-                {
-                    data: 'no_kk',
-                    name: 'no_kk',
-                },
-                {
-                    data: 'nik',
-                    name: 'nik',
-                },
-                {
-                    data: 'nama',
-                    name: 'nama',
-                },
-                {
-                    data: 'nik_ortu',
-                    name: 'nik_ortu',
-                },
-                {
-                    data: 'nama_ibu',
-                    name: 'nama_ibu',
-                },
-                {
-                    data: 'nama_ayah',
-                    name: 'nama_ayah',
-                },
-                {
-                    data: 'edit',
-                    name: 'edit',
-                    orderable: false,
-                    searchable: false
-                },
-                {
-                    data: 'delete',
-                    name: 'delete',
-                    orderable: false,
-                    searchable: false
-                }
-            ],
-            columnDefs: [{
-                targets: 5,
-                function(data, type, row) {
-                    return data.substr(0, 50);
-                }
-            }]
+            columns: [
+                { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false, responsivePriority: 1 },
+                { data: 'nik',        name: 'nik',      responsivePriority: 2 },
+                { data: 'nama',       name: 'nama',     responsivePriority: 2 },
+                { data: 'nama_ibu',   name: 'nama_ibu', responsivePriority: 3 },
+                { data: 'edit',       name: 'edit', orderable: false, searchable: false, responsivePriority: 1 }
+            ]
         });
 
     });
