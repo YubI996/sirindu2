@@ -36,7 +36,7 @@ Jadwal Imunisasi - {{ $data->nama }}
                     </div>
                     <div class="col-md-4">
                         <p><strong>Tanggal Lahir:</strong> {{ date('d-m-Y', strtotime($data->tgl_lahir)) }}</p>
-                        <p><strong>Jenis Kelamin:</strong> {{ $data->jk == 'L' ? 'Laki-laki' : 'Perempuan' }}</p>
+                        <p><strong>Jenis Kelamin:</strong> {{ $data->jk == 1 ? 'Laki-laki' : 'Perempuan' }}</p>
                     </div>
                     <div class="col-md-4">
                         <p><strong>Usia:</strong>

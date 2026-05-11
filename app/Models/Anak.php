@@ -90,7 +90,7 @@ class Anak extends Model
             ->pluck('id_jenis_vaksin')
             ->toArray();
 
-        $isLakiLaki = $this->jk === 'L' || $this->jenis_kelamin === 'L';
+        $isLakiLaki = $this->jk == 1;
         $result = [];
 
         foreach ($kelompokList as $kelompok) {

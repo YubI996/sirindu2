@@ -124,8 +124,8 @@ class EpidemiologiController extends Controller
                 'penyakit' => $case->jenisKasus->nama_penyakit ?? '-',
                 'kecamatan' => $case->kecamatan->name ?? '-',
                 'kelurahan' => $case->kelurahan->name ?? '-',
-                'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
-                'tanggal_onset_iso' => $case->tanggal_onset->format('Y-m-d'),
+                'tanggal_onset' => $case->tanggal_onset?->format('d/m/Y') ?? '-',
+                'tanggal_onset_iso' => $case->tanggal_onset?->format('Y-m-d') ?? '',
                 'status_kasus' => $case->status_kasus,
                 'show_url' => route('admin.epidemiologi.show', $case->id),
             ];
