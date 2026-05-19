@@ -417,6 +417,7 @@ body.login-page {
             novalidate
           >
             @csrf
+            <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
 
             {{-- Email --}}
             <div class="srd-field">
@@ -477,6 +478,12 @@ body.login-page {
               <span class="srd-spinner" aria-hidden="true"></span>
             </button>
 
+            <p style="font-size:11px;color:var(--text-3);text-align:center;margin:14px 0 0;line-height:1.6;">
+              Dilindungi oleh reCAPTCHA &mdash;
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--text-3);">Privasi</a> &amp;
+              <a href="https://policies.google.com/terms" target="_blank" rel="noopener" style="color:var(--text-3);">Ketentuan</a> Google berlaku.
+            </p>
+
           </form>
         </div>
       </div>
@@ -489,9 +496,12 @@ body.login-page {
 
 @section('scripts')
 @parent
+<script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}" async defer></script>
 <script>
 (function () {
   'use strict';
+
+  var SITE_KEY = '{{ config('services.recaptcha.site_key') }}';
 
   // ── Time-based greeting ────────────────────────────────────────
   var hour  = new Date().getHours();
@@ -524,11 +534,40 @@ body.login-page {
     }
   });
 
-  // ── Loading state on submit ────────────────────────────────────
-  document.getElementById('login-form').addEventListener('submit', function () {
-    var btn = document.getElementById('btn-submit');
+  // ── Form submit dengan reCAPTCHA v3 ───────────────────────────
+  var form = document.getElementById('login-form');
+  var btn  = document.getElementById('btn-submit');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
     btn.classList.add('is-loading');
     btn.disabled = true;
+
+    function doSubmit(token) {
+      document.getElementById('g-recaptcha-response').value = token;
+      form.submit(); // native submit — tidak trigger listener ini lagi
+    }
+
+    function resetBtn() {
+      btn.classList.remove('is-loading');
+      btn.disabled = false;
+    }
+
+    if (typeof grecaptcha === 'undefined') {
+      resetBtn();
+      alert('Modul keamanan belum siap. Silakan muat ulang halaman dan coba lagi.');
+      return;
+    }
+
+    grecaptcha.ready(function () {
+      grecaptcha.execute(SITE_KEY, { action: 'login' })
+        .then(function (token) { doSubmit(token); })
+        .catch(function () {
+          resetBtn();
+          alert('Gagal mendapatkan token keamanan. Silakan muat ulang halaman.');
+        });
+    });
   });
 })();
 </script>
