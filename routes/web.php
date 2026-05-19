@@ -74,6 +74,19 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::post('store-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'storeAnak'])->name('admin.storeAnak');
     Route::post('import-kohort', [App\Http\Controllers\AdminController::class, 'importKohort'])->name('admin.importKohort');
     Route::get('import-kohort-status', [App\Http\Controllers\AdminController::class, 'importKohortStatus'])->name('admin.importKohortStatus');
+
+    // Import CSV terstandarisasi (Anak / Pengukuran Berkala / Imunisasi)
+    Route::prefix('import-csv')->group(function () {
+        Route::get('/',           [App\Http\Controllers\ImportCsvController::class, 'index'])          ->name('admin.importCsv.index');
+        Route::post('anak',       [App\Http\Controllers\ImportCsvController::class, 'uploadAnak'])       ->name('admin.importCsv.anak');
+        Route::post('pengukuran', [App\Http\Controllers\ImportCsvController::class, 'uploadPengukuran']) ->name('admin.importCsv.pengukuran');
+        Route::post('imunisasi',  [App\Http\Controllers\ImportCsvController::class, 'uploadImunisasi'])  ->name('admin.importCsv.imunisasi');
+        Route::post('reimport/{log}', [App\Http\Controllers\ImportCsvController::class, 'reimport'])     ->name('admin.importCsv.reimport');
+        Route::get('status',      [App\Http\Controllers\ImportCsvController::class, 'importStatus'])     ->name('admin.importCsv.status');
+        Route::delete('log/{log}',[App\Http\Controllers\ImportCsvController::class, 'destroyLog'])       ->name('admin.importCsv.destroyLog');
+        Route::get('template/{type}', [App\Http\Controllers\ImportCsvController::class, 'downloadTemplate'])->name('admin.importCsv.template');
+    });
+
     Route::get('edit-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'editAnak'])->name('admin.editAnak');
     Route::get('show-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'showAnak'])->name('admin.showAnak');
     Route::get('chart-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'chartAnak'])->name('admin.chartAnak');

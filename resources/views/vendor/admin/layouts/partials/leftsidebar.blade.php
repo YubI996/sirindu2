@@ -22,6 +22,7 @@
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit', 'admin.pd3i.dashboard');
 					$export = request()->routeIs('admin.export.*');
+					$import = request()->routeIs('admin.importCsv.*');
 					$master = request()->routeIs('admin.masterdata.*');
 					$admin = request()->routeIs('super.admin.*');
 				@endphp
@@ -67,6 +68,15 @@
 					</a>
 					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
+					</ul>
+				</li>
+
+				<li class="dropdown section-group {{ $import ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $import ? 'active' : '' }}">
+						<span class="micon fa fa-file-upload"></span><span class="mtext">Import Data</span>
+					</a>
+					<ul class="submenu" {!! $import ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.importCsv.index')}}" class="{{ request()->routeIs('admin.importCsv.*') ? 'active' : '' }}">Import CSV</a></li>
 					</ul>
 				</li>
 
