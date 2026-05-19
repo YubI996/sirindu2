@@ -16,97 +16,111 @@
 
 @section('content')
 <style>
-    :root {
-        --st-primary: oklch(0.48 0.14 145);
-        --st-primary-dark: oklch(0.38 0.13 145);
-        --st-primary-light: oklch(0.96 0.022 145);
-        --st-bg: #f5f7f8;
-        --st-surface: #ffffff;
-        --st-text: #0f172a;
-        --st-text-muted: #64748b;
-        --st-border: #e2e8f0;
-        --st-border-light: #f1f5f9;
-        --st-radius: 12px;
-        --st-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
-        --st-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+    /* sr-only untuk caption tabel — accessible tapi tidak visible */
+    .visually-hidden {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
     }
 
-    .ex-page { font-family: 'Barlow', sans-serif; color: var(--st-text); }
+    .ex-page {
+        /* Token lokal — hanya untuk nilai tanpa padanan di --srd-* global */
+        --ex-radius: 12px;
+        --ex-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+        --ex-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+        --ex-text: oklch(0.19 0.014 145);
+        --ex-surface-input: oklch(0.975 0.012 145);
+        --ex-border-input: oklch(0.82 0.025 145);
+        --ex-border-light: oklch(0.93 0.012 145);
+        font-family: 'Barlow', sans-serif;
+        color: var(--ex-text);
+    }
 
     .ex-header {
         display: flex; flex-wrap: wrap; justify-content: space-between;
         align-items: flex-start; gap: 16px; margin-bottom: 28px;
     }
     .ex-header__left { display: flex; align-items: center; gap: 14px; }
-    .ex-header__icon {
-        display: flex; align-items: center; justify-content: center;
-        width: 48px; height: 48px; background: var(--st-primary-light);
-        border-radius: 12px; color: var(--st-primary);
-    }
-    .ex-header__icon .material-symbols-outlined { font-size: 28px; }
     .ex-header__title {
-        font-size: 1.75rem; font-weight: 800; color: var(--st-text);
+        font-size: 1.75rem; font-weight: 800; color: var(--ex-text);
         letter-spacing: -0.02em; margin: 0; line-height: 1.2;
     }
-    .ex-header__subtitle { font-size: 0.875rem; color: var(--st-text-muted); font-weight: 500; margin: 2px 0 0; }
+    .ex-header__subtitle { font-size: 0.875rem; color: var(--srd-text-2); font-weight: 500; margin: 2px 0 0; }
 
     .st-btn {
         display: inline-flex; align-items: center; gap: 8px; padding: 0 18px;
-        height: 42px; border-radius: var(--st-radius); font-family: 'Barlow', sans-serif;
+        height: 42px; border-radius: var(--ex-radius); font-family: 'Barlow', sans-serif;
         font-weight: 700; font-size: 0.8125rem; border: 1.5px solid transparent;
-        cursor: pointer; transition: all 0.2s ease; text-decoration: none !important; white-space: nowrap;
+        cursor: pointer;
+        transition: background-color 0.16s ease-out, border-color 0.16s ease-out,
+                    box-shadow 0.18s ease-out, transform 0.1s ease-out;
+        text-decoration: none !important; white-space: nowrap;
     }
     .st-btn .material-symbols-outlined { font-size: 20px; }
-    .st-btn-primary { background: var(--st-primary); color: #fff; border-color: var(--st-primary); box-shadow: var(--st-shadow-md); }
-    .st-btn-primary:hover { background: var(--st-primary-dark); border-color: var(--st-primary-dark); color: #fff; transform: translateY(-1px); }
+    .st-btn-primary {
+        background: var(--srd-green); color: var(--srd-on-dark);
+        border-color: var(--srd-green); box-shadow: var(--ex-shadow-md);
+    }
+    @media (hover: hover) {
+        .st-btn-primary:hover {
+            background: oklch(0.38 0.13 145); border-color: oklch(0.38 0.13 145);
+            color: var(--srd-on-dark); transform: translateY(-1px);
+            box-shadow: 0 4px 18px oklch(0.48 0.14 145 / 0.32);
+        }
+    }
     .st-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
     .st-card {
-        background: var(--st-surface); border-radius: var(--st-radius);
-        border: 1px solid var(--st-border); box-shadow: var(--st-shadow); overflow: hidden;
+        background: var(--srd-surface); border-radius: var(--ex-radius);
+        border: 1px solid var(--srd-border); box-shadow: var(--ex-shadow); overflow: hidden;
         margin-bottom: 24px;
     }
     .st-card__header {
-        background: linear-gradient(135deg, var(--st-primary) 0%, #059669 100%);
-        padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;margin-bottom: 1%;
+        background: var(--srd-green);
+        padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
     }
     .st-card__header-title {
-        display: flex; align-items: center; gap: 10px; color: #fff;
-        font-size: 1.05rem; font-weight: 700; 
+        display: flex; align-items: center; gap: 10px; color: var(--srd-on-dark);
+        font-size: 1.05rem; font-weight: 700;
     }
     .st-card__header-title .material-symbols-outlined { font-size: 22px; }
     .st-card__body { padding: 24px; }
 
     .st-form-group { margin-bottom: 16px; }
-    .st-form-group label { font-size: 0.8125rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block; }
+    .st-form-group label {
+        font-size: 0.8125rem; font-weight: 700; color: var(--srd-text-2);
+        margin-bottom: 6px; display: block;
+    }
     .st-form-group select, .st-form-group input {
-        width: 100%; padding: 10px 14px; border-radius: var(--st-radius); border: 1px solid #cbd5e1;
-        background: #f8fafc; color: #334155; font-family: 'Barlow', sans-serif; font-size: 0.875rem; font-weight: 500;
+        width: 100%; padding: 10px 14px; border-radius: var(--ex-radius);
+        border: 1px solid var(--ex-border-input);
+        background: var(--ex-surface-input); color: var(--ex-text);
+        font-family: 'Barlow', sans-serif; font-size: 0.875rem; font-weight: 500;
     }
     .st-form-group select:focus, .st-form-group input:focus {
-        outline: none; border-color: var(--st-primary); box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15);
+        outline: none; border-color: var(--srd-green);
+        box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15);
     }
 
     .filter-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; min-height: 32px; }
     .filter-badge {
         display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
-        background: var(--st-primary-light); border: 1px solid oklch(0.48 0.14 145 / 0.25);
-        border-radius: 9999px; font-size: 0.75rem; font-weight: 600; color: var(--st-primary);
+        background: var(--srd-surface-subtle); border: 1px solid var(--srd-green-border);
+        border-radius: 9999px; font-size: 0.75rem; font-weight: 600; color: var(--srd-green);
         font-family: 'Barlow', sans-serif;
     }
-    .filter-badge .badge-label { color: var(--st-text-muted); font-weight: 500; }
+    .filter-badge .badge-label { color: var(--srd-text-2); font-weight: 500; }
 
     .record-info {
         display: flex; align-items: center; gap: 8px; padding: 12px 24px;
-        background: #f8fafc; border-bottom: 1px solid var(--st-border-light);
-        font-size: 0.8125rem; font-weight: 600; color: var(--st-text-muted);
+        background: var(--srd-surface-subtle); border-bottom: 1px solid var(--ex-border-light);
+        font-size: 0.8125rem; font-weight: 600; color: var(--srd-text-2);
         font-family: 'Barlow', sans-serif;
     }
     .record-info .material-symbols-outlined { font-size: 18px; }
-    .record-count { color: var(--st-primary); font-weight: 700; }
+    .record-count { color: var(--srd-green); font-weight: 700; }
 
     .empty-state {
-        text-align: center; padding: 48px 24px; color: var(--st-text-muted);
+        text-align: center; padding: 48px 24px; color: var(--srd-text-2);
         font-family: 'Barlow', sans-serif;
     }
     .empty-state .material-symbols-outlined { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
@@ -114,50 +128,71 @@
 
     .st-card .dataTables_wrapper { font-family: 'Barlow', sans-serif; }
     .st-card .dataTables_wrapper .dataTables_filter input {
-        height: 38px; padding: 0 14px; border-radius: var(--st-radius);
-        border: 1px solid #cbd5e1; background: #fff; font-size: 0.8125rem;
-        font-family: 'Barlow', sans-serif; min-width: 250px;
+        height: 38px; padding: 0 14px; border-radius: var(--ex-radius);
+        border: 1px solid var(--ex-border-input); background: var(--srd-surface);
+        font-size: 0.8125rem; font-family: 'Barlow', sans-serif; min-width: 250px;
     }
     .st-card .dataTables_wrapper .dataTables_filter input:focus {
-        border-color: var(--st-primary); box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15); outline: none;
+        border-color: var(--srd-green);
+        box-shadow: 0 0 0 3px oklch(0.48 0.14 145 / 0.15); outline: none;
     }
     .st-card .dataTables_wrapper .dataTables_length select {
         height: 32px; padding: 0 28px 0 10px; border-radius: 8px;
-        border: 1px solid #cbd5e1; font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 0.8125rem;
+        border: 1px solid var(--ex-border-input);
+        font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 0.8125rem;
     }
     .st-card table.dataTable { border-collapse: collapse !important; width: 100% !important; }
     .st-card table.dataTable thead th {
-        background: #f8fafc; border-bottom: 2px solid var(--st-border); color: var(--st-text-muted);
-        font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-        padding: 14px 16px; white-space: nowrap;
+        background: var(--srd-surface-subtle); border-bottom: 2px solid var(--srd-border);
+        color: var(--srd-text-2); font-size: 0.6875rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.06em; padding: 14px 16px; white-space: nowrap;
     }
     .st-card table.dataTable tbody td {
-        padding: 14px 16px; font-size: 0.8125rem; font-weight: 500; color: #334155;
-        border-bottom: 1px solid var(--st-border-light); vertical-align: middle;
+        padding: 14px 16px; font-size: 0.8125rem; font-weight: 500; color: var(--ex-text);
+        border-bottom: 1px solid var(--ex-border-light); vertical-align: middle;
     }
-    .st-card table.dataTable tbody tr:nth-child(even) { background: rgba(248, 250, 252, 0.5); }
-    .st-card table.dataTable tbody tr:hover { background: rgba(219, 234, 254, 0.3) !important; }
+    .st-card table.dataTable tbody tr:nth-child(even) { background: oklch(0.975 0.010 145 / 0.5); }
+    @media (hover: hover) {
+        .st-card table.dataTable tbody tr:hover { background: var(--srd-green-hover) !important; }
+    }
 
-    .st-card .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; font-family: 'Barlow', sans-serif; border: 1px solid transparent; }
-    .st-card .badge.bg-success { background: #ecfdf5 !important; color: #047857 !important; border-color: #a7f3d0; }
-    .st-card .badge.bg-warning { background: #fffbeb !important; color: #b45309 !important; border-color: #fde68a; }
-    .st-card .badge.bg-danger { background: #fef2f2 !important; color: #dc2626 !important; border-color: #fecaca; }
-    .st-card .badge.bg-secondary { background: #f1f5f9 !important; color: #475569 !important; border-color: #e2e8f0; }
+    .st-card .badge {
+        display: inline-flex; align-items: center; padding: 4px 12px;
+        border-radius: 9999px; font-size: 0.6875rem; font-weight: 700;
+        font-family: 'Barlow', sans-serif; border: 1px solid transparent;
+    }
+    .st-card .badge.bg-success  { background: #ecfdf5 !important; color: #047857 !important; border-color: #a7f3d0; }
+    .st-card .badge.bg-warning  { background: #fffbeb !important; color: #b45309 !important; border-color: #fde68a; }
+    .st-card .badge.bg-danger   { background: #fef2f2 !important; color: #dc2626 !important; border-color: #fecaca; }
+    .st-card .badge.bg-secondary {
+        background: var(--srd-surface-subtle) !important;
+        color: var(--srd-text-2) !important; border-color: var(--srd-border);
+    }
 
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button {
-        min-width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
-        border-radius: 8px !important; border: 1px solid var(--st-border) !important; background: #fff !important;
-        color: var(--st-text-muted) !important; font-size: 0.8125rem; font-weight: 600; font-family: 'Barlow', sans-serif; margin: 0 2px; padding: 0 8px !important;
+        min-width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 8px !important; border: 1px solid var(--srd-border) !important;
+        background: var(--srd-surface) !important; color: var(--srd-text-2) !important;
+        font-size: 0.8125rem; font-weight: 600; font-family: 'Barlow', sans-serif;
+        margin: 0 2px; padding: 0 8px !important;
     }
-    .st-card .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: #f1f5f9 !important; color: var(--st-text) !important; }
-    .st-card .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: var(--st-primary) !important; color: #fff !important; border-color: var(--st-primary) !important; }
+    .st-card .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: var(--srd-surface-subtle) !important; color: var(--ex-text) !important;
+    }
+    .st-card .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: var(--srd-green) !important; color: var(--srd-on-dark) !important;
+        border-color: var(--srd-green) !important;
+    }
     .st-card .dataTables_wrapper .dataTables_paginate .paginate_button.disabled { opacity: 0.4; }
-    .st-card .dataTables_wrapper .dataTables_info { font-size: 0.8125rem; font-weight: 500; color: var(--st-text-muted); font-family: 'Barlow', sans-serif; padding: 16px 24px; }
+    .st-card .dataTables_wrapper .dataTables_info {
+        font-size: 0.8125rem; font-weight: 500; color: var(--srd-text-2);
+        font-family: 'Barlow', sans-serif; padding: 16px 24px;
+    }
     .st-card .dataTables_wrapper .dataTables_paginate { padding: 16px 24px; }
 
     @media (max-width: 768px) {
         .ex-header { flex-direction: column; }
-        .ex-header__title { font-size: 1.4rem;}
+        .ex-header__title { font-size: 1.4rem; }
     }
 </style>
 
@@ -165,36 +200,56 @@
     {{-- Header --}}
     <div class="ex-header">
         <div class="ex-header__left">
-            <div class="ex-header__icon">
-                <span class="material-symbols-outlined">download</span>
-            </div>
             <div>
                 <h1 class="ex-header__title">Export Data Imunisasi</h1>
                 <p class="ex-header__subtitle">Filter dan ekspor data imunisasi anak ke format CSV</p>
             </div>
         </div>
-        <div>
-            <button class="st-btn st-btn-primary" id="btnExport" disabled>
-                <span class="material-symbols-outlined">download</span>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+            <button class="st-btn st-btn-primary" id="btnExport" disabled
+                aria-describedby="exportHint">
+                <span class="material-symbols-outlined" aria-hidden="true">download</span>
                 Export CSV
             </button>
+            <span id="exportHint" style="font-size:0.75rem; color:var(--srd-text-2); font-family:'Barlow',sans-serif; font-weight:500;">
+                Pilih bulan terlebih dahulu untuk mengaktifkan export
+            </span>
         </div>
     </div>
 
     {{-- Filter Card --}}
     <div class="st-card">
         <div class="st-card__header">
-            <h3 class="st-card__header-title">
-                <span class="material-symbols-outlined">filter_alt</span>
+            <h2 class="st-card__header-title">
+                <span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>
                 Filter Data
-            </h3>
+            </h2>
         </div>
         <div class="st-card__body">
             <div class="row">
                 <div class="col-md-3">
                     <div class="st-form-group">
-                        <label for="filterBulan">Bulan</label>
-                        <input type="month" id="filterBulan" placeholder="Pilih Bulan">
+                        <label for="filterBulanNative" id="filterBulanLabel">Bulan</label>
+                        {{-- Hidden input holds the final value used by all JS handlers --}}
+                        <input type="hidden" id="filterBulan">
+                        {{-- Native month picker (Chrome/Edge) --}}
+                        <input type="month" id="filterBulanNative" aria-labelledby="filterBulanLabel"
+                               title="Format: Tahun-Bulan (mis. 2025-01)">
+                        {{-- Firefox/Safari fallback: two selects, hidden until needed --}}
+                        <div id="filterBulanFallback" style="display:none; gap:6px; flex-wrap:nowrap;">
+                            <select id="fbMonth" aria-label="Bulan" style="width:55%;">
+                                <option value="">-- Bulan --</option>
+                                @foreach(['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'] as $i => $nb)
+                                    <option value="{{ str_pad($i+1,2,'0',STR_PAD_LEFT) }}">{{ $nb }}</option>
+                                @endforeach
+                            </select>
+                            <select id="fbYear" aria-label="Tahun" style="width:calc(45% - 6px);">
+                                <option value="">-- Tahun --</option>
+                                @for($y = date('Y'); $y >= 2020; $y--)
+                                    <option value="{{ $y }}">{{ $y }}</option>
+                                @endfor
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -236,14 +291,14 @@
 
     {{-- Export Agregat Card --}}
     <div class="st-card">
-        <div class="st-card__header" style="background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);">
-            <h3 class="st-card__header-title">
-                <span class="material-symbols-outlined">table_chart</span>
+        <div class="st-card__header" style="background: oklch(0.30 0.09 145);">
+            <h2 class="st-card__header-title">
+                <span class="material-symbols-outlined" aria-hidden="true">table_chart</span>
                 Export Agregat per Kelurahan
-            </h3>
+            </h2>
         </div>
         <div class="st-card__body">
-            <p style="font-size: 0.8125rem; color: var(--st-text-muted); margin-bottom: 16px; font-weight: 500;">
+            <p style="font-size: 0.8125rem; color: var(--srd-text-2); margin-bottom: 16px; font-weight: 500;">
                 Export data agregat imunisasi per kelurahan dengan rincian per vaksin dan per kelompok (IDL/IBL/ISL) dalam format Excel.
             </p>
             <div class="row align-items-end">
@@ -275,8 +330,9 @@
                 <div class="col-md-3">
                     <div class="st-form-group">
                         <label>&nbsp;</label>
-                        <button class="st-btn st-btn-primary" id="btnExportAgregat" disabled style="width: 100%;">
-                            <span class="material-symbols-outlined">download</span>
+                        <button class="st-btn st-btn-primary" id="btnExportAgregat" disabled style="width: 100%;"
+                            title="Pilih Bulan dan Tahun untuk mengaktifkan export agregat">
+                            <span class="material-symbols-outlined" aria-hidden="true">download</span>
                             Export Agregat Excel
                         </button>
                     </div>
@@ -286,33 +342,36 @@
     </div>
 
     {{-- Filter Badges (US3) --}}
-    <div class="filter-badges" id="filterBadges"></div>
+    <div class="filter-badges" id="filterBadges"
+         aria-live="polite" aria-label="Filter aktif"></div>
 
     {{-- Preview Table Card (US2) --}}
     <div class="st-card">
         <div class="st-card__header">
-            <h3 class="st-card__header-title">
-                <span class="material-symbols-outlined">preview</span>
+            <h2 class="st-card__header-title">
+                <span class="material-symbols-outlined" aria-hidden="true">preview</span>
                 Preview Data
-            </h3>
-            <span id="recordCount" style="color: rgba(255,255,255,0.85); font-size: 0.8125rem; font-weight: 600; font-family: 'Barlow', sans-serif;"></span>
+            </h2>
+            <span id="recordCount" aria-live="polite"
+                  style="color: var(--srd-on-dark); opacity: 0.85; font-size: 0.8125rem; font-weight: 600; font-family: 'Barlow', sans-serif;"></span>
         </div>
         <div class="table-responsive" style="padding: 0;">
             <table id="previewTable" class="table" style="width:100%; margin-bottom: 0;">
+                <caption class="visually-hidden">Data imunisasi anak sesuai filter yang dipilih</caption>
                 <thead>
                     <tr>
-                        <th>Nama Anak</th>
-                        <th>NIK</th>
-                        <th>Jenis Kelamin</th>
-                        <th>Tgl Lahir</th>
-                        <th>Kelurahan</th>
-                        <th>Kecamatan</th>
-                        <th>Posyandu</th>
-                        <th>Jenis Vaksin</th>
-                        <th>Dosis</th>
-                        <th>Tgl Pemberian</th>
-                        <th>Status</th>
-                        <th>Lokasi</th>
+                        <th scope="col">Nama Anak</th>
+                        <th scope="col">NIK</th>
+                        <th scope="col">Jenis Kelamin</th>
+                        <th scope="col">Tgl Lahir</th>
+                        <th scope="col">Kelurahan</th>
+                        <th scope="col">Kecamatan</th>
+                        <th scope="col">Posyandu</th>
+                        <th scope="col">Jenis Vaksin</th>
+                        <th scope="col">Dosis</th>
+                        <th scope="col">Tgl Pemberian</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Lokasi</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -322,13 +381,40 @@
 </div>
 @endsection
 
-@section('scripts')
-@parent
+@section('custom_scripts')
 <script>
 $(document).ready(function() {
+
+    // ── Firefox/Safari month input polyfill ───────────────────────────
+    (function() {
+        var testInput = document.createElement('input');
+        testInput.setAttribute('type', 'month');
+        testInput.setAttribute('value', ':)');
+        var nativeSupport = testInput.value !== ':)';
+
+        if (nativeSupport) {
+            // Chrome/Edge: sync native → hidden, then trigger filter change
+            $('#filterBulanNative').on('change', function() {
+                $('#filterBulan').val(this.value).trigger('change');
+            });
+        } else {
+            // Firefox/Safari fallback
+            $('#filterBulanNative').hide();
+            $('#filterBulanFallback').css('display', 'flex');
+
+            function syncFallback() {
+                var m = $('#fbMonth').val();
+                var y = $('#fbYear').val();
+                $('#filterBulan').val((m && y) ? y + '-' + m : '').trigger('change');
+            }
+            $('#fbMonth, #fbYear').on('change', syncFallback);
+        }
+    })();
+
     var table = $('#previewTable').DataTable({
         processing: true,
         serverSide: true,
+        responsive: true,
         ajax: {
             url: '{{ route("admin.export.imunisasi.getData") }}',
             data: function(d) {
@@ -355,7 +441,7 @@ $(document).ready(function() {
         order: [],
         pageLength: 25,
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json',
+            url: '{{ asset("admin/src/plugins/datatables/lang/id.json") }}',
             emptyTable: 'Tidak ada data yang sesuai filter'
         },
         drawCallback: function(settings) {
@@ -365,7 +451,7 @@ $(document).ready(function() {
         }
     });
 
-    // Filter change handler - reload DataTables
+    // Filter change handler — hidden #filterBulan, selects, and other filters
     $('#filterBulan, #filterKelurahan, #filterAntigen, #filterStatus').on('change', function() {
         table.draw();
         updateBadges();
@@ -385,7 +471,12 @@ $(document).ready(function() {
     function updateExportButton(totalRecords) {
         var hasBulan = $('#filterBulan').val() !== '';
         var hasData = totalRecords > 0;
-        $('#btnExport').prop('disabled', !hasBulan || !hasData);
+        var disabled = !hasBulan || !hasData;
+        $('#btnExport').prop('disabled', disabled);
+        var hint = !hasBulan
+            ? 'Pilih bulan terlebih dahulu untuk mengaktifkan export'
+            : (hasData ? '' : 'Tidak ada data untuk filter yang dipilih');
+        $('#exportHint').text(hint);
     }
 
     // Export Agregat
@@ -437,3 +528,4 @@ $(document).ready(function() {
 });
 </script>
 @endsection
+
