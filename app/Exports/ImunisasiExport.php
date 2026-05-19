@@ -80,14 +80,14 @@ class ImunisasiExport implements FromQuery, WithMapping, WithHeadings, ShouldAut
     public function map($imunisasi): array
     {
         return [
-            $imunisasi->anak->nama ?? '-',
-            $imunisasi->anak->nik ?? '-',
-            ($imunisasi->anak->jk ?? null) == 1 ? 'Laki-laki' : 'Perempuan',
-            $imunisasi->anak->tgl_lahir ? Carbon::parse($imunisasi->anak->tgl_lahir)->format('d/m/Y') : '-',
-            $imunisasi->anak->kel->name ?? '-',
-            $imunisasi->anak->kec->name ?? '-',
-            $imunisasi->anak->posyandu->name ?? '-',
-            $imunisasi->jenisVaksin->nama ?? '-',
+            $imunisasi->anak?->nama ?? '-',
+            $imunisasi->anak?->nik ?? '-',
+            ($imunisasi->anak?->jk) == 1 ? 'Laki-laki' : 'Perempuan',
+            $imunisasi->anak?->tgl_lahir ? Carbon::parse($imunisasi->anak->tgl_lahir)->format('d/m/Y') : '-',
+            $imunisasi->anak?->kel?->name ?? '-',
+            $imunisasi->anak?->kec?->name ?? '-',
+            $imunisasi->anak?->posyandu?->name ?? '-',
+            $imunisasi->jenisVaksin?->nama ?? '-',
             $imunisasi->dosis ?? 1,
             $imunisasi->tanggal_pemberian ? $imunisasi->tanggal_pemberian->format('d/m/Y') : '-',
             $imunisasi->status ?? '-',

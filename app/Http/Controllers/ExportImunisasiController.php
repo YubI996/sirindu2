@@ -66,28 +66,28 @@ class ExportImunisasiController extends Controller
 
         return DataTables::of($query)
             ->addColumn('nama_anak', function ($row) {
-                return $row->anak->nama ?? '-';
+                return $row->anak?->nama ?? '-';
             })
             ->addColumn('nik', function ($row) {
-                return $row->anak->nik ?? '-';
+                return $row->anak?->nik ?? '-';
             })
             ->addColumn('jenis_kelamin', function ($row) {
-                return ($row->anak->jk ?? null) == 1 ? 'Laki-laki' : 'Perempuan';
+                return ($row->anak?->jk) == 1 ? 'Laki-laki' : 'Perempuan';
             })
             ->addColumn('tanggal_lahir', function ($row) {
-                return $row->anak->tgl_lahir ? Carbon::parse($row->anak->tgl_lahir)->format('d/m/Y') : '-';
+                return $row->anak?->tgl_lahir ? Carbon::parse($row->anak->tgl_lahir)->format('d/m/Y') : '-';
             })
             ->addColumn('kelurahan', function ($row) {
-                return $row->anak->kel->name ?? '-';
+                return $row->anak?->kel?->name ?? '-';
             })
             ->addColumn('kecamatan', function ($row) {
-                return $row->anak->kec->name ?? '-';
+                return $row->anak?->kec?->name ?? '-';
             })
             ->addColumn('posyandu', function ($row) {
-                return $row->anak->posyandu->name ?? '-';
+                return $row->anak?->posyandu?->name ?? '-';
             })
             ->addColumn('jenis_vaksin', function ($row) {
-                return $row->jenisVaksin->nama ?? '-';
+                return $row->jenisVaksin?->nama ?? '-';
             })
             ->addColumn('tanggal_pemberian_fmt', function ($row) {
                 return $row->tanggal_pemberian ? $row->tanggal_pemberian->format('d/m/Y') : '-';
