@@ -21,13 +21,15 @@ class Imunisasi extends Model
         'lokasi_pemberian',
         'id_petugas',
         'status',
+        'is_kejar',
         'reaksi_kipi',
         'catatan',
     ];
 
     protected $casts = [
-        'tanggal_pemberian' => 'date',
+        'tanggal_pemberian'   => 'date',
         'tanggal_selanjutnya' => 'date',
+        'is_kejar'            => 'boolean',
     ];
 
     public function anak()
@@ -63,10 +65,12 @@ class Imunisasi extends Model
     public function getStatusBadgeAttribute()
     {
         return match ($this->status) {
-            'sudah' => '<span class="badge bg-success">Sudah</span>',
-            'belum' => '<span class="badge bg-warning">Belum</span>',
-            'terlambat' => '<span class="badge bg-danger">Terlambat</span>',
-            default => '<span class="badge bg-secondary">-</span>',
+            'sudah'          => '<span class="badge bg-success">Sudah</span>',
+            'belum'          => '<span class="badge bg-warning text-dark">Belum</span>',
+            'terlambat'      => '<span class="badge bg-danger">Terlambat</span>',
+            'kadaluarsa'     => '<span class="badge bg-secondary">Kedaluwarsa</span>',
+            'tidak_relevan'  => '<span class="badge bg-light text-secondary border">Tidak Relevan</span>',
+            default          => '<span class="badge bg-secondary">-</span>',
         };
     }
 }

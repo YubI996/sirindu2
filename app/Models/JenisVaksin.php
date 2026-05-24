@@ -19,13 +19,16 @@ class JenisVaksin extends Model
         'usia_pemberian_min',
         'usia_pemberian_max',
         'interval_hari',
+        'catchup_max_hari',
+        'bisa_dikejar',
         'keterangan',
         'id_kelompok_vaksin',
         'aktif',
     ];
 
     protected $casts = [
-        'aktif' => 'boolean',
+        'aktif'        => 'boolean',
+        'bisa_dikejar' => 'boolean',
     ];
 
     public function kelompokVaksin()

@@ -56,13 +56,11 @@ class Anak extends Model
     }
 
     /**
-     * Cek apakah NIK anak adalah NIK dummy (digit ke-13 = '9').
+     * Cek apakah NIK anak adalah NIK dummy (indeks ke-12 / digit ke-13 basis 1 = '9').
      */
     public function isDummyNik(): bool
     {
-        return strlen((string) $this->nik) === 16
-            && isset($this->nik[12])
-            && $this->nik[12] === '9';
+        return \App\Services\NikDummyService::isDummy((string) $this->nik);
     }
 
     /**
@@ -120,20 +118,47 @@ class Anak extends Model
     }
 
     /**
-     * Get catch-up (kejar) vaccination status.
-     * kejar_idl: age >11 months AND <=60 months AND IDL belum lengkap.
-     * kejar_ibl: age >23 months AND <=60 months AND IBL belum lengkap.
+     * Get catch-up (kejar) vaccination status using per-vaccine rules.
      *
-     * @return array ['kejar_idl' => bool, 'kejar_ibl' => bool]
+     * @return array{kejar_idl: bool, kejar_ibl: bool, vaksin_kejar: string[]}
      */
     public function statusKejarVaksin(): array
     {
-        $usiaBulan = Carbon::parse($this->tgl_lahir)->diffInMonths(now());
-        $status = $this->statusKelengkapanVaksin();
+        $service = app(\App\Services\ImunisasiStatusService::class);
+        $jadwal  = $service->getJadwal($this);
+
+        $vaksinKejar = [];
+        $kejarIdl    = false;
+        $kejarIbl    = false;
+
+        foreach ($jadwal as $item) {
+            if ($item['status'] !== 'terlambat') {
+                continue;
+            }
+
+            $vaksin = $item['vaksin'];
+            $vaksinKejar[] = $vaksin->nama;
+
+            $kelompokKode = $vaksin->kelompokVaksin?->kode;
+            if ($kelompokKode === 'IDL') {
+                $kejarIdl = true;
+            } elseif ($kelompokKode === 'IBL') {
+                $kejarIbl = true;
+            }
+        }
 
         return [
-            'kejar_idl' => $usiaBulan > 11 && $usiaBulan <= 60 && ($status['IDL'] ?? '') === 'Belum Lengkap',
-            'kejar_ibl' => $usiaBulan > 23 && $usiaBulan <= 60 && ($status['IBL'] ?? '') === 'Belum Lengkap',
+            'kejar_idl'    => $kejarIdl,
+            'kejar_ibl'    => $kejarIbl,
+            'vaksin_kejar' => $vaksinKejar,
         ];
+    }
+
+    /**
+     * Check if child has completed IDL (all required vaccines for 0–12 months).
+     */
+    public function statusIdl(): bool
+    {
+        return app(\App\Services\ImunisasiStatusService::class)->isIdlLengkap($this);
     }
 }

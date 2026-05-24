@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
+use App\Services\ImunisasiStatusService;
 use GuzzleHttp\Promise\Create;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -266,32 +267,12 @@ class AnakRepository implements AnakRepositoryInterface
     public function getJadwalImunisasi($idAnak)
     {
         $anak = Anak::find($idAnak);
-        $tglLahir = $anak->tgl_lahir;
-        $jenisVaksin = JenisVaksin::aktif()->get();
-        $imunisasiDiberikan = Imunisasi::where('id_anak', $idAnak)->get()->keyBy('id_jenis_vaksin');
+        return app(ImunisasiStatusService::class)->getJadwal($anak);
+    }
 
-        $jadwal = [];
-        foreach ($jenisVaksin as $vaksin) {
-            $tanggalMin = date('Y-m-d', strtotime($tglLahir . ' + ' . $vaksin->usia_pemberian_min . ' days'));
-            $tanggalMax = date('Y-m-d', strtotime($tglLahir . ' + ' . $vaksin->usia_pemberian_max . ' days'));
-            $sudahDiberikan = isset($imunisasiDiberikan[$vaksin->id]);
-
-            $status = 'belum';
-            if ($sudahDiberikan) {
-                $status = 'sudah';
-            } elseif (date('Y-m-d') > $tanggalMax) {
-                $status = 'terlambat';
-            }
-
-            $jadwal[] = [
-                'vaksin' => $vaksin,
-                'tanggal_min' => $tanggalMin,
-                'tanggal_max' => $tanggalMax,
-                'status' => $status,
-                'imunisasi' => $sudahDiberikan ? $imunisasiDiberikan[$vaksin->id] : null,
-            ];
-        }
-
-        return $jadwal;
+    public function getCatchupPlan($idAnak)
+    {
+        $anak = Anak::find($idAnak);
+        return app(ImunisasiStatusService::class)->getCatchupPlan($anak);
     }
 }

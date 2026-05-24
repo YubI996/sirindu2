@@ -393,7 +393,7 @@ Detail
                         <span class="sr-only">Nomor Induk Kependudukan:</span>
                         NIK: {{ $anak->nik }}
                         @if($anak->isDummyNik())
-                            <span class="badge badge-warning ml-1"><i class="fa fa-exclamation-triangle"></i> NIK Dummy</span>
+                            <span class="badge bg-warning text-dark ms-1 fw-normal" style="font-size:.7em">NIK Dummy</span>
                         @endif
                     </p>
                     <p class="text-accessible-muted mb-0">
@@ -450,7 +450,7 @@ Detail
                         <dd class="col-sm-7">
                             {{ $anak->nik }}
                             @if($anak->isDummyNik())
-                                <span class="badge badge-warning ml-1"><i class="fa fa-exclamation-triangle"></i> NIK Dummy</span>
+                                <span class="badge bg-warning text-dark ms-1 fw-normal" style="font-size:.7em">NIK Dummy</span>
                             @endif
                         </dd>
 
@@ -922,6 +922,18 @@ Detail
                                 </span>
                             @endif
                         </div>
+                        @if(count($kejarStatus['vaksin_kejar']) > 0)
+                        <div class="col-12 mt-2">
+                            <div class="alert alert-danger py-2 mb-0" style="font-size:0.875rem;">
+                                <strong>Vaksin yang harus dikejar:</strong>
+                                {{ implode(', ', $kejarStatus['vaksin_kejar']) }}
+                                &nbsp;—&nbsp;
+                                <a href="{{ route('admin.jadwalImunisasi', $anak->hashid) }}" class="alert-link">
+                                    Lihat rencana kejar
+                                </a>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                     @endif
                 </div>

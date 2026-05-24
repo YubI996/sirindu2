@@ -6,51 +6,171 @@
 
 @section('content')
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap');
+
     @include('admin.epidemiologi.components.shared-styles')
 
-    .pd3i-panel-header {
-        padding: 0.75rem 1.25rem;
-        font-weight: 700;
-        font-size: 0.9rem;
-        color: #fff;
-        border-radius: 10px 10px 0 0;
+    /* ─── TYPOGRAPHY BASE ─── */
+    body, .tab-content, .pd3i-panel-body, .filter-card,
+    .kinerja-card, .nav-tabs .nav-link {
+        font-family: 'Barlow', Arial, sans-serif;
     }
-    .pd3i-panel { border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 1.25rem; }
-    .pd3i-panel-body { padding: 1rem; }
-    .panel-campak  { background: linear-gradient(135deg, #047857, #065f46); }
-    .panel-afp     { background: linear-gradient(135deg, #b45309, #92400e); }
-    .panel-difteri { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
-    .panel-pertusis{ background: linear-gradient(135deg, #7c3aed, #6d28d9); }
 
-    .kinerja-card { border-radius: 8px; border: 1px solid var(--srd-border, #e5e7eb); padding: 0.75rem 1rem; text-align: center; background: var(--srd-surface, #fff); }
-    .kinerja-card .k-label { font-size: 0.72rem; color: var(--text-secondary, #6b7280); margin-bottom: 2px; font-weight: 500; letter-spacing: 0.2px; }
-    .kinerja-card .k-value { font-size: 1.6rem; font-weight: 700; color: var(--primary-blue-dark, #1e40af); line-height: 1.1; }
-    .kinerja-card .k-value.pct { font-size: 1.3rem; color: var(--success-green, #047857); }
-    .kinerja-card .k-value.danger { color: var(--danger-rose, #be123c); }
-    .kinerja-card .k-value.active-case { color: #d97706; }
-    .kinerja-card.disabled .k-value { color: #9ca3af; font-size: 1rem; }
-    .kinerja-card.primary { border-color: var(--srd-border, #e5e7eb); }
-    .kinerja-card.primary .k-value { font-size: 2.4rem; }
-    .kinerja-card.primary .k-label { font-size: 0.75rem; font-weight: 600; }
+    /* ─── PAGE HEADER ─── */
+    .pd3i-page-title {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        color: var(--primary-dark);
+        line-height: 1.2;
+    }
+    .pd3i-page-subtitle {
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        margin-top: 2px;
+    }
+
+    /* ─── FILTER BAR ─── */
+    .filter-card {
+        background: #fff;
+        border: 1px solid oklch(0.88 0.02 145);
+        border-top: 3px solid var(--primary);
+        border-radius: 0 0 8px 8px;
+        padding: 0.875rem 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .filter-card label {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    /* ─── TABS ─── */
+    .nav-tabs {
+        border-bottom: 2px solid oklch(0.88 0.02 145);
+        gap: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tabs .nav-item { flex-shrink: 0; }
+    .nav-tabs .nav-link {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        padding: 0.6rem 1.1rem 0.5rem;
+        color: var(--text-secondary);
+        border: none;
+        border-radius: 0;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        background: transparent;
+        transition: color 0.15s ease, border-color 0.15s ease;
+        white-space: nowrap;
+    }
+    .nav-tabs .nav-link:hover {
+        color: var(--primary-dark);
+        border-bottom-color: oklch(0.60 0.10 145);
+        background: transparent;
+    }
+    .nav-tabs .nav-link.active {
+        color: var(--primary-dark);
+        border-bottom-color: var(--primary);
+        background: transparent;
+        font-weight: 700;
+    }
+    .tab-content {
+        border: 1px solid oklch(0.88 0.02 145);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 1.25rem;
+        background: #fff;
+    }
+
+    /* ─── DISEASE PANELS ─── */
+    .pd3i-panel {
+        border-radius: 8px;
+        border: 1px solid oklch(0.88 0.02 145);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+    .pd3i-panel-header {
+        padding: 0.65rem 1.25rem;
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-size: 0.88rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #fff;
+        line-height: 1.2;
+    }
+    .pd3i-panel-body { padding: 1rem; }
+
+    /* Solid brand-derived panel colors — no gradients */
+    .panel-campak  { background: #003d1f; }  /* forest — primary disease */
+    .panel-afp     { background: #3d1f00; }  /* umber  — warm, alert */
+    .panel-difteri { background: #001f3d; }  /* prussian — cool, bacterial */
+    .panel-pertusis{ background: #33001a; }  /* wine   — respiratory */
+
+    /* ─── KINERJA CARDS ─── */
+    .kinerja-card {
+        border-radius: 6px;
+        border: 1px solid oklch(0.88 0.02 145);
+        padding: 0.75rem 1rem;
+        text-align: center;
+        background: #fff;
+    }
+    .kinerja-card .k-label {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        margin-bottom: 3px;
+    }
+    .kinerja-card .k-value {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        line-height: 1.1;
+    }
+    .kinerja-card .k-value.pct         { font-size: 1.4rem;  color: var(--primary); }
+    .kinerja-card .k-value.danger      { color: var(--danger-rose); }
+    .kinerja-card .k-value.active-case { font-size: 1.4rem;  color: var(--warning-amber); }
+    .kinerja-card.disabled .k-value    { color: #9ca3af; font-size: 1rem; }
+    .kinerja-card.primary .k-value     { font-size: 2.5rem; }
+    .kinerja-card.primary .k-label     { font-size: 0.75rem; }
 
     .pd3i-quality-row {
-        padding-top: 0.625rem;
-        margin-top: 0.375rem;
-        border-top: 1px solid var(--srd-border, #f3f4f6);
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid oklch(0.92 0.015 145);
     }
-    .pd3i-quality-row .kinerja-card { background: var(--srd-surface-subtle, #f8fafc); }
-    .pd3i-quality-row .k-value { font-size: 1.25rem; }
+    .pd3i-quality-row .kinerja-card { background: oklch(0.97 0.008 145); }
+    .pd3i-quality-row .k-value      { font-size: 1.35rem; }
 
-    .skeleton { background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
-                background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; }
+    /* ─── SKELETON (green-tinted) ─── */
+    .skeleton {
+        background: linear-gradient(90deg, oklch(0.95 0.012 145) 25%, oklch(0.91 0.018 145) 50%, oklch(0.95 0.012 145) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
+        border-radius: 4px;
+    }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-    .skel-text { height: 1.4rem; width: 60%; margin: 0.25rem auto; }
-    .skel-value { height: 2rem; width: 50%; margin: 0.15rem auto; }
-
-    .filter-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
-    .nav-tabs .nav-link { font-weight: 600; font-size: 0.85rem; padding: 0.6rem 1.1rem; color: #374151; border-radius: 8px 8px 0 0; }
-    .nav-tabs .nav-link.active { color: #1e40af; border-color: #e5e7eb #e5e7eb #fff; background: #fff; }
-    .tab-content { border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px; padding: 1.25rem; background: #fff; }
+    .skel-text  { height: 1.4rem; width: 60%; margin: 0.25rem auto; }
+    .skel-value { height: 2rem;   width: 50%; margin: 0.15rem auto; }
 </style>
 
 <div class="container-fluid" id="main-content">
@@ -58,11 +178,10 @@
     {{-- ===== HEADER ===== --}}
     <header class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h2 class="mb-0" style="color: var(--primary-blue-dark); font-size:1.3rem;">
-                <i class="fa fa-chart-bar mr-2" aria-hidden="true"></i>
-                Dashboard Surveilans PD3I
-            </h2>
-            <small class="text-muted">Kota Bontang — Data real-time dari sistem surveilans</small>
+            <div class="pd3i-page-title">
+                <i class="fa fa-chart-bar mr-2" aria-hidden="true"></i>Dashboard Surveilans PD3I
+            </div>
+            <div class="pd3i-page-subtitle">Kota Bontang — Data real-time dari sistem surveilans</div>
         </div>
         <div class="d-flex gap-2 flex-wrap justify-content-end">
             <a href="{{ route('admin.epidemiologi.dashboard') }}" class="btn btn-sm btn-outline-secondary">
@@ -71,8 +190,8 @@
             <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-sm btn-outline-primary">
                 <i class="fa fa-list mr-1"></i> Daftar Kasus
             </a>
-            <a id="btnExportExcel" href="#" class="btn btn-sm btn-success">
-                <i class="fa fa-file-excel mr-1"></i> Export Excel
+            <a id="btnExportExcel" href="#" class="btn btn-sm btn-outline-success">
+                <i class="fa fa-file-excel mr-1"></i> Excel
             </a>
             <form id="formExportPdf" method="POST" action="{{ route('admin.pd3i.exportPdf') }}" style="display:inline;">
                 @csrf
@@ -81,7 +200,7 @@
                 <input type="hidden" name="wilker" id="pdf_wilker">
                 <input type="hidden" name="kelurahan_id" id="pdf_kelurahan_id">
                 <button type="submit" class="btn btn-sm btn-danger">
-                    <i class="fa fa-file-pdf mr-1"></i> Export PDF
+                    <i class="fa fa-file-pdf mr-1"></i> PDF
                 </button>
             </form>
         </div>
@@ -91,7 +210,7 @@
     <div class="filter-card">
         <div class="row align-items-end g-2">
             <div class="col-6 col-md-2">
-                <label for="filter-tahun" class="mb-1"><i class="fa fa-calendar-alt mr-1"></i> Tahun</label>
+                <label for="filter-tahun"><i class="fa fa-calendar-alt mr-1"></i>Tahun</label>
                 <select id="filter-tahun" class="form-control">
                     @for($y = now()->year; $y >= now()->year - 5; $y--)
                         <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
@@ -99,7 +218,7 @@
                 </select>
             </div>
             <div class="col-6 col-md-3">
-                <label for="filter-penyakit" class="mb-1"><i class="fa fa-virus mr-1"></i> Jenis Penyakit</label>
+                <label for="filter-penyakit"><i class="fa fa-virus mr-1"></i>Jenis Penyakit</label>
                 <select id="filter-penyakit" class="form-control">
                     <option value="">Semua PD3I</option>
                     @foreach($diseases as $d)
@@ -108,7 +227,7 @@
                 </select>
             </div>
             <div class="col-6 col-md-3">
-                <label for="filter-wilker" class="mb-1"><i class="fa fa-hospital mr-1"></i> Wilker Puskesmas</label>
+                <label for="filter-wilker"><i class="fa fa-hospital mr-1"></i>Wilker Puskesmas</label>
                 <select id="filter-wilker" class="form-control">
                     <option value="">Semua Puskesmas</option>
                     @foreach($wilkers as $w)
@@ -117,7 +236,7 @@
                 </select>
             </div>
             <div class="col-6 col-md-4">
-                <label for="filter-kelurahan" class="mb-1"><i class="fa fa-map-marker-alt mr-1"></i> Kelurahan</label>
+                <label for="filter-kelurahan"><i class="fa fa-map-marker-alt mr-1"></i>Kelurahan</label>
                 <select id="filter-kelurahan" class="form-control">
                     <option value="">Semua Kelurahan</option>
                     @foreach($kelurahans as $kel)
@@ -130,37 +249,47 @@
 
     {{-- ===== TABS ===== --}}
     <ul class="nav nav-tabs" id="pd3iTabs" role="tablist">
-        <li class="nav-item">
-            <a class="nav-link active" id="tab-kinerja-link" data-toggle="tab" href="#tab-kinerja" role="tab">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-kinerja-link"
+                    data-bs-toggle="tab" data-bs-target="#tab-kinerja"
+                    type="button" role="tab" aria-controls="tab-kinerja" aria-selected="true">
                 <i class="fa fa-tachometer-alt mr-1"></i> Kinerja Surveilans
-            </a>
+            </button>
         </li>
-        <li class="nav-item">
-            <a class="nav-link" id="tab-demografi-link" data-toggle="tab" href="#tab-demografi" role="tab">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-demografi-link"
+                    data-bs-toggle="tab" data-bs-target="#tab-demografi"
+                    type="button" role="tab" aria-controls="tab-demografi" aria-selected="false">
                 <i class="fa fa-users mr-1"></i> Demografi
-            </a>
+            </button>
         </li>
-        <li class="nav-item">
-            <a class="nav-link" id="tab-tren-link" data-toggle="tab" href="#tab-tren" role="tab">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-tren-link"
+                    data-bs-toggle="tab" data-bs-target="#tab-tren"
+                    type="button" role="tab" aria-controls="tab-tren" aria-selected="false">
                 <i class="fa fa-chart-area mr-1"></i> Tren
-            </a>
+            </button>
         </li>
-        <li class="nav-item">
-            <a class="nav-link" id="tab-tempat-link" data-toggle="tab" href="#tab-tempat" role="tab">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-tempat-link"
+                    data-bs-toggle="tab" data-bs-target="#tab-tempat"
+                    type="button" role="tab" aria-controls="tab-tempat" aria-selected="false">
                 <i class="fa fa-map-marked-alt mr-1"></i> Tempat
-            </a>
+            </button>
         </li>
-        <li class="nav-item">
-            <a class="nav-link" id="tab-peta-link" data-toggle="tab" href="#tab-peta" role="tab">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-peta-link"
+                    data-bs-toggle="tab" data-bs-target="#tab-peta"
+                    type="button" role="tab" aria-controls="tab-peta" aria-selected="false">
                 <i class="fa fa-map mr-1"></i> Peta
-            </a>
+            </button>
         </li>
     </ul>
 
     <div class="tab-content" id="pd3iTabContent">
 
         {{-- ===== TAB 1: KINERJA SURVEILANS ===== --}}
-        <div class="tab-pane fade show active" id="tab-kinerja" role="tabpanel">
+        <div class="tab-pane fade show active" id="tab-kinerja" role="tabpanel" aria-labelledby="tab-kinerja-link">
 
             {{-- PANEL: Campak-Rubella --}}
             <div class="pd3i-panel">
@@ -168,7 +297,6 @@
                     <i class="fa fa-circle mr-1" style="font-size:.6rem;"></i> Campak-Rubella
                 </div>
                 <div class="pd3i-panel-body">
-                    {{-- Baris utama: 4 metrik kasus --}}
                     <div class="row g-2">
                         <div class="col-6 col-md-3">
                             <div class="kinerja-card primary">
@@ -192,11 +320,10 @@
                             <div class="kinerja-card">
                                 <div class="k-label">Discarded / Negatif</div>
                                 <div class="k-value" id="cr-discarded"><div class="skeleton skel-value"></div></div>
-                                <div id="cr-discarded-note" style="font-size:0.65rem; color:#6b7280; margin-top:2px;"></div>
+                                <div id="cr-discarded-note" style="font-size:0.65rem; color:var(--text-secondary); margin-top:2px;"></div>
                             </div>
                         </div>
                     </div>
-                    {{-- Baris kualitas: status akhir + indikator rate --}}
                     <div class="row g-2 pd3i-quality-row">
                         <div class="col-sm-6 col-md-4">
                             <div class="kinerja-card">
@@ -255,7 +382,7 @@
                             <div class="kinerja-card">
                                 <div class="k-label">Non-Polio AFP Rate</div>
                                 <div class="k-value" id="afp-npafp"><div class="skeleton skel-value"></div></div>
-                                <div id="afp-npafp-note" style="font-size:0.65rem; color:#6b7280; margin-top:2px;"></div>
+                                <div id="afp-npafp-note" style="font-size:0.65rem; color:var(--text-secondary); margin-top:2px;"></div>
                             </div>
                         </div>
                     </div>
@@ -309,9 +436,8 @@
         </div>{{-- /tab-kinerja --}}
 
         {{-- ===== TAB 2: DEMOGRAFI ===== --}}
-        <div class="tab-pane fade" id="tab-demografi" role="tabpanel">
+        <div class="tab-pane fade" id="tab-demografi" role="tabpanel" aria-labelledby="tab-demografi-link">
 
-            {{-- Jenis Kelamin + Kelompok Umur --}}
             <div class="row g-3 mb-3">
                 <div class="col-md-4">
                     <div class="info-card h-100">
@@ -337,7 +463,6 @@
                 </div>
             </div>
 
-            {{-- Gejala --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-thermometer-half mr-1"></i> Distribusi Gejala</div>
                 <div class="card-body">
@@ -348,7 +473,6 @@
                 </div>
             </div>
 
-            {{-- Vaksinasi + Severity --}}
             <div class="row g-3 mb-3">
                 <div class="col-md-5">
                     <div class="info-card h-100">
@@ -397,9 +521,8 @@
         </div>{{-- /tab-demografi --}}
 
         {{-- ===== TAB 3: TREN ===== --}}
-        <div class="tab-pane fade" id="tab-tren" role="tabpanel">
+        <div class="tab-pane fade" id="tab-tren" role="tabpanel" aria-labelledby="tab-tren-link">
 
-            {{-- Tren Tahunan --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-chart-bar mr-1"></i> Tren Kasus Tahunan (5 Tahun Terakhir)</div>
                 <div class="card-body">
@@ -410,7 +533,6 @@
                 </div>
             </div>
 
-            {{-- Kurva Epidemi (Mingguan) --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-chart-bar mr-1"></i> Kurva Epidemi (Mingguan — Epiweek)</div>
                 <div class="card-body">
@@ -421,7 +543,6 @@
                 </div>
             </div>
 
-            {{-- Tren Bulanan --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-chart-line mr-1"></i> Tren Laporan Bulanan</div>
                 <div class="card-body">
@@ -432,7 +553,6 @@
                 </div>
             </div>
 
-            {{-- Tren per Faskes --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-hospital mr-1"></i> Tren per Faskes Pelapor</div>
                 <div class="card-body">
@@ -471,9 +591,8 @@
         </div>{{-- /tab-tren --}}
 
         {{-- ===== TAB 4: TEMPAT ===== --}}
-        <div class="tab-pane fade" id="tab-tempat" role="tabpanel">
+        <div class="tab-pane fade" id="tab-tempat" role="tabpanel" aria-labelledby="tab-tempat-link">
 
-            {{-- Per Wilker Puskesmas --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-clinic-medical mr-1"></i> Per Wilker Puskesmas</div>
                 <div class="card-body p-0">
@@ -486,7 +605,6 @@
                 </div>
             </div>
 
-            {{-- Per Faskes Pelapor --}}
             <div class="info-card mb-3">
                 <div class="card-header"><i class="fa fa-hospital mr-1"></i> Per Faskes Pelapor</div>
                 <div class="card-body p-0">
@@ -500,7 +618,6 @@
             </div>
 
             <div class="row g-3 mb-3">
-                {{-- Per Kecamatan --}}
                 <div class="col-md-6">
                     <div class="info-card">
                         <div class="card-header"><i class="fa fa-map-pin mr-1"></i> Per Kecamatan</div>
@@ -514,7 +631,6 @@
                         </div>
                     </div>
                 </div>
-                {{-- Per Kelurahan --}}
                 <div class="col-md-6">
                     <div class="info-card">
                         <div class="card-header"><i class="fa fa-map-marker-alt mr-1"></i> Per Kelurahan</div>
@@ -530,7 +646,6 @@
                 </div>
             </div>
 
-            {{-- Per RT --}}
             <div class="info-card">
                 <div class="card-header"><i class="fa fa-home mr-1"></i> Per RT</div>
                 <div class="card-body p-0">
@@ -546,7 +661,7 @@
         </div>{{-- /tab-tempat --}}
 
         {{-- ===== TAB 5: PETA ===== --}}
-        <div class="tab-pane fade" id="tab-peta" role="tabpanel">
+        <div class="tab-pane fade" id="tab-peta" role="tabpanel" aria-labelledby="tab-peta-link">
             <div class="info-card">
                 <div class="card-header"><i class="fa fa-map mr-1"></i> Peta Persebaran Kasus</div>
                 <div class="card-body p-0">
@@ -581,7 +696,10 @@
     let leafletMap = null;
     let markersLayer = null;
 
-    const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1'];
+    const PALETTE = [
+        '#00A651','#c68200','#b91c1c','#0f4c81','#7d1847',
+        '#2e8b57','#cf6f00','#991b1b','#1a4a7a','#6b1a3f',
+    ];
     const BULAN_LABELS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
     // ======= SKELETON =======
@@ -744,7 +862,7 @@
                 labels: ['Laki-laki', 'Perempuan'],
                 datasets: [{
                     data: [jk.L || 0, jk.P || 0],
-                    backgroundColor: ['#3b82f6', '#ec4899'],
+                    backgroundColor: ['#003d1f', '#c68200'],
                 }],
             },
             options: {
@@ -761,9 +879,9 @@
             data: {
                 labels: ku.map(r => r.label),
                 datasets: [
-                    { label: 'Suspek',    data: ku.map(r => r.suspek),    backgroundColor: 'rgba(59,130,246,0.7)'  },
-                    { label: 'Confirmed', data: ku.map(r => r.confirmed), backgroundColor: 'rgba(16,185,129,0.7)'  },
-                    { label: 'Discarded', data: ku.map(r => r.discarded), backgroundColor: 'rgba(156,163,175,0.6)' },
+                    { label: 'Suspek',    data: ku.map(r => r.suspek),    backgroundColor: 'rgba(198,130,0,0.70)'  },
+                    { label: 'Confirmed', data: ku.map(r => r.confirmed), backgroundColor: 'rgba(0,166,81,0.80)'   },
+                    { label: 'Discarded', data: ku.map(r => r.discarded), backgroundColor: 'rgba(110,130,110,0.55)' },
                 ],
             },
             options: {
@@ -783,12 +901,11 @@
             mata_merah: 'Mata Merah', pembengkakan_kelenjar: 'Pmbkk Kelenjar',
             kejang: 'Kejang', penurunan_kesadaran: 'Penur. Kesadaran',
         };
-        const gejalaKeys = Object.keys(gejalaMap);
+        const gejalaKeys   = Object.keys(gejalaMap);
         const gejalaValues = gejalaKeys.map(k => gejala[k] || 0);
         const gejalaLabels = gejalaKeys.map(k => gejalaMap[k]);
 
-        // Sort descending
-        const gejalaIdx = gejalaKeys.map((_, i) => i).sort((a, b) => gejalaValues[b] - gejalaValues[a]);
+        const gejalaIdx    = gejalaKeys.map((_, i) => i).sort((a, b) => gejalaValues[b] - gejalaValues[a]);
         const sortedLabels = gejalaIdx.map(i => gejalaLabels[i]);
         const sortedValues = gejalaIdx.map(i => gejalaValues[i]);
 
@@ -797,7 +914,7 @@
             type: 'bar',
             data: {
                 labels: sortedLabels,
-                datasets: [{ label: 'Jumlah Kasus', data: sortedValues, backgroundColor: 'rgba(245,158,11,0.75)' }],
+                datasets: [{ label: 'Jumlah Kasus', data: sortedValues, backgroundColor: 'rgba(198,130,0,0.75)' }],
             },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -815,7 +932,7 @@
                 labels: ['Tidak Ada', 'Tidak Lengkap', 'Lengkap', 'Tidak Tahu'],
                 datasets: [{
                     data: [sv.tidak_ada || 0, sv.tidak_lengkap || 0, sv.lengkap || 0, sv.tidak_tahu || 0],
-                    backgroundColor: ['#ef4444','#f59e0b','#10b981','#9ca3af'],
+                    backgroundColor: ['#b91c1c', '#c68200', '#00A651', '#8a9e8a'],
                 }],
             },
             options: {
@@ -831,7 +948,7 @@
         setVal('sev-meninggal',  sev.meninggal ?? 0);
 
         // Komplikasi — horizontal bar
-        const komp = sev.komplikasi || {};
+        const komp      = sev.komplikasi || {};
         const kompLabels = ['Diare','Kebutaan','Pneumonia','Malnutrisi','Bronchopneumonia','Otitis Media','Encephalitis','Ulkus Mukosa'];
         const kompData   = [
             komp.diare || 0, komp.kebutaan || 0, komp.pneumonia || 0, komp.malnutrisi || 0,
@@ -842,7 +959,7 @@
             type: 'bar',
             data: {
                 labels: kompLabels,
-                datasets: [{ label: 'Kasus', data: kompData, backgroundColor: 'rgba(239,68,68,0.7)' }],
+                datasets: [{ label: 'Kasus', data: kompData, backgroundColor: 'rgba(185,28,28,0.72)' }],
             },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
@@ -871,8 +988,8 @@
             data: {
                 labels: tah.map(r => r.tahun),
                 datasets: [
-                    { label: 'Total Laporan', data: tah.map(r => r.total),     backgroundColor: 'rgba(59,130,246,0.65)'  },
-                    { label: 'Confirmed',     data: tah.map(r => r.confirmed), backgroundColor: 'rgba(16,185,129,0.85)'  },
+                    { label: 'Total Laporan', data: tah.map(r => r.total),     backgroundColor: 'rgba(198,130,0,0.65)'  },
+                    { label: 'Confirmed',     data: tah.map(r => r.confirmed), backgroundColor: 'rgba(0,166,81,0.85)'   },
                 ],
             },
             options: {
@@ -890,14 +1007,17 @@
             data: {
                 labels: epi.map(r => r.week),
                 datasets: [
-                    { label: 'Suspek',    data: epi.map(r => r.suspek),    backgroundColor: 'rgba(59,130,246,0.6)'  },
-                    { label: 'Confirmed', data: epi.map(r => r.confirmed), backgroundColor: 'rgba(16,185,129,0.85)' },
+                    { label: 'Suspek',    data: epi.map(r => r.suspek),    backgroundColor: 'rgba(198,130,0,0.62)'  },
+                    { label: 'Confirmed', data: epi.map(r => r.confirmed), backgroundColor: 'rgba(0,166,81,0.85)'  },
                 ],
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { position: 'top' } },
-                scales: { x: { ticks: { maxRotation: 60, font: { size: 9 } } }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+                scales: {
+                    x: { ticks: { maxRotation: 60, font: { size: 9 } } },
+                    y: { beginAtZero: true, ticks: { precision: 0 } },
+                },
             },
         });
 
@@ -909,8 +1029,8 @@
             data: {
                 labels: bul.map(r => r.label),
                 datasets: [
-                    { label: 'Total Laporan', data: bul.map(r => r.total),     borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, fill: true },
-                    { label: 'Confirmed',     data: bul.map(r => r.confirmed), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3 },
+                    { label: 'Total Laporan', data: bul.map(r => r.total),     borderColor: '#c68200', backgroundColor: 'rgba(198,130,0,0.10)', tension: 0.3, fill: true  },
+                    { label: 'Confirmed',     data: bul.map(r => r.confirmed), borderColor: '#00A651', backgroundColor: 'rgba(0,166,81,0.10)',  tension: 0.3 },
                 ],
             },
             options: {
@@ -938,7 +1058,7 @@
             const idx = r.bulan - 1;
             if (idx >= 0 && idx < 12) groups[k][idx] += r.jumlah;
         });
-        const keys = Object.keys(groups);
+        const keys     = Object.keys(groups);
         const datasets = keys.map((k, i) => ({
             label: k,
             data: groups[k],
@@ -966,7 +1086,6 @@
         const empty5 = '<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada data</td></tr>';
         const empty7 = '<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada data</td></tr>';
 
-        // Per Puskesmas
         const tbPusk = document.getElementById('tbody-per-puskesmas');
         if (tbPusk) {
             const rows = data.per_puskesmas || [];
@@ -980,7 +1099,6 @@
             ).join('');
         }
 
-        // Per Faskes Pelapor
         const tbFaskes = document.getElementById('tbody-per-faskes-pelapor');
         if (tbFaskes) {
             const rows = data.per_faskes_pelapor || [];
@@ -995,7 +1113,6 @@
             ).join('');
         }
 
-        // Per Kecamatan
         const tbKec = document.getElementById('tbody-per-kecamatan');
         if (tbKec) {
             const rows = data.per_kecamatan || [];
@@ -1009,7 +1126,6 @@
             ).join('');
         }
 
-        // Per Kelurahan
         const tbKel = document.getElementById('tbody-per-kelurahan');
         if (tbKel) {
             const rows = data.per_kelurahan || [];
@@ -1024,7 +1140,6 @@
             ).join('');
         }
 
-        // Per RT
         const tbRt = document.getElementById('tbody-per-rt');
         if (tbRt) {
             const rows = data.per_rt || [];
@@ -1059,8 +1174,8 @@
         }
 
         peta.forEach(p => {
-            const colorMap = { confirmed: '#ef4444', discarded: '#9ca3af', suspected: '#3b82f6' };
-            const color = colorMap[p.status] || '#6b7280';
+            const colorMap = { confirmed: '#b91c1c', discarded: '#8a9e8a', suspected: '#c68200' };
+            const color    = colorMap[p.status] || '#5a7a5a';
             L.circleMarker([p.lat, p.lng], {
                 radius: 7, color, fillColor: color, fillOpacity: 0.75, weight: 2,
             })
@@ -1075,8 +1190,8 @@
         if (el) el.addEventListener('change', fetchAllTabs);
     });
 
-    // ======= TAB SHOWN =======
-    document.querySelectorAll('[data-toggle="tab"]').forEach(tabEl => {
+    // ======= TAB SHOWN — resize charts & invalidate map =======
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tabEl => {
         tabEl.addEventListener('shown.bs.tab', function () {
             Object.values(charts).forEach(c => { try { c.resize(); } catch(e) {} });
             if (leafletMap) { leafletMap.invalidateSize(); }

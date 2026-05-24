@@ -1,33 +1,45 @@
 @extends('admin::layouts.app')
-@section('title')
-Admin
-@endsection
-@section('title-content')
-Jadwal Imunisasi
-@endsection
-@section('item')
-Data Anak
-@endsection
-@section('item-active')
-Jadwal Imunisasi - {{ $data->nama }}
-@endsection
+@section('title')Admin@endsection
+@section('title-content')Jadwal Imunisasi@endsection
+@section('item')Data Anak@endsection
+@section('item-active')Jadwal Imunisasi - {{ $data->nama }}@endsection
+
+@php
+$statusRowClass = fn(string $status): string => match($status) {
+    'sudah'         => 'table-success',
+    'terlambat'     => 'table-danger',
+    'kadaluarsa'    => 'table-secondary',
+    'tidak_relevan' => 'table-light',
+    default         => '',
+};
+
+$statusBadge = fn(string $status): string => match($status) {
+    'sudah'         => '<span class="badge bg-success">Sudah</span>',
+    'terlambat'     => '<span class="badge bg-danger">Terlambat</span>',
+    'kadaluarsa'    => '<span class="badge bg-secondary">Kedaluwarsa</span>',
+    'tidak_relevan' => '<span class="badge bg-light text-secondary border">Tidak Relevan</span>',
+    default         => '<span class="badge bg-warning text-dark">Belum</span>',
+};
+
+$usiaLabel = function(int $min, int $max): string {
+    if ($max < 60)  return "$min – $max hari";
+    if ($max < 730) return floor($min/30) . ' – ' . ceil($max/30) . ' bln';
+    return floor($min/365) . ' – ' . ceil($max/365) . ' thn';
+};
+@endphp
+
 @section('content')
 @if ($errors->any())
 <div class="alert alert-danger">
-    <ul>
-        @foreach ($errors->all() as $error)
-        <li>{{ $error }}</li>
-        @endforeach
-    </ul>
+    <ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
 </div>
 @endif
 
+{{-- Child Info --}}
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Informasi Anak</h5>
-            </div>
+            <div class="card-header bg-primary text-white"><h5 class="mb-0">Informasi Anak</h5></div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-4">
@@ -35,16 +47,14 @@ Jadwal Imunisasi - {{ $data->nama }}
                         <p><strong>NIK:</strong> {{ $data->nik }}</p>
                     </div>
                     <div class="col-md-4">
-                        <p><strong>Tanggal Lahir:</strong> {{ date('d-m-Y', strtotime($data->tgl_lahir)) }}</p>
+                        <p><strong>Tgl Lahir:</strong> {{ date('d-m-Y', strtotime($data->tgl_lahir)) }}</p>
                         <p><strong>Jenis Kelamin:</strong> {{ $data->jk == 1 ? 'Laki-laki' : 'Perempuan' }}</p>
                     </div>
                     <div class="col-md-4">
                         <p><strong>Usia:</strong>
                             @php
-                                $lahir = new DateTime($data->tgl_lahir);
-                                $now = new DateTime();
-                                $diff = $lahir->diff($now);
-                                echo $diff->y . ' tahun ' . $diff->m . ' bulan';
+                                $diff = (new DateTime($data->tgl_lahir))->diff(new DateTime());
+                                echo $diff->y . ' thn ' . $diff->m . ' bln';
                             @endphp
                         </p>
                         <p><strong>Nama Ibu:</strong> {{ $data->nama_ibu }}</p>
@@ -55,78 +65,74 @@ Jadwal Imunisasi - {{ $data->nama }}
     </div>
 </div>
 
+{{-- Action Bar --}}
 <div class="row mb-3">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5>Jadwal Imunisasi Berdasarkan Usia</h5>
-            <div>
-                <a href="{{ route('admin.imunisasiLengkap', $data->hashid) }}" class="btn btn-success">Catat Imunisasi Baru</a>
-            </div>
-        </div>
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Jadwal Imunisasi Berdasarkan Usia</h5>
+        <a href="{{ route('admin.imunisasiLengkap', $data->hashid) }}" class="btn btn-success btn-sm">+ Catat Imunisasi</a>
     </div>
 </div>
 
-<!-- Imunisasi Dasar -->
+@php
+// Group jadwal by kategori
+$idlItems    = collect($jadwal)->filter(fn($i) => $i['vaksin']->kategori === 'Wajib');
+$iblItems    = collect($jadwal)->filter(fn($i) => $i['vaksin']->kategori === 'Booster');
+$islItems    = collect($jadwal)->filter(fn($i) => $i['vaksin']->kategori === 'Tambahan');
+$statusCount = collect($jadwal)->groupBy('status')->map->count();
+@endphp
+
+{{-- IDL Table --}}
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">Imunisasi Dasar (0-11 Bulan)</h5>
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Imunisasi Dasar Lengkap (IDL)</h5>
+                @php $idlLengkap = $idlItems->whereIn('status',['sudah','tidak_relevan'])->count() >= $idlItems->count(); @endphp
+                @if($idlLengkap)
+                    <span class="badge bg-success fs-6">Lengkap</span>
+                @else
+                    <span class="badge bg-danger fs-6">Belum Lengkap</span>
+                @endif
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="thead-light">
+                    <table class="table table-bordered table-sm mb-0">
+                        <thead class="table-light">
                             <tr>
                                 <th>Vaksin</th>
                                 <th>Usia Pemberian</th>
                                 <th>Jadwal Min</th>
                                 <th>Jadwal Max</th>
+                                <th>Batas Kejar</th>
                                 <th>Status</th>
-                                <th>Tanggal Diberikan</th>
-                                <th>Keterangan</th>
+                                <th>Tgl Diberikan</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($jadwal as $item)
-                                @if($item['vaksin']->kategori == 'Imunisasi Dasar')
-                                <tr class="{{ $item['status'] == 'sudah' ? 'table-success' : ($item['status'] == 'terlambat' ? 'table-danger' : '') }}">
-                                    <td>
-                                        <strong>{{ $item['vaksin']->nama }}</strong>
-                                        <br><small class="text-muted">{{ $item['vaksin']->kode }}</small>
-                                    </td>
-                                    <td>
-                                        @php
-                                            $minDays = $item['vaksin']->usia_pemberian_min;
-                                            $maxDays = $item['vaksin']->usia_pemberian_max;
-                                            if ($minDays < 30) {
-                                                echo $minDays . ' - ' . $maxDays . ' hari';
-                                            } else {
-                                                echo floor($minDays/30) . ' - ' . floor($maxDays/30) . ' bulan';
-                                            }
-                                        @endphp
-                                    </td>
-                                    <td>{{ date('d-m-Y', strtotime($item['tanggal_min'])) }}</td>
-                                    <td>{{ date('d-m-Y', strtotime($item['tanggal_max'])) }}</td>
-                                    <td>
-                                        @if($item['status'] == 'sudah')
-                                        <span class="badge badge-success">Sudah Diberikan</span>
-                                        @elseif($item['status'] == 'terlambat')
-                                        <span class="badge badge-danger">Terlambat</span>
-                                        @else
-                                        <span class="badge badge-warning">Belum Diberikan</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($item['imunisasi'])
-                                            {{ date('d-m-Y', strtotime($item['imunisasi']->tanggal_pemberian)) }}
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    <td>{{ $item['vaksin']->keterangan }}</td>
-                                </tr>
-                                @endif
+                            @foreach($idlItems as $item)
+                            @php $rowClass = $statusRowClass($item['status']); @endphp
+                            <tr class="{{ $rowClass }}">
+                                <td><strong>{{ $item['vaksin']->nama }}</strong><br><small class="text-muted">{{ $item['vaksin']->kode }}</small></td>
+                                <td>{{ $usiaLabel($item['vaksin']->usia_pemberian_min, $item['vaksin']->usia_pemberian_max) }}</td>
+                                <td>{{ date('d-m-Y', strtotime($item['tanggal_min'])) }}</td>
+                                <td>{{ date('d-m-Y', strtotime($item['tanggal_max'])) }}</td>
+                                <td>
+                                    @if($item['catchup_deadline'])
+                                        {{ date('d-m-Y', strtotime($item['catchup_deadline'])) }}
+                                    @elseif(!$item['vaksin']->bisa_dikejar)
+                                        <span class="text-danger fw-semibold">Tidak bisa dikejar</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>{!! $statusBadge($item['status']) !!}</td>
+                                <td>
+                                    @if($item['imunisasi'])
+                                        {{ date('d-m-Y', strtotime($item['imunisasi']->tanggal_pemberian)) }}
+                                    @else —
+                                    @endif
+                                </td>
+                            </tr>
                             @endforeach
                         </tbody>
                     </table>
@@ -136,71 +142,63 @@ Jadwal Imunisasi - {{ $data->nama }}
     </div>
 </div>
 
-<!-- Imunisasi Lanjutan -->
+{{-- IBL Table --}}
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card">
-            <div class="card-header bg-warning">
-                <h5 class="mb-0">Imunisasi Lanjutan (Baduta 18-24 Bulan)</h5>
+            <div class="card-header bg-warning d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Imunisasi Booster (IBL)</h5>
+                @php $iblLengkap = $iblItems->whereIn('status',['sudah','tidak_relevan'])->count() >= $iblItems->count(); @endphp
+                @if($iblItems->isNotEmpty())
+                    @if($iblLengkap)
+                        <span class="badge bg-success fs-6">Lengkap</span>
+                    @else
+                        <span class="badge bg-danger fs-6">Belum Lengkap</span>
+                    @endif
+                @endif
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="thead-light">
+                    <table class="table table-bordered table-sm mb-0">
+                        <thead class="table-light">
                             <tr>
                                 <th>Vaksin</th>
                                 <th>Usia Pemberian</th>
                                 <th>Jadwal Min</th>
                                 <th>Jadwal Max</th>
+                                <th>Batas Kejar</th>
                                 <th>Status</th>
-                                <th>Tanggal Diberikan</th>
-                                <th>Keterangan</th>
+                                <th>Tgl Diberikan</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @php $hasLanjutan = false; @endphp
-                            @foreach($jadwal as $item)
-                                @if($item['vaksin']->kategori == 'Imunisasi Lanjutan')
-                                @php $hasLanjutan = true; @endphp
-                                <tr class="{{ $item['status'] == 'sudah' ? 'table-success' : ($item['status'] == 'terlambat' ? 'table-danger' : '') }}">
-                                    <td>
-                                        <strong>{{ $item['vaksin']->nama }}</strong>
-                                        <br><small class="text-muted">{{ $item['vaksin']->kode }}</small>
-                                    </td>
-                                    <td>
-                                        @php
-                                            $minDays = $item['vaksin']->usia_pemberian_min;
-                                            $maxDays = $item['vaksin']->usia_pemberian_max;
-                                            echo floor($minDays/30) . ' - ' . floor($maxDays/30) . ' bulan';
-                                        @endphp
-                                    </td>
-                                    <td>{{ date('d-m-Y', strtotime($item['tanggal_min'])) }}</td>
-                                    <td>{{ date('d-m-Y', strtotime($item['tanggal_max'])) }}</td>
-                                    <td>
-                                        @if($item['status'] == 'sudah')
-                                        <span class="badge badge-success">Sudah Diberikan</span>
-                                        @elseif($item['status'] == 'terlambat')
-                                        <span class="badge badge-danger">Terlambat</span>
-                                        @else
-                                        <span class="badge badge-warning">Belum Diberikan</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($item['imunisasi'])
-                                            {{ date('d-m-Y', strtotime($item['imunisasi']->tanggal_pemberian)) }}
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    <td>{{ $item['vaksin']->keterangan }}</td>
-                                </tr>
-                                @endif
-                            @endforeach
-                            @if(!$hasLanjutan)
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">Tidak ada data imunisasi lanjutan</td>
+                            @forelse($iblItems as $item)
+                            @php $rowClass = $statusRowClass($item['status']); @endphp
+                            <tr class="{{ $rowClass }}">
+                                <td><strong>{{ $item['vaksin']->nama }}</strong><br><small class="text-muted">{{ $item['vaksin']->kode }}</small></td>
+                                <td>{{ $usiaLabel($item['vaksin']->usia_pemberian_min, $item['vaksin']->usia_pemberian_max) }}</td>
+                                <td>{{ date('d-m-Y', strtotime($item['tanggal_min'])) }}</td>
+                                <td>{{ date('d-m-Y', strtotime($item['tanggal_max'])) }}</td>
+                                <td>
+                                    @if($item['catchup_deadline'])
+                                        {{ date('d-m-Y', strtotime($item['catchup_deadline'])) }}
+                                    @elseif(!$item['vaksin']->bisa_dikejar)
+                                        <span class="text-danger fw-semibold">Tidak bisa dikejar</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>{!! $statusBadge($item['status']) !!}</td>
+                                <td>
+                                    @if($item['imunisasi'])
+                                        {{ date('d-m-Y', strtotime($item['imunisasi']->tanggal_pemberian)) }}
+                                    @else —
+                                    @endif
+                                </td>
                             </tr>
-                            @endif
+                            @empty
+                            <tr><td colspan="7" class="text-center text-muted">Tidak ada data</td></tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -209,71 +207,61 @@ Jadwal Imunisasi - {{ $data->nama }}
     </div>
 </div>
 
-<!-- Imunisasi Anak Sekolah -->
+{{-- ISL Table --}}
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card">
             <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0">Imunisasi Anak Sekolah (6+ Tahun)</h5>
+                <h5 class="mb-0">Imunisasi Anak Sekolah / BIAS (ISL)</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="thead-light">
+                    <table class="table table-bordered table-sm mb-0">
+                        <thead class="table-light">
                             <tr>
                                 <th>Vaksin</th>
                                 <th>Usia Pemberian</th>
                                 <th>Jadwal Min</th>
                                 <th>Jadwal Max</th>
+                                <th>Batas Kejar</th>
                                 <th>Status</th>
-                                <th>Tanggal Diberikan</th>
-                                <th>Keterangan</th>
+                                <th>Tgl Diberikan</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @php $hasSekolah = false; @endphp
-                            @foreach($jadwal as $item)
-                                @if($item['vaksin']->kategori == 'Imunisasi Anak Sekolah')
-                                @php $hasSekolah = true; @endphp
-                                <tr class="{{ $item['status'] == 'sudah' ? 'table-success' : ($item['status'] == 'terlambat' ? 'table-danger' : '') }}">
-                                    <td>
-                                        <strong>{{ $item['vaksin']->nama }}</strong>
-                                        <br><small class="text-muted">{{ $item['vaksin']->kode }}</small>
-                                    </td>
-                                    <td>
-                                        @php
-                                            $minDays = $item['vaksin']->usia_pemberian_min;
-                                            $maxDays = $item['vaksin']->usia_pemberian_max;
-                                            echo floor($minDays/365) . ' - ' . floor($maxDays/365) . ' tahun';
-                                        @endphp
-                                    </td>
-                                    <td>{{ date('d-m-Y', strtotime($item['tanggal_min'])) }}</td>
-                                    <td>{{ date('d-m-Y', strtotime($item['tanggal_max'])) }}</td>
-                                    <td>
-                                        @if($item['status'] == 'sudah')
-                                        <span class="badge badge-success">Sudah Diberikan</span>
-                                        @elseif($item['status'] == 'terlambat')
-                                        <span class="badge badge-danger">Terlambat</span>
-                                        @else
-                                        <span class="badge badge-warning">Belum Diberikan</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($item['imunisasi'])
-                                            {{ date('d-m-Y', strtotime($item['imunisasi']->tanggal_pemberian)) }}
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    <td>{{ $item['vaksin']->keterangan }}</td>
-                                </tr>
-                                @endif
-                            @endforeach
-                            @if(!$hasSekolah)
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">Tidak ada data imunisasi anak sekolah</td>
+                            @forelse($islItems as $item)
+                            @php $rowClass = $statusRowClass($item['status']); @endphp
+                            <tr class="{{ $rowClass }}">
+                                <td>
+                                    <strong>{{ $item['vaksin']->nama }}</strong>
+                                    <br><small class="text-muted">{{ $item['vaksin']->kode }}</small>
+                                    @if(in_array($item['vaksin']->kode, ['HPV1','HPV2']))
+                                        <br><small class="text-info"><em>Khusus perempuan</em></small>
+                                    @endif
+                                </td>
+                                <td>{{ $usiaLabel($item['vaksin']->usia_pemberian_min, $item['vaksin']->usia_pemberian_max) }}</td>
+                                <td>{{ date('d-m-Y', strtotime($item['tanggal_min'])) }}</td>
+                                <td>{{ date('d-m-Y', strtotime($item['tanggal_max'])) }}</td>
+                                <td>
+                                    @if($item['catchup_deadline'])
+                                        {{ date('d-m-Y', strtotime($item['catchup_deadline'])) }}
+                                    @elseif(!$item['vaksin']->bisa_dikejar)
+                                        <span class="text-danger fw-semibold">Tidak bisa dikejar</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>{!! $statusBadge($item['status']) !!}</td>
+                                <td>
+                                    @if($item['imunisasi'])
+                                        {{ date('d-m-Y', strtotime($item['imunisasi']->tanggal_pemberian)) }}
+                                    @else —
+                                    @endif
+                                </td>
                             </tr>
-                            @endif
+                            @empty
+                            <tr><td colspan="7" class="text-center text-muted">Tidak ada data</td></tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -282,31 +270,35 @@ Jadwal Imunisasi - {{ $data->nama }}
     </div>
 </div>
 
-<!-- Summary -->
+{{-- Summary --}}
 <div class="row mb-4">
-    <div class="col-md-12">
+    <div class="col-12">
         <div class="card">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0">Ringkasan Status Imunisasi</h5>
-            </div>
+            <div class="card-header bg-dark text-white"><h5 class="mb-0">Ringkasan Status</h5></div>
             <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-md-4">
+                <div class="row g-3 text-center">
+                    <div class="col-6 col-md-3">
                         <div class="p-3 bg-success text-white rounded">
-                            <h3>{{ collect($jadwal)->where('status', 'sudah')->count() }}</h3>
-                            <p class="mb-0">Sudah Diberikan</p>
+                            <div class="fs-2 fw-bold">{{ $statusCount['sudah'] ?? 0 }}</div>
+                            <div>Sudah</div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-6 col-md-3">
                         <div class="p-3 bg-warning rounded">
-                            <h3>{{ collect($jadwal)->where('status', 'belum')->count() }}</h3>
-                            <p class="mb-0">Belum Diberikan</p>
+                            <div class="fs-2 fw-bold">{{ $statusCount['belum'] ?? 0 }}</div>
+                            <div>Belum</div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-6 col-md-3">
                         <div class="p-3 bg-danger text-white rounded">
-                            <h3>{{ collect($jadwal)->where('status', 'terlambat')->count() }}</h3>
-                            <p class="mb-0">Terlambat</p>
+                            <div class="fs-2 fw-bold">{{ $statusCount['terlambat'] ?? 0 }}</div>
+                            <div>Terlambat</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="p-3 bg-secondary text-white rounded">
+                            <div class="fs-2 fw-bold">{{ $statusCount['kadaluarsa'] ?? 0 }}</div>
+                            <div>Kedaluwarsa</div>
                         </div>
                     </div>
                 </div>
@@ -315,10 +307,69 @@ Jadwal Imunisasi - {{ $data->nama }}
     </div>
 </div>
 
-<div class="row mt-3">
-    <div class="col-md-12">
-        <a href="{{ route('admin.anak') }}" class="btn btn-secondary">Kembali ke Daftar Anak</a>
-        <a href="{{ route('admin.imunisasiLengkap', $data->hashid) }}" class="btn btn-success">Catat Imunisasi</a>
+{{-- Catch-up Planner --}}
+@if(count($catchupPlan) > 0)
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Rencana Imunisasi Kejar ({{ count($catchupPlan) }} vaksin)
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">Vaksin berikut terlewat dari jadwal ideal dan harus segera diberikan. Urutan pemberian berdasarkan prioritas usia.</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-danger">
+                            <tr>
+                                <th>#</th>
+                                <th>Vaksin</th>
+                                <th>Tanggal Anjuran</th>
+                                <th>Catatan Interval</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($catchupPlan as $i => $plan)
+                            <tr>
+                                <td>{{ $i + 1 }}</td>
+                                <td>
+                                    <strong>{{ $plan['vaksin']->nama }}</strong>
+                                    <br><small class="text-muted">{{ $plan['vaksin']->kode }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">{{ date('d-m-Y', strtotime($plan['tanggal_anjuran'])) }}</span>
+                                </td>
+                                <td>
+                                    @if($plan['catatan'])
+                                        <small class="text-info">{{ $plan['catatan'] }}</small>
+                                    @elseif($plan['vaksin']->interval_hari)
+                                        <small class="text-muted">Interval min. {{ $plan['vaksin']->interval_hari }} hari dari dosis sebelumnya</small>
+                                    @else
+                                        <small class="text-muted">—</small>
+                                    @endif
+                                </td>
+                                <td>
+                                    <a href="{{ route('admin.imunisasiLengkap', $data->hashid) }}"
+                                       class="btn btn-sm btn-outline-danger">Catat</a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+<div class="row mt-3 mb-4">
+    <div class="col-12">
+        <a href="{{ route('admin.anak') }}" class="btn btn-secondary btn-sm">Kembali</a>
+        <a href="{{ route('admin.imunisasiLengkap', $data->hashid) }}" class="btn btn-success btn-sm">Catat Imunisasi</a>
     </div>
 </div>
 @endsection

@@ -2,50 +2,223 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<title>Dashboard Surveilans PD3I - {{ $tahun }}</title>
+<title>Laporan Surveilans PD3I — {{ $tahun }}</title>
 <style>
-    body { font-family: Arial, sans-serif; font-size: 10px; color: #1f2937; margin: 0; padding: 0; }
-    .page-header { background: #1e40af; color: #fff; padding: 12px 20px; margin-bottom: 16px; }
-    .page-header h1 { margin: 0; font-size: 14px; }
-    .page-header .meta { font-size: 9px; margin-top: 4px; opacity: 0.85; }
-    .section { margin-bottom: 18px; page-break-inside: avoid; }
-    .section-title { background: #3b82f6; color: #fff; padding: 5px 10px; font-size: 11px; font-weight: bold; margin-bottom: 6px; }
-    .sub-title { font-size: 9px; font-weight: bold; margin: 6px 0 3px; color: #374151; }
-    table { width: 100%; border-collapse: collapse; font-size: 9px; }
-    th { background: #1e40af; color: #fff; padding: 4px 8px; text-align: left; }
-    td { padding: 3px 8px; border-bottom: 1px solid #e5e7eb; }
-    tr:nth-child(even) td { background: #f0f7ff; }
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-    .badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 8px; font-weight: bold; }
-    .badge-confirmed { background: #d1fae5; color: #065f46; }
-    .badge-suspected { background: #dbeafe; color: #1e40af; }
-    .badge-discarded { background: #f3f4f6; color: #6b7280; }
-    .footer { margin-top: 14px; border-top: 1px solid #e5e7eb; padding-top: 6px; font-size: 8px; color: #6b7280; }
-    .two-col { display: table; width: 100%; }
-    .col-half { display: table-cell; width: 50%; vertical-align: top; padding-right: 8px; }
-    .col-half:last-child { padding-right: 0; padding-left: 8px; }
-    .danger { color: #be123c; font-weight: bold; }
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap');
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Barlow', Arial, sans-serif;
+    font-size: 9.5px;
+    color: #0d1a0d;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    line-height: 1.45;
+}
+
+/* ─── DOCUMENT HEADER ─── */
+.doc-header-row {
+    display: table;
+    width: 100%;
+    background: #003d1f;
+    color: #fff;
+}
+.doc-header-brand {
+    display: table-cell;
+    width: 62%;
+    padding: 14px 22px;
+    vertical-align: middle;
+}
+.doc-header-info {
+    display: table-cell;
+    width: 38%;
+    padding: 12px 20px 12px 18px;
+    vertical-align: middle;
+    text-align: right;
+    background: rgba(0,0,0,0.12);
+}
+.brand-eyebrow {
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 7.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+    margin: 0 0 5px;
+}
+.brand-title {
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #fff;
+    margin: 0;
+    line-height: 1;
+}
+.brand-sub {
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 9.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.65);
+    margin: 4px 0 0;
+    letter-spacing: 0.03em;
+}
+.info-date {
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 8.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.80);
+    margin-bottom: 7px;
+    letter-spacing: 0.04em;
+}
+.info-grid {
+    font-size: 7.5px;
+    color: rgba(255,255,255,0.60);
+    line-height: 1.8;
+}
+.info-grid strong {
+    color: rgba(255,255,255,0.88);
+    font-weight: 600;
+}
+
+/* ─── Green accent bar ─── */
+.accent-bar {
+    height: 3px;
+    background: #00A651;
+    margin-bottom: 18px;
+}
+
+/* ─── Content wrapper ─── */
+.content { padding: 0 22px 4px; }
+
+/* ─── Sections ─── */
+.section { margin-bottom: 20px; page-break-inside: avoid; }
+
+.section-heading {
+    margin: 0 0 8px;
+    padding-bottom: 5px;
+    border-bottom: 1.5px solid #c8dec8;
+}
+.section-num {
+    display: inline-block;
+    width: 17px;
+    height: 17px;
+    background: #00A651;
+    color: #fff;
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 17px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+.section-label {
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #003d1f;
+    vertical-align: middle;
+}
+
+/* ─── Sub-headings ─── */
+.sub-title {
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: #00A651;
+    margin: 8px 0 4px;
+}
+
+/* ─── Tables ─── */
+table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
+
+thead th {
+    background: #003d1f;
+    color: #fff;
+    padding: 4px 7px;
+    text-align: left;
+    font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    font-size: 7.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+tbody td {
+    padding: 3.5px 7px;
+    border-bottom: 1px solid #e2eee2;
+    color: #1a2e1a;
+}
+tbody tr:nth-child(even) td { background: #f3faf3; }
+tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
+
+/* ─── Utilities ─── */
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+.text-muted  { color: #8faa8f; }
+.danger      { color: #b91c1c; font-weight: 700; }
+
+/* ─── Two-column ─── */
+.two-col { display: table; width: 100%; }
+.col-half {
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
+    padding-right: 10px;
+}
+.col-half:last-child { padding-right: 0; padding-left: 10px; }
+
+/* ─── Document footer ─── */
+.doc-footer {
+    margin-top: 18px;
+    padding-top: 7px;
+    border-top: 1px solid #c8dec8;
+    display: table;
+    width: 100%;
+    font-size: 7.5px;
+    color: #5a7a5a;
+}
+.doc-footer-left  { display: table-cell; text-align: left; }
+.doc-footer-right { display: table-cell; text-align: right; opacity: 0.7; }
 </style>
 </head>
 <body>
 
-<div class="page-header">
-    <h1>Dashboard Surveilans PD3I — Kota Bontang</h1>
-    <div class="meta">
-        Tahun: {{ $tahun }} &nbsp;|&nbsp;
-        Penyakit: {{ $namaJenisKasus ?? 'Semua PD3I' }} &nbsp;|&nbsp;
-        Wilker: {{ $wilker ?? 'Semua Puskesmas' }} &nbsp;|&nbsp;
-        Kelurahan: {{ $namaKelurahan ?? 'Semua Kelurahan' }} &nbsp;|&nbsp;
-        Digenerate: {{ now()->format('d M Y H:i') }}
+{{-- ===== DOCUMENT HEADER ===== --}}
+<div class="doc-header-row">
+    <div class="doc-header-brand">
+        <div class="brand-eyebrow">Dinas Kesehatan Kota Bontang &nbsp;&bull;&nbsp; SIRINDU</div>
+        <div class="brand-title">Laporan Surveilans PD3I</div>
+        <div class="brand-sub">Penyakit yang Dapat Dicegah dengan Imunisasi</div>
+    </div>
+    <div class="doc-header-info">
+        <div class="info-date">{{ now()->format('d M Y') }} &nbsp;&bull;&nbsp; {{ now()->format('H:i') }} WIB</div>
+        <div class="info-grid">
+            <strong>Tahun:</strong> {{ $tahun }}<br>
+            <strong>Penyakit:</strong> {{ $namaJenisKasus ?? 'Semua PD3I' }}<br>
+            <strong>Wilker:</strong> {{ $wilker ?? 'Semua Puskesmas' }}<br>
+            <strong>Kelurahan:</strong> {{ $namaKelurahan ?? 'Semua Kelurahan' }}
+        </div>
     </div>
 </div>
+<div class="accent-bar"></div>
+
+<div class="content">
 
 {{-- ===== SECTION 1: KINERJA SURVEILANS ===== --}}
 <div class="section">
-    <div class="section-title">1. Kinerja Surveilans</div>
+    <div class="section-heading">
+        <span class="section-num">1</span>
+        <span class="section-label">Kinerja Surveilans</span>
+    </div>
 
-    {{-- Campak-Rubella --}}
     <p class="sub-title">Campak-Rubella</p>
     <table>
         <thead>
@@ -58,8 +231,8 @@
             </tr>
         </thead>
         <tbody>
+            @php $cr = $kinerja['campak_rubella'] ?? [] @endphp
             <tr>
-                @php $cr = $kinerja['campak_rubella'] ?? [] @endphp
                 <td>{{ $cr['suspek'] ?? 0 }}</td>
                 <td>{{ $cr['confirmed_campak'] ?? 0 }}</td>
                 <td>{{ $cr['confirmed_rubella'] ?? 0 }}</td>
@@ -72,8 +245,7 @@
         </tbody>
     </table>
 
-    {{-- AFP & Difteri-Pertusis --}}
-    <div class="two-col" style="margin-top:8px;">
+    <div class="two-col" style="margin-top:10px;">
         <div class="col-half">
             <p class="sub-title">AFP / Polio</p>
             <table>
@@ -83,7 +255,7 @@
                     <tr>
                         <td>{{ $afp['total'] ?? 0 }}</td>
                         <td>{{ $afp['confirmed'] ?? 0 }}</td>
-                        <td class="text-center" style="color:#9ca3af;">–</td>
+                        <td class="text-center text-muted">–</td>
                     </tr>
                 </tbody>
             </table>
@@ -100,7 +272,7 @@
                     </tr>
                 </tbody>
             </table>
-            <p class="sub-title" style="margin-top:6px;">Pertusis</p>
+            <p class="sub-title" style="margin-top:8px;">Pertusis</p>
             <table>
                 <thead><tr><th>Suspek</th></tr></thead>
                 <tbody>
@@ -113,12 +285,22 @@
 
 {{-- ===== SECTION 2: DEMOGRAFI ===== --}}
 <div class="section">
-    <div class="section-title">2. Demografi Kasus</div>
+    <div class="section-heading">
+        <span class="section-num">2</span>
+        <span class="section-label">Demografi Kasus</span>
+    </div>
 
-    {{-- Kelompok Umur --}}
     <p class="sub-title">Distribusi Kelompok Umur</p>
     <table>
-        <thead><tr><th>Kelompok Umur</th><th class="text-center">Suspek</th><th class="text-center">Confirmed</th><th class="text-center">Discarded</th><th class="text-center">Total</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Kelompok Umur</th>
+                <th class="text-center">Suspek</th>
+                <th class="text-center">Confirmed</th>
+                <th class="text-center">Discarded</th>
+                <th class="text-center">Total</th>
+            </tr>
+        </thead>
         <tbody>
             @foreach(($demografi['kelompok_umur'] ?? []) as $ku)
             <tr>
@@ -126,14 +308,13 @@
                 <td class="text-center">{{ $ku['suspek'] }}</td>
                 <td class="text-center">{{ $ku['confirmed'] }}</td>
                 <td class="text-center">{{ $ku['discarded'] }}</td>
-                <td class="text-center">{{ $ku['suspek'] + $ku['confirmed'] + $ku['discarded'] }}</td>
+                <td class="text-center"><strong>{{ $ku['suspek'] + $ku['confirmed'] + $ku['discarded'] }}</strong></td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div class="two-col" style="margin-top:8px;">
-        {{-- Status Vaksinasi --}}
+    <div class="two-col" style="margin-top:10px;">
         <div class="col-half">
             <p class="sub-title">Status Vaksinasi</p>
             @php $sv = $demografi['status_vaksinasi'] ?? [] @endphp
@@ -147,16 +328,20 @@
                 </tbody>
             </table>
         </div>
-        {{-- Severity --}}
         <div class="col-half">
-            <p class="sub-title">Severity & Komplikasi</p>
-            @php $sev = $demografi['severity'] ?? [] @endphp
+            <p class="sub-title">Severity &amp; Komplikasi</p>
+            @php
+                $sev  = $demografi['severity'] ?? [];
+                $komp = $sev['komplikasi'] ?? [];
+            @endphp
             <table>
                 <thead><tr><th>Indikator</th><th class="text-center">Nilai</th></tr></thead>
                 <tbody>
                     <tr><td>% Rawat Inap</td><td class="text-center">{{ $sev['pct_rawat_inap'] ?? 0 }}%</td></tr>
-                    <tr><td>Kematian</td><td class="text-center {{ ($sev['meninggal'] ?? 0) > 0 ? 'danger' : '' }}">{{ $sev['meninggal'] ?? 0 }}</td></tr>
-                    @php $komp = $sev['komplikasi'] ?? [] @endphp
+                    <tr>
+                        <td>Kematian</td>
+                        <td class="text-center {{ ($sev['meninggal'] ?? 0) > 0 ? 'danger' : '' }}">{{ $sev['meninggal'] ?? 0 }}</td>
+                    </tr>
                     <tr><td>Komplikasi Diare</td><td class="text-center">{{ $komp['diare'] ?? 0 }}</td></tr>
                     <tr><td>Pneumonia</td><td class="text-center">{{ $komp['pneumonia'] ?? 0 }}</td></tr>
                     <tr><td>Bronchopneumonia</td><td class="text-center">{{ $komp['bronchopneumonia'] ?? 0 }}</td></tr>
@@ -173,9 +358,11 @@
 
 {{-- ===== SECTION 3: TREN ===== --}}
 <div class="section">
-    <div class="section-title">3. Tren Laporan</div>
+    <div class="section-heading">
+        <span class="section-num">3</span>
+        <span class="section-label">Tren Laporan</span>
+    </div>
 
-    {{-- Bulanan --}}
     <p class="sub-title">Tren Bulanan</p>
     <table>
         <thead>
@@ -186,7 +373,7 @@
             </tr>
             <tr>
                 @foreach(($tren['bulanan'] ?? []) as $b)
-                <th class="text-center" style="background:#374151; font-weight:normal; font-size:8px;">conf.</th>
+                <th class="text-center" style="background:#1a4d2a; font-weight:500; font-size:7px; letter-spacing:0.04em;">conf.</th>
                 @endforeach
             </tr>
         </thead>
@@ -204,12 +391,11 @@
         </tbody>
     </table>
 
-    {{-- Per Faskes --}}
     @if(!empty($tren['per_faskes']))
-    <p class="sub-title" style="margin-top:8px;">Per Faskes Pelapor</p>
+    <p class="sub-title" style="margin-top:10px;">Per Faskes Pelapor</p>
     @php
         $faskesGroups = collect($tren['per_faskes'])->groupBy('faskes');
-        $bulanLabels = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+        $bulanLabels  = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
     @endphp
     <table>
         <thead>
@@ -223,13 +409,19 @@
             @foreach($faskesGroups as $faskes => $rows)
             @php
                 $monthly = array_fill(1, 12, 0);
-                foreach($rows as $r) { if($r['bulan'] >= 1 && $r['bulan'] <= 12) $monthly[$r['bulan']] += $r['jumlah']; }
-                $total = array_sum($monthly);
+                foreach ($rows as $r) {
+                    if ($r['bulan'] >= 1 && $r['bulan'] <= 12) {
+                        $monthly[$r['bulan']] += $r['jumlah'];
+                    }
+                }
+                $rowTotal = array_sum($monthly);
             @endphp
             <tr>
                 <td>{{ $faskes }}</td>
-                @foreach(range(1,12) as $m)<td class="text-center">{{ $monthly[$m] ?: '–' }}</td>@endforeach
-                <td class="text-center">{{ $total }}</td>
+                @foreach(range(1,12) as $m)
+                <td class="text-center">@if($monthly[$m]){{ $monthly[$m] }}@else<span class="text-muted">–</span>@endif</td>
+                @endforeach
+                <td class="text-center"><strong>{{ $rowTotal }}</strong></td>
             </tr>
             @endforeach
         </tbody>
@@ -239,12 +431,21 @@
 
 {{-- ===== SECTION 4: WILAYAH ===== --}}
 <div class="section">
-    <div class="section-title">4. Distribusi Wilayah</div>
+    <div class="section-heading">
+        <span class="section-num">4</span>
+        <span class="section-label">Distribusi Wilayah</span>
+    </div>
 
-    {{-- Per Puskesmas --}}
     <p class="sub-title">Per Wilker Puskesmas</p>
     <table>
-        <thead><tr><th>Wilker Puskesmas</th><th class="text-center">Suspek</th><th class="text-center">Confirmed</th><th class="text-center">Kematian</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Wilker Puskesmas</th>
+                <th class="text-center">Suspek</th>
+                <th class="text-center">Confirmed</th>
+                <th class="text-center">Kematian</th>
+            </tr>
+        </thead>
         <tbody>
             @forelse($wilayah['per_puskesmas'] ?? [] as $row)
             <tr>
@@ -254,17 +455,23 @@
                 <td class="text-center {{ $row['meninggal'] > 0 ? 'danger' : '' }}">{{ $row['meninggal'] }}</td>
             </tr>
             @empty
-            <tr><td colspan="4" class="text-center" style="color:#9ca3af;">Tidak ada data</td></tr>
+            <tr><td colspan="4" class="text-center text-muted">Tidak ada data</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="two-col" style="margin-top:8px;">
-        {{-- Per Kecamatan --}}
+    <div class="two-col" style="margin-top:10px;">
         <div class="col-half">
             <p class="sub-title">Per Kecamatan</p>
             <table>
-                <thead><tr><th>Kecamatan</th><th class="text-center">Suspek</th><th class="text-center">Confirmed</th><th class="text-center">Meninggal</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Kecamatan</th>
+                        <th class="text-center">Suspek</th>
+                        <th class="text-center">Confirmed</th>
+                        <th class="text-center">Meninggal</th>
+                    </tr>
+                </thead>
                 <tbody>
                     @forelse($wilayah['per_kecamatan'] ?? [] as $row)
                     <tr>
@@ -274,16 +481,23 @@
                         <td class="text-center {{ $row['meninggal'] > 0 ? 'danger' : '' }}">{{ $row['meninggal'] }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="4" class="text-center" style="color:#9ca3af;">Tidak ada data</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted">Tidak ada data</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        {{-- Per Kelurahan --}}
         <div class="col-half">
             <p class="sub-title">Per Kelurahan</p>
             <table>
-                <thead><tr><th>Kelurahan</th><th>Kecamatan</th><th class="text-center">Susp</th><th class="text-center">Conf</th><th class="text-center">Mngl</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Kelurahan</th>
+                        <th>Kecamatan</th>
+                        <th class="text-center">Susp</th>
+                        <th class="text-center">Conf</th>
+                        <th class="text-center">Mngl</th>
+                    </tr>
+                </thead>
                 <tbody>
                     @forelse($wilayah['per_kelurahan'] ?? [] as $row)
                     <tr>
@@ -294,7 +508,7 @@
                         <td class="text-center {{ $row['meninggal'] > 0 ? 'danger' : '' }}">{{ $row['meninggal'] }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" class="text-center" style="color:#9ca3af;">Tidak ada data</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted">Tidak ada data</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -302,10 +516,16 @@
     </div>
 </div>
 
-<div class="footer">
-    Dokumen ini digenerate otomatis oleh SIRINDU — Sistem Informasi Realtime Reporting Terpadu &nbsp;|&nbsp;
-    Filter aktif: Tahun {{ $tahun }}, Penyakit: {{ $namaJenisKasus ?? 'Semua' }}, Wilker: {{ $wilker ?? 'Semua' }}, Kelurahan: {{ $namaKelurahan ?? 'Semua' }}
+<div class="doc-footer">
+    <div class="doc-footer-left">
+        <strong>SIRINDU</strong> &mdash; Sistem Informasi Realtime Reporting Terpadu &nbsp;&bull;&nbsp; Dinas Kesehatan Kota Bontang
+    </div>
+    <div class="doc-footer-right">
+        Tahun {{ $tahun }} &bull; {{ $namaJenisKasus ?? 'Semua PD3I' }} &bull; {{ $wilker ?? 'Semua Wilker' }} &bull; {{ $namaKelurahan ?? 'Semua Kelurahan' }}
+    </div>
 </div>
+
+</div>{{-- end .content --}}
 
 </body>
 </html>

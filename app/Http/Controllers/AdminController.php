@@ -642,8 +642,55 @@ ANAK
     {
         $data = Anak::findByHashIdOrFail($id);
         $jadwal = $this->anakRepository->getJadwalImunisasi($data->id);
+        $catchupPlan = $this->anakRepository->getCatchupPlan($data->id);
         $jenisVaksin = $this->anakRepository->getJenisVaksin();
-        return view('admin.anak.jadwal-imunisasi', compact('data', 'jadwal', 'jenisVaksin'));
+        return view('admin.anak.jadwal-imunisasi', compact('data', 'jadwal', 'catchupPlan', 'jenisVaksin'));
+    }
+
+    public function imunisasiDashboard(Request $request)
+    {
+        $filters = array_filter([
+            'id_kecamatan' => $request->integer('id_kecamatan') ?: null,
+            'id_kelurahan' => $request->integer('id_kelurahan') ?: null,
+            'id_posyandu'  => $request->integer('id_posyandu') ?: null,
+        ]);
+
+        $service  = app(\App\Services\ImunisasiStatusService::class);
+        $coverage = $service->getIdlCoverage($filters);
+
+        // Children that need catch-up (≥12 months, IDL not complete)
+        $anakKejarQuery = Anak::with(['imunisasi.jenisVaksin', 'kel', 'posyandu'])
+            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
+
+        if (!empty($filters['id_posyandu'])) {
+            $anakKejarQuery->where('id_posyandu', $filters['id_posyandu']);
+        } elseif (!empty($filters['id_kelurahan'])) {
+            $anakKejarQuery->where('id_kel', $filters['id_kelurahan']);
+        } elseif (!empty($filters['id_kecamatan'])) {
+            $anakKejarQuery->where('id_kec', $filters['id_kecamatan']);
+        }
+
+        $anakList = $anakKejarQuery->get()->map(function ($anak) use ($service) {
+            $kejar   = $anak->statusKejarVaksin();
+            $idlLengkap = $service->isIdlLengkap($anak);
+
+            return [
+                'anak'          => $anak,
+                'idl_lengkap'   => $idlLengkap,
+                'kejar_idl'     => $kejar['kejar_idl'],
+                'kejar_ibl'     => $kejar['kejar_ibl'],
+                'vaksin_kejar'  => $kejar['vaksin_kejar'],
+            ];
+        });
+
+        $kecamatanList = \App\Models\Kecamatan::orderBy('nama')->get();
+        $kelurahanList = \App\Models\Kelurahan::orderBy('nama')->get();
+        $posyanduList  = \App\Models\Posyandu::orderBy('nama')->get();
+
+        return view('admin.imunisasi.dashboard', compact(
+            'coverage', 'anakList', 'filters',
+            'kecamatanList', 'kelurahanList', 'posyanduList'
+        ));
     }
 
     public function storeImunisasiDetail(Request $request)
