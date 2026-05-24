@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  *   - Laki-laki: DDMMYY (e.g., 010100)
  *   - Perempuan: (DD+40)MMYY (e.g., 410100 untuk tanggal 01/01/00)
  *
- * Urutan dimulai dari 9001 — digit ke-13 = '9' sebagai tanda NIK dummy.
+ * Urutan dimulai dari 9001 — indeks ke-12 (basis 0) / digit ke-13 (basis 1) selalu '9' sebagai tanda NIK dummy.
  */
 class NikDummyService
 {
@@ -80,11 +80,11 @@ class NikDummyService
     }
 
     /**
-     * Cek apakah sebuah NIK adalah NIK dummy (digit ke-13 = '9').
+     * Cek apakah sebuah NIK adalah NIK dummy (indeks ke-12 / digit ke-13 basis 1 = '9').
      */
-    public function isDummy(string $nik): bool
+    public static function isDummy(string $nik): bool
     {
-        return strlen($nik) === 16 && isset($nik[12]) && $nik[12] === '9';
+        return strlen($nik) === 16 && $nik[12] === '9';
     }
 
     /**
@@ -107,9 +107,8 @@ class NikDummyService
             ->whereRaw($rawLength)->whereRaw($rawDigit)
             ->selectRaw($rawMax)->value('max_urutan');
 
-        $max = max($maxAnak, $maxSurv);
-
-        $next = ($max === null) ? self::URUTAN_MIN : (int) $max + 1;
+        $max  = max($maxAnak ?? (self::URUTAN_MIN - 1), $maxSurv ?? (self::URUTAN_MIN - 1));
+        $next = $max + 1;
 
         if ($next > self::URUTAN_MAX) {
             Log::warning('NikDummyService: urutan NIK dummy mencapai batas 9999.', ['prefix' => $prefix]);
