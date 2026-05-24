@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ImportAnakJob;
+use App\Jobs\ImportHasilLabJob;
 use App\Jobs\ImportImunisasiJob;
 use App\Jobs\ImportPengukuranJob;
 use App\Models\ImportLog;
@@ -23,6 +24,7 @@ class ImportCsvController extends Controller
         'anak'       => 'Data Anak',
         'pengukuran' => 'Pengukuran Berkala',
         'imunisasi'  => 'Imunisasi',
+        'hasil_lab'  => 'Hasil Laboratorium PD3I',
     ];
 
     /** Nama file template per tipe. */
@@ -68,6 +70,11 @@ class ImportCsvController extends Controller
         return $this->handleUpload($request, 'imunisasi', 'file_imunisasi');
     }
 
+    public function uploadHasilLab(Request $request)
+    {
+        return $this->handleUpload($request, 'hasil_lab', 'file_hasil_lab');
+    }
+
     protected function handleUpload(Request $request, string $type, string $inputName)
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
@@ -95,6 +102,7 @@ class ImportCsvController extends Controller
             'anak'       => ImportAnakJob::class,
             'pengukuran' => ImportPengukuranJob::class,
             'imunisasi'  => ImportImunisasiJob::class,
+            'hasil_lab'  => ImportHasilLabJob::class,
         };
 
         $jobClass::dispatch($log);
@@ -140,6 +148,7 @@ class ImportCsvController extends Controller
             'anak'       => ImportAnakJob::class,
             'pengukuran' => ImportPengukuranJob::class,
             'imunisasi'  => ImportImunisasiJob::class,
+            'hasil_lab'  => ImportHasilLabJob::class,
         };
 
         $jobClass::dispatch($newLog);
