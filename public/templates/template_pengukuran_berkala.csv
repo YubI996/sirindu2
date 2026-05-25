@@ -1,0 +1,48 @@
+# ============================================================
+# SIRINDU - TEMPLATE IMPORT DATA PENGUKURAN BERKALA (v1.1)
+# ============================================================
+# Encoding   : UTF-8 | Pemisah: Koma (,) | Format tanggal: YYYY-MM-DD
+# Diperbarui : 2026-05-18
+# ============================================================
+# IDENTIFIKASI ANAK (2 dari 3 harus cocok dengan data di sistem):
+#   nik_anak       : NIK 16 digit anak
+#   nama_anak      : Nama lengkap anak (case-insensitive, boleh sebagian)
+#   tgl_lahir_anak : Tanggal lahir anak (YYYY-MM-DD)
+# Prioritas pencarian: NIK exact → NIK+tgl_lahir → NIK+nama → nama+tgl_lahir
+# ============================================================
+# KOLOM WAJIB (*): nik_anak/nama_anak/tgl_lahir_anak (min 2), tgl_kunjungan, bln, posisi, bb_kg, tb_cm
+# ============================================================
+# KARAKTER YANG DILARANG / WAJIB DIPERHATIKAN:
+#   , (koma)    : Jika nilai mengandung koma, apit dengan tanda kutip ganda
+#                 Contoh: "T, O, B"
+#   " (kutip)   : Jika nilai mengandung kutip ganda, gandakan karakternya
+#                 Contoh: "Normal ""suspect"""
+#   Enter/newline: Jika nilai mengandung baris baru, apit dengan tanda kutip ganda
+#   Tab         : Jangan gunakan tab sebagai pemisah; hanya koma yang diizinkan
+#   NULL / BOM  : Hapus karakter NULL (Ctrl+@) dan BOM (byte-order mark) sebelum upload
+#   Encoding    : File HARUS disimpan sebagai UTF-8 (bukan UTF-16, ANSI, atau Latin-1)
+#                 Excel: Simpan sebagai "CSV UTF-8 (Comma delimited)"
+#   Desimal     : Gunakan titik (.) bukan koma — contoh: 9.5 bukan 9,5
+#   Tanggal     : Format YYYY-MM-DD (bukan DD/MM/YYYY atau format lain)
+# ============================================================
+# REFERENSI NILAI:
+#   posisi    : L = Berbaring/Panjang Badan | Bb = Berdiri/Tinggi Badan
+#   bln       : Usia anak dalam bulan saat pengukuran (0–72)
+#   bb_kg     : Berat badan dalam kg, 1 desimal (contoh: 9.5)
+#   tb_cm     : Tinggi/panjang badan dalam cm, 1 desimal (contoh: 76.5)
+#   lla_cm    : Lingkar lengan atas dalam cm (contoh: 13.5)
+#   lk_cm     : Lingkar kepala dalam cm (contoh: 47.0)
+#   ntob      : Status NTOB (teks bebas, contoh: T → O → B)
+#   ddtka     : Status DDTKA (teks bebas, contoh: Normal/Suspect/Gangguan)
+#   asi / vit_a / obat_cacing / rujuk         : Ya | Tidak
+#   taburia / popm / garam_yodium             : Ya | Tidak
+#   makanan_pokok / mkn_* / mkn_buah_*        : Ya | Tidak
+# CATATAN:
+#   - zscore_* dan imt/imt_u DIHITUNG OTOMATIS sistem dari bb, tb, bln.
+#     Isi jika ada dari sumber eksternal; kosongkan untuk dihitung ulang.
+#   - hasil_lk / hasil_lila dihitung otomatis; isi jika ada dari sumber eksternal.
+# ============================================================
+nik_anak,nama_anak,tgl_lahir_anak,tgl_kunjungan,bln,posisi,bb_kg,tb_cm,lla_cm,lk_cm,ntob,ddtka,asi,vit_a,obat_cacing,rujuk,taburia,popm,garam_yodium,makanan_pokok,mkn_kacang,mkn_susu,mkn_daging,mkn_telur,mkn_buah_vita,mkn_buah_lain,hasil_lk,hasil_lila,zscore_bb_u,zscore_pb_u,zscore_bb_pb,imt,imt_u
+3201011501200001,Budi Santoso,2020-01-15,2021-01-15,12,L,9.5,76.5,13.5,47.0,T,Normal,Ya,Ya,Tidak,Tidak,Tidak,Tidak,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Normal,Normal,-0.520,-0.310,-0.120,16.20,-0.340
+3201010302210002,Siti Aminah,2021-03-03,2024-01-20,34,Bb,14.2,98.0,15.0,50.0,,Normal,Tidak,Tidak,Ya,Tidak,Tidak,Tidak,Ya,Ya,Tidak,Ya,Tidak,Ya,Tidak,Ya,Normal,Normal,0.120,0.450,0.310,14.80,-0.210
+,Budi Santoso,2020-01-15,2021-02-15,13,L,9.9,78.0,13.6,47.3,O,Normal,Ya,Tidak,Tidak,Tidak,Tidak,Tidak,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Normal,Normal,-0.410,-0.290,-0.090,16.27,-0.280

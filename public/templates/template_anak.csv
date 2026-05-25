@@ -1,0 +1,38 @@
+# ============================================================
+# SIRINDU - TEMPLATE IMPORT DATA IDENTITAS ANAK (v1.0)
+# ============================================================
+# Encoding   : UTF-8 | Pemisah: Koma (,) | Format tanggal: YYYY-MM-DD
+# Diperbarui : 2026-05-18
+# ============================================================
+# KOLOM WAJIB : nik, nama, jk, tgl_lahir, no_registrasi
+# KOLOM LOOKUP: nama_kecamatan, nama_kelurahan, nama_rt, nama_posyandu, nama_puskesmas
+#               (isi nama teks; sistem mencocokkan ID berdasarkan nama di database)
+# ============================================================
+# KARAKTER YANG DILARANG / WAJIB DIPERHATIKAN:
+#   , (koma)    : Jika nilai mengandung koma, apit dengan tanda kutip ganda
+#                 Contoh: "Jl. Merdeka, No. 5"
+#   " (kutip)   : Jika nilai mengandung kutip ganda, gandakan karakternya
+#                 Contoh: "Nama ""alias"" Santoso"
+#   Enter/newline: Jika nilai mengandung baris baru, apit dengan tanda kutip ganda
+#   Tab         : Jangan gunakan tab sebagai pemisah; hanya koma yang diizinkan
+#   NULL / BOM  : Hapus karakter NULL (Ctrl+@) dan BOM (byte-order mark) sebelum upload
+#   Encoding    : File HARUS disimpan sebagai UTF-8 (bukan UTF-16, ANSI, atau Latin-1)
+#                 Excel: Simpan sebagai "CSV UTF-8 (Comma delimited)"
+#   Desimal     : Gunakan titik (.) bukan koma — contoh: 3.2 bukan 3,2
+#   Tanggal     : Format YYYY-MM-DD (bukan DD/MM/YYYY atau format lain)
+# ============================================================
+# REFERENSI NILAI:
+#   jk                     : 1 = Laki-laki | 2 = Perempuan
+#   golda                  : A | B | AB | O | - (tidak diketahui)
+#   imd                    : Ya | Tidak
+#   status                 : 1 = Aktif | 0 = Non-aktif (default: 1)
+#   nik                    : 16 digit angka; NIK dummy dibuat otomatis jika kosong/tidak valid
+#   bbl_kg                 : Berat lahir dalam kg, 1 desimal (contoh: 3.2)
+#   pbl_cm                 : Panjang lahir dalam cm, 1 desimal (contoh: 50.5)
+#   lk_lahir_cm            : Lingkar kepala lahir dalam cm, 1 desimal (contoh: 34.0)
+#   usia_kehamilan_minggu  : Angka bulat minggu (contoh: 39)
+#   anak_ke                : Urutan anak dalam keluarga (contoh: 1)
+# ============================================================
+no_kk,nik,nama,nik_ibu,nik_ayah,tgl_lahir_ibu,no_hp,alamat,nama_ibu,nama_ayah,jk,tempat_lahir,tgl_lahir,golda,anak_ke,no_registrasi,status,nama_kecamatan,nama_kelurahan,nama_rt,nama_posyandu,nama_puskesmas,bbl_kg,pbl_cm,lk_lahir_cm,imd,usia_kehamilan_minggu,penolong_lahir,komplikasi_persalinan,catatan
+3201011234560001,3201011501200001,Budi Santoso,,3201015001190001,,08123456789,"Jl. Pahlawan No. 1 RT 001",Siti Rahayu,Ahmad Santoso,1,Balikpapan,2020-01-15,A,1,BPP-2020-0001,1,Balikpapan Selatan,Gunung Bahagia,001,Posyandu Melati,Puskesmas Gunung Bahagia,3.2,50.5,34.0,Ya,39,Bidan,,
+3201012345670002,3201010302210002,Siti Aminah,3201016008960002,,1996-08-06,08234567890,"Jl. Merdeka No. 5 RT 002",Dewi Aminah,Budi Hartono,2,Balikpapan,2021-03-03,B,2,BPP-2021-0002,1,Balikpapan Tengah,Mekar Sari,002,Posyandu Mawar,Puskesmas Mekar Sari,3.0,49.0,33.5,Tidak,40,Dokter,,

@@ -1,0 +1,59 @@
+# ============================================================
+# SIRINDU - TEMPLATE IMPORT DATA IMUNISASI (v1.1)
+# ============================================================
+# Encoding   : UTF-8 | Pemisah: Koma (,) | Format tanggal: YYYY-MM-DD
+# Diperbarui : 2026-05-18
+# ============================================================
+# IDENTIFIKASI ANAK (2 dari 3 harus cocok dengan data di sistem):
+#   nik_anak       : NIK 16 digit anak
+#   nama_anak      : Nama lengkap anak (case-insensitive)
+#   tgl_lahir_anak : Tanggal lahir anak (YYYY-MM-DD)
+# Prioritas pencarian: NIK exact → NIK+tgl_lahir → NIK+nama → nama+tgl_lahir
+# ============================================================
+# KOLOM WAJIB (*): nik_anak/nama_anak/tgl_lahir_anak (min 2), kode_vaksin, status
+# ============================================================
+# KARAKTER YANG DILARANG / WAJIB DIPERHATIKAN:
+#   , (koma)    : Jika nilai mengandung koma, apit dengan tanda kutip ganda
+#                 Contoh: "Kemerahan, bengkak ringan"
+#   " (kutip)   : Jika nilai mengandung kutip ganda, gandakan karakternya
+#                 Contoh: "Dosis ""ekstra"" atas indikasi"
+#   Enter/newline: Jika nilai mengandung baris baru, apit dengan tanda kutip ganda
+#   Tab         : Jangan gunakan tab sebagai pemisah; hanya koma yang diizinkan
+#   NULL / BOM  : Hapus karakter NULL (Ctrl+@) dan BOM (byte-order mark) sebelum upload
+#   Encoding    : File HARUS disimpan sebagai UTF-8 (bukan UTF-16, ANSI, atau Latin-1)
+#                 Excel: Simpan sebagai "CSV UTF-8 (Comma delimited)"
+#   Tanggal     : Format YYYY-MM-DD (bukan DD/MM/YYYY atau format lain)
+# ============================================================
+# REFERENSI NILAI:
+#   kode_vaksin (harus sesuai master jenis_vaksin di sistem):
+#     IDL — Imunisasi Dasar Lengkap:
+#       HB0, BCG, POLIO1, POLIO2, POLIO3, POLIO4
+#       DPT-HB-HIB1, DPT-HB-HIB2, DPT-HB-HIB3
+#       PCV1, PCV2, PCV3
+#       RV1, RV2, RV3
+#       IPV, IPV2, CAMPAK
+#     IBL — Booster/Lanjutan:
+#       MR2, DPT-HB-HIB4
+#     ISL — Sekolah Lanjutan:
+#       HPV1, HPV2
+#
+#   dosis            : 1 (default) | 2 | 3
+#   status           : belum | sudah | terlambat
+#   lokasi_pemberian : Paha Kanan | Paha Kiri | Lengan Kanan | Lengan Kiri | Oral | Subkutan
+#   reaksi_kipi      : Deskripsi teks bebas, kosongkan jika tidak ada reaksi
+# ============================================================
+nik_anak,nama_anak,tgl_lahir_anak,kode_vaksin,dosis,tanggal_pemberian,tanggal_selanjutnya,batch_number,lokasi_pemberian,status,reaksi_kipi,catatan
+3201011501200001,Budi Santoso,2020-01-15,HB0,1,2020-01-15,,VX-BPP-001,Paha Kanan,sudah,,Diberikan di puskesmas saat lahir
+3201011501200001,Budi Santoso,2020-01-15,BCG,1,2020-02-15,,VX-BPP-002,Lengan Kanan,sudah,Kemerahan ringan di lokasi suntik hilang dalam 2 hari,
+3201011501200001,Budi Santoso,2020-01-15,POLIO1,1,2020-02-15,2020-03-15,,Oral,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,DPT-HB-HIB1,1,2020-03-15,2020-04-15,VX-BPP-003,Paha Kiri,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,POLIO2,1,2020-03-15,2020-04-15,,Oral,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,PCV1,1,2020-03-15,2020-04-15,VX-BPP-004,Paha Kanan,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,RV1,1,2020-03-15,2020-04-15,,Oral,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,DPT-HB-HIB2,1,2020-04-15,2020-05-15,VX-BPP-005,Paha Kiri,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,POLIO3,1,2020-04-15,2020-05-15,,Oral,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,DPT-HB-HIB3,1,2020-05-15,2021-01-15,VX-BPP-007,Paha Kiri,sudah,,
+3201011501200001,Budi Santoso,2020-01-15,CAMPAK,1,2021-01-15,,VX-BPP-009,Lengan Kiri,sudah,,
+3201010302210002,Siti Aminah,2021-03-03,HB0,1,2021-03-03,,VX-BPP-010,Paha Kanan,sudah,,
+3201010302210002,Siti Aminah,2021-03-03,BCG,1,2021-04-03,,VX-BPP-011,Lengan Kanan,sudah,,
+,Siti Aminah,2021-03-03,DPT-HB-HIB1,1,2021-04-03,2021-05-03,VX-BPP-012,Paha Kiri,terlambat,,Terlambat 1 bulan karena sakit
