@@ -509,6 +509,10 @@
                 <span class="material-symbols-outlined">upload_file</span>
                 Import Excel PD3I
             </button>
+            <button type="button" class="st-btn st-btn-outline-teal" data-toggle="modal" data-target="#modalImportHasilLab" aria-label="Import Hasil Lab CSV">
+                <span class="material-symbols-outlined">biotech</span>
+                Import Hasil Lab
+            </button>
             @endif
             <a href="{{ route('admin.epidemiologi.create') }}" class="st-btn st-btn-primary" aria-label="Tambah Kasus Baru">
                 <span class="material-symbols-outlined">add</span>
@@ -751,6 +755,46 @@
 
 {{-- ===== Modal: Import Excel PD3I ===== --}}
 @if(!$isFaskes)
+{{-- ===== Modal Import Hasil Lab CSV ===== --}}
+<div class="modal fade" id="modalImportHasilLab" tabindex="-1" role="dialog" aria-labelledby="modalImportHasilLabLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalImportHasilLabLabel">
+                    <span class="material-symbols-outlined" style="vertical-align:middle;">biotech</span>
+                    Import Hasil Laboratorium CSV
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span>&times;</span></button>
+            </div>
+            <form action="{{ route('admin.importCsv.hasilLab') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="file_hasil_lab" class="form-label fw-semibold">Pilih File CSV Hasil Lab</label>
+                        <input type="file" name="file_hasil_lab" id="file_hasil_lab" class="form-control" accept=".csv,text/csv" required>
+                        <div class="form-text">Format: .csv. Maksimal ukuran file: 10 MB.</div>
+                    </div>
+                    <div class="alert alert-info small mb-0">
+                        <strong>Catatan:</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Gunakan file CSV hasil lab dengan 19 kolom (format standar Campak/Rubella/Polio/Difteri/Pertusis).</li>
+                            <li>Kasus yang cocok dengan <em>No Epid</em> akan di-<em>update</em> data lab-nya; kasus baru dibuat secara minimal.</li>
+                            <li>Baris dengan <em>No Epid</em> atau <em>Jenis Penyakit</em> berisi <code>#N/A</code> akan dilewati otomatis.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="st-btn st-btn-primary">
+                        <span class="material-symbols-outlined">upload</span>
+                        Upload &amp; Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalImportPd3i" tabindex="-1" role="dialog" aria-labelledby="modalImportPd3iLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">

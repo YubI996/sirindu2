@@ -8,18 +8,15 @@
 # KOLOM LOOKUP: nama_kecamatan, nama_kelurahan, nama_rt, nama_posyandu, nama_puskesmas
 #               (isi nama teks; sistem mencocokkan ID berdasarkan nama di database)
 # ============================================================
-# KARAKTER YANG DILARANG / WAJIB DIPERHATIKAN:
-#   , (koma)    : Jika nilai mengandung koma, apit dengan tanda kutip ganda
-#                 Contoh: "Jl. Merdeka, No. 5"
-#   " (kutip)   : Jika nilai mengandung kutip ganda, gandakan karakternya
-#                 Contoh: "Nama ""alias"" Santoso"
-#   Enter/newline: Jika nilai mengandung baris baru, apit dengan tanda kutip ganda
-#   Tab         : Jangan gunakan tab sebagai pemisah; hanya koma yang diizinkan
-#   NULL / BOM  : Hapus karakter NULL (Ctrl+@) dan BOM (byte-order mark) sebelum upload
-#   Encoding    : File HARUS disimpan sebagai UTF-8 (bukan UTF-16, ANSI, atau Latin-1)
-#                 Excel: Simpan sebagai "CSV UTF-8 (Comma delimited)"
-#   Desimal     : Gunakan titik (.) bukan koma — contoh: 3.2 bukan 3,2
-#   Tanggal     : Format YYYY-MM-DD (bukan DD/MM/YYYY atau format lain)
+# KETENTUAN FORMAT:
+#   1. Penyimpanan  : Simpan dari Excel sebagai "CSV UTF-8 (Comma delimited)"
+#                    (File → Simpan Sebagai → pilih format tersebut)
+#   2. Desimal      : Gunakan tanda titik (.) sebagai pemisah desimal
+#                    Contoh: 3.2  (bukan 3,2)
+#   3. Tanggal      : Format YYYY-MM-DD
+#                    Contoh: 2024-01-15  (bukan 15/01/2024)
+#   4. Nilai berkoma: Apit seluruh nilai dengan tanda kutip ganda (")
+#                    Contoh: "Jl. Merdeka, No. 5"
 # ============================================================
 # REFERENSI NILAI:
 #   jk                     : 1 = Laki-laki | 2 = Perempuan
