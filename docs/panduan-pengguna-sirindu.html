@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panduan Pengguna SIRINDU</title>
+<style>
+  /* ===== RESET & BASE ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --green-dark:  #1a4731;
+    --green-mid:   #2d6a4f;
+    --green-light: #52b788;
+    --green-pale:  #d8f3dc;
+    --accent:      #40916c;
+    --text:        #1b1b1b;
+    --muted:       #6c757d;
+    --border:      #dee2e6;
+    --bg-section:  #f8fdf9;
+  }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13pt;
+    color: var(--text);
+    line-height: 1.65;
+    background: #fff;
+  }
+
+  /* ===== COVER PAGE ===== */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(160deg, var(--green-dark) 0%, var(--green-mid) 60%, var(--green-light) 100%);
+    color: #fff;
+    text-align: center;
+    padding: 60px 40px;
+    page-break-after: always;
+  }
+  .cover .logo-wrap {
+    width: 90px; height: 90px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px;
+    margin-bottom: 30px;
+    border: 3px solid rgba(255,255,255,0.4);
+  }
+  .cover h1 { font-size: 42pt; font-weight: 800; letter-spacing: 4px; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 14pt; opacity: 0.85; margin-bottom: 40px; font-style: italic; }
+  .cover .divider { width: 80px; height: 3px; background: rgba(255,255,255,0.5); margin: 0 auto 40px; }
+  .cover .doc-title { font-size: 22pt; font-weight: 700; margin-bottom: 12px; }
+  .cover .doc-sub   { font-size: 12pt; opacity: 0.8; line-height: 1.8; }
+  .cover .footer-cover {
+    position: absolute; bottom: 40px;
+    font-size: 10pt; opacity: 0.65;
+  }
+  .cover .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 10pt;
+    margin-top: 30px;
+  }
+
+  /* ===== PAGE LAYOUT ===== */
+  .page-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 50px;
+  }
+
+  /* ===== TABLE OF CONTENTS ===== */
+  .toc-page { page-break-after: always; }
+  .toc-title {
+    font-size: 18pt; font-weight: 700;
+    color: var(--green-dark);
+    border-bottom: 3px solid var(--green-light);
+    padding-bottom: 10px; margin-bottom: 30px;
+  }
+  .toc-list { list-style: none; }
+  .toc-list li { margin-bottom: 8px; }
+  .toc-list a {
+    text-decoration: none; color: var(--text);
+    display: flex; justify-content: space-between;
+    border-bottom: 1px dotted var(--border);
+    padding: 4px 0;
+  }
+  .toc-list a:hover { color: var(--green-mid); }
+  .toc-list .toc-section { font-weight: 700; font-size: 11pt; color: var(--green-dark); }
+  .toc-list .toc-sub { padding-left: 24px; font-size: 10pt; color: var(--muted); }
+  .toc-num { color: var(--muted); font-size: 10pt; }
+
+  /* ===== CHAPTER HEADER ===== */
+  .chapter {
+    page-break-before: always;
+    padding-top: 20px;
+  }
+  .chapter:first-of-type { page-break-before: avoid; }
+  .chapter-header {
+    background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+    color: #fff;
+    padding: 24px 32px;
+    border-radius: 10px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .chapter-header .ch-icon {
+    font-size: 30px;
+    width: 55px; height: 55px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .chapter-header .ch-num { font-size: 10pt; opacity: 0.7; text-transform: uppercase; letter-spacing: 2px; }
+  .chapter-header h2 { font-size: 20pt; font-weight: 700; margin: 4px 0; }
+  .chapter-header p  { font-size: 10pt; opacity: 0.85; }
+
+  /* ===== SECTION ===== */
+  .section {
+    background: var(--bg-section);
+    border-left: 4px solid var(--green-light);
+    border-radius: 0 8px 8px 0;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .section h3 {
+    font-size: 13pt; font-weight: 700;
+    color: var(--green-dark);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section h3::before {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--green-light);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .section h4 {
+    font-size: 11pt; font-weight: 600;
+    color: var(--accent);
+    margin: 16px 0 8px;
+  }
+  p { margin-bottom: 10px; }
+
+  /* ===== SCREENSHOT PLACEHOLDER ===== */
+  .screenshot {
+    background: #f1f3f4;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    color: var(--muted);
+    margin: 16px 0;
+    font-size: 10pt;
+  }
+  .screenshot .scr-label {
+    display: block; font-size: 12pt;
+    font-weight: 600; color: #aaa;
+    margin-bottom: 6px;
+  }
+  .screenshot img { max-width: 100%; border-radius: 6px; display: block; margin: 0 auto; }
+
+  /* ===== TABLE ===== */
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 10pt; margin: 14px 0;
+  }
+  th {
+    background: var(--green-dark); color: #fff;
+    padding: 9px 12px; text-align: left;
+    font-weight: 600;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  tr:nth-child(even) td { background: var(--green-pale); }
+
+  /* ===== CALLOUT BOXES ===== */
+  .callout {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 18px; border-radius: 8px;
+    margin: 14px 0; font-size: 10.5pt;
+  }
+  .callout-icon { font-size: 20px; flex-shrink: 0; line-height: 1.4; }
+  .callout.tip    { background: #e7f5ff; border-left: 4px solid #339af0; }
+  .callout.warn   { background: #fff9db; border-left: 4px solid #fcc419; }
+  .callout.info   { background: var(--green-pale); border-left: 4px solid var(--green-light); }
+  .callout.danger { background: #fff5f5; border-left: 4px solid #ff6b6b; }
+
+  /* ===== STEPS ===== */
+  .steps { list-style: none; margin: 14px 0; }
+  .steps li {
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .steps .step-num {
+    width: 26px; height: 26px;
+    background: var(--green-mid); color: #fff;
+    border-radius: 50%; font-size: 11pt; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .steps .step-body { flex: 1; }
+  .steps .step-body strong { display: block; font-size: 10.5pt; color: var(--green-dark); }
+
+  /* ===== BADGE ===== */
+  .badge-green  { background: var(--green-pale); color: var(--green-dark); padding: 2px 10px; border-radius: 12px; font-size: 9pt; font-weight: 600; }
+  .badge-blue   { background: #dbe4ff; color: #364fc7; padding: 2px 10px; border-radius: 12px; font-size: 9pt; font-weight: 600; }
+  .badge-yellow { background: #fff3bf; color: #7d6608; padding: 2px 10px; border-radius: 12px; font-size: 9pt; font-weight: 600; }
+  .badge-red    { background: #ffe3e3; color: #c92a2a; padding: 2px 10px; border-radius: 12px; font-size: 9pt; font-weight: 600; }
+  .badge-gray   { background: #e9ecef; color: #495057; padding: 2px 10px; border-radius: 12px; font-size: 9pt; font-weight: 600; }
+
+  /* ===== FIELD DESCRIPTION ===== */
+  .field-list { margin: 10px 0; }
+  .field-item {
+    display: flex; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    font-size: 10pt;
+  }
+  .field-name {
+    min-width: 180px; font-weight: 600;
+    color: var(--green-dark); font-family: 'Courier New', monospace;
+    font-size: 9.5pt;
+  }
+  .field-desc { flex: 1; }
+  .field-req { color: #e03131; font-size: 9pt; }
+
+  /* ===== PRINT ===== */
+  @media print {
+    body { font-size: 11pt; }
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .chapter-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .callout, .badge-green, .badge-blue, .badge-yellow, .badge-red {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    tr:nth-child(even) td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page-wrap { padding: 20px 30px; }
+    @page { margin: 2cm 2cm; size: A4; }
+  }
+
+  /* ===== MISC ===== */
+  hr { border: none; border-top: 2px solid var(--border); margin: 30px 0; }
+  ul, ol { padding-left: 22px; margin: 10px 0; }
+  ul li, ol li { margin-bottom: 5px; }
+  code {
+    background: #f1f3f5; padding: 1px 6px;
+    border-radius: 4px; font-family: 'Courier New', monospace;
+    font-size: 10pt; color: #c0392b;
+  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .nav-path {
+    font-size: 9.5pt; color: var(--muted);
+    background: #f8f9fa; border: 1px solid var(--border);
+    padding: 5px 12px; border-radius: 4px;
+    display: inline-block; margin-bottom: 14px;
+  }
+  .nav-path span { color: var(--green-dark); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ============================
+     COVER PAGE
+     ============================ -->
+<div class="cover">
+  <div class="logo-wrap">💚</div>
+  <h1>SIRINDU</h1>
+  <div class="subtitle">Sistem Informasi Anak Rindu</div>
+  <div class="divider"></div>
+  <div class="doc-title">Panduan Pengguna Aplikasi</div>
+  <div class="doc-sub">
+    Dinas Kesehatan Kota Bontang<br>
+    Diskominfo Kota Bontang &nbsp;·&nbsp; 2026
+  </div>
+  <div class="badge">Versi 1.0 — Admin Dinkes</div>
+</div>
+
+<!-- ============================
+     PAGE WRAPPER
+     ============================ -->
+<div class="page-wrap">
+
+<!-- ============================
+     DAFTAR ISI
+     ============================ -->
+<div class="toc-page">
+  <div class="toc-title">Daftar Isi</div>
+  <ul class="toc-list">
+    <li><a href="#bab1"><span class="toc-section">1. Pendahuluan</span><span class="toc-num">3</span></a></li>
+    <li><a href="#bab1-login" class="toc-sub"><span>Login & Navigasi</span><span class="toc-num">3</span></a></li>
+    <li><a href="#bab2"><span class="toc-section">2. Menu Beranda (Dashboard)</span><span class="toc-num">5</span></a></li>
+    <li><a href="#bab3"><span class="toc-section">3. Menu Anak</span><span class="toc-num">6</span></a></li>
+    <li><a href="#bab3-daftar" class="toc-sub"><span>Daftar & Pencarian Anak</span><span class="toc-num">6</span></a></li>
+    <li><a href="#bab3-tambah" class="toc-sub"><span>Tambah / Edit Data Anak</span><span class="toc-num">7</span></a></li>
+    <li><a href="#bab3-pengukuran" class="toc-sub"><span>Pengukuran Berkala & Z-Score</span><span class="toc-num">8</span></a></li>
+    <li><a href="#bab4"><span class="toc-section">4. Menu PD3I (Surveilans Epidemiologi)</span><span class="toc-num">10</span></a></li>
+    <li><a href="#bab4-dashboard" class="toc-sub"><span>Dashboard PD3I</span><span class="toc-num">10</span></a></li>
+    <li><a href="#bab4-daftar" class="toc-sub"><span>Daftar Kasus</span><span class="toc-num">11</span></a></li>
+    <li><a href="#bab4-tambah" class="toc-sub"><span>Tambah Kasus Surveillance</span><span class="toc-num">12</span></a></li>
+    <li><a href="#bab5"><span class="toc-section">5. Export Data</span><span class="toc-num">18</span></a></li>
+    <li><a href="#bab5-imunisasi" class="toc-sub"><span>Export Imunisasi</span><span class="toc-num">18</span></a></li>
+    <li><a href="#bab5-anak" class="toc-sub"><span>Export Data Anak</span><span class="toc-num">20</span></a></li>
+    <li><a href="#bab6"><span class="toc-section">6. Import Data CSV</span><span class="toc-num">21</span></a></li>
+    <li><a href="#bab6-anak" class="toc-sub"><span>Import Data Anak</span><span class="toc-num">21</span></a></li>
+    <li><a href="#bab6-pengukuran" class="toc-sub"><span>Import Pengukuran Berkala</span><span class="toc-num">22</span></a></li>
+    <li><a href="#bab6-imunisasi" class="toc-sub"><span>Import Imunisasi</span><span class="toc-num">23</span></a></li>
+    <li><a href="#bab7"><span class="toc-section">7. Data Master</span><span class="toc-num">24</span></a></li>
+    <li><a href="#bab7-vaksin" class="toc-sub"><span>Master Jenis Vaksin (Antigen)</span><span class="toc-num">24</span></a></li>
+    <li><a href="#bab7-pd3i" class="toc-sub"><span>Surveilans PD3I</span><span class="toc-num">26</span></a></li>
+    <li><a href="#bab7-penduduk" class="toc-sub"><span>Jumlah Penduduk</span><span class="toc-num">27</span></a></li>
+    <li><a href="#bab8"><span class="toc-section">8. Administrasi</span><span class="toc-num">28</span></a></li>
+    <li><a href="#bab9"><span class="toc-section">9. Panduan Cepat & Pemecahan Masalah</span><span class="toc-num">29</span></a></li>
+  </ul>
+</div>
+
+<!-- ============================
+     BAB 1 — PENDAHULUAN
+     ============================ -->
+<div class="chapter" id="bab1">
+  <div class="chapter-header">
+    <div class="ch-icon">📖</div>
+    <div>
+      <div class="ch-num">Bab 1</div>
+      <h2>Pendahuluan</h2>
+      <p>Tentang SIRINDU, cara masuk, dan navigasi dasar</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Apa itu SIRINDU?</h3>
+    <p><strong>SIRINDU</strong> (Sistem Informasi Anak Rindu) adalah aplikasi web yang dikembangkan oleh Diskominfo Kota Bontang untuk mendukung Dinas Kesehatan dalam mengelola data kesehatan anak secara terpadu. Aplikasi ini mencakup:</p>
+    <ul>
+      <li>Pencatatan data identitas anak (0–6 tahun)</li>
+      <li>Pemantauan pertumbuhan berkala (berat badan, tinggi badan, lingkar kepala)</li>
+      <li>Penghitungan status gizi otomatis menggunakan standar WHO (Z-Score)</li>
+      <li>Pencatatan dan monitoring riwayat imunisasi</li>
+      <li>Surveilans epidemiologi penyakit menular (PD3I dan lainnya)</li>
+      <li>Ekspor dan impor data massal dalam format CSV/Excel</li>
+    </ul>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div>SIRINDU digunakan oleh petugas Puskesmas, Posyandu, dan Dinas Kesehatan Kota Bontang. Setiap pengguna memiliki akses sesuai peran yang diberikan oleh Super Admin.</div>
+    </div>
+  </div>
+
+  <div class="section" id="bab1-login">
+    <h3>Cara Login</h3>
+    <ol class="steps">
+      <li>
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Buka browser</strong>
+          Akses alamat aplikasi SIRINDU yang diberikan oleh administrator sistem.
+        </div>
+      </li>
+      <li>
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Masukkan kredensial</strong>
+          Isi kolom <em>Email</em> dan <em>Password</em> yang telah diberikan oleh Super Admin.
+        </div>
+      </li>
+      <li>
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Klik Masuk</strong>
+          Sistem akan mengarahkan Anda ke halaman Dashboard sesuai peran (Admin).
+        </div>
+      </li>
+    </ol>
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div>Jika login gagal, pastikan Caps Lock tidak aktif dan hubungi Super Admin jika password terlupa.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Navigasi Sidebar</h3>
+    <p>Semua fitur dapat diakses melalui menu sidebar di sisi kiri layar. Klik nama menu untuk memperluas/menyembunyikan submenu.</p>
+    <table>
+      <thead><tr><th>Menu</th><th>Fungsi</th></tr></thead>
+      <tbody>
+        <tr><td>🏠 <strong>Beranda</strong></td><td>Dashboard statistik ringkas</td></tr>
+        <tr><td>👶 <strong>Anak</strong></td><td>Kelola data anak &amp; pengukuran berkala</td></tr>
+        <tr><td>🦠 <strong>PD3I</strong></td><td>Surveilans epidemiologi penyakit menular</td></tr>
+        <tr><td>📤 <strong>Export Data</strong></td><td>Unduh data ke format CSV/Excel</td></tr>
+        <tr><td>📥 <strong>Import Data</strong></td><td>Unggah data massal dari CSV</td></tr>
+        <tr><td>⚙️ <strong>Data Master</strong></td><td>Referensi: vaksin, jenis kasus, penduduk</td></tr>
+        <tr><td>🔧 <strong>Administrasi</strong></td><td>Manajemen pengguna (Super Admin)</td></tr>
+      </tbody>
+    </table>
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div>Nama instansi dan foto profil pengguna yang sedang login ditampilkan di pojok kanan atas. Klik untuk melihat opsi <em>Ubah Password</em> atau <em>Keluar</em>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 2 — BERANDA
+     ============================ -->
+<div class="chapter" id="bab2">
+  <div class="chapter-header">
+    <div class="ch-icon">🏠</div>
+    <div>
+      <div class="ch-num">Bab 2</div>
+      <h2>Menu Beranda (Dashboard)</h2>
+      <p>Ringkasan statistik data anak dan kesehatan</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Tampilan Dashboard</h3>
+    <p class="nav-path">Sidebar → <span>Beranda</span></p>
+    <p>Halaman Beranda menampilkan rangkuman statistik utama dalam bentuk kartu dan grafik, sehingga petugas dapat melihat kondisi data secara sekilas tanpa harus membuka tiap menu.</p>
+
+    <h4>Informasi yang Ditampilkan</h4>
+    <table>
+      <thead><tr><th>Kartu/Widget</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        <tr><td>Total Anak Terdaftar</td><td>Jumlah anak yang sudah masuk ke dalam sistem</td></tr>
+        <tr><td>Status Gizi</td><td>Distribusi: normal, kurang, buruk, lebih, obesitas</td></tr>
+        <tr><td>Cakupan Imunisasi</td><td>Persentase anak yang sudah mendapat imunisasi dasar lengkap</td></tr>
+        <tr><td>Kasus Aktif PD3I</td><td>Jumlah kasus surveilans yang sedang dalam pemantauan</td></tr>
+        <tr><td>Peta Sebaran</td><td>Visualisasi geografis data per kecamatan/kelurahan</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 3 — MENU ANAK
+     ============================ -->
+<div class="chapter" id="bab3">
+  <div class="chapter-header">
+    <div class="ch-icon">👶</div>
+    <div>
+      <div class="ch-num">Bab 3</div>
+      <h2>Menu Anak</h2>
+      <p>Manajemen data anak, pengukuran berkala, dan status gizi</p>
+    </div>
+  </div>
+
+  <div class="section" id="bab3-daftar">
+    <h3>Daftar & Pencarian Anak</h3>
+    <p class="nav-path">Sidebar → <span>Anak</span> → Daftar Anak</p>
+    <p>Halaman ini menampilkan seluruh anak yang terdaftar dalam sistem dalam bentuk tabel interaktif. Petugas dapat mencari, memfilter, dan mengelola data anak dari halaman ini.</p>
+
+    <h4>Fitur Pencarian & Filter</h4>
+    <ul>
+      <li><strong>Kolom Cari:</strong> Ketik nama anak atau NIK untuk mencari secara langsung</li>
+      <li><strong>Filter Wilayah:</strong> Saring berdasarkan Kecamatan, Kelurahan, atau RT</li>
+      <li><strong>Filter Posyandu/Puskesmas:</strong> Tampilkan anak berdasarkan faskes</li>
+      <li><strong>Filter Status Gizi:</strong> Tampilkan hanya anak dengan status gizi tertentu</li>
+    </ul>
+
+    <h4>Kolom Tabel</h4>
+    <table>
+      <thead><tr><th>Kolom</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        <tr><td>NIK</td><td>Nomor Induk Kependudukan anak (16 digit)</td></tr>
+        <tr><td>Nama</td><td>Nama lengkap anak</td></tr>
+        <tr><td>Jenis Kelamin</td><td>Laki-laki / Perempuan</td></tr>
+        <tr><td>Tanggal Lahir</td><td>Tanggal lahir dan umur saat ini</td></tr>
+        <tr><td>Kelurahan</td><td>Wilayah domisili</td></tr>
+        <tr><td>Posyandu</td><td>Posyandu yang melayani anak</td></tr>
+        <tr><td>Status Gizi</td><td>Hasil terakhir pengukuran Z-Score</td></tr>
+        <tr><td>Aksi</td><td>Tombol Lihat Detail, Edit, Hapus</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section" id="bab3-tambah">
+    <h3>Tambah / Edit Data Anak</h3>
+    <p class="nav-path">Sidebar → <span>Anak</span> → Tambah Anak &nbsp;|&nbsp; atau klik ✏️ pada tabel</p>
+    <p>Form untuk mendaftarkan anak baru atau memperbarui data anak yang sudah ada.</p>
+
+    <h4>Informasi yang Diisi</h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">No. KK</div><div class="field-desc">Nomor Kartu Keluarga <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">NIK</div><div class="field-desc">16 digit, harus unik dalam sistem <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Nama Lengkap</div><div class="field-desc">Nama anak sesuai KK <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">NIK Orang Tua</div><div class="field-desc">NIK ibu atau ayah <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Nama Ibu / Ayah</div><div class="field-desc">Nama orang tua <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Jenis Kelamin</div><div class="field-desc">Laki-laki / Perempuan <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Tempat Lahir</div><div class="field-desc">Kota/kabupaten kelahiran <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Tanggal Lahir</div><div class="field-desc">Format: DD/MM/YYYY <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Golongan Darah</div><div class="field-desc">A / B / AB / O / Tidak Tahu</div></div>
+      <div class="field-item"><div class="field-name">Kecamatan</div><div class="field-desc">Pilih dari daftar <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Kelurahan</div><div class="field-desc">Otomatis dimuat setelah kecamatan dipilih <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">RT</div><div class="field-desc">Otomatis dimuat setelah kelurahan dipilih <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Posyandu / Puskesmas</div><div class="field-desc">Faskes yang melayani anak <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Catatan</div><div class="field-desc">Informasi tambahan (opsional)</div></div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div>Kolom <strong>Kelurahan</strong> dan <strong>RT</strong> akan otomatis memuat pilihan setelah Kecamatan dipilih — tidak perlu refresh halaman.</div>
+    </div>
+  </div>
+
+  <div class="section" id="bab3-pengukuran">
+    <h3>Pengukuran Berkala & Status Gizi (Z-Score)</h3>
+    <p class="nav-path">Daftar Anak → klik nama anak → tab <span>Pengukuran</span></p>
+    <p>Setiap anak memiliki riwayat pengukuran berkala yang dicatat setiap bulan (biasanya saat kegiatan posyandu). Sistem secara otomatis menghitung Z-Score berdasarkan standar WHO.</p>
+
+    <h4>Data Pengukuran yang Dicatat</h4>
+    <table>
+      <thead><tr><th>Field</th><th>Satuan</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        <tr><td>Tanggal Pengukuran</td><td>-</td><td>Tanggal saat ditimbang/diukur</td></tr>
+        <tr><td>Berat Badan</td><td>kg</td><td>Berat saat pengukuran</td></tr>
+        <tr><td>Tinggi / Panjang Badan</td><td>cm</td><td>Tinggi berdiri atau panjang berbaring</td></tr>
+        <tr><td>Lingkar Kepala</td><td>cm</td><td>Opsional, untuk bayi</td></tr>
+        <tr><td>Lingkar Lengan Atas</td><td>cm</td><td>LILA, untuk anak > 6 bulan</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Status Gizi Otomatis (Z-Score WHO)</h4>
+    <p>Setelah pengukuran disimpan, sistem menghitung 4 indikator status gizi:</p>
+    <table>
+      <thead><tr><th>Indikator</th><th>Singkatan</th><th>Artinya</th></tr></thead>
+      <tbody>
+        <tr><td>Berat Badan/Umur</td><td>BB/U</td><td>Apakah berat sesuai usia</td></tr>
+        <tr><td>Tinggi Badan/Umur</td><td>TB/U</td><td>Apakah tinggi sesuai usia (stunting)</td></tr>
+        <tr><td>Berat Badan/Tinggi Badan</td><td>BB/TB</td><td>Apakah berat proporsional dengan tinggi (wasting)</td></tr>
+        <tr><td>Indeks Massa Tubuh/Umur</td><td>IMT/U</td><td>Obesitas/gemuk berlebih</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Nilai Z-Score</th><th>Status Gizi</th></tr></thead>
+      <tbody>
+        <tr><td>&lt; -3 SD</td><td><span class="badge-red">Sangat Kurang / Severely Stunted</span></td></tr>
+        <tr><td>-3 s/d -2 SD</td><td><span class="badge-yellow">Kurang / Stunted</span></td></tr>
+        <tr><td>-2 s/d +1 SD</td><td><span class="badge-green">Normal</span></td></tr>
+        <tr><td>+1 s/d +2 SD</td><td><span class="badge-yellow">Berisiko Lebih</span></td></tr>
+        <tr><td>&gt; +2 SD</td><td><span class="badge-red">Gizi Lebih / Obesitas</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 4 — PD3I / SURVEILANS
+     ============================ -->
+<div class="chapter" id="bab4">
+  <div class="chapter-header">
+    <div class="ch-icon">🦠</div>
+    <div>
+      <div class="ch-num">Bab 4</div>
+      <h2>Menu PD3I — Surveilans Epidemiologi</h2>
+      <p>Pelaporan dan pemantauan kasus penyakit menular prioritas</p>
+    </div>
+  </div>
+
+  <div class="section" id="bab4-dashboard">
+    <h3>Dashboard PD3I</h3>
+    <p class="nav-path">Sidebar → <span>PD3I</span> → Dashboard PD3I</p>
+    <p>Dashboard PD3I menyajikan ringkasan visual semua kasus surveilans yang tercatat, memudahkan petugas dan pengambil keputusan untuk memantau situasi epidemiologi kota.</p>
+
+    <h4>Konten Dashboard</h4>
+    <ul>
+      <li><strong>Kartu Statistik:</strong> Total kasus, kasus aktif, sembuh, meninggal</li>
+      <li><strong>Grafik Tren:</strong> Jumlah kasus per bulan (6–12 bulan terakhir)</li>
+      <li><strong>Distribusi per Penyakit:</strong> Campak, Difteri, AFP, Pertusis, dsb.</li>
+      <li><strong>Distribusi per Wilayah:</strong> Kasus per kecamatan</li>
+      <li><strong>Tabel Kasus Terbaru:</strong> 10 kasus paling baru</li>
+    </ul>
+  </div>
+
+  <div class="section" id="bab4-daftar">
+    <h3>Daftar Kasus Surveilans</h3>
+    <p class="nav-path">Sidebar → <span>PD3I</span> → Daftar Kasus</p>
+    <p>Tabel lengkap semua kasus surveilans yang pernah dilaporkan, dengan fitur pencarian dan filter multi-kriteria.</p>
+
+    <h4>Filter yang Tersedia</h4>
+    <ul>
+      <li>Jenis penyakit (campak, difteri, AFP, pertusis, tetanus neonatorum, dsb.)</li>
+      <li>Status kasus (Suspek / Probable / Konfirmasi / Discarded)</li>
+      <li>Kondisi akhir (Sembuh / Meninggal / Dalam Perawatan)</li>
+      <li>Rentang tanggal onset</li>
+      <li>Wilayah (kecamatan/kelurahan)</li>
+    </ul>
+
+    <h4>Aksi yang Tersedia</h4>
+    <table>
+      <thead><tr><th>Tombol</th><th>Fungsi</th></tr></thead>
+      <tbody>
+        <tr><td>👁️ Detail</td><td>Lihat semua informasi kasus (read-only)</td></tr>
+        <tr><td>✏️ Edit</td><td>Perbarui data kasus</td></tr>
+        <tr><td>🗑️ Hapus</td><td>Hapus kasus (soft delete, data masih tersimpan)</td></tr>
+        <tr><td>📤 Export</td><td>Unduh daftar kasus sesuai filter aktif</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section" id="bab4-tambah">
+    <h3>Tambah Kasus Surveillance Baru</h3>
+    <p class="nav-path">Sidebar → <span>PD3I</span> → Tambah Kasus</p>
+    <p>Form pelaporan kasus surveilans terdiri dari <strong>10 bagian (A–J)</strong> yang dibagi dalam accordion. Setiap bagian dapat dibuka/tutup dengan mengklik header-nya.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div><strong>No. Epid</strong> dibuat otomatis oleh sistem saat kasus disimpan (format: <code>EPI-YYYY-NNNN</code>). Tidak perlu diisi manual.</div>
+    </div>
+
+    <hr>
+    <h4>🅐 Identitas Pasien <span class="badge-red">Wajib</span></h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">No. Epid</div><div class="field-desc">Otomatis. Dapat diedit hanya oleh Super Admin.</div></div>
+      <div class="field-item"><div class="field-name">NIK</div><div class="field-desc">16 digit NIK pasien. Sistem akan memperingatkan jika NIK sudah pernah dilaporkan. <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Nama Pasien</div><div class="field-desc">Nama lengkap <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Tanggal Lahir</div><div class="field-desc">Format: MM/DD/YYYY. Setelah diisi, Umur dan Kategori Umur terisi otomatis. <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Umur</div><div class="field-desc">Otomatis dihitung dari tanggal lahir</div></div>
+      <div class="field-item"><div class="field-name">Kategori Umur</div><div class="field-desc">Otomatis: Bayi / Balita / Anak / Remaja / Dewasa / Lansia <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Jenis Kelamin</div><div class="field-desc">Laki-laki / Perempuan <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">No. Telepon</div><div class="field-desc">Nomor yang bisa dihubungi</div></div>
+      <div class="field-item"><div class="field-name">Tempat Kerja/Sekolah</div><div class="field-desc">Ketik untuk mencari (autocomplete)</div></div>
+      <div class="field-item"><div class="field-name">Nama Orang Tua</div><div class="field-desc">Untuk pasien bayi/anak</div></div>
+      <div class="field-item"><div class="field-name">Alamat Domisili</div><div class="field-desc">Alamat lengkap <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Provinsi / Kab/Kota</div><div class="field-desc">Sudah terisi otomatis: Kalimantan Timur / Kota Bontang</div></div>
+      <div class="field-item"><div class="field-name">Kecamatan / Kelurahan / RT</div><div class="field-desc">Pilih secara bertahap. Kelurahan dan RT akan dimuat otomatis. <span class="field-req">*wajib</span></div></div>
+    </div>
+
+    <h4>📍 Titik Koordinat Lokasi Kejadian</h4>
+    <p>Terdapat peta interaktif untuk menentukan lokasi kejadian secara presisi.</p>
+    <ol class="steps">
+      <li><div class="step-num">A</div><div class="step-body"><strong>Klik "Titik Lokasi Ini"</strong> untuk menggunakan lokasi GPS perangkat saat ini (memerlukan izin lokasi browser).</div></li>
+      <li><div class="step-num">B</div><div class="step-body"><strong>Klik langsung di peta</strong> untuk menempatkan marker pada lokasi kejadian.</div></li>
+      <li><div class="step-num">C</div><div class="step-body"><strong>Isi manual</strong> kolom Lat (Latitude) dan Lng (Longitude), lalu klik <em>Sesuaikan</em>.</div></li>
+    </ol>
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div>Saat klik di peta, kolom Kecamatan/Kelurahan/RT akan terisi otomatis berdasarkan posisi marker jika titik tersebut berada dalam batas wilayah yang terdaftar.</div>
+    </div>
+
+    <hr>
+    <h4>🅑 Identitas Pelapor <span class="badge-green">Opsional</span></h4>
+    <p>Informasi petugas atau instansi yang melaporkan kasus ini.</p>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Nama Pelapor</div><div class="field-desc">Nama petugas yang mengisi laporan</div></div>
+      <div class="field-item"><div class="field-name">Jabatan</div><div class="field-desc">Jabatan/posisi pelapor</div></div>
+      <div class="field-item"><div class="field-name">Instansi Pelapor</div><div class="field-desc">Nama Puskesmas/RS/klinik</div></div>
+      <div class="field-item"><div class="field-name">No. Telepon Pelapor</div><div class="field-desc">Nomor yang bisa dihubungi</div></div>
+    </div>
+
+    <hr>
+    <h4>🅒 Data Kasus <span class="badge-red">Wajib</span></h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Jenis Kasus</div><div class="field-desc">Pilih dari daftar penyakit (Campak, Difteri, AFP, Pertusis, dsb.) <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Tanggal Onset</div><div class="field-desc">Tanggal gejala pertama muncul <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Tanggal Konsultasi</div><div class="field-desc">Tanggal pertama berobat</div></div>
+      <div class="field-item"><div class="field-name">Tanggal Lapor</div><div class="field-desc">Tanggal pelaporan ke sistem <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Tempat Berobat</div><div class="field-desc">Nama faskes tempat pertama berobat</div></div>
+      <div class="field-item"><div class="field-name">Diagnosa Awal</div><div class="field-desc">Diagnosis klinis awal oleh dokter</div></div>
+      <div class="field-item"><div class="field-name">Catatan Kasus</div><div class="field-desc">Informasi tambahan mengenai kasus</div></div>
+    </div>
+
+    <hr>
+    <h4>🅓 Gejala Klinis</h4>
+    <p>Centang gejala yang dialami pasien. Tersedia 17 gejala umum penyakit menular:</p>
+    <div class="two-col">
+      <ul>
+        <li>Demam</li><li>Ruam kulit</li><li>Batuk</li>
+        <li>Pilek</li><li>Konjungtivitis (mata merah)</li>
+        <li>Sesak napas</li><li>Nyeri tenggorokan</li>
+        <li>Membran tenggorokan</li><li>Kejang</li>
+      </ul>
+      <ul>
+        <li>Lumpuh layuh</li><li>Kaku rahang</li>
+        <li>Spasme otot</li><li>Infeksi tali pusat</li>
+        <li>Diare</li><li>Muntah</li>
+        <li>Pendarahan</li><li>Nyeri sendi</li>
+      </ul>
+    </div>
+    <p>Tersedia juga field <strong>Suhu Tubuh</strong> (°C) dan <strong>Gejala Lainnya</strong> untuk gejala di luar daftar.</p>
+
+    <hr>
+    <h4>🅔 Riwayat</h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Riwayat Imunisasi</div><div class="field-desc">Catatan imunisasi yang pernah didapat terkait penyakit ini</div></div>
+      <div class="field-item"><div class="field-name">Riwayat Perjalanan</div><div class="field-desc">Perjalanan ke daerah endemis dalam 21 hari terakhir</div></div>
+      <div class="field-item"><div class="field-name">Riwayat Kontak</div><div class="field-desc">Kontak dengan penderita atau hewan sakit</div></div>
+      <div class="field-item"><div class="field-name">Riwayat Penyakit Dahulu</div><div class="field-desc">Komorbiditas atau penyakit kronis yang diderita</div></div>
+    </div>
+
+    <hr>
+    <h4>🅕 Pemeriksaan Laboratorium</h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Status Lab</div><div class="field-desc">Belum / Pending / Positif / Negatif / Tidak Dilakukan</div></div>
+      <div class="field-item"><div class="field-name">Jenis Pemeriksaan</div><div class="field-desc">PCR, Serologis, Kultur, dsb.</div></div>
+      <div class="field-item"><div class="field-name">Tanggal Pengambilan Sampel</div><div class="field-desc">Tanggal spesimen diambil</div></div>
+      <div class="field-item"><div class="field-name">Tanggal Hasil Lab</div><div class="field-desc">Tanggal hasil keluar</div></div>
+      <div class="field-item"><div class="field-name">Hasil Lab</div><div class="field-desc">Keterangan hasil pemeriksaan</div></div>
+    </div>
+
+    <hr>
+    <h4>🅖 Tatalaksana <span class="badge-red">Wajib</span></h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Status Rawat</div><div class="field-desc">Rawat Jalan / Rawat Inap / Rujukan / Tidak Berobat <span class="field-req">*wajib</span></div></div>
+      <div class="field-item"><div class="field-name">Nama Faskes</div><div class="field-desc">Rumah sakit/puskesmas tempat dirawat</div></div>
+      <div class="field-item"><div class="field-name">Tanggal Masuk RS</div><div class="field-desc">Tanggal mulai dirawat inap</div></div>
+      <div class="field-item"><div class="field-name">Tanggal Keluar RS</div><div class="field-desc">Tanggal selesai rawat inap</div></div>
+      <div class="field-item"><div class="field-name">Lama Rawat</div><div class="field-desc">Dihitung otomatis dari selisih tanggal masuk–keluar (hari)</div></div>
+      <div class="field-item"><div class="field-name">Terapi / Pengobatan</div><div class="field-desc">Obat-obatan dan tindakan yang diberikan</div></div>
+    </div>
+
+    <hr>
+    <h4>🅗 Status Akhir</h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Kondisi Akhir</div><div class="field-desc">Sembuh / Dalam Perawatan / Meninggal / Tidak Diketahui</div></div>
+      <div class="field-item"><div class="field-name">Tanggal Kondisi Akhir</div><div class="field-desc">Tanggal ditetapkan kondisi akhir</div></div>
+      <div class="field-item"><div class="field-name">Penyebab Kematian</div><div class="field-desc">Diisi jika kondisi akhir = Meninggal</div></div>
+    </div>
+
+    <hr>
+    <h4>🅘 Investigasi Kontak</h4>
+    <p>Data kontak erat yang perlu dipantau untuk mencegah penularan lebih lanjut.</p>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Jumlah Kontak Erat</div><div class="field-desc">Total orang yang kontak erat dengan penderita</div></div>
+      <div class="field-item"><div class="field-name">Kontak Dipantau</div><div class="field-desc">Jumlah yang sedang dalam pemantauan aktif</div></div>
+      <div class="field-item"><div class="field-name">Kontak Positif</div><div class="field-desc">Jumlah kontak yang juga terinfeksi</div></div>
+      <div class="field-item"><div class="field-name">Keterangan Kontak</div><div class="field-desc">Informasi tindak lanjut kontak</div></div>
+    </div>
+
+    <hr>
+    <h4>🅙 Informasi Tambahan</h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Status Kasus</div><div class="field-desc">Suspek / Probable / Konfirmasi / Discarded</div></div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div>Pastikan bagian <strong>A (Identitas Pasien)</strong>, <strong>C (Data Kasus)</strong>, dan <strong>G (Tatalaksana)</strong> diisi lengkap sebelum menyimpan — bagian ini ditandai ✅ di header accordion jika sudah valid.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 5 — EXPORT DATA
+     ============================ -->
+<div class="chapter" id="bab5">
+  <div class="chapter-header">
+    <div class="ch-icon">📤</div>
+    <div>
+      <div class="ch-num">Bab 5</div>
+      <h2>Export Data</h2>
+      <p>Unduh data ke format CSV dan Excel untuk pelaporan</p>
+    </div>
+  </div>
+
+  <div class="section" id="bab5-imunisasi">
+    <h3>Export Data Imunisasi</h3>
+    <p class="nav-path">Sidebar → <span>Export Data</span> → Export Imunisasi</p>
+    <p>Halaman ini memungkinkan petugas mengunduh data imunisasi dengan berbagai pilihan filter, tersedia dalam dua mode: ekspor individual per anak dan ekspor agregat per kelurahan.</p>
+
+    <h4>Filter Data</h4>
+    <div class="field-list">
+      <div class="field-item"><div class="field-name">Bulan</div><div class="field-desc">Filter berdasarkan bulan pemberian imunisasi</div></div>
+      <div class="field-item"><div class="field-name">Kelurahan</div><div class="field-desc">Semua Kelurahan atau kelurahan tertentu</div></div>
+      <div class="field-item"><div class="field-name">Jenis Antigen</div><div class="field-desc">Semua Antigen atau vaksin tertentu (BCG, Campak, Polio, dsb.)</div></div>
+      <div class="field-item"><div class="field-name">Status</div><div class="field-desc">Semua Status / Sudah / Belum / Terlambat</div></div>
+    </div>
+
+    <h4>Preview Data</h4>
+    <p>Setelah filter diterapkan, tabel <strong>Preview Data</strong> menampilkan hasil secara langsung sebelum diunduh. Kolom yang tampil:</p>
+    <table>
+      <thead><tr><th>Kolom</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        <tr><td>Nama Anak</td><td>Nama lengkap anak</td></tr>
+        <tr><td>NIK</td><td>NIK anak</td></tr>
+        <tr><td>Jenis Kelamin</td><td>L / P</td></tr>
+        <tr><td>Tgl Lahir</td><td>Tanggal lahir anak</td></tr>
+        <tr><td>Kelurahan / Kecamatan</td><td>Wilayah domisili</td></tr>
+        <tr><td>Posyandu</td><td>Posyandu yang melayani</td></tr>
+        <tr><td>Jenis Vaksin</td><td>Nama antigen/vaksin</td></tr>
+        <tr><td>Dosis</td><td>Dosis ke berapa</td></tr>
+        <tr><td>Tgl Pemberian</td><td>Tanggal imunisasi diberikan</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Cara Export CSV (Data Individual)</h4>
+    <ol class="steps">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Pilih filter</strong> yang diinginkan (bulan, kelurahan, antigen, status)</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Periksa preview</strong> — pastikan data yang tampil sesuai</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Klik tombol "Export CSV"</strong> di pojok kanan atas. File CSV akan langsung terunduh.</div></li>
+    </ol>
+
+    <h4>Cara Export Agregat Excel (Per Kelurahan)</h4>
+    <p>Bagian <strong>Export Agregat per Kelurahan</strong> menghasilkan laporan rekap per kelurahan, dikelompokkan per vaksin dan kelompok (IDL/IBL/ISL).</p>
+    <ol class="steps">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Pilih Bulan</strong> dari dropdown</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Pilih Tahun</strong> yang ingin diekspor</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Klik "Export Agregat Excel"</strong> — file Excel (.xlsx) akan terunduh</div></li>
+    </ol>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div>Tombol <em>Export Agregat Excel</em> hanya aktif setelah Bulan dan Tahun dipilih. Jika tombol masih abu-abu, pastikan kedua filter sudah terisi.</div>
+    </div>
+  </div>
+
+  <div class="section" id="bab5-anak">
+    <h3>Export Data Anak</h3>
+    <p class="nav-path">Sidebar → <span>Export Data</span> → Export Anak</p>
+    <p>Unduh data dasar anak (identitas, wilayah, faskes) dalam format CSV atau Excel. Dapat difilter berdasarkan wilayah, posyandu, puskesmas, dan status gizi.</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div>File hasil export dapat digunakan sebagai template untuk diimport kembali setelah diubah, atau untuk keperluan pelaporan ke tingkat Kota/Provinsi.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 6 — IMPORT DATA
+     ============================ -->
+<div class="chapter" id="bab6">
+  <div class="chapter-header">
+    <div class="ch-icon">📥</div>
+    <div>
+      <div class="ch-num">Bab 6</div>
+      <h2>Import Data CSV</h2>
+      <p>Unggah data massal dari file CSV untuk efisiensi input data</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Tentang Fitur Import</h3>
+    <p class="nav-path">Sidebar → <span>Import Data</span> → Import CSV</p>
+    <p>Fitur Import CSV memungkinkan petugas memasukkan data dalam jumlah besar sekaligus tanpa perlu mengisi satu per satu melalui form. Tersedia tiga jenis import:</p>
+    <div class="two-col">
+      <div class="callout info" style="margin:0">
+        <span class="callout-icon">👶</span>
+        <div><strong>Data Anak</strong><br>Identitas dasar anak baru atau pembaruan data</div>
+      </div>
+      <div class="callout info" style="margin:0">
+        <span class="callout-icon">📏</span>
+        <div><strong>Pengukuran Berkala</strong><br>Hasil timbang bulan posyandu</div>
+      </div>
+    </div>
+    <div class="callout info" style="margin-top:12px">
+      <span class="callout-icon">💉</span>
+      <div><strong>Imunisasi</strong><br>Data pemberian vaksin massal</div>
+    </div>
+
+    <h4>Logika UPSERT (Update + Insert)</h4>
+    <p>Sistem menggunakan pendekatan <strong>UPSERT</strong> sehingga aman untuk dijalankan berulang kali:</p>
+    <table>
+      <thead><tr><th>Kondisi NIK</th><th>Tindakan Sistem</th></tr></thead>
+      <tbody>
+        <tr><td>NIK sudah ada di database</td><td>Data anak di-<strong>update</strong> (tidak duplikat)</td></tr>
+        <tr><td>NIK baru / belum ada</td><td>Data anak baru di-<strong>buat</strong> (insert)</td></tr>
+        <tr><td>NIK kosong di CSV</td><td>Data anak baru di-<strong>buat</strong> tanpa NIK</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section" id="bab6-anak">
+    <h3>Import Data Anak</h3>
+    <p>Klik tab <strong>"Data Anak"</strong> pada halaman Import CSV.</p>
+
+    <h4>Kolom yang Dibutuhkan dalam CSV</h4>
+    <table>
+      <thead><tr><th>Kolom CSV</th><th>Keterangan</th><th>Wajib?</th></tr></thead>
+      <tbody>
+        <tr><td><code>nik</code></td><td>16 digit NIK anak</td><td>✓</td></tr>
+        <tr><td><code>nama</code></td><td>Nama lengkap anak</td><td>✓</td></tr>
+        <tr><td><code>tgl_lahir</code></td><td>Format: YYYY-MM-DD</td><td>✓</td></tr>
+        <tr><td><code>jenis_kelamin</code></td><td>L / P</td><td>✓</td></tr>
+        <tr><td><code>nik_ortu</code></td><td>NIK orang tua</td><td>✓</td></tr>
+        <tr><td><code>nama_ibu</code></td><td>Nama ibu</td><td>✓</td></tr>
+        <tr><td><code>nama_ayah</code></td><td>Nama ayah</td><td>✓</td></tr>
+        <tr><td><code>id_kelurahan</code></td><td>Kode kelurahan</td><td>✓</td></tr>
+        <tr><td><code>id_posyandu</code></td><td>Kode posyandu</td><td>✓</td></tr>
+        <tr><td><code>id_puskesmas</code></td><td>Kode puskesmas</td><td>✓</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div>Klik tombol <strong>"Unduh Template CSV"</strong> untuk mendapatkan file contoh dengan format kolom yang benar. Isi data sesuai template lalu upload kembali.</div>
+    </div>
+  </div>
+
+  <div class="section" id="bab6-pengukuran">
+    <h3>Import Pengukuran Berkala</h3>
+    <p>Klik tab <strong>"Pengukuran Berkala"</strong>. Cocok untuk upload data timbang massal setelah kegiatan Posyandu.</p>
+
+    <h4>Kolom yang Dibutuhkan</h4>
+    <table>
+      <thead><tr><th>Kolom CSV</th><th>Keterangan</th><th>Wajib?</th></tr></thead>
+      <tbody>
+        <tr><td><code>nik_anak</code></td><td>NIK anak yang diukur</td><td>✓</td></tr>
+        <tr><td><code>tanggal</code></td><td>Tanggal pengukuran (YYYY-MM-DD)</td><td>✓</td></tr>
+        <tr><td><code>berat_badan</code></td><td>Dalam kilogram (desimal, contoh: 8.5)</td><td>✓</td></tr>
+        <tr><td><code>tinggi_badan</code></td><td>Dalam sentimeter (desimal)</td><td>✓</td></tr>
+        <tr><td><code>lingkar_kepala</code></td><td>Dalam sentimeter</td><td>-</td></tr>
+        <tr><td><code>lingkar_lengan</code></td><td>LILA dalam sentimeter</td><td>-</td></tr>
+      </tbody>
+    </table>
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div>Setelah import berhasil, sistem akan otomatis menghitung Z-Score untuk setiap baris data yang diupload.</div>
+    </div>
+  </div>
+
+  <div class="section" id="bab6-imunisasi">
+    <h3>Import Imunisasi</h3>
+    <p>Klik tab <strong>"Imunisasi"</strong>. Untuk upload data pemberian vaksin massal.</p>
+
+    <h4>Kolom yang Dibutuhkan</h4>
+    <table>
+      <thead><tr><th>Kolom CSV</th><th>Keterangan</th><th>Wajib?</th></tr></thead>
+      <tbody>
+        <tr><td><code>nik_anak</code></td><td>NIK anak yang diimunisasi</td><td>✓</td></tr>
+        <tr><td><code>kode_vaksin</code></td><td>Kode vaksin (BCG, POLIO1, dsb.)</td><td>✓</td></tr>
+        <tr><td><code>tanggal_pemberian</code></td><td>Format: YYYY-MM-DD</td><td>✓</td></tr>
+        <tr><td><code>dosis</code></td><td>Angka dosis (1, 2, 3, ...)</td><td>✓</td></tr>
+        <tr><td><code>status</code></td><td>sudah / belum / terlambat</td><td>✓</td></tr>
+        <tr><td><code>batch_number</code></td><td>Nomor batch vaksin</td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Cara Upload File CSV</h4>
+    <ol class="steps">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Unduh template CSV</strong> dengan klik "Unduh Template CSV"</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Isi data</strong> di spreadsheet sesuai format template</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Simpan sebagai .csv</strong> (File → Save As → CSV)</div></li>
+      <li><div class="step-num">4</div><div class="step-body"><strong>Klik area upload</strong> atau seret file ke kotak "Klik atau seret file CSV ke sini"</div></li>
+      <li><div class="step-num">5</div><div class="step-body"><strong>Klik "Upload &amp; Import"</strong> — tunggu hingga proses selesai</div></li>
+      <li><div class="step-num">6</div><div class="step-body"><strong>Periksa Riwayat Import</strong> di bawah untuk melihat hasil (berhasil/gagal per baris)</div></li>
+    </ol>
+
+    <div class="callout danger">
+      <span class="callout-icon">🚫</span>
+      <div>Batas ukuran file maksimal <strong>10 MB</strong>. Untuk data lebih besar, bagi menjadi beberapa file dan upload secara bergantian.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 7 — DATA MASTER
+     ============================ -->
+<div class="chapter" id="bab7">
+  <div class="chapter-header">
+    <div class="ch-icon">⚙️</div>
+    <div>
+      <div class="ch-num">Bab 7</div>
+      <h2>Data Master</h2>
+      <p>Referensi data: vaksin, jenis kasus penyakit, dan jumlah penduduk</p>
+    </div>
+  </div>
+
+  <div class="section" id="bab7-vaksin">
+    <h3>Master Data Jenis Vaksin (Antigen)</h3>
+    <p class="nav-path">Sidebar → <span>Data Master</span> → Antigen</p>
+    <p>Halaman ini mengelola daftar referensi semua jenis vaksin/antigen yang digunakan dalam program imunisasi anak. Data di sini menjadi acuan untuk pencatatan imunisasi per anak.</p>
+
+    <h4>Kolom Daftar Jenis Vaksin</h4>
+    <table>
+      <thead><tr><th>Kolom</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        <tr><td>Kode</td><td>Kode unik vaksin (contoh: BCG, POLIO1, DPT-HB-HIB1)</td></tr>
+        <tr><td>Nama</td><td>Nama lengkap vaksin</td></tr>
+        <tr><td>Kelompok</td><td>IDL (Imunisasi Dasar Lengkap) / IBL (Imunisasi Booster Lanjutan) / ISL (Imunisasi Sekolah Lanjutan)</td></tr>
+        <tr><td>Kategori</td><td>Wajib / Booster / Tambahan</td></tr>
+        <tr><td>Usia Min (Hari)</td><td>Usia minimum pemberian dalam hari</td></tr>
+        <tr><td>Usia Max (Hari)</td><td>Usia maksimum pemberian dalam hari</td></tr>
+        <tr><td>Interval (Hari)</td><td>Jarak minimal antar dosis (hari)</td></tr>
+        <tr><td>Status</td><td><span class="badge-green">Aktif</span> / <span class="badge-gray">Nonaktif</span></td></tr>
+      </tbody>
+    </table>
+
+    <h4>Kelompok Vaksin</h4>
+    <table>
+      <thead><tr><th>Kode Kelompok</th><th>Nama</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge-blue">IDL</span></td><td>Imunisasi Dasar Lengkap</td><td>Vaksin wajib bayi 0–12 bulan</td></tr>
+        <tr><td><span class="badge-yellow">IBL</span></td><td>Imunisasi Booster Lanjutan</td><td>Dosis ulang di usia 18 bulan – 3 tahun</td></tr>
+        <tr><td><span class="badge-green">ISL</span></td><td>Imunisasi Sekolah Lanjutan</td><td>Imunisasi anak usia sekolah (BIAS)</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Menambah Jenis Vaksin Baru</h4>
+    <ol class="steps">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Klik "+ Tambah Vaksin"</strong> di pojok kanan atas</div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Isi form:</strong> Kode (unik), Nama, Kelompok, Kategori, Usia Min/Max, Interval</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Pastikan Status = Aktif</strong> agar vaksin muncul di pilihan imunisasi anak</div></li>
+      <li><div class="step-num">4</div><div class="step-body"><strong>Klik Simpan</strong></div></li>
+    </ol>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div>Kode vaksin <strong>tidak dapat diubah</strong> setelah ada data imunisasi yang menggunakannya. Pastikan kode sudah benar sebelum menyimpan.</div>
+    </div>
+
+    <h4>Nonaktifkan Vaksin</h4>
+    <p>Klik ikon ✏️ pada baris vaksin lalu ubah Status menjadi <strong>Nonaktif</strong>. Vaksin yang nonaktif tidak akan muncul di dropdown imunisasi anak baru, tetapi data lama tetap tersimpan.</p>
+  </div>
+
+  <div class="section" id="bab7-pd3i">
+    <h3>Surveilans PD3I — Master Jenis Kasus</h3>
+    <p class="nav-path">Sidebar → <span>Data Master</span> → Surveilans PD3I</p>
+    <p>Mengelola daftar referensi jenis penyakit yang masuk dalam program surveilans epidemiologi. Data ini menjadi pilihan saat mengisi form "Tambah Kasus Surveillance".</p>
+
+    <h4>Jenis Penyakit yang Tersedia</h4>
+    <table>
+      <thead><tr><th>Kategori</th><th>Penyakit</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge-red">PD3I</span></td><td>Suspek Campak Rubella, Observasi Difteri, AFP, Suspek Pertusis, Suspek Tetanus Neonatorum</td></tr>
+        <tr><td><span class="badge-yellow">Menular Langsung</span></td><td>Tuberkulosis (TB), HIV/AIDS, Hepatitis, Diare Akut, Pneumonia</td></tr>
+        <tr><td><span class="badge-blue">Vector Borne</span></td><td>Demam Berdarah Dengue (DBD), Chikungunya, Malaria</td></tr>
+        <tr><td><span class="badge-green">Zoonosis</span></td><td>Rabies</td></tr>
+        <tr><td><span class="badge-gray">Lainnya</span></td><td>COVID-19</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Tambah Jenis Kasus Baru</h4>
+    <p>Klik <strong>"+ Tambah Jenis Kasus"</strong> lalu isi Kode Penyakit (format: EPI-XXX), Nama Penyakit, Kategori, dan Keterangan. Aktifkan status agar bisa dipilih saat pelaporan.</p>
+  </div>
+
+  <div class="section" id="bab7-penduduk">
+    <h3>Data Jumlah Penduduk</h3>
+    <p class="nav-path">Sidebar → <span>Data Master</span> → Jumlah Penduduk</p>
+    <p>Menyimpan data jumlah penduduk per kelurahan per tahun yang digunakan sebagai denominator dalam perhitungan cakupan imunisasi dan insidensi penyakit.</p>
+
+    <h4>Kolom Data Penduduk</h4>
+    <table>
+      <thead><tr><th>Kolom</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        <tr><td>Tahun</td><td>Tahun data penduduk</td></tr>
+        <tr><td>Kategori</td><td>Total / Bayi / Balita / Anak Sekolah / Wanita Usia Subur</td></tr>
+        <tr><td>Kelurahan</td><td>Kelurahan yang bersangkutan</td></tr>
+        <tr><td>Jumlah Penduduk</td><td>Jumlah penduduk sesuai kategori</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Tambah Data Penduduk</h4>
+    <ol class="steps">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Klik "+ Tambah Data"</strong></div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Pilih Tahun</strong> (misal: 2025)</div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Pilih Kategori</strong> penduduk</div></li>
+      <li><div class="step-num">4</div><div class="step-body"><strong>Pilih Kelurahan</strong> dari dropdown</div></li>
+      <li><div class="step-num">5</div><div class="step-body"><strong>Isi Jumlah Penduduk</strong> lalu Simpan</div></li>
+    </ol>
+
+    <div class="callout info">
+      <span class="callout-icon">ℹ️</span>
+      <div>Data penduduk bisa difilter berdasarkan Tahun dan Kategori menggunakan dropdown di bagian atas tabel. Data ini diperbarui setiap tahun, biasanya bersumber dari data BPS atau Disdukcapil Kota Bontang.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 8 — ADMINISTRASI
+     ============================ -->
+<div class="chapter" id="bab8">
+  <div class="chapter-header">
+    <div class="ch-icon">🔧</div>
+    <div>
+      <div class="ch-num">Bab 8</div>
+      <h2>Administrasi</h2>
+      <p>Manajemen akun pengguna (khusus Super Admin)</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Manajemen Pengguna</h3>
+    <p class="nav-path">Sidebar → <span>Administrasi</span></p>
+    <p>Menu ini hanya dapat diakses oleh <strong>Super Admin</strong>. Digunakan untuk membuat, mengubah, dan menonaktifkan akun pengguna sistem SIRINDU.</p>
+
+    <h4>Peran Pengguna (Role)</h4>
+    <table>
+      <thead><tr><th>Peran</th><th>Akses</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge-red">Super Admin</span></td>
+          <td>Semua fitur + manajemen pengguna + edit No. Epid</td>
+        </tr>
+        <tr>
+          <td><span class="badge-blue">Admin</span></td>
+          <td>Semua fitur kecuali manajemen pengguna</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4>Tambah Pengguna Baru</h4>
+    <ol class="steps">
+      <li><div class="step-num">1</div><div class="step-body"><strong>Buka menu Administrasi</strong></div></li>
+      <li><div class="step-num">2</div><div class="step-body"><strong>Klik "+ Tambah Pengguna"</strong></div></li>
+      <li><div class="step-num">3</div><div class="step-body"><strong>Isi data:</strong> Nama, Email, Password, Peran (Admin/Super Admin)</div></li>
+      <li><div class="step-num">4</div><div class="step-body"><strong>Klik Simpan.</strong> Pengguna baru langsung dapat login.</div></li>
+    </ol>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div>Berikan peran <strong>Super Admin</strong> hanya kepada petugas yang memang memerlukan akses penuh. Pengguna biasa cukup diberi peran <em>Admin</em>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================
+     BAB 9 — PANDUAN CEPAT
+     ============================ -->
+<div class="chapter" id="bab9">
+  <div class="chapter-header">
+    <div class="ch-icon">⚡</div>
+    <div>
+      <div class="ch-num">Bab 9</div>
+      <h2>Panduan Cepat & Pemecahan Masalah</h2>
+      <p>Tips, shortcut, dan solusi masalah umum</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Alur Kerja Umum Petugas Posyandu</h3>
+    <table>
+      <thead><tr><th>Kegiatan</th><th>Menu yang Digunakan</th></tr></thead>
+      <tbody>
+        <tr><td>Daftarkan bayi baru lahir</td><td>Anak → Tambah Anak</td></tr>
+        <tr><td>Catat hasil timbang bulanan</td><td>Anak → nama anak → Tambah Pengukuran</td></tr>
+        <tr><td>Catat imunisasi yang diberikan</td><td>Anak → nama anak → Tambah Imunisasi</td></tr>
+        <tr><td>Upload data timbang massal pasca-Posyandu</td><td>Import Data → Import CSV → Tab Pengukuran</td></tr>
+        <tr><td>Cetak laporan bulanan imunisasi</td><td>Export Data → Export Imunisasi → pilih bulan → Export CSV</td></tr>
+        <tr><td>Laporkan kasus campak/difteri mencurigakan</td><td>PD3I → Tambah Kasus</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Pemecahan Masalah Umum</h3>
+    <table>
+      <thead><tr><th>Masalah</th><th>Solusi</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Login gagal / password salah</td>
+          <td>Pastikan Caps Lock mati. Hubungi Super Admin untuk reset password.</td>
+        </tr>
+        <tr>
+          <td>NIK duplikat saat tambah anak</td>
+          <td>Anak dengan NIK tersebut sudah terdaftar. Gunakan fitur Cari untuk menemukannya.</td>
+        </tr>
+        <tr>
+          <td>Kelurahan tidak muncul setelah pilih Kecamatan</td>
+          <td>Refresh halaman. Jika masih kosong, hubungi admin — data kelurahan mungkin belum diinput.</td>
+        </tr>
+        <tr>
+          <td>Import CSV gagal / error</td>
+          <td>Periksa format kolom menggunakan template. Pastikan tidak ada kolom kosong yang wajib diisi.</td>
+        </tr>
+        <tr>
+          <td>Tombol Export Agregat abu-abu</td>
+          <td>Pilih Bulan dan Tahun terlebih dahulu di bagian Export Agregat.</td>
+        </tr>
+        <tr>
+          <td>Peta tidak muncul di form Tambah Kasus</td>
+          <td>Pastikan koneksi internet aktif. Peta memerlukan koneksi untuk memuat tile map.</td>
+        </tr>
+        <tr>
+          <td>Z-Score tidak terhitung</td>
+          <td>Pastikan data referensi WHO (tabel Z-Score) sudah terisi di database. Hubungi Super Admin.</td>
+        </tr>
+        <tr>
+          <td>Halaman loading lambat</td>
+          <td>Gunakan filter untuk mempersempit data. Hindari menampilkan semua data tanpa filter pada dataset besar.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Kontak Bantuan</h3>
+    <table>
+      <thead><tr><th>Masalah</th><th>Hubungi</th></tr></thead>
+      <tbody>
+        <tr><td>Lupa password / akun terkunci</td><td>Super Admin instansi Anda</td></tr>
+        <tr><td>Bug / error teknis aplikasi</td><td>Diskominfo Kota Bontang</td></tr>
+        <tr><td>Pertanyaan tentang input data / kebijakan</td><td>Dinas Kesehatan Kota Bontang</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr>
+  <p style="text-align:center; color:var(--muted); font-size:10pt; padding: 20px 0;">
+    <strong>SIRINDU</strong> — Sistem Informasi Anak Rindu<br>
+    Dinas Kesehatan &amp; Diskominfo Kota Bontang &nbsp;·&nbsp; © 2026<br>
+    <em>Dokumen ini bersifat untuk penggunaan internal. Versi 1.0</em>
+  </p>
+</div>
+
+</div><!-- end page-wrap -->
+
+<script>
+// Auto-number sections for print
+window.addEventListener('load', function() {
+  document.title = 'Panduan Pengguna SIRINDU - Kota Bontang 2026';
+});
+</script>
+</body>
+</html>
