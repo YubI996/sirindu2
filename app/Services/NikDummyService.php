@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
 class NikDummyService
 {
     /** Kode wilayah default (Kota Bontang) jika tidak ditemukan */
-    const DEFAULT_KODE_WILAYAH = '647272';
+    const DEFAULT_KODE_WILAYAH = '647400';
 
     /** Urutan minimum untuk NIK dummy */
     const URUTAN_MIN = 9001;
