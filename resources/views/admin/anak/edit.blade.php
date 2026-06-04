@@ -181,11 +181,78 @@ Edit Anak
             <div class="form-group">
                 <label for="asi">ASI Eksklusif <span class="text-danger" aria-hidden="true">*</span></label>
                 <select name="asi" id="asi" class="form-control" required>
-                    <option value="0" @if($anak->asi == '0') selected @endif>Tidak</option>
-                    <option value="1" @if($anak->asi == '1') selected @endif>Ya</option>
+                    <option value="0" @if($dt->asi == '0') selected @endif>Tidak</option>
+                    <option value="1" @if($dt->asi == '1') selected @endif>Ya</option>
                 </select>
             </div>
         </div>
+
+        {{-- ===== Data Operasi Timbang ===== --}}
+        <div class="col-12">
+            <hr>
+            <h6 class="text-muted mb-3">Data Operasi Timbang</h6>
+        </div>
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <label for="posisi">Cara Ukur (Posisi)</label>
+                <select name="posisi" id="posisi" class="form-control">
+                    <option value="L" @if($dt->posisi == 'L') selected @endif>Berdiri (L)</option>
+                    <option value="H" @if($dt->posisi == 'H') selected @endif>Telentang (H)</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <label for="vit_a">Vitamin A</label>
+                <select name="vit_a" id="vit_a" class="form-control">
+                    <option value="0" @if($dt->vit_a == '0') selected @endif>Tidak</option>
+                    <option value="1" @if($dt->vit_a == '1') selected @endif>Ya</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <label for="pitting_edema">Pitting Edema</label>
+                <select name="pitting_edema" id="pitting_edema" class="form-control">
+                    <option value="0" @if($dt->pitting_edema === 0 || $dt->pitting_edema === '0') selected @endif>Tidak ada (0)</option>
+                    <option value="1" @if($dt->pitting_edema == '1') selected @endif>Derajat 1 (+)</option>
+                    <option value="2" @if($dt->pitting_edema == '2') selected @endif>Derajat 2 (++)</option>
+                    <option value="3" @if($dt->pitting_edema == '3') selected @endif>Derajat 3 (+++)</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <label for="kelas_ibu_balita">Kelas Ibu Balita</label>
+                <select name="kelas_ibu_balita" id="kelas_ibu_balita" class="form-control">
+                    <option value="0" @if(!$dt->kelas_ibu_balita) selected @endif>Tidak</option>
+                    <option value="1" @if($dt->kelas_ibu_balita) selected @endif>Ya</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <label for="mbg">Makan Bergizi Gratis (MBG)</label>
+                <select name="mbg" id="mbg" class="form-control">
+                    <option value="0" @if(!$dt->mbg) selected @endif>Tidak</option>
+                    <option value="1" @if($dt->mbg) selected @endif>Ya</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="form-group">
+                <label class="d-block">Pemberian ASI per Bulan (0–6)</label>
+                @for ($b = 0; $b <= 6; $b++)
+                <div class="form-check form-check-inline">
+                    <input type="hidden" name="asi_bulan_{{ $b }}" value="0">
+                    <input class="form-check-input" type="checkbox" id="asi_bulan_{{ $b }}" name="asi_bulan_{{ $b }}" value="1" @if($dt->{'asi_bulan_'.$b}) checked @endif>
+                    <label class="form-check-label" for="asi_bulan_{{ $b }}">Bulan {{ $b }}</label>
+                </div>
+                @endfor
+            </div>
+        </div>
+        {{-- ===== /Data Operasi Timbang ===== --}}
+
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label for="status">Status <span class="text-danger" aria-hidden="true">*</span></label>

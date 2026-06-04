@@ -179,14 +179,14 @@
 {{-- ── KPI Cards ─────────────────────────────────────────────── --}}
 <p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">monitoring</span>Ringkasan Operasi Timbang</p>
 <div class="tb-kpi-grid" id="kpi-grid">
-    <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--green"><span class="material-symbols-outlined">groups</span></div><div><div class="tb-kpi__val" id="kpi-ditimbang">—</div><div class="tb-kpi__lbl">Anak Pernah Ditimbang</div><div class="tb-kpi__sub" id="kpi-coverage">dari <span id="kpi-total-anak">—</span> terdaftar</div></div></div>
+    <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--green"><span class="material-symbols-outlined">groups</span></div><div><div class="tb-kpi__val" id="kpi-ditimbang">—</div><div class="tb-kpi__lbl">Anak Ditimbang</div><div class="tb-kpi__sub" id="kpi-coverage">dari <span id="kpi-total-anak">—</span> terdaftar</div></div></div>
     <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--blue"><span class="material-symbols-outlined">event_available</span></div><div><div class="tb-kpi__val" id="kpi-kunjungan">—</div><div class="tb-kpi__lbl">Total Kunjungan Timbang</div><div class="tb-kpi__sub">sesuai filter</div></div></div>
     <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">vaccines</span></div><div><div class="tb-kpi__val" id="kpi-vita">—</div><div class="tb-kpi__lbl">Coverage Vitamin A</div><div class="tb-kpi__sub">kunjungan terakhir per anak</div></div></div>
     <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--teal"><span class="material-symbols-outlined">restaurant</span></div><div><div class="tb-kpi__val" id="kpi-mbg">—</div><div class="tb-kpi__lbl">Coverage MBG</div><div class="tb-kpi__sub">Makanan Bergizi</div></div></div>
 </div>
 
 {{-- ── STATUS GIZI ───────────────────────────────────────────── --}}
-<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">emergency</span>Status Gizi Balita (Kebijakan Pimpinan)</p>
+<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">emergency</span>Status Gizi Balita</p>
 
 <div class="tb-stunting-row" id="stunting-row">
     <div class="tb-highlight tb-highlight--danger">
@@ -204,17 +204,17 @@
     <div class="tb-card">
         <p class="tb-card__title"><span class="material-symbols-outlined">height</span>Status TB/U (Stunting)</p>
         <p class="tb-card__sub">Distribusi tinggi badan per usia — kunjungan terakhir</p>
-        <canvas id="chart-tbu" height="220"></canvas>
+        <canvas id="chart-tbu" height="220" role="img" aria-label="Distribusi status TB/U (stunting)"></canvas>
     </div>
     <div class="tb-card">
         <p class="tb-card__title"><span class="material-symbols-outlined">monitor_weight</span>Status BB/U (Gizi)</p>
         <p class="tb-card__sub">Distribusi berat badan per usia — kunjungan terakhir</p>
-        <canvas id="chart-bbu" height="220"></canvas>
+        <canvas id="chart-bbu" height="220" role="img" aria-label="Distribusi status BB/U (gizi)"></canvas>
     </div>
     <div class="tb-card">
         <p class="tb-card__title"><span class="material-symbols-outlined">calculate</span>Status IMT/U</p>
         <p class="tb-card__sub">Indeks massa tubuh per usia</p>
-        <canvas id="chart-imtu" height="220"></canvas>
+        <canvas id="chart-imtu" height="220" role="img" aria-label="Distribusi status IMT/U"></canvas>
     </div>
 </div>
 
@@ -222,24 +222,24 @@
 <p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">trending_up</span>Tren Perkembangan</p>
 <div class="tb-chart-grid tb-chart-grid--2" style="margin-bottom:28px;">
     <div class="tb-card">
-        <p class="tb-card__title"><span class="material-symbols-outlined">event</span>Kunjungan Timbang (12 Bulan Terakhir)</p>
+        <p class="tb-card__title"><span class="material-symbols-outlined">event</span>Kunjungan Timbang <span id="kunjungan-range">(12 Bulan Terakhir)</span></p>
         <p class="tb-card__sub">Jumlah kunjungan per bulan</p>
-        <canvas id="chart-kunjungan" height="200"></canvas>
+        <canvas id="chart-kunjungan" height="200" role="img" aria-label="Tren jumlah kunjungan timbang per bulan"></canvas>
     </div>
     <div class="tb-card">
         <p class="tb-card__title"><span class="material-symbols-outlined">show_chart</span>Rata-rata BB & TB per Usia</p>
         <p class="tb-card__sub">Bulan usia 0–60 (balita)</p>
-        <canvas id="chart-growth" height="200"></canvas>
+        <canvas id="chart-growth" height="200" role="img" aria-label="Rata-rata berat dan tinggi badan per bulan usia"></canvas>
     </div>
 </div>
 
 {{-- ── COVERAGE WILAYAH ─────────────────────────────────────── --}}
-<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">location_on</span>Ketercapaian per Wilayah (Kinerja Pemerintah)</p>
+<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">location_on</span>Ketercapaian per Wilayah</p>
 <div class="tb-chart-grid tb-chart-grid--2" style="margin-bottom:28px;">
     <div class="tb-card">
         <p class="tb-card__title"><span class="material-symbols-outlined">bar_chart</span>Coverage Timbang per Kelurahan</p>
         <p class="tb-card__sub">% anak pernah ditimbang dari total terdaftar</p>
-        <canvas id="chart-cov-kel" height="220"></canvas>
+        <canvas id="chart-cov-kel" height="220" role="img" aria-label="Coverage timbang dan vitamin A per kelurahan"></canvas>
     </div>
     <div class="tb-card" style="overflow-x:auto;">
         <p class="tb-card__title"><span class="material-symbols-outlined">table_chart</span>Detail Coverage per Kelurahan</p>
@@ -270,7 +270,7 @@
             </div>
             <div style="flex:1;min-width:140px;">
                 <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:oklch(0.44 0.010 145);margin-bottom:10px;">Cara Ukur</div>
-                <canvas id="chart-cara" height="130"></canvas>
+                <canvas id="chart-cara" height="130" role="img" aria-label="Distribusi cara ukur"></canvas>
             </div>
         </div>
     </div>
@@ -314,6 +314,27 @@ document.getElementById('btn-reset').addEventListener('click', function(){
 function pct(v){ return (v !== null && v !== undefined) ? v+'%' : '—%'; }
 function num(v){ return (v !== null && v !== undefined) ? Number(v).toLocaleString('id') : '—'; }
 
+// ── Error handling ────────────────────────────────────────────
+function fail(label){
+    return function(xhr){
+        console.error('[Timbang] gagal memuat '+label+':', xhr && xhr.status, xhr && xhr.responseText);
+    };
+}
+function showError(id, label){
+    var el = document.getElementById(id);
+    if(el){
+        el.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:.8rem;">'
+            +'<span class="material-symbols-outlined" style="vertical-align:middle;font-size:18px;">error</span> '
+            +'Gagal memuat '+label+'</div>';
+    }
+}
+function kpiFail(){
+    ['kpi-ditimbang','kpi-kunjungan','kpi-vita','kpi-mbg'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.textContent = '!';
+    });
+}
+
 function destroyChart(id){
     if(charts[id]){ charts[id].destroy(); delete charts[id]; }
 }
@@ -346,7 +367,7 @@ function loadRingkasan(){
         document.getElementById('kpi-kunjungan').textContent   = num(d.total_kunjungan);
         document.getElementById('kpi-vita').textContent        = pct(d.vit_a_coverage);
         document.getElementById('kpi-mbg').textContent         = pct(d.mbg_rate);
-    });
+    }).fail(function(xhr){ kpiFail(); fail('ringkasan')(xhr); });
 }
 
 // ── GIZI ──────────────────────────────────────────────────────
@@ -396,11 +417,16 @@ function loadGizi(){
             },
             options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } }, cutout:'65%' }
         });
-    });
+    }).fail(fail('status gizi'));
 }
 
 // ── TREN ──────────────────────────────────────────────────────
 function loadTren(){
+    var rangeEl = document.getElementById('kunjungan-range');
+    if(rangeEl){
+        var ty = document.getElementById('f-tahun').value;
+        rangeEl.textContent = ty ? '(Tahun '+ty+')' : '(12 Bulan Terakhir)';
+    }
     $.getJSON(API_TREN+getParams(), function(d){
         // Kunjungan bulanan
         destroyChart('chart-kunjungan');
@@ -432,7 +458,7 @@ function loadTren(){
             options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } },
                 scales:{ y:{ beginAtZero:false } } }
         });
-    });
+    }).fail(fail('tren'));
 }
 
 // ── COVERAGE ──────────────────────────────────────────────────
@@ -482,7 +508,7 @@ function loadCoverage(){
         html += '</tbody></table>';
         document.getElementById('cov-table-wrap').innerHTML = rows.length ? html
             : '<div style="text-align:center;padding:24px;color:#94a3b8;">Belum ada data</div>';
-    });
+    }).fail(function(xhr){ showError('cov-table-wrap', 'coverage'); fail('coverage')(xhr); });
 }
 
 // ── PROGRAM ───────────────────────────────────────────────────
@@ -533,7 +559,7 @@ function loadProgram(){
                 options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } }, cutout:'60%' }
             });
         }
-    });
+    }).fail(function(xhr){ showError('asi-bar','data ASI'); showError('pe-list','data edema'); fail('program')(xhr); });
 }
 
 function escHtml(s){

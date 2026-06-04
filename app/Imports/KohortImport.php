@@ -396,8 +396,10 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
                         DataAnak::updateOrCreate(
                             ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglPosy],
                             [
-                                // NOT NULL tanpa default — fallback ke 0 jika kosong
-                                'bln'         => $this->parseIntOrNull($row[$base + 1] ?? null) ?? 0,
+                                // Usia diturunkan dari tgl_lahir → tgl posyandu; kolom 'bln'
+                                // kohort hanya fallback bila tanggal lahir tak tersedia.
+                                'bln'         => usia_bulan($anak->tgl_lahir, $tglPosy)
+                                                    ?? $this->parseIntOrNull($row[$base + 1] ?? null) ?? 0,
                                 'lk'          => $this->parseDecimalOrNull($row[$base + 2] ?? null) ?? 0,
                                 'lla'         => $this->parseDecimalOrNull($row[$base + 4] ?? null) ?? 0,
                                 'bb'          => $this->parseDecimalOrNull($row[$base + 6] ?? null) ?? 0,

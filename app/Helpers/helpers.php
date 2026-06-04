@@ -2,6 +2,32 @@
 
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Hitung usia dalam bulan penuh dari tanggal lahir ke tanggal acuan
+ * (mis. tgl kunjungan / tgl ukur).
+ *
+ * Mengembalikan null jika salah satu tanggal kosong/tidak valid, atau jika
+ * tanggal acuan mendahului tanggal lahir (data tidak masuk akal). Pemanggil
+ * yang butuh nilai NOT NULL bisa pakai `usia_bulan(...) ?? 0`.
+ */
+function usia_bulan($tglLahir, $tglAcuan): ?int
+{
+    if (empty($tglLahir) || empty($tglAcuan) || $tglLahir === '0000-00-00') {
+        return null;
+    }
+    try {
+        $lahir = \Carbon\Carbon::parse($tglLahir)->startOfDay();
+        $acuan = \Carbon\Carbon::parse($tglAcuan)->startOfDay();
+    } catch (\Throwable $e) {
+        return null;
+    }
+    if ($acuan->lt($lahir)) {
+        return null;
+    }
+    // diffInMonths Carbon 3 = float bertanda; dipastikan >= 0 oleh guard di atas.
+    return (int) $lahir->diffInMonths($acuan);
+}
+
 function z_score($x)
 {
 
@@ -16,7 +42,9 @@ function z_score($x)
             $tinggi -= 0.7;
         }
         $tinggi = round($tinggi);
-        $var = $umur <= 24 ? 1 : 2;
+        // var=1 tabel panjang (0–<24 bln), var=2 tabel tinggi (>=24 bln) —
+        // selaras dgn koreksi posisi di atas (24 bln pakai basis tinggi berdiri).
+        $var = $umur < 24 ? 1 : 2;
         $jk = $data->jk;
         $bmi = round(10000 * $berat / pow($tinggi, 2), 2);
 

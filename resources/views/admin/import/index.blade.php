@@ -662,14 +662,26 @@
         });
     });
 
-    /* ── Drag-over visual feedback ──────────────────────────────── */
+    /* ── Drag & drop: visual feedback + capture dropped file ────── */
     document.querySelectorAll('.imp-upload-zone').forEach(function (zone) {
         zone.addEventListener('dragover',  function (e) { e.preventDefault(); zone.classList.add('has-file'); });
         zone.addEventListener('dragleave', function () {
             var inp = zone.querySelector('input[type="file"]');
             if (!inp || !inp.files.length) zone.classList.remove('has-file');
         });
-        zone.addEventListener('drop', function (e) { e.preventDefault(); });
+        zone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            var inp   = zone.querySelector('input[type="file"]');
+            var files = e.dataTransfer && e.dataTransfer.files;
+            if (!inp || !files || !files.length) {
+                if (!inp || !inp.files.length) zone.classList.remove('has-file');
+                return;
+            }
+            /* assign the dropped file(s) to the hidden input, then notify
+               the change listener so the filename display + submit work */
+            inp.files = files;
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
+        });
     });
 
     /* ── Prevent double-submit ──────────────────────────────────── */

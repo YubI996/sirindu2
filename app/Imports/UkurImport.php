@@ -145,14 +145,19 @@ class UkurImport implements ToCollection, WithStartRow, WithChunkReading
 
                 $anak = $result['anak'];
 
-                // Hitung usia dalam bulan dari tgl_lahir anak
-                $bln = 0;
-                if ($anak->tgl_lahir) {
-                    try {
-                        $bln = (int) Carbon::parse($anak->tgl_lahir)->diffInMonths(Carbon::parse($tglUkur));
-                    } catch (\Exception $e) {
-                        $bln = 0;
-                    }
+                // Hitung usia dalam bulan dari tgl_lahir anak + TANGGALUKUR.
+                // Tgl ukur sebelum tgl lahir = data tidak masuk akal — lewati.
+                if ($anak->tgl_lahir && $tglUkur < $anak->tgl_lahir) {
+                    $this->failures[] = "[PERINGATAN] Baris {$rowNum} ({$namaAnakRaw}): TANGGALUKUR ({$tglUkur}) sebelum tanggal lahir anak ({$anak->tgl_lahir}) — dilewati.";
+                    continue;
+                }
+                // usia_bulan() null hanya bila tgl_lahir anak kosong (guard di atas
+                // sudah menjamin tgl ukur >= tgl lahir). Beri tahu agar penyebab
+                // bln=0 jelas, bukan diam-diam.
+                $bln = usia_bulan($anak->tgl_lahir, $tglUkur);
+                if ($bln === null) {
+                    $this->failures[] = "[PERINGATAN] Baris {$rowNum} ({$namaAnakRaw}): tanggal lahir anak belum terisi — usia (bln) tidak dapat dihitung, disetel 0. Lengkapi tgl_lahir anak lalu import ulang.";
+                    $bln = 0;
                 }
 
                 DataAnak::updateOrCreate(

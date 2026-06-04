@@ -154,11 +154,17 @@ class PengukuranImport implements ToCollection, WithStartRow, WithChunkReading
 
                 $anak = $result['anak'];
 
+                // Usia (bln) diturunkan dari tgl_lahir → tgl_kunjungan agar konsisten,
+                // kolom 'bln' di CSV hanya dipakai sebagai fallback bila tanggal tak lengkap.
+                $bln = usia_bulan($anak->tgl_lahir, $tglKunjungan)
+                    ?? $this->parseIntVal($this->colVal($row, $map, 'bln'))
+                    ?? 0;
+
                 // Bangun data DataAnak
                 DataAnak::updateOrCreate(
                     ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglKunjungan],
                     [
-                        'bln'            => $this->parseIntVal($this->colVal($row, $map, 'bln')) ?? 0,
+                        'bln'            => $bln,
                         'posisi'         => $this->parseShortStr($this->colVal($row, $map, 'posisi'), 10) ?? 'L',
                         'bb'             => $this->parseDecimal($this->colVal($row, $map, 'bb_kg')) ?? 0,
                         'tb'             => $this->parseDecimal($this->colVal($row, $map, 'tb_cm')) ?? 0,
