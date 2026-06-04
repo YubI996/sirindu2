@@ -6,6 +6,7 @@ use App\Jobs\ImportAnakJob;
 use App\Jobs\ImportHasilLabJob;
 use App\Jobs\ImportImunisasiJob;
 use App\Jobs\ImportPengukuranJob;
+use App\Jobs\ImportUkurJob;
 use App\Models\ImportLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,6 +26,7 @@ class ImportCsvController extends Controller
         'pengukuran' => 'Pengukuran Berkala',
         'imunisasi'  => 'Imunisasi',
         'hasil_lab'  => 'Hasil Laboratorium PD3I',
+        'ukur'       => 'Operasi Timbang',
     ];
 
     /** Nama file template per tipe. */
@@ -32,6 +34,7 @@ class ImportCsvController extends Controller
         'anak'       => 'template_anak.csv',
         'pengukuran' => 'template_pengukuran_berkala.csv',
         'imunisasi'  => 'template_imunisasi.csv',
+        'ukur'       => 'template_operasi_timbang.csv',
     ];
 
     // =========================================================================
@@ -75,6 +78,11 @@ class ImportCsvController extends Controller
         return $this->handleUpload($request, 'hasil_lab', 'file_hasil_lab');
     }
 
+    public function uploadUkur(Request $request)
+    {
+        return $this->handleUpload($request, 'ukur', 'file_ukur');
+    }
+
     protected function handleUpload(Request $request, string $type, string $inputName)
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
@@ -103,6 +111,7 @@ class ImportCsvController extends Controller
             'pengukuran' => ImportPengukuranJob::class,
             'imunisasi'  => ImportImunisasiJob::class,
             'hasil_lab'  => ImportHasilLabJob::class,
+            'ukur'       => ImportUkurJob::class,
         };
 
         $jobClass::dispatch($log);
@@ -149,6 +158,7 @@ class ImportCsvController extends Controller
             'pengukuran' => ImportPengukuranJob::class,
             'imunisasi'  => ImportImunisasiJob::class,
             'hasil_lab'  => ImportHasilLabJob::class,
+            'ukur'       => ImportUkurJob::class,
         };
 
         $jobClass::dispatch($newLog);
@@ -220,6 +230,7 @@ class ImportCsvController extends Controller
 
     public function downloadTemplate(string $type)
     {
+        abort_if(!auth()->user()->isSuperAdmin(), 403);
         abort_if(!array_key_exists($type, self::TEMPLATE_FILES), 404);
 
         $filename    = self::TEMPLATE_FILES[$type];

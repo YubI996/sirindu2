@@ -258,6 +258,7 @@
 .imp-chip-anak       { background: oklch(0.92 0.07 228 / 0.35); color: oklch(0.42 0.15 228); }
 .imp-chip-pengukuran { background: oklch(0.92 0.08 295 / 0.35); color: oklch(0.42 0.14 295); }
 .imp-chip-imunisasi  { background: oklch(0.92 0.07 145 / 0.4);  color: oklch(0.36 0.12 145); }
+.imp-chip-ukur       { background: oklch(0.92 0.09 55 / 0.35);  color: oklch(0.42 0.14 55); }
 
 /* -- Action buttons -- */
 .imp-act {
@@ -341,6 +342,11 @@
         role="tab" aria-selected="false" aria-controls="panel-imunisasi" id="tab-imunisasi">
         <span class="material-symbols-outlined">vaccines</span>
         Imunisasi
+    </button>
+    <button class="imp-tab-btn" data-tab="ukur"
+        role="tab" aria-selected="false" aria-controls="panel-ukur" id="tab-ukur">
+        <span class="material-symbols-outlined">monitor_weight</span>
+        Operasi Timbang
     </button>
 </div>
 
@@ -466,6 +472,51 @@
 </div>
 
 {{-- =====================================================================
+     PANEL: Operasi Timbang
+     ===================================================================== --}}
+<div class="imp-panel" id="panel-ukur" role="tabpanel" aria-labelledby="tab-ukur">
+    <div class="imp-panel-grid">
+        <div class="imp-guide">
+            <p class="imp-guide__label">Data yang diimpor</p>
+            <p>Data operasi timbang posyandu: berat, tinggi, LiLA, lingkar kepala, pitting edema, cara ukur, vitamin A, ASI per bulan (0–6), kelas ibu balita, dan MBG.</p>
+            <div class="imp-guide__rule">
+                <strong>Format CSV</strong>
+                Kolom wajib: <strong>NIK</strong>, <strong>nama_anak</strong>, <strong>TANGGALUKUR</strong>, <strong>BERAT</strong>, <strong>TINGGI</strong>.<br>
+                Usia bulan dihitung otomatis dari data anak.
+            </div>
+            <div class="imp-guide__rule">
+                <strong>Pencocokan Anak</strong>
+                Anak dicocokkan via NIK. Jika NIK tidak valid, sistem mencari via NIK + nama.
+            </div>
+            <a href="{{ route('admin.importCsv.template', 'ukur') }}" class="imp-template-link" download>
+                <span class="material-symbols-outlined">download</span>
+                Unduh Template CSV
+            </a>
+        </div>
+        <div class="imp-upload-col">
+            <form method="POST" action="{{ route('admin.importCsv.ukur') }}"
+                  enctype="multipart/form-data" class="imp-form" data-type="ukur">
+                @csrf
+                <label class="imp-upload-zone" for="file-ukur" id="zone-ukur">
+                    <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
+                    <span class="imp-upload-zone__label">Klik atau seret file CSV ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .csv &mdash; maksimal 10 MB</span>
+                    <input type="file" id="file-ukur" name="file_ukur" accept=".csv,text/csv" required>
+                </label>
+                <div class="imp-fname" id="fname-ukur">
+                    <span class="material-symbols-outlined">description</span>
+                    <span>Belum ada file dipilih</span>
+                </div>
+                <button type="submit" class="imp-btn-upload">
+                    <span class="material-symbols-outlined">upload</span>
+                    Upload &amp; Import
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- =====================================================================
      Riwayat Import
      ===================================================================== --}}
 <div>
@@ -479,6 +530,7 @@
             <button class="imp-filter-btn" data-filter="anak">Anak</button>
             <button class="imp-filter-btn" data-filter="pengukuran">Pengukuran</button>
             <button class="imp-filter-btn" data-filter="imunisasi">Imunisasi</button>
+            <button class="imp-filter-btn" data-filter="ukur">Op. Timbang</button>
             <button class="imp-refresh-btn" id="imp-btn-refresh" title="Muat ulang riwayat">
                 <span class="material-symbols-outlined">refresh</span>
             </button>
@@ -511,7 +563,7 @@
                         <td class="td-file" title="{{ $log->filename }}">{{ $log->filename }}</td>
                         <td>
                             <span class="imp-chip imp-chip-{{ $log->type }}">
-                                {{ ['anak'=>'Anak','pengukuran'=>'Pengukuran','imunisasi'=>'Imunisasi'][$log->type] ?? $log->type }}
+                                {{ ['anak'=>'Anak','pengukuran'=>'Pengukuran','imunisasi'=>'Imunisasi','ukur'=>'Op. Timbang','hasil_lab'=>'Hasil Lab'][$log->type] ?? $log->type }}
                             </span>
                         </td>
                         <td>
@@ -734,8 +786,8 @@
     }
 
     /* ── Render helpers ─────────────────────────────────────────── */
-    var typeLabel  = { anak: 'Anak', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi' };
-    var typeChip   = { anak: 'imp-chip-anak', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi' };
+    var typeLabel  = { anak: 'Anak', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi', ukur: 'Op. Timbang' };
+    var typeChip   = { anak: 'imp-chip-anak', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi', ukur: 'imp-chip-ukur' };
     var stLabel    = { pending: 'Menunggu', processing: 'Diproses', done: 'Selesai', failed: 'Gagal' };
     var stBadge    = { pending: 'imp-badge-pending', processing: 'imp-badge-processing', done: 'imp-badge-done', failed: 'imp-badge-failed' };
     var stIcon     = { pending: 'schedule', processing: 'sync', done: 'check_circle', failed: 'error' };

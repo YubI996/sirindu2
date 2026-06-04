@@ -21,6 +21,7 @@
 					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit', 'admin.pd3i.dashboard');
+					$gizi = request()->routeIs('admin.timbang.*');
 					$export = request()->routeIs('admin.export.*');
 					$import = request()->routeIs('admin.importCsv.*');
 					$master = request()->routeIs('admin.masterdata.*');
@@ -59,6 +60,15 @@
 						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}"><i class="fa fa-chart-bar mr-1" style="font-size:.8rem;"></i>Dashboard PD3I</a></li>
 						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
 						<li><a href="{{route('admin.epidemiologi.create')}}" class="{{ request()->routeIs('admin.epidemiologi.create') ? 'active' : '' }}">Tambah Kasus</a></li>
+					</ul>
+				</li>
+
+				<li class="dropdown section-group {{ $gizi ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $gizi ? 'active' : '' }}">
+						<span class="micon fa fa-weight"></span><span class="mtext">Gizi &amp; Timbang</span>
+					</a>
+					<ul class="submenu" {!! $gizi ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.timbang.dashboard')}}" class="{{ request()->routeIs('admin.timbang.dashboard') ? 'active' : '' }}">Dashboard Timbang</a></li>
 					</ul>
 				</li>
 

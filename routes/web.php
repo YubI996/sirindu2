@@ -82,10 +82,21 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         Route::post('pengukuran', [App\Http\Controllers\ImportCsvController::class, 'uploadPengukuran']) ->name('admin.importCsv.pengukuran');
         Route::post('imunisasi',  [App\Http\Controllers\ImportCsvController::class, 'uploadImunisasi'])  ->name('admin.importCsv.imunisasi');
         Route::post('hasil-lab',  [App\Http\Controllers\ImportCsvController::class, 'uploadHasilLab'])  ->name('admin.importCsv.hasilLab');
+        Route::post('ukur',       [App\Http\Controllers\ImportCsvController::class, 'uploadUkur'])        ->name('admin.importCsv.ukur');
         Route::post('reimport/{log}', [App\Http\Controllers\ImportCsvController::class, 'reimport'])     ->name('admin.importCsv.reimport');
         Route::get('status',      [App\Http\Controllers\ImportCsvController::class, 'importStatus'])     ->name('admin.importCsv.status');
         Route::delete('log/{log}',[App\Http\Controllers\ImportCsvController::class, 'destroyLog'])       ->name('admin.importCsv.destroyLog');
         Route::get('template/{type}', [App\Http\Controllers\ImportCsvController::class, 'downloadTemplate'])->name('admin.importCsv.template');
+    });
+
+    // Dashboard Gizi & Operasi Timbang
+    Route::prefix('timbang-dashboard')->group(function () {
+        Route::get('/',            [App\Http\Controllers\TimbangDashboardController::class, 'index'])    ->name('admin.timbang.dashboard');
+        Route::get('api/ringkasan',[App\Http\Controllers\TimbangDashboardController::class, 'ringkasan'])->name('admin.timbang.ringkasan');
+        Route::get('api/gizi',     [App\Http\Controllers\TimbangDashboardController::class, 'gizi'])     ->name('admin.timbang.gizi');
+        Route::get('api/tren',     [App\Http\Controllers\TimbangDashboardController::class, 'tren'])     ->name('admin.timbang.tren');
+        Route::get('api/coverage', [App\Http\Controllers\TimbangDashboardController::class, 'coverage']) ->name('admin.timbang.coverage');
+        Route::get('api/program',  [App\Http\Controllers\TimbangDashboardController::class, 'program'])  ->name('admin.timbang.program');
     });
 
     Route::get('edit-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'editAnak'])->name('admin.editAnak');
