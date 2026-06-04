@@ -233,14 +233,14 @@ class ImportCsvController extends Controller
         abort_if(!auth()->user()->isSuperAdmin(), 403);
         abort_if(!array_key_exists($type, self::TEMPLATE_FILES), 404);
 
-        $filename    = self::TEMPLATE_FILES[$type];
-        $storagePath = "imports/{$filename}";
+        $filename = self::TEMPLATE_FILES[$type];
+        $fullPath = public_path("templates/{$filename}");
 
-        if (!Storage::exists($storagePath)) {
+        if (!is_file($fullPath)) {
             abort(404, "Template {$filename} tidak ditemukan di server.");
         }
 
-        return Storage::download($storagePath, $filename, [
+        return response()->download($fullPath, $filename, [
             'Content-Type' => 'text/csv; charset=utf-8',
         ]);
     }
