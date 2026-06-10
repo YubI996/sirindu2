@@ -730,6 +730,7 @@ class EpidemiologiController extends Controller
             'user_id'   => auth()->id(),
             'filename'  => $log->filename,
             'file_path' => $log->file_path,
+            'type'      => 'pd3i',
             'status'    => 'pending',
         ]);
 
@@ -747,6 +748,7 @@ class EpidemiologiController extends Controller
         abort_if(!auth()->user()->isSuperAdmin(), 403);
 
         $logs = ImportLog::where('user_id', auth()->id())
+            ->where('type', 'pd3i')
             ->latest()
             ->take(5)
             ->get(['id', 'filename', 'status', 'success_count', 'failure_count', 'failures', 'started_at', 'completed_at', 'created_at']);

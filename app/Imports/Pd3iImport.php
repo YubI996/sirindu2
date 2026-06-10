@@ -60,12 +60,21 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
         if (empty($key)) return null;
 
         if (!isset($this->jenisKasusCache[$key])) {
-            $jenis = JenisKasusEpidemiologi::firstOrCreate(
-                ['nama_penyakit' => trim($name)],
-                ['is_active' => true]
-            );
+            $kode = trim(preg_replace('/[^A-Z0-9]+/', '_', $key), '_');
+
+            try {
+                $jenis = JenisKasusEpidemiologi::firstOrCreate(
+                    ['nama_penyakit' => trim($name)],
+                    [
+                        'kode_penyakit' => $kode,
+                        'is_active'     => true,
+                    ]
+                );
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                $jenis = JenisKasusEpidemiologi::where('kode_penyakit', $kode)->firstOrFail();
+            }
+
             $this->jenisKasusCache[$key] = $jenis->id;
-            Log::info("Import PD3I: auto-create JenisKasus '{$name}' → id={$jenis->id}");
         }
 
         return $this->jenisKasusCache[$key];

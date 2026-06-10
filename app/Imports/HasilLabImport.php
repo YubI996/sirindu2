@@ -309,10 +309,21 @@ class HasilLabImport implements ToCollection, WithStartRow, WithChunkReading
         if (empty($key)) return null;
 
         if (!isset($this->jenisKasusCache[$key])) {
-            $jenis = JenisKasusEpidemiologi::firstOrCreate(
-                ['nama_penyakit' => trim($name)],
-                ['is_active'     => true]
-            );
+            $kode = trim(preg_replace('/[^A-Z0-9]+/', '_', $key), '_');
+
+            try {
+                $jenis = JenisKasusEpidemiologi::firstOrCreate(
+                    ['nama_penyakit' => trim($name)],
+                    [
+                        'kode_penyakit' => $kode,
+                        'is_active'     => true,
+                    ]
+                );
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                // kode_penyakit sudah dipakai entri lain — reuse entri tersebut
+                $jenis = JenisKasusEpidemiologi::where('kode_penyakit', $kode)->firstOrFail();
+            }
+
             $this->jenisKasusCache[$key] = $jenis->id;
         }
 
@@ -342,10 +353,11 @@ class HasilLabImport implements ToCollection, WithStartRow, WithChunkReading
     protected function simplifyError(string $message): string
     {
         return match (true) {
-            str_contains($message, 'Data too long')        => 'Data terlalu panjang untuk salah satu kolom.',
-            str_contains($message, 'Incorrect date value') => 'Format tanggal tidak valid.',
-            str_contains($message, 'Integrity constraint') => 'Data referensi tidak ditemukan di sistem.',
-            str_contains($message, 'ENUM')                 => 'Nilai pilihan tidak valid untuk salah satu kolom.',
+            str_contains($message, 'Data too long')               => 'Data terlalu panjang untuk salah satu kolom.',
+            str_contains($message, 'Incorrect date value')        => 'Format tanggal tidak valid.',
+            str_contains($message, 'Integrity constraint')        => 'Data referensi tidak ditemukan di sistem.',
+            str_contains($message, 'ENUM')                        => 'Nilai pilihan tidak valid untuk salah satu kolom.',
+            str_contains($message, "doesn't have a default value") => 'Kolom wajib tidak tersedia — hubungi pengembang.',
             default => 'Gagal menyimpan data — periksa isian baris ini.',
         };
     }
