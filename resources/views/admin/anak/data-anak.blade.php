@@ -113,6 +113,24 @@ Data Anak
                 <input type="text" name="ddtka" class="form-control">
             </div>
         </div>
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <label for="imunisasi_terakhir">Imunisasi Terakhir</label>
+                <select name="imunisasi_terakhir" id="imunisasi_terakhir" class="form-control">
+                    <option value="">-- Pilih Vaksin --</option>
+                    @foreach($jenisVaksin as $vaksin)
+                    <option value="{{ $vaksin->nama }}">{{ $vaksin->nama }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+        <div class="col-md-8 col-sm-12">
+            <div class="form-group">
+                <label for="alasan_tidak_imunisasi">Alasan Tidak Menerima Imunisasi</label>
+                <input type="text" name="alasan_tidak_imunisasi" id="alasan_tidak_imunisasi"
+                       class="form-control" placeholder="Contoh: sakit, orang tua menolak, vaksin habis...">
+            </div>
+        </div>
     </div>
 
     {{-- Section Imunisasi (Opsional) --}}

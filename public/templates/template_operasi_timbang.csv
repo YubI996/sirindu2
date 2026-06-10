@@ -3,7 +3,9 @@
 # Kolom opsional: LILA, lingkar_kepala, Pitting_edema (0-3), CARAUKUR (berdiri/terlentang)
 #                 vita (ya/tidak), asi_bulan_0 s/d asi_bulan_6 (ya/tidak)
 #                 kelas_ibu_balita (ya/tidak), mbg (ya/tidak)
+#                 imunisasi_terakhir (nama vaksin, contoh: BCG, DPT-HB-Hib 1)
+#                 alasan_tidak_imunisasi (contoh: sakit, orang tua menolak, vaksin habis)
 # Format tanggal: YYYY-MM-DD
 # Pitting_edema: 0=tidak ada, 1=ringan, 2=sedang, 3=berat
-No,NIK,nama_anak,TANGGALUKUR,BERAT,TINGGI,LILA,lingkar_kepala,Pitting_edema,CARAUKUR,vita,asi_bulan_0,asi_bulan_1,asi_bulan_2,asi_bulan_3,asi_bulan_4,asi_bulan_5,asi_bulan_6,kelas_ibu_balita,mbg
-1,3201234567890001,NAMA ANAK CONTOH,2026-01-15,8.5,72.3,13.5,44,0,berdiri,ya,ya,ya,ya,ya,ya,ya,ya,ya,ya
+No,NIK,nama_anak,TANGGALUKUR,BERAT,TINGGI,LILA,lingkar_kepala,Pitting_edema,CARAUKUR,vita,asi_bulan_0,asi_bulan_1,asi_bulan_2,asi_bulan_3,asi_bulan_4,asi_bulan_5,asi_bulan_6,kelas_ibu_balita,mbg,imunisasi_terakhir,alasan_tidak_imunisasi
+1,3201234567890001,NAMA ANAK CONTOH,2026-01-15,8.5,72.3,13.5,44,0,berdiri,ya,ya,ya,ya,ya,ya,ya,ya,ya,ya,DPT-HB-Hib 1,

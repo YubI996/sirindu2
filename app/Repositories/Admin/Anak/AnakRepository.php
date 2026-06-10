@@ -208,6 +208,8 @@ class AnakRepository implements AnakRepositoryInterface
             'vit_a' => $request->vit_a,
             'obat_cacing' => $request->obat_cacing,
             'ddtka' => $request->ddtka,
+            'imunisasi_terakhir' => $request->imunisasi_terakhir,
+            'alasan_tidak_imunisasi' => $request->alasan_tidak_imunisasi,
             'id_user' => Auth::user()->id,
         ]);
     }
@@ -227,6 +229,8 @@ class AnakRepository implements AnakRepositoryInterface
             'tgl_kunjungan' => $request->tgl_kunjungan,
             'obat_cacing' => $request->obat_cacing,
             'ddtka' => $request->ddtka,
+            'imunisasi_terakhir' => $request->imunisasi_terakhir,
+            'alasan_tidak_imunisasi' => $request->alasan_tidak_imunisasi,
             'id_user' => Auth::user()->id,
         ]);
     }

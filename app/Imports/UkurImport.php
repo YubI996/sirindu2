@@ -179,9 +179,11 @@ class UkurImport implements ToCollection, WithStartRow, WithChunkReading
                         'asi_bulan_4'     => $this->parseBoolean($this->colVal($row, $map, 'asi_bulan_4')),
                         'asi_bulan_5'     => $this->parseBoolean($this->colVal($row, $map, 'asi_bulan_5')),
                         'asi_bulan_6'     => $this->parseBoolean($this->colVal($row, $map, 'asi_bulan_6')),
-                        'kelas_ibu_balita' => $this->parseBoolean($this->colVal($row, $map, 'kelas_ibu_balita')),
-                        'mbg'             => $this->parseBoolean($this->colVal($row, $map, 'mbg')),
-                        'id_user'         => $this->userId,
+                        'kelas_ibu_balita'       => $this->parseBoolean($this->colVal($row, $map, 'kelas_ibu_balita')),
+                        'mbg'                    => $this->parseBoolean($this->colVal($row, $map, 'mbg')),
+                        'imunisasi_terakhir'     => $this->colVal($row, $map, 'imunisasi_terakhir'),
+                        'alasan_tidak_imunisasi' => $this->colVal($row, $map, 'alasan_tidak_imunisasi'),
+                        'id_user'                => $this->userId,
                     ]
                 );
 
