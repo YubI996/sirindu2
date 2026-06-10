@@ -14,8 +14,9 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
     public function __construct(
         protected ?int $tahun = null,
         protected ?int $jenisKasusId = null,
-        protected ?string $wilker = null,
-        protected ?int $kelurahanId = null
+        protected ?array $wilker = null,
+        protected ?array $kelurahanId = null,
+        protected ?array $kabKota = null
     ) {
         $this->tahun = $tahun ?? now()->year;
     }
@@ -30,11 +31,14 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
         if ($this->jenisKasusId) {
             $q->where('id_jenis_kasus', $this->jenisKasusId);
         }
-        if ($this->wilker) {
-            $q->where('wilker_puskesmas', $this->wilker);
+        if (!empty($this->kabKota)) {
+            $q->whereIn('kab_kota', $this->kabKota);
         }
-        if ($this->kelurahanId) {
-            $q->where('id_kel', $this->kelurahanId);
+        if (!empty($this->wilker)) {
+            $q->whereIn('wilker_puskesmas', $this->wilker);
+        }
+        if (!empty($this->kelurahanId)) {
+            $q->whereIn('id_kel', $this->kelurahanId);
         }
 
         return $q;

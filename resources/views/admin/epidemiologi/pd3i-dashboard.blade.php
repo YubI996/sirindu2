@@ -51,6 +51,78 @@
         margin-bottom: 4px;
     }
 
+    /* ─── MULTISELECT DROPDOWN ─── */
+    .ms-dropdown { position: relative; }
+    .ms-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        width: 100%;
+        text-align: left;
+        background: #fff;
+        cursor: pointer;
+    }
+    .ms-toggle .ms-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ms-toggle .ms-caret {
+        font-size: 0.65rem;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        transition: transform 0.15s ease;
+    }
+    .ms-dropdown.open .ms-toggle { border-color: var(--primary); }
+    .ms-dropdown.open .ms-toggle .ms-caret { transform: rotate(180deg); }
+    .ms-menu {
+        position: absolute;
+        z-index: 1050;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        display: none;
+        max-height: 280px;
+        overflow-y: auto;
+        padding: 4px;
+        background: #fff;
+        border: 1px solid oklch(0.85 0.02 145);
+        border-radius: 6px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+    .ms-dropdown.open .ms-menu { display: block; }
+    .ms-menu .ms-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        padding: 6px 8px;
+        border-radius: 4px;
+        font-family: 'Barlow', Arial, sans-serif;
+        font-size: 0.82rem;
+        font-weight: 500;
+        letter-spacing: normal;
+        text-transform: none;
+        color: var(--text-primary, #1a2e1a);
+        cursor: pointer;
+    }
+    .ms-menu .ms-option:hover { background: oklch(0.95 0.012 145); }
+    .ms-menu .ms-option input {
+        flex-shrink: 0;
+        width: 15px;
+        height: 15px;
+        margin: 0;
+        accent-color: var(--primary);
+        cursor: pointer;
+    }
+    .ms-menu .ms-empty {
+        padding: 8px;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        text-align: center;
+    }
+
     /* ─── TABS ─── */
     .nav-tabs {
         border-bottom: 2px solid oklch(0.88 0.02 145);
@@ -197,8 +269,7 @@
                 @csrf
                 <input type="hidden" name="tahun" id="pdf_tahun">
                 <input type="hidden" name="jenis_kasus_id" id="pdf_jenis_kasus_id">
-                <input type="hidden" name="wilker" id="pdf_wilker">
-                <input type="hidden" name="kelurahan_id" id="pdf_kelurahan_id">
+                <span id="pdf_extra_inputs"></span>
                 <button type="submit" class="btn btn-sm btn-danger">
                     <i class="fa fa-file-pdf mr-1"></i> PDF
                 </button>
@@ -227,22 +298,52 @@
                 </select>
             </div>
             <div class="col-6 col-md-3">
-                <label for="filter-wilker"><i class="fa fa-hospital mr-1"></i>Wilker Puskesmas</label>
-                <select id="filter-wilker" class="form-control">
-                    <option value="">Semua Puskesmas</option>
-                    @foreach($wilkers as $w)
-                        <option value="{{ $w }}">{{ $w }}</option>
-                    @endforeach
-                </select>
+                <label id="lbl-kabkota"><i class="fa fa-city mr-1"></i>Kota / Kab.</label>
+                <div class="ms-dropdown" data-ms="kab_kota" data-all-label="Semua Kota/Kab.">
+                    <button type="button" class="form-control ms-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="lbl-kabkota">
+                        <span class="ms-label">Semua Kota/Kab.</span>
+                        <i class="fa fa-chevron-down ms-caret" aria-hidden="true"></i>
+                    </button>
+                    <div class="ms-menu" role="listbox" aria-multiselectable="true">
+                        @forelse($kabKotas as $kk)
+                            <label class="ms-option"><input type="checkbox" value="{{ $kk }}"><span>{{ $kk }}</span></label>
+                        @empty
+                            <div class="ms-empty">Tidak ada data</div>
+                        @endforelse
+                    </div>
+                </div>
             </div>
-            <div class="col-6 col-md-4">
-                <label for="filter-kelurahan"><i class="fa fa-map-marker-alt mr-1"></i>Kelurahan</label>
-                <select id="filter-kelurahan" class="form-control">
-                    <option value="">Semua Kelurahan</option>
-                    @foreach($kelurahans as $kel)
-                        <option value="{{ $kel->id }}">{{ $kel->name }}</option>
-                    @endforeach
-                </select>
+            <div class="col-6 col-md-2">
+                <label id="lbl-wilker"><i class="fa fa-hospital mr-1"></i>Wilker Puskesmas</label>
+                <div class="ms-dropdown" data-ms="wilker" data-all-label="Semua Puskesmas">
+                    <button type="button" class="form-control ms-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="lbl-wilker">
+                        <span class="ms-label">Semua Puskesmas</span>
+                        <i class="fa fa-chevron-down ms-caret" aria-hidden="true"></i>
+                    </button>
+                    <div class="ms-menu" role="listbox" aria-multiselectable="true">
+                        @forelse($wilkers as $w)
+                            <label class="ms-option"><input type="checkbox" value="{{ $w }}"><span>{{ $w }}</span></label>
+                        @empty
+                            <div class="ms-empty">Tidak ada data</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label id="lbl-kelurahan"><i class="fa fa-map-marker-alt mr-1"></i>Kelurahan</label>
+                <div class="ms-dropdown" data-ms="kelurahan_id" data-all-label="Semua Kelurahan">
+                    <button type="button" class="form-control ms-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="lbl-kelurahan">
+                        <span class="ms-label">Semua Kelurahan</span>
+                        <i class="fa fa-chevron-down ms-caret" aria-hidden="true"></i>
+                    </button>
+                    <div class="ms-menu" role="listbox" aria-multiselectable="true">
+                        @forelse($kelurahans as $kel)
+                            <label class="ms-option"><input type="checkbox" value="{{ $kel->id }}"><span>{{ $kel->name }}</span></label>
+                        @empty
+                            <div class="ms-empty">Tidak ada data</div>
+                        @endforelse
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -741,25 +842,94 @@
         const params    = new URLSearchParams();
         const tahun     = document.getElementById('filter-tahun').value;
         const penyakit  = document.getElementById('filter-penyakit').value;
-        const wilker    = document.getElementById('filter-wilker').value;
-        const kelurahan = document.getElementById('filter-kelurahan').value;
+        const kabKota   = getMsValues('kab_kota');
+        const wilker    = getMsValues('wilker');
+        const kelurahan = getMsValues('kelurahan_id');
 
-        if (tahun)     params.set('tahun', tahun);
-        if (penyakit)  params.set('jenis_kasus_id', penyakit);
-        if (wilker)    params.set('wilker', wilker);
-        if (kelurahan) params.set('kelurahan_id', kelurahan);
+        if (tahun)    params.set('tahun', tahun);
+        if (penyakit) params.set('jenis_kasus_id', penyakit);
+        kabKota.forEach(v   => params.append('kab_kota[]', v));
+        wilker.forEach(v    => params.append('wilker[]', v));
+        kelurahan.forEach(v => params.append('kelurahan_id[]', v));
 
-        // PDF hidden inputs
+        // PDF hidden inputs — scalars + one hidden field per selected multiselect value
         document.getElementById('pdf_tahun').value = tahun;
         document.getElementById('pdf_jenis_kasus_id').value = penyakit;
-        document.getElementById('pdf_wilker').value = wilker;
-        document.getElementById('pdf_kelurahan_id').value = kelurahan;
+        const extra = document.getElementById('pdf_extra_inputs');
+        if (extra) {
+            extra.innerHTML = '';
+            const addHidden = (name, value) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                extra.appendChild(input);
+            };
+            kabKota.forEach(v   => addHidden('kab_kota[]', v));
+            wilker.forEach(v    => addHidden('wilker[]', v));
+            kelurahan.forEach(v => addHidden('kelurahan_id[]', v));
+        }
 
         // Excel href
         const excelBtn = document.getElementById('btnExportExcel');
         if (excelBtn) excelBtn.href = API.excel + '?' + params.toString();
 
         return params.toString();
+    }
+
+    // ======= MULTISELECT DROPDOWNS =======
+    function getMsValues(key) {
+        const dd = document.querySelector('.ms-dropdown[data-ms="' + key + '"]');
+        if (!dd) return [];
+        return Array.from(dd.querySelectorAll('.ms-option input:checked')).map(i => i.value);
+    }
+
+    function closeAllMs() {
+        document.querySelectorAll('.ms-dropdown.open').forEach(d => {
+            d.classList.remove('open');
+            const btn = d.querySelector('.ms-toggle');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function updateMsLabel(dd) {
+        const labelEl  = dd.querySelector('.ms-label');
+        const allLabel = dd.dataset.allLabel || 'Semua';
+        const checked  = dd.querySelectorAll('.ms-option input:checked');
+        if (checked.length === 0) {
+            labelEl.textContent = allLabel;
+        } else if (checked.length === 1) {
+            labelEl.textContent = checked[0].parentElement.querySelector('span').textContent;
+        } else {
+            labelEl.textContent = checked.length + ' dipilih';
+        }
+    }
+
+    function initMultiselects() {
+        document.querySelectorAll('.ms-dropdown').forEach(dd => {
+            const toggle = dd.querySelector('.ms-toggle');
+            const menu   = dd.querySelector('.ms-menu');
+
+            toggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const willOpen = !dd.classList.contains('open');
+                closeAllMs();
+                if (willOpen) {
+                    dd.classList.add('open');
+                    toggle.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+            menu.addEventListener('click', e => e.stopPropagation());
+            menu.addEventListener('change', function () {
+                updateMsLabel(dd);
+                fetchAllTabs();
+            });
+
+            updateMsLabel(dd);
+        });
+
+        document.addEventListener('click', closeAllMs);
     }
 
     // ======= FETCH ALL =======
@@ -1185,7 +1355,8 @@
     }
 
     // ======= FILTER LISTENERS =======
-    ['filter-tahun','filter-penyakit','filter-wilker','filter-kelurahan'].forEach(id => {
+    // Multiselect dropdowns (kab_kota / wilker / kelurahan) trigger fetch via their own change handlers.
+    ['filter-tahun','filter-penyakit'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', fetchAllTabs);
     });
@@ -1200,6 +1371,7 @@
 
     // ======= INITIAL LOAD =======
     document.addEventListener('DOMContentLoaded', function () {
+        initMultiselects();
         buildParams();
         fetchAllTabs();
     });

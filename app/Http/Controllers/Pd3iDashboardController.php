@@ -35,12 +35,19 @@ class Pd3iDashboardController extends Controller
             ->orderBy('wilker_puskesmas')
             ->pluck('wilker_puskesmas');
 
+        // Kabupaten/Kota yang ada di data surveillance (untuk filter — data bisa dari luar Bontang)
+        $kabKotas = SurveillanceCase::whereNotNull('kab_kota')
+            ->where('kab_kota', '!=', '')
+            ->distinct()
+            ->orderBy('kab_kota')
+            ->pluck('kab_kota');
+
         // Kelurahan yang ada di data surveillance (untuk filter)
         $kelurahans = Kelurahan::whereIn('id',
             SurveillanceCase::whereNotNull('id_kel')->distinct()->pluck('id_kel')
         )->orderBy('name')->get();
 
-        return view('admin.epidemiologi.pd3i-dashboard', compact('diseases', 'wilkers', 'kelurahans'));
+        return view('admin.epidemiologi.pd3i-dashboard', compact('diseases', 'wilkers', 'kabKotas', 'kelurahans'));
     }
 
     // ==================== API ENDPOINTS ====================
@@ -52,7 +59,8 @@ class Pd3iDashboardController extends Controller
             $filters['tahun'],
             $filters['jenis_kasus_id'],
             $filters['wilker'],
-            $filters['kelurahan_id']
+            $filters['kelurahan_id'],
+            $filters['kab_kota']
         );
         return response()->json($data);
     }
@@ -64,7 +72,8 @@ class Pd3iDashboardController extends Controller
             $filters['tahun'],
             $filters['jenis_kasus_id'],
             $filters['wilker'],
-            $filters['kelurahan_id']
+            $filters['kelurahan_id'],
+            $filters['kab_kota']
         );
         return response()->json($data);
     }
@@ -76,7 +85,8 @@ class Pd3iDashboardController extends Controller
             $filters['tahun'],
             $filters['jenis_kasus_id'],
             $filters['wilker'],
-            $filters['kelurahan_id']
+            $filters['kelurahan_id'],
+            $filters['kab_kota']
         );
         return response()->json($data);
     }
@@ -88,7 +98,8 @@ class Pd3iDashboardController extends Controller
             $filters['tahun'],
             $filters['jenis_kasus_id'],
             $filters['wilker'],
-            $filters['kelurahan_id']
+            $filters['kelurahan_id'],
+            $filters['kab_kota']
         );
         return response()->json($data);
     }
@@ -99,22 +110,25 @@ class Pd3iDashboardController extends Controller
     {
         $filters = $this->parsePd3iFilters($request);
 
-        $kinerja  = $this->repo->getPd3iKinerja($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id']);
-        $demografi = $this->repo->getPd3iDemografi($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id']);
-        $tren     = $this->repo->getPd3iTren($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id']);
-        $wilayah  = $this->repo->getPd3iWilayah($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id']);
+        $kinerja  = $this->repo->getPd3iKinerja($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
+        $demografi = $this->repo->getPd3iDemografi($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
+        $tren     = $this->repo->getPd3iTren($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
+        $wilayah  = $this->repo->getPd3iWilayah($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
 
         $namaJenisKasus = $filters['jenis_kasus_id']
             ? JenisKasusEpidemiologi::find($filters['jenis_kasus_id'])?->nama_penyakit
             : null;
 
+        $namaKabKota = $filters['kab_kota'] ? implode(', ', $filters['kab_kota']) : null;
+        $namaWilker  = $filters['wilker'] ? implode(', ', $filters['wilker']) : null;
         $namaKelurahan = $filters['kelurahan_id']
-            ? Kelurahan::find($filters['kelurahan_id'])?->name
+            ? Kelurahan::whereIn('id', $filters['kelurahan_id'])->orderBy('name')->pluck('name')->implode(', ')
             : null;
 
         $pdf = Pdf::loadView('admin.epidemiologi.pdf.pd3i-dashboard', [
             'tahun'          => $filters['tahun'],
-            'wilker'         => $filters['wilker'],
+            'wilker'         => $namaWilker,
+            'namaKabKota'    => $namaKabKota,
             'namaKelurahan'  => $namaKelurahan,
             'namaJenisKasus' => $namaJenisKasus,
             'kinerja'        => $kinerja,
@@ -132,7 +146,7 @@ class Pd3iDashboardController extends Controller
 
         $namaFile = 'surveilans-pd3i-' . $filters['tahun'];
         if ($filters['wilker']) {
-            $namaFile .= '-' . str_replace(' ', '_', $filters['wilker']);
+            $namaFile .= '-' . str_replace(' ', '_', implode('-', $filters['wilker']));
         }
         $namaFile .= '.xlsx';
 
@@ -141,7 +155,8 @@ class Pd3iDashboardController extends Controller
                 $filters['tahun'],
                 $filters['jenis_kasus_id'],
                 $filters['wilker'],
-                $filters['kelurahan_id']
+                $filters['kelurahan_id'],
+                $filters['kab_kota']
             ),
             $namaFile
         );
@@ -154,8 +169,33 @@ class Pd3iDashboardController extends Controller
         return [
             'tahun'          => (int) $request->get('tahun', now()->year),
             'jenis_kasus_id' => $request->filled('jenis_kasus_id') ? (int) $request->jenis_kasus_id : null,
-            'wilker'         => $request->filled('wilker') ? trim($request->wilker) : null,
-            'kelurahan_id'   => $request->filled('kelurahan_id') ? (int) $request->kelurahan_id : null,
+            'wilker'         => $this->normalizeMulti($request->input('wilker')),
+            'kelurahan_id'   => $this->normalizeMulti($request->input('kelurahan_id'), true),
+            'kab_kota'       => $this->normalizeMulti($request->input('kab_kota')),
         ];
+    }
+
+    /**
+     * Normalize a multiselect filter input into a clean array (or null when empty).
+     * Accepts either an array (name[]=…) or a single scalar value.
+     */
+    private function normalizeMulti($value, bool $asInt = false): ?array
+    {
+        if ($value === null || $value === '' || $value === []) {
+            return null;
+        }
+
+        $items = is_array($value) ? $value : [$value];
+        $items = array_filter($items, fn ($v) => $v !== null && $v !== '');
+
+        if (empty($items)) {
+            return null;
+        }
+
+        $items = $asInt
+            ? array_map('intval', $items)
+            : array_map(fn ($v) => trim((string) $v), $items);
+
+        return array_values(array_unique($items));
     }
 }

@@ -203,6 +203,7 @@ tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
         <div class="info-grid">
             <strong>Tahun:</strong> {{ $tahun }}<br>
             <strong>Penyakit:</strong> {{ $namaJenisKasus ?? 'Semua PD3I' }}<br>
+            <strong>Kab/Kota:</strong> {{ $namaKabKota ?? 'Semua Kab/Kota' }}<br>
             <strong>Wilker:</strong> {{ $wilker ?? 'Semua Puskesmas' }}<br>
             <strong>Kelurahan:</strong> {{ $namaKelurahan ?? 'Semua Kelurahan' }}
         </div>
@@ -521,7 +522,7 @@ tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
         <strong>SIRINDU</strong> &mdash; Sistem Informasi Realtime Reporting Terpadu &nbsp;&bull;&nbsp; Dinas Kesehatan Kota Bontang
     </div>
     <div class="doc-footer-right">
-        Tahun {{ $tahun }} &bull; {{ $namaJenisKasus ?? 'Semua PD3I' }} &bull; {{ $wilker ?? 'Semua Wilker' }} &bull; {{ $namaKelurahan ?? 'Semua Kelurahan' }}
+        Tahun {{ $tahun }} &bull; {{ $namaJenisKasus ?? 'Semua PD3I' }} &bull; {{ $namaKabKota ?? 'Semua Kab/Kota' }} &bull; {{ $wilker ?? 'Semua Wilker' }} &bull; {{ $namaKelurahan ?? 'Semua Kelurahan' }}
     </div>
 </div>
 
