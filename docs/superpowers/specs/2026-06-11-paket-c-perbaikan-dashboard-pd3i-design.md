@@ -43,40 +43,48 @@ ditujukan untuk **dashboard opt timbang** → dipindah ke Paket D. Filter wilaya
 
 ## 2. Perbaikan Kasus Campak/Rubella
 
-### Akar masalah (terverifikasi dari kode)
+### Akar masalah (TERVERIFIKASI dari DB live, 2026-06-11)
+Verifikasi 590 kasus Campak-Rubella (`id_jenis_kasus=1`):
+
+| Sumber | Isi |
+|--------|-----|
+| `surveillance_case_spesimen.penyakit_terkonfirmasi` (yang **dibaca** dashboard) | **NULL semua** (396 baris) |
+| `status_kasus` | confirmed **159**, discarded **122**, suspected 309 |
+| `status_lab` | positif **159**, negatif 121, belum_diperiksa 296, proses 14 |
+| `hasil_lab` (kolom teks `surveillance_cases`) | "Campak: Positif" (82), "Campak: Positif \| Rubella: Negatif" (70), "Rubella: Positif" (2), "Campak: Negatif \| Rubella: Negatif" (114), NULL (310), dll |
+
 - Dashboard (`SurveillanceRepository::getPd3iKinerja`) menghitung "Kasus Campak/Rubella"
-  dari `surveillance_case_spesimen.penyakit_terkonfirmasi IN ('Campak','Rubella')`.
-- Form manual (Section F) **memang** menangkap `spesimen[][penyakit_terkonfirmasi]`.
-- **Import (`Pd3iImport`) tidak** membuat baris `surveillance_case_spesimen` dan tidak
-  pernah mengisi `penyakit_terkonfirmasi`; semua kasus impor diberi `status_kasus='suspected'`.
-- Karena mayoritas data berasal dari import → `penyakit_terkonfirmasi` kosong → kartu
-  "Kasus Campak/Rubella" = 0 walau "Suspek" bertambah. (Gejala yang dilaporkan client:
+  dari `penyakit_terkonfirmasi IN ('Campak','Rubella')` — tapi field itu **100% kosong**
+  → kartu selalu 0 walau "Suspek" (= total kasus) bertambah. (Sesuai laporan client
   "Suspek jalan, Kasus 0".)
+- Data konfirmasi **ADA**, hanya di tempat berbeda: pemisahan Campak vs Rubella di teks
+  `hasil_lab`, confirmed/discarded di `status_kasus` (= `status_lab` positif/negatif).
+- Hardcode `id_jenis_kasus` 1–4 di dashboard ternyata **benar** (590 kasus CR ada di id=1).
+  Baris penyakit **duplikat** id 7=CAMPAK, 8=RUBELLA, 9=POLIO, 10=DIFTERI (hasil
+  `firstOrCreate(['nama_penyakit'])` di import) ada tapi **0 kasus** — bukan biang bug,
+  hanya sampah di dropdown filter.
 
-### Keputusan desain
-- **`penyakit_terkonfirmasi` tetap sumber kebenaran** (epidemiologis benar; dashboard
-  sudah memakainya). `status_lab` ditolak sebagai sumber karena tidak memisahkan
-  Campak vs Rubella.
+### Keputusan desain (FINAL — dipilih client)
+Ubah query dashboard agar membaca dari sumber yang benar-benar berisi data, defensif dua arah
+(legacy `hasil_lab` + `penyakit_terkonfirmasi` untuk entri manual mendatang). **Tanpa migrasi
+data.** Parsing hanya pada "Positif" (typo data hanya pada kata "Negatif", mis. "Neagtif").
 
-### Langkah
-1. **Verifikasi (langkah pertama, saat MySQL hidup):**
-   - Distribusi `surveillance_cases.id_jenis_kasus` (cek baris penyakit duplikat hasil
-     `firstOrCreate(['nama_penyakit'])` di import).
-   - Berapa kasus punya baris `surveillance_case_spesimen`, berapa yang
-     `penyakit_terkonfirmasi`-nya terisi.
-   - **Cek file `pd3i.xlsx`**: apakah ada kolom hasil lab / klasifikasi akhir yang bisa
-     dipetakan.
-2. **Jika ada baris penyakit duplikat** → dashboard resolve ID penyakit lewat
-   `kode_penyakit` (bukan hardcode `id` 1–4) + rencana merge/normalisasi duplikat.
-3. **Jika Excel punya kolom hasil lab** (Opsi B) → tambah pemetaan di `Pd3iImport`:
-   buat baris `surveillance_case_spesimen` + isi `penyakit_terkonfirmasi`, lalu
-   **backfill** data lama. Jika tidak ada → data lama diisi manual; form manual sudah cukup
-   untuk data baru.
-4. Pastikan form manual menyimpan `penyakit_terkonfirmasi` dengan benar (regression check).
+### Perubahan di `SurveillanceRepository::getPd3iKinerja` (panel Campak-Rubella)
+- **Kasus Campak** = `hasil_lab LIKE '%Campak: Positif%'` **OR** `penyakit_terkonfirmasi='Campak'`.
+- **Kasus Rubella** = `hasil_lab LIKE '%Rubella: Positif%'` **OR** `penyakit_terkonfirmasi='Rubella'`.
+- **Discarded / Negatif** = `status_kasus='discarded'`.
+- **% Pengambilan Spesimen / % Lab / Positivity** disesuaikan agar konsisten dengan
+  `status_lab`/`status_kasus` (denominator = kasus dgn status_lab final; positivity =
+  confirmed / diperiksa). Detail ambang difinalkan saat implementasi, mengacu angka di atas
+  (159 positif = 159 confirmed).
+- Catatan implementasi: `hasil_lab` berada di tabel utama (mencakup semua 590 kasus, tak
+  bergantung ada/tidaknya baris spesimen child), jadi subquery `whereHas('spesimen')` lama
+  diganti kondisi pada kasus utama + `orWhereHas` untuk `penyakit_terkonfirmasi`.
 
-### Catatan
-Cabang B (mapping import + backfill) bersifat **kondisional** pada hasil verifikasi.
-Spec ini sengaja tidak menebak isi Excel; keputusan final diambil setelah langkah 1.
+### Cleanup minor (opsional, aman)
+- Non-aktifkan / hapus baris penyakit duplikat tak terpakai (id 7–10, 0 kasus) agar tidak
+  muncul di dropdown filter penyakit. Pertimbangkan juga guard di `Pd3iImport::resolveJenisKasus`
+  agar tidak membuat duplikat di masa depan (match by `kode_penyakit`). Terkait [[project_pd3i_import]].
 
 ---
 
