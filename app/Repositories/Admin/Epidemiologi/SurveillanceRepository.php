@@ -575,32 +575,45 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         $cr = (clone $base)->where('id_jenis_kasus', 1);
         $crTotal = (clone $cr)->count(); // semua kasus CR = suspek
 
-        // Konfirmasi berdasarkan penyakit_terkonfirmasi di spesimen (Bagian F)
-        $casesCampak  = (clone $cr)->whereHas('spesimen', fn($q) => $q->where('penyakit_terkonfirmasi', 'Campak'))->count();
-        $casesRubella = (clone $cr)->whereHas('spesimen', fn($q) => $q->where('penyakit_terkonfirmasi', 'Rubella'))->count();
-        $casesNegatif = (clone $cr)->whereHas('spesimen', fn($q) => $q->where('penyakit_terkonfirmasi', 'Negatif'))->count();
+        // Konfirmasi Campak/Rubella: sumber utama teks hasil_lab di kasus utama
+        // (mencakup semua kasus, tak bergantung baris spesimen), didukung
+        // penyakit_terkonfirmasi pada spesimen untuk entri manual mendatang.
+        // hasil_lab hanya diparse pada "Positif" (typo data hanya pada "Negatif").
+        $casesCampak = (clone $cr)->where(function ($q) {
+            $q->where('hasil_lab', 'like', '%Campak: Positif%')
+              ->orWhereHas('spesimen', fn($s) => $s->where('penyakit_terkonfirmasi', 'Campak'));
+        })->count();
+        $casesRubella = (clone $cr)->where(function ($q) {
+            $q->where('hasil_lab', 'like', '%Rubella: Positif%')
+              ->orWhereHas('spesimen', fn($s) => $s->where('penyakit_terkonfirmasi', 'Rubella'));
+        })->count();
+
+        // Discarded = klasifikasi akhir 'discarded' (status_kasus).
+        $crDiscarded = (clone $cr)->where('status_kasus', 'discarded')->count();
+        $crConfirmed = (clone $cr)->where('status_kasus', 'confirmed')->count();
 
         // Kondisi akhir (Bagian H)
         $crMeninggal = (clone $cr)->where('kondisi_akhir', 'meninggal')->count();
         $crAktif     = (clone $cr)->where('kondisi_akhir', 'dalam_perawatan')->count();
 
-        // Pengambilan & penerimaan hasil lab (status_lab Bagian F header)
-        $crSampel      = (clone $cr)->where('status_lab', 'diperiksa_lab')->count();
-        $crLabDiterima = (clone $cr)->where('status_lab', 'diperiksa_lab')->whereNotNull('tanggal_hasil_lab')->count();
+        // Spesimen diambil = status_lab bukan 'belum_diperiksa' (positif/negatif/proses).
+        // Hasil lab final keluar = status_lab positif/negatif.
+        $crSampel     = (clone $cr)->whereIn('status_lab', ['positif', 'negatif', 'proses'])->count();
+        $crLabSelesai = (clone $cr)->whereIn('status_lab', ['positif', 'negatif'])->count();
 
         $campakRubella = [
             'suspek'           => $crTotal,
             'kasus_campak'     => $casesCampak,
             'kasus_rubella'    => $casesRubella,
-            'discarded'        => $casesNegatif,
+            'discarded'        => $crDiscarded,
             'discarded_rate'   => $totalPenduduk > 0
-                                  ? round($casesNegatif / $totalPenduduk * 100000, 2)
+                                  ? round($crDiscarded / $totalPenduduk * 100000, 2)
                                   : null,
             'kematian'         => $crMeninggal,
             'kasus_aktif'      => $crAktif,
             'pct_sampel'       => $crTotal > 0 ? round($crSampel / $crTotal * 100, 1) : 0,
-            'pct_lab_diterima' => $crSampel > 0 ? round($crLabDiterima / $crSampel * 100, 1) : 0,
-            'positivity_rate'  => $crSampel > 0 ? round(($casesCampak + $casesRubella) / $crSampel * 100, 1) : 0,
+            'pct_lab_diterima' => $crSampel > 0 ? round($crLabSelesai / $crSampel * 100, 1) : 0,
+            'positivity_rate'  => $crLabSelesai > 0 ? round($crConfirmed / $crLabSelesai * 100, 1) : 0,
         ];
 
         // ===== AFP/Polio (id=3) =====

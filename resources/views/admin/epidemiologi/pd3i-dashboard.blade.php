@@ -352,35 +352,35 @@
     <ul class="nav nav-tabs" id="pd3iTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="tab-kinerja-link"
-                    data-bs-toggle="tab" data-bs-target="#tab-kinerja"
+                    data-toggle="tab" data-target="#tab-kinerja"
                     type="button" role="tab" aria-controls="tab-kinerja" aria-selected="true">
                 <i class="fa fa-tachometer-alt mr-1"></i> Kinerja Surveilans
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-demografi-link"
-                    data-bs-toggle="tab" data-bs-target="#tab-demografi"
+                    data-toggle="tab" data-target="#tab-demografi"
                     type="button" role="tab" aria-controls="tab-demografi" aria-selected="false">
                 <i class="fa fa-users mr-1"></i> Demografi
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-tren-link"
-                    data-bs-toggle="tab" data-bs-target="#tab-tren"
+                    data-toggle="tab" data-target="#tab-tren"
                     type="button" role="tab" aria-controls="tab-tren" aria-selected="false">
                 <i class="fa fa-chart-area mr-1"></i> Tren
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-tempat-link"
-                    data-bs-toggle="tab" data-bs-target="#tab-tempat"
+                    data-toggle="tab" data-target="#tab-tempat"
                     type="button" role="tab" aria-controls="tab-tempat" aria-selected="false">
                 <i class="fa fa-map-marked-alt mr-1"></i> Tempat
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-peta-link"
-                    data-bs-toggle="tab" data-bs-target="#tab-peta"
+                    data-toggle="tab" data-target="#tab-peta"
                     type="button" role="tab" aria-controls="tab-peta" aria-selected="false">
                 <i class="fa fa-map mr-1"></i> Peta
             </button>
@@ -1362,11 +1362,11 @@
     });
 
     // ======= TAB SHOWN — resize charts & invalidate map =======
-    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tabEl => {
-        tabEl.addEventListener('shown.bs.tab', function () {
-            Object.values(charts).forEach(c => { try { c.resize(); } catch(e) {} });
-            if (leafletMap) { leafletMap.invalidateSize(); }
-        });
+    // Bootstrap 4 memicu event 'shown.bs.tab' via jQuery, bukan native event,
+    // jadi handler harus pakai jQuery .on() (addEventListener tak menangkapnya).
+    $('[data-toggle="tab"]').on('shown.bs.tab', function () {
+        Object.values(charts).forEach(c => { try { c.resize(); } catch(e) {} });
+        if (leafletMap) { leafletMap.invalidateSize(); }
     });
 
     // ======= INITIAL LOAD =======
