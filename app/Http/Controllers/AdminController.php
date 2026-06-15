@@ -2084,7 +2084,9 @@ All Admin Controller
                 'normal' => 0,
                 'stunting' => 0,
                 'wasting' => 0,
-                'overweight' => 0
+                'overweight' => 0,
+                'gizi_kurang' => 0,
+                'gizi_buruk' => 0
             ];
 
             foreach ($children as $child) {
@@ -2128,7 +2130,7 @@ All Admin Controller
             ->groupBy('kelurahan');
 
         foreach ($measurements as $kelName => $children) {
-            $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0];
+            $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0, 'gizi_kurang' => 0, 'gizi_buruk' => 0];
 
             foreach ($children as $m) {
                 $stats['total']++;
@@ -2156,8 +2158,12 @@ All Admin Controller
         }
         switch ($g['enum']['imt_u']) {
             case 'severely_wasted':
+                $stats['wasting']++;
+                if (isset($stats['gizi_buruk'])) $stats['gizi_buruk']++;
+                break;
             case 'wasted':
                 $stats['wasting']++;
+                if (isset($stats['gizi_kurang'])) $stats['gizi_kurang']++;
                 break;
             case 'overweight':
             case 'obese':
@@ -2192,7 +2198,7 @@ All Admin Controller
             ->groupBy('rt_name');
 
         foreach ($measurements as $rtName => $children) {
-            $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0];
+            $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0, 'gizi_kurang' => 0, 'gizi_buruk' => 0];
 
             foreach ($children as $m) {
                 $stats['total']++;

@@ -278,6 +278,9 @@ Peta
             <button class="btn btn-outline-danger btn-sm" id="btnStunting" onclick="showMode('stunting')">
                 <i class="fa fa-child mr-1"></i> Stunting
             </button>
+            <button class="btn btn-outline-warning btn-sm" id="btnGizi" onclick="showMode('gizi')">
+                <i class="fa fa-weight mr-1"></i> Gizi Kurang/Buruk
+            </button>
             <button class="btn btn-outline-info btn-sm" id="btnImunisasi" onclick="showMode('imunisasi')">
                 <i class="fa fa-syringe mr-1"></i> Imunisasi
             </button>
@@ -614,6 +617,18 @@ document.addEventListener('DOMContentLoaded', function() {
         return '#047857';
     }
 
+    // Color functions for gizi (kurang/buruk = IMT/U) mode
+    function getColorByGizi(stats) {
+        if (!stats || stats.total === 0) return '#e5e7eb';
+        const kurang = (stats.gizi_kurang || 0) + (stats.gizi_buruk || 0);
+        const rate = (kurang / stats.total) * 100;
+        if (rate > 20) return '#be123c';
+        if (rate > 10) return '#e11d48';
+        if (rate > 5) return '#f59e0b';
+        if (rate > 0) return '#fbbf24';
+        return '#047857';
+    }
+
     // Color functions for immunization mode
     function getColorByImunisasi(stats) {
         if (!stats || stats.total_anak === 0) return '#e5e7eb';
@@ -650,6 +665,8 @@ document.addEventListener('DOMContentLoaded', function() {
         let color;
         if (currentMode === 'stunting' && zScore) {
             color = getColorByStunting(zScore);
+        } else if (currentMode === 'gizi' && zScore) {
+            color = getColorByGizi(zScore);
         } else if (currentMode === 'imunisasi') {
             color = getColorByImunisasi(imunisasiStats);
         } else {
@@ -726,7 +743,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (zScore) {
             content += '<div class="popup-stat"><span>Normal:</span><strong style="color:#047857">' + zScore.normal + '</strong></div>';
             content += '<div class="popup-stat"><span>Stunting:</span><strong style="color:#be123c">' + zScore.stunting + '</strong></div>';
-            content += '<div class="popup-stat"><span>Wasting:</span><strong style="color:#f59e0b">' + zScore.wasting + '</strong></div>';
+            content += '<div class="popup-stat"><span>Gizi Kurang:</span><strong style="color:#d97706">' + (zScore.gizi_kurang || 0) + '</strong></div>';
+            content += '<div class="popup-stat"><span>Gizi Buruk:</span><strong style="color:#be123c">' + (zScore.gizi_buruk || 0) + '</strong></div>';
             content += '<div class="popup-stat"><span>Overweight:</span><strong style="color:#0891b2">' + zScore.overweight + '</strong></div>';
             if (zScore.total > 0) {
                 const stuntingRate = ((zScore.stunting / zScore.total) * 100).toFixed(1);
@@ -871,6 +889,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Tidak ada stunting</span></div>
                 <div class="legend-item"><div class="legend-color" style="background: #e5e7eb;"></div><span>Tidak ada data</span></div>
             `;
+        } else if (currentMode === 'gizi') {
+            legendContent.innerHTML = `
+                <div class="legend-item"><div class="legend-color" style="background: #be123c;"></div><span>Gizi kurang/buruk >20%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #e11d48;"></div><span>10-20%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div><span>5-10%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #fbbf24;"></div><span><5%</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Tidak ada</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #e5e7eb;"></div><span>Tidak ada data</span></div>
+            `;
         } else if (currentMode === 'imunisasi') {
             legendContent.innerHTML = `
                 <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Imunisasi Lengkap &ge;80%</span></div>
@@ -953,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showMode = function(mode) {
         currentMode = mode;
 
-        ['btnCount', 'btnStunting', 'btnImunisasi'].forEach(id => {
+        ['btnCount', 'btnStunting', 'btnGizi', 'btnImunisasi'].forEach(id => {
             const btn = document.getElementById(id);
             if (btn) btn.classList.remove('active');
         });
