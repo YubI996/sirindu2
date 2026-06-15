@@ -514,6 +514,7 @@ Detail
                     </h2>
                 </div>
                 <div class="card-body">
+                    <p class="text-accessible-muted mb-1"><small><strong>Domisili</strong> (alamat operasional)</small></p>
                     <dl class="row mb-0">
                         <dt class="col-sm-5 text-accessible-muted">Kecamatan</dt>
                         <dd class="col-sm-7">{{ $kecamatan->name ?? '-' }}</dd>
@@ -528,7 +529,13 @@ Detail
                         <dd class="col-sm-7">{{ $puskesmas->name ?? '-' }}</dd>
 
                         <dt class="col-sm-5 text-accessible-muted">Posyandu</dt>
-                        <dd class="col-sm-7 mb-0">{{ $posyandu->name ?? '-' }}</dd>
+                        <dd class="col-sm-7">{{ $posyandu->name ?? '-' }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Alamat Domisili</dt>
+                        <dd class="col-sm-7">{{ $anak->alamat ?: '-' }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Alamat KTP</dt>
+                        <dd class="col-sm-7 mb-0">{{ $anak->alamat_ktp ?: '-' }}</dd>
                     </dl>
                     @if($anak->catatan)
                     <hr>

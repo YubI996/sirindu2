@@ -54,6 +54,8 @@ class AnakRepository implements AnakRepositoryInterface
             'id_rt' => $request->id_rt,
             'id_posyandu' => $request->id_posyandu,
             'id_puskesmas' => $request->id_puskesmas,
+            'alamat' => $request->alamat,
+            'alamat_ktp' => $request->alamat_ktp,
             'catatan' => $request->catatan ?? '',
         ]);
 
@@ -105,6 +107,8 @@ class AnakRepository implements AnakRepositoryInterface
                 'id_rt' => $anak->id_rt,
                 'id_posyandu' => $anak->id_posyandu,
                 'id_puskesmas' => $anak->id_puskesmas,
+                'alamat' => $request->alamat,
+                'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
             ]);
             $dt->update([
@@ -152,6 +156,8 @@ class AnakRepository implements AnakRepositoryInterface
                 'id_rt' => $request->id_rt,
                 'id_posyandu' => $request->id_posyandu,
                 'id_puskesmas' => $request->id_puskesmas,
+                'alamat' => $request->alamat,
+                'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
             ]);
             $dt->update([

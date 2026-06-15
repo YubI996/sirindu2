@@ -34,7 +34,8 @@ class updateAnakRequest extends FormRequest
             'tgl_lahir' => 'required',
             'golda' => 'required',
             'anak' => 'required',
-
+            'alamat' => 'nullable|string',
+            'alamat_ktp' => 'nullable|string',
         ];
     }
 

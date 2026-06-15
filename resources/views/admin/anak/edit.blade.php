@@ -105,6 +105,11 @@ Edit Anak
                 <input type="number" name="no" id="no_hp" value="{{$anak->no}}" class="form-control">
             </div>
         </div>
+        <div class="col-12">
+            <hr class="mt-1 mb-2">
+            <h6 class="text-primary mb-0">Alamat Domisili (operasional)</h6>
+            <small class="form-text text-muted mt-0 mb-2">Alamat tempat tinggal saat ini — dipakai untuk pengelompokan wilayah, peta, &amp; kejar imunisasi.</small>
+        </div>
         <div class="col-md-4 col-sm-12">
             <input type="checkbox" id="gantiLokasi" name="centang" class="i-checks" onclick="lokasi()"> Ganti Lokasi Alamat <br>
             <div class="form-group">
@@ -147,6 +152,24 @@ Edit Anak
                 <select id="rt" name="id_rt" class="form-control" disabled="true" required>
                     <option value="">== Pilih RT ==</option>
                 </select>
+            </div>
+        </div>
+        <div class="col-md-12 col-sm-12">
+            <div class="form-group">
+                <label for="alamat">Alamat Domisili (detail jalan/RT)</label>
+                <textarea class="form-control" name="alamat" id="alamat" rows="2" placeholder="Mis. Jl. Mawar No. 10, RT 05">{{ old('alamat', $anak->alamat) }}</textarea>
+            </div>
+        </div>
+        <div class="col-12">
+            <hr class="mt-1 mb-2">
+            <h6 class="text-primary mb-0">Alamat KTP</h6>
+            <small class="form-text text-muted mt-0 mb-2">Boleh sama dengan domisili, boleh di luar Bontang. Tidak dipakai algoritma.</small>
+        </div>
+        <div class="col-md-12 col-sm-12">
+            <div class="form-group">
+                <label for="alamat_ktp">Alamat sesuai KTP</label>
+                <button type="button" class="btn btn-sm btn-outline-secondary float-right" id="samakanAlamat">Samakan dengan domisili</button>
+                <textarea class="form-control" name="alamat_ktp" id="alamat_ktp" rows="2">{{ old('alamat_ktp', $anak->alamat_ktp) }}</textarea>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
@@ -423,6 +446,10 @@ Edit Anak
                     })
                 }
             })
+        });
+
+        $('#samakanAlamat').on('click', function() {
+            $('#alamat_ktp').val($('#alamat').val());
         });
     });
 </script>

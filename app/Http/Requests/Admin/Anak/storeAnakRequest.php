@@ -39,7 +39,8 @@ class storeAnakRequest extends FormRequest
             'id_rt' => 'required',
             'id_puskesmas' => 'required',
             'id_posyandu' => 'required',
-
+            'alamat' => 'nullable|string',
+            'alamat_ktp' => 'nullable|string',
         ];
     }
 
