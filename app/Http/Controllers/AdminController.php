@@ -42,14 +42,17 @@ class AdminController extends Controller
 {
     protected $userRepository;
     protected $anakRepository;
+    protected \App\Services\StatusGiziService $statusGizi;
 
     public function __construct(
         UserInterface $userRepository,
-        AnakInterface $anakRepository
+        AnakInterface $anakRepository,
+        \App\Services\StatusGiziService $statusGizi
     ) {
         $this->middleware('auth');
         $this->userRepository = $userRepository;
         $this->anakRepository = $anakRepository;
+        $this->statusGizi = $statusGizi;
     }
 
     /*------------------------------------------
@@ -272,163 +275,40 @@ ANAK
 
         foreach ($dataAnak as $key => $data) {
             $no++;
-            $tinggi = $data->tb;
-            $tgl_kunjungan = $data->tgl_kunjungan;
-            $berat = $data->bb;
-            $umur = $data->bln;
-            $posisi = $data->posisi;
-            if ($umur < 24 && $posisi == "H") {
-                $tinggi += 0.7;
-            } elseif ($umur >= 24 && $posisi == "L") {
-                $tinggi -= 0.7;
-            }
-            $tinggi = round($tinggi);
-            $var = $umur <= 24 ? 1 : 2;
-            $jk = $data->jk;
-            $bmi = round(10000 * $berat / pow($tinggi, 2), 2);
+            $g = $this->statusGizi->klasifikasi($data->bb, $data->tb, $data->bln, $data->posisi, $data->jk);
 
-            $err = NULL;
-            if ($bmi < 10.2 || $bmi > 21.1) {
+            $err = null;
+            if ($g['bmi'] < 10.2 || $g['bmi'] > 21.1) {
                 $err = "Nilai BMI tidak normal";
-            } elseif ($tinggi < 44.2 || $tinggi > 123.9) {
+            } elseif ($g['tinggi'] < 44.2 || $g['tinggi'] > 123.9) {
                 $err = "Nilai Tinggi Badan tidak normal";
-            } elseif ($berat < 1.9 || $berat > 31.2) {
+            } elseif ($g['berat'] < 1.9 || $g['berat'] > 31.2) {
                 $err = "Nilai Berat Badan tidak normal";
             }
-            $imt_u = DB::table('z_score')
-                ->select('id', 'm3sd as a1', 'm2sd as b1', '1sd as c1', '2sd as d1', '3sd as e1')
-                ->where([
-                    'var' => $var,
-                    'acuan' => $umur,
-                    'jk' => $jk,
-                    'jenis_tbl' => 1,
-                ])->get();
-            // BB/U (jenis_tbl=2) always has var=1 in database
-            $bb_u = DB::table('z_score')
-                ->select('id', 'm3sd as a2', 'm2sd as b2', '1sd as c2')
-                ->where([
-                    'var' => 1,
-                    'acuan' => $umur,
-                    'jk' => $jk,
-                    'jenis_tbl' => 2,
-                ])->get();
-            $tb_u = DB::table('z_score')
-                ->select('id', 'm3sd as a3', 'm2sd as b3', '1sd as c3', '2sd as d3', '3sd as e3')
-                ->where([
-                    'var' => $var,
-                    'acuan' => $umur,
-                    'jk' => $jk,
-                    'jenis_tbl' => 3,
-                ])->get();
-            $bt_tb = DB::table('z_score')
-                ->select('id', 'm3sd as a4', 'm2sd as b4', '1sd as c4', '2sd as d4', '3sd as e4')
-                ->where([
-                    'var' => $var,
-                    'acuan' => $tinggi,
-                    'jk' => $jk,
-                    'jenis_tbl' => 4,
-                ])->get();
-
-            // Check if z_score data exists
-            if ($imt_u->isEmpty() || $bb_u->isEmpty() || $tb_u->isEmpty() || $bt_tb->isEmpty()) {
-                $s1 = "Data Z-Score tidak tersedia";
-                $s2 = "Data Z-Score tidak tersedia";
-                $s3 = "Data Z-Score tidak tersedia";
-                $s4 = "Data Z-Score tidak tersedia";
-
-                $hasilx[$key] = [
-                    "no" => $no,
-                    "bln" => $umur,
-                    "tgl_kunjungan" => $tgl_kunjungan,
-                    "tinggi" => $tinggi,
-                    "berat" => $berat,
-                    "bmi" => $bmi,
-                    "imt" => $s1,
-                    "bb" => $s2,
-                    "tb" => $s3,
-                    "bt" => $s4,
-                    "err" => $err ?? "Data referensi Z-Score belum tersedia",
-                ];
-                continue;
-            }
-
-            if ($umur <= 60) {
-                if ($bmi < $imt_u[0]->a1) {
-                    $s1 = "Gizi buruk (severely wasted)";
-                } elseif ($bmi >= $imt_u[0]->a1 && $bmi < $imt_u[0]->b1) {
-                    $s1 = "Gizi kurang (wasted)";
-                } elseif ($bmi >= $imt_u[0]->b1 && $bmi <= $imt_u[0]->c1) {
-                    $s1 = "Gizi baik (normal)";
-                } elseif ($bmi > $imt_u[0]->c1 && $bmi <= $imt_u[0]->d1) {
-                    $s1 = "Berisiko gizi lebih (possible risk of overweight)";
-                } elseif ($bmi > $imt_u[0]->d1 && $bmi <= $imt_u[0]->e1) {
-                    $s1 = "Gizi lebih (overweight)";
-                } else {
-                    $s1 = "Obesitas (obese)";
-                }
+            // Tampilan show bersifat semua-atau-tidak: bila ada indikator yg
+            // referensinya kurang, keempatnya ditandai tidak tersedia.
+            $tidakAda = 'Data Z-Score tidak tersedia';
+            $imt = $bb = $tb = $bt = $tidakAda;
+            if ($g['tersedia']) {
+                $imt = $g['imt'];
+                $bb = $g['bb'];
+                $tb = $g['tb'];
+                $bt = $g['bt'];
             } else {
-                if ($bmi < $imt_u[0]->a1) {
-                    $s1 = "Gizi buruk (severely thinness)";
-                } elseif ($bmi >= $imt_u[0]->a1 && $bmi < $imt_u[0]->b1) {
-                    $s1 = "Gizi kurang (thinness)";
-                } elseif ($bmi >= $imt_u[0]->b1 && $bmi <= $imt_u[0]->c1) {
-                    $s1 = "Gizi baik (normal)";
-                } elseif ($bmi > $imt_u[0]->c1 && $bmi <= $imt_u[0]->d1) {
-                    $s1 = "Gizi lebih (overweight)";
-                } else {
-                    $s1 = "Obesitas (obese)";
-                }
-            }
-
-            if ($berat < $bb_u[0]->a2) {
-                $s2 = "Berat badan sangat kurang (severely underweight)";
-            } elseif ($berat >= $bb_u[0]->a2 && $berat < $bb_u[0]->b2) {
-                $s2 = "Berat badan kurang (underweight)";
-            } elseif ($berat >= $bb_u[0]->b2 && $berat <= $bb_u[0]->c2) {
-                $s2 = "Berat badan normal";
-            } else {
-                $s2 = "Risiko Berat badan lebih";
-            }
-
-            if ($tinggi < $tb_u[0]->a3) {
-                $s3 = "Sangat pendek (severely stunted)";
-            } elseif ($tinggi >= $tb_u[0]->a3 && $tinggi < $tb_u[0]->b3) {
-                $s3 = "Pendek (stunted)";
-            } elseif ($tinggi >= $tb_u[0]->b3 && $tinggi <= $tb_u[0]->e3) {
-                $s3 = "Normal";
-            } else {
-                $s3 = "Tinggi";
-            }
-
-            try {
-                if ($berat < $bt_tb[0]->a4) {
-                    $s4 = "Gizi buruk (severely wasted)";
-                } elseif ($berat >= $bt_tb[0]->a4 && $berat < $bt_tb[0]->b4) {
-                    $s4 = "Gizi kurang (wasted)";
-                } elseif ($berat >= $bt_tb[0]->b4 && $berat <= $bt_tb[0]->c4) {
-                    $s4 = "Gizi baik (normal)";
-                } elseif ($berat > $bt_tb[0]->c4 && $berat <= $bt_tb[0]->d4) {
-                    $s4 = "Berisiko gizi lebih (possible risk of overweight)";
-                } elseif ($berat > $bt_tb[0]->d4 && $berat <= $bt_tb[0]->e4) {
-                    $s4 = "Gizi lebih (overweight)";
-                } else {
-                    $s4 = "Obesitas (obese)";
-                }
-            } catch (\Exception $e) {
-                $s4 = "Data Tidak Valid";
+                $err = $err ?? "Data referensi Z-Score belum tersedia";
             }
 
             $hasilx[$key] = [
                 "no" => $no,
-                "bln" => $umur,
-                "tgl_kunjungan" => $tgl_kunjungan,
-                "tinggi" => $tinggi,
-                "berat" => $berat,
-                "bmi" => $bmi,
-                "imt" => $s1,
-                "bb" => $s2,
-                "tb" => $s3,
-                "bt" => $s4,
+                "bln" => $g['bln'],
+                "tgl_kunjungan" => $data->tgl_kunjungan,
+                "tinggi" => $g['tinggi'],
+                "berat" => $g['berat'],
+                "bmi" => $g['bmi'],
+                "imt" => $imt,
+                "bb" => $bb,
+                "tb" => $tb,
+                "bt" => $bt,
                 "err" => $err,
             ];
         }
@@ -1455,42 +1335,25 @@ All Admin Controller
         if ($filterKel) $measurementQuery->where('a.id_kel', $filterKel);
         $latestMeasurements = $measurementQuery->get();
 
-        $zScoreRefs = DB::table('z_score')->whereIn('jenis_tbl', [1, 2, 3])->get()
-            ->groupBy(fn($item) => $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0));
+        // Pemetaan enum kanonik → bucket. IMT di sini hanya 5 pita (>+2SD = obesitas).
+        $imtMap = [
+            'severely_wasted' => 'buruk', 'wasted' => 'kurang', 'normal' => 'normal',
+            'risiko_lebih' => 'lebih', 'overweight' => 'obesitas', 'obese' => 'obesitas',
+        ];
+        $bbMap = [
+            'severely_underweight' => 'sangat_kurang', 'underweight' => 'kurang',
+            'normal' => 'normal', 'lebih' => 'lebih',
+        ];
+        $tbMap = [
+            'severely_stunted' => 'sangat_pendek', 'stunted' => 'pendek',
+            'normal' => 'normal', 'tinggi' => 'tinggi',
+        ];
 
         foreach ($latestMeasurements as $m) {
-            $tb = $m->tb;
-            if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
-            elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
-            $tb = round($tb);
-            $var = $m->bln <= 24 ? 1 : 2;
-            $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
-
-            $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
-            if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$imtKey]->first();
-                if ($bmi < $ref->m3sd) $zScoreResults['imt_u']['buruk']++;
-                elseif ($bmi < $ref->m2sd) $zScoreResults['imt_u']['kurang']++;
-                elseif ($bmi <= $ref->{'1sd'}) $zScoreResults['imt_u']['normal']++;
-                elseif ($bmi <= $ref->{'2sd'}) $zScoreResults['imt_u']['lebih']++;
-                else $zScoreResults['imt_u']['obesitas']++;
-            }
-            $bbKey = "2_{$m->jk}_{$m->bln}_1";
-            if (isset($zScoreRefs[$bbKey]) && $zScoreRefs[$bbKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$bbKey]->first();
-                if ($m->bb < $ref->m3sd) $zScoreResults['bb_u']['sangat_kurang']++;
-                elseif ($m->bb < $ref->m2sd) $zScoreResults['bb_u']['kurang']++;
-                elseif ($m->bb <= $ref->{'1sd'}) $zScoreResults['bb_u']['normal']++;
-                else $zScoreResults['bb_u']['lebih']++;
-            }
-            $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
-            if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$tbKey]->first();
-                if ($tb < $ref->m3sd) $zScoreResults['tb_u']['sangat_pendek']++;
-                elseif ($tb < $ref->m2sd) $zScoreResults['tb_u']['pendek']++;
-                elseif ($tb <= $ref->{'3sd'}) $zScoreResults['tb_u']['normal']++;
-                else $zScoreResults['tb_u']['tinggi']++;
-            }
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            if ($g['enum']['imt_u'] !== null) $zScoreResults['imt_u'][$imtMap[$g['enum']['imt_u']]]++;
+            if ($g['enum']['bb_u'] !== null)  $zScoreResults['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
+            if ($g['enum']['tb_u'] !== null)  $zScoreResults['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
         }
 
         // ========== Recent Activities ==========
@@ -1576,52 +1439,25 @@ All Admin Controller
             ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')
             ->get();
 
-        // Preload all Z-Score references
-        $zScoreRefs = DB::table('z_score')
-            ->whereIn('jenis_tbl', [1, 2, 3])
-            ->get()
-            ->groupBy(function($item) {
-                return $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0);
-            });
+        // Pemetaan enum kanonik → bucket. IMT 5 pita (>+2SD = obesitas).
+        $imtMap = [
+            'severely_wasted' => 'buruk', 'wasted' => 'kurang', 'normal' => 'normal',
+            'risiko_lebih' => 'lebih', 'overweight' => 'obesitas', 'obese' => 'obesitas',
+        ];
+        $bbMap = [
+            'severely_underweight' => 'sangat_kurang', 'underweight' => 'kurang',
+            'normal' => 'normal', 'lebih' => 'lebih',
+        ];
+        $tbMap = [
+            'severely_stunted' => 'sangat_pendek', 'stunted' => 'pendek',
+            'normal' => 'normal', 'tinggi' => 'tinggi',
+        ];
 
         foreach ($latestMeasurements as $m) {
-            $tb = $m->tb;
-            if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
-            elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
-            $tb = round($tb);
-            $var = $m->bln <= 24 ? 1 : 2;
-            $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
-
-            // IMT/U Classification
-            $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
-            if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$imtKey]->first();
-                if ($bmi < $ref->m3sd) $results['imt_u']['buruk']++;
-                elseif ($bmi < $ref->m2sd) $results['imt_u']['kurang']++;
-                elseif ($bmi <= $ref->{'1sd'}) $results['imt_u']['normal']++;
-                elseif ($bmi <= $ref->{'2sd'}) $results['imt_u']['lebih']++;
-                else $results['imt_u']['obesitas']++;
-            }
-
-            // BB/U Classification (var=1 for all BB/U records)
-            $bbKey = "2_{$m->jk}_{$m->bln}_1";
-            if (isset($zScoreRefs[$bbKey]) && $zScoreRefs[$bbKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$bbKey]->first();
-                if ($m->bb < $ref->m3sd) $results['bb_u']['sangat_kurang']++;
-                elseif ($m->bb < $ref->m2sd) $results['bb_u']['kurang']++;
-                elseif ($m->bb <= $ref->{'1sd'}) $results['bb_u']['normal']++;
-                else $results['bb_u']['lebih']++;
-            }
-
-            // TB/U Classification
-            $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
-            if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$tbKey]->first();
-                if ($tb < $ref->m3sd) $results['tb_u']['sangat_pendek']++;
-                elseif ($tb < $ref->m2sd) $results['tb_u']['pendek']++;
-                elseif ($tb <= $ref->{'3sd'}) $results['tb_u']['normal']++;
-                else $results['tb_u']['tinggi']++;
-            }
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            if ($g['enum']['imt_u'] !== null) $results['imt_u'][$imtMap[$g['enum']['imt_u']]]++;
+            if ($g['enum']['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
+            if ($g['enum']['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
         }
 
         return $results;
@@ -1789,10 +1625,7 @@ All Admin Controller
             }
         ])->get();
 
-        // Preload all z_score data once to avoid repeated queries
-        $zScoreCache = DB::table('z_score')->get()->keyBy(function($item) {
-            return "{$item->jenis_tbl}_{$item->jk}_{$item->acuan}_{$item->var}";
-        });
+        // Klasifikasi status gizi via StatusGiziService (cache referensi internal).
 
         // Vaccine schedule reference (age in months)
         $vaccineSchedule = [
@@ -1884,111 +1717,71 @@ All Admin Controller
 
                 // Calculate Z-Score status
                 if ($latest->bln <= 60) {
-                    $tb = $latest->tb;
-                    if ($latest->bln < 24 && $latest->posisi == 'H') $tb += 0.7;
-                    elseif ($latest->bln >= 24 && $latest->posisi == 'L') $tb -= 0.7;
-                    $tb = round($tb);
-                    $var = $latest->bln <= 24 ? 1 : 2;
-                    $bmi = $tb > 0 ? round(10000 * $latest->bb / pow($tb, 2), 2) : 0;
+                    $g = $this->statusGizi->klasifikasi($latest->bb, $latest->tb, $latest->bln, $latest->posisi, $child->jk);
+                    $bmi = $g['bmi'];
 
-                    // Get Z-Score references from preloaded cache
-                    // Note: var=1 for age<=24 months, var=2 for age>24 months (used by IMT/U and TB/U)
-                    // BB/U (jenis_tbl=2) always has var=1 in database
-                    $imt_u = $zScoreCache->get("1_{$child->jk}_{$latest->bln}_{$var}");
-                    $bb_u = $zScoreCache->get("2_{$child->jk}_{$latest->bln}_1");
-                    $tb_u = $zScoreCache->get("3_{$child->jk}_{$latest->bln}_{$var}");
-
-                    // Check TB/U (Stunting)
-                    if ($tb_u) {
-                        if ($tb < $tb_u->m3sd) {
-                            $childAlerts[] = [
-                                'type' => 'danger',
-                                'icon' => 'fa-child',
-                                'message' => 'SANGAT PENDEK (Severely Stunted)',
-                                'category' => 'stunting'
-                            ];
+                    // TB/U (stunting). Enum null bila referensi tak ada → tak diisi.
+                    switch ($g['enum']['tb_u']) {
+                        case 'severely_stunted':
+                            $childAlerts[] = ['type' => 'danger', 'icon' => 'fa-child', 'message' => 'SANGAT PENDEK (Severely Stunted)', 'category' => 'stunting'];
                             $childData['zscore_status']['tb_u'] = 'severely_stunted';
                             $riskScore += 40;
-                        } elseif ($tb < $tb_u->m2sd) {
-                            $childAlerts[] = [
-                                'type' => 'warning',
-                                'icon' => 'fa-child',
-                                'message' => 'Pendek (Stunted)',
-                                'category' => 'stunting'
-                            ];
+                            break;
+                        case 'stunted':
+                            $childAlerts[] = ['type' => 'warning', 'icon' => 'fa-child', 'message' => 'Pendek (Stunted)', 'category' => 'stunting'];
                             $childData['zscore_status']['tb_u'] = 'stunted';
                             $riskScore += 25;
-                        } else {
+                            break;
+                        case 'normal':
+                        case 'tinggi':
                             $childData['zscore_status']['tb_u'] = 'normal';
-                        }
+                            break;
                     }
 
-                    // Check IMT/U (Wasting/Overweight)
-                    if ($imt_u) {
-                        if ($bmi < $imt_u->m3sd) {
-                            $childAlerts[] = [
-                                'type' => 'danger',
-                                'icon' => 'fa-weight',
-                                'message' => 'GIZI BURUK (Severely Wasted)',
-                                'category' => 'wasting'
-                            ];
+                    // IMT/U (wasting/overweight). risiko_lebih (+1..+2SD) = normal di sini.
+                    switch ($g['enum']['imt_u']) {
+                        case 'severely_wasted':
+                            $childAlerts[] = ['type' => 'danger', 'icon' => 'fa-weight', 'message' => 'GIZI BURUK (Severely Wasted)', 'category' => 'wasting'];
                             $childData['zscore_status']['imt_u'] = 'severely_wasted';
                             $riskScore += 40;
-                        } elseif ($bmi < $imt_u->m2sd) {
-                            $childAlerts[] = [
-                                'type' => 'warning',
-                                'icon' => 'fa-weight',
-                                'message' => 'Gizi Kurang (Wasted)',
-                                'category' => 'wasting'
-                            ];
+                            break;
+                        case 'wasted':
+                            $childAlerts[] = ['type' => 'warning', 'icon' => 'fa-weight', 'message' => 'Gizi Kurang (Wasted)', 'category' => 'wasting'];
                             $childData['zscore_status']['imt_u'] = 'wasted';
                             $riskScore += 25;
-                        } elseif ($bmi > $imt_u->{'3sd'}) {
-                            $childAlerts[] = [
-                                'type' => 'warning',
-                                'icon' => 'fa-hamburger',
-                                'message' => 'Obesitas',
-                                'category' => 'obesity'
-                            ];
+                            break;
+                        case 'obese':
+                            $childAlerts[] = ['type' => 'warning', 'icon' => 'fa-hamburger', 'message' => 'Obesitas', 'category' => 'obesity'];
                             $childData['zscore_status']['imt_u'] = 'obese';
                             $riskScore += 20;
-                        } elseif ($bmi > $imt_u->{'2sd'}) {
-                            $childAlerts[] = [
-                                'type' => 'info',
-                                'icon' => 'fa-hamburger',
-                                'message' => 'Gizi Lebih (Overweight)',
-                                'category' => 'overweight'
-                            ];
+                            break;
+                        case 'overweight':
+                            $childAlerts[] = ['type' => 'info', 'icon' => 'fa-hamburger', 'message' => 'Gizi Lebih (Overweight)', 'category' => 'overweight'];
                             $childData['zscore_status']['imt_u'] = 'overweight';
                             $riskScore += 10;
-                        } else {
+                            break;
+                        case 'risiko_lebih':
+                        case 'normal':
                             $childData['zscore_status']['imt_u'] = 'normal';
-                        }
+                            break;
                     }
 
-                    // Check BB/U (Underweight)
-                    if ($bb_u) {
-                        if ($latest->bb < $bb_u->m3sd) {
-                            $childAlerts[] = [
-                                'type' => 'danger',
-                                'icon' => 'fa-balance-scale',
-                                'message' => 'BB SANGAT KURANG (Severely Underweight)',
-                                'category' => 'underweight'
-                            ];
+                    // BB/U (underweight). lebih (>+1SD) = normal di sini.
+                    switch ($g['enum']['bb_u']) {
+                        case 'severely_underweight':
+                            $childAlerts[] = ['type' => 'danger', 'icon' => 'fa-balance-scale', 'message' => 'BB SANGAT KURANG (Severely Underweight)', 'category' => 'underweight'];
                             $childData['zscore_status']['bb_u'] = 'severely_underweight';
                             $riskScore += 35;
-                        } elseif ($latest->bb < $bb_u->m2sd) {
-                            $childAlerts[] = [
-                                'type' => 'warning',
-                                'icon' => 'fa-balance-scale',
-                                'message' => 'BB Kurang (Underweight)',
-                                'category' => 'underweight'
-                            ];
+                            break;
+                        case 'underweight':
+                            $childAlerts[] = ['type' => 'warning', 'icon' => 'fa-balance-scale', 'message' => 'BB Kurang (Underweight)', 'category' => 'underweight'];
                             $childData['zscore_status']['bb_u'] = 'underweight';
                             $riskScore += 20;
-                        } else {
+                            break;
+                        case 'normal':
+                        case 'lebih':
                             $childData['zscore_status']['bb_u'] = 'normal';
-                        }
+                            break;
                     }
 
                     // Store measurement data
@@ -2271,11 +2064,6 @@ All Admin Controller
         $results = [];
         $kelurahanList = DB::table('kelurahan')->get();
 
-        // Preload all z_score data once
-        $zScoreCache = DB::table('z_score')->get()->keyBy(function($item) {
-            return "{$item->jenis_tbl}_{$item->jk}_{$item->acuan}_{$item->var}";
-        });
-
         foreach ($kelurahanList as $kel) {
             // Eager load children with their latest data
             $children = Anak::where('id_kel', $kel->id)
@@ -2297,30 +2085,8 @@ All Admin Controller
 
                 $stats['total']++;
 
-                $tb = $latest->tb;
-                if ($latest->bln < 24 && $latest->posisi == 'H') $tb += 0.7;
-                elseif ($latest->bln >= 24 && $latest->posisi == 'L') $tb -= 0.7;
-                $tb = round($tb);
-                $var = $latest->bln <= 24 ? 1 : 2;
-                $bmi = $tb > 0 ? round(10000 * $latest->bb / pow($tb, 2), 2) : 0;
-
-                // TB/U for stunting - use preloaded cache
-                $tb_u = $zScoreCache->get("3_{$child->jk}_{$latest->bln}_{$var}");
-                if ($tb_u && $tb < $tb_u->m2sd) {
-                    $stats['stunting']++;
-                }
-
-                // IMT/U for wasting/overweight - use preloaded cache
-                $imt_u = $zScoreCache->get("1_{$child->jk}_{$latest->bln}_{$var}");
-                if ($imt_u) {
-                    if ($bmi < $imt_u->m2sd) {
-                        $stats['wasting']++;
-                    } elseif ($bmi > $imt_u->{'2sd'}) {
-                        $stats['overweight']++;
-                    } else {
-                        $stats['normal']++;
-                    }
-                }
+                $g = $this->statusGizi->klasifikasi($latest->bb, $latest->tb, $latest->bln, $latest->posisi, $child->jk);
+                $this->akumulasiStatistikGizi($stats, $g);
             }
 
             if ($stats['total'] > 0) {
@@ -2352,41 +2118,13 @@ All Admin Controller
             ->get()
             ->groupBy('kelurahan');
 
-        // Preload Z-Score references
-        $zScoreRefs = DB::table('z_score')
-            ->whereIn('jenis_tbl', [1, 3])
-            ->get()
-            ->groupBy(function($item) {
-                return $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0);
-            });
-
         foreach ($measurements as $kelName => $children) {
             $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0];
 
             foreach ($children as $m) {
                 $stats['total']++;
-                $tb = $m->tb;
-                if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
-                elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
-                $tb = round($tb);
-                $var = $m->bln <= 24 ? 1 : 2;
-                $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
-
-                // TB/U for stunting
-                $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
-                if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
-                    $ref = $zScoreRefs[$tbKey]->first();
-                    if ($tb < $ref->m2sd) $stats['stunting']++;
-                }
-
-                // IMT/U for wasting/overweight
-                $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
-                if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
-                    $ref = $zScoreRefs[$imtKey]->first();
-                    if ($bmi < $ref->m2sd) $stats['wasting']++;
-                    elseif ($bmi > $ref->{'2sd'}) $stats['overweight']++;
-                    else $stats['normal']++;
-                }
+                $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+                $this->akumulasiStatistikGizi($stats, $g);
             }
 
             if ($stats['total'] > 0) {
@@ -2395,6 +2133,32 @@ All Admin Controller
         }
 
         return $results;
+    }
+
+    /**
+     * Akumulasi statistik gizi wilayah dari hasil StatusGiziService:
+     * stunting (TB/U <-2SD), wasting (IMT/U <-2SD), overweight (>+2SD), sisanya normal.
+     * Hanya menghitung bila indikatornya punya referensi (enum non-null).
+     */
+    private function akumulasiStatistikGizi(array &$stats, array $g): void
+    {
+        if (in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true)) {
+            $stats['stunting']++;
+        }
+        switch ($g['enum']['imt_u']) {
+            case 'severely_wasted':
+            case 'wasted':
+                $stats['wasting']++;
+                break;
+            case 'overweight':
+            case 'obese':
+                $stats['overweight']++;
+                break;
+            case 'normal':
+            case 'risiko_lebih':
+                $stats['normal']++;
+                break;
+        }
     }
 
     /**
@@ -2418,41 +2182,13 @@ All Admin Controller
             ->get()
             ->groupBy('rt_name');
 
-        // Preload Z-Score references
-        $zScoreRefs = DB::table('z_score')
-            ->whereIn('jenis_tbl', [1, 3])
-            ->get()
-            ->groupBy(function($item) {
-                return $item->jenis_tbl . '_' . $item->jk . '_' . $item->acuan . '_' . ($item->var ?? 0);
-            });
-
         foreach ($measurements as $rtName => $children) {
             $stats = ['total' => 0, 'normal' => 0, 'stunting' => 0, 'wasting' => 0, 'overweight' => 0];
 
             foreach ($children as $m) {
                 $stats['total']++;
-                $tb = $m->tb;
-                if ($m->bln < 24 && $m->posisi == 'H') $tb += 0.7;
-                elseif ($m->bln >= 24 && $m->posisi == 'L') $tb -= 0.7;
-                $tb = round($tb);
-                $var = $m->bln <= 24 ? 1 : 2;
-                $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
-
-                // TB/U for stunting
-                $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
-                if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
-                    $ref = $zScoreRefs[$tbKey]->first();
-                    if ($tb < $ref->m2sd) $stats['stunting']++;
-                }
-
-                // IMT/U for wasting/overweight
-                $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
-                if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
-                    $ref = $zScoreRefs[$imtKey]->first();
-                    if ($bmi < $ref->m2sd) $stats['wasting']++;
-                    elseif ($bmi > $ref->{'2sd'}) $stats['overweight']++;
-                    else $stats['normal']++;
-                }
+                $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+                $this->akumulasiStatistikGizi($stats, $g);
             }
 
             if ($stats['total'] > 0) {

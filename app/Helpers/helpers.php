@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\DB;
-
 /**
  * Hitung usia dalam bulan penuh dari tanggal lahir ke tanggal acuan
  * (mis. tgl kunjungan / tgl ukur).
@@ -50,158 +48,30 @@ function normalisasi_posisi($raw): string
     return 'L';
 }
 
+/**
+ * Klasifikasi status gizi untuk koleksi pengukuran.
+ *
+ * Delegasi ke App\Services\StatusGiziService (satu sumber kebenaran) agar rumus
+ * z-score + koreksi posisi tidak terduplikasi. Mengembalikan array berindeks
+ * sama dgn input, tiap elemen: bln, tinggi, berat, imt, bb, tb, bt.
+ *
+ * @param iterable $x objek dgn properti tb, bb, bln, posisi, jk
+ */
 function z_score($x)
 {
-
+    $svc = app(\App\Services\StatusGiziService::class);
+    $hasilx = [];
     foreach ($x as $key => $data) {
-        $tinggi = $data->tb;
-        $berat = $data->bb;
-        $umur = $data->bln;
-        $posisi = $data->posisi;
-        if ($umur < 24 && $posisi == "H") {
-            $tinggi += 0.7;
-        } elseif ($umur >= 24 && $posisi == "L") {
-            $tinggi -= 0.7;
-        }
-        $tinggi = round($tinggi);
-        // var=1 tabel panjang (0–<24 bln), var=2 tabel tinggi (>=24 bln) —
-        // selaras dgn koreksi posisi di atas (24 bln pakai basis tinggi berdiri).
-        $var = $umur < 24 ? 1 : 2;
-        $jk = $data->jk;
-        $bmi = round(10000 * $berat / pow($tinggi, 2), 2);
-
-        $err = NULL;
-        if ($bmi < 10.2 || $bmi > 21.1) {
-            $err = "Nilai BMI tidak normal";
-        } elseif ($tinggi < 44.2 || $tinggi > 123.9) {
-            $err = "Nilai Tinggi Badan tidak normal";
-        } elseif ($berat < 1.9 || $berat > 31.2) {
-            $err = "Nilai Berat Badan tidak normal";
-        }
-        $imt_u = DB::table('z_score')
-            ->select('id', 'm3sd as a1', 'm2sd as b1', '1sd as c1', '2sd as d1', '3sd as e1')
-            ->where([
-                'var' => $var,
-                'acuan' => $umur,
-                'jk' => $jk,
-                'jenis_tbl' => 1,
-            ])->get();
-        $bb_u = DB::table('z_score')
-            ->select('id', 'm3sd as a2', 'm2sd as b2', '1sd as c2')
-            ->where([
-                'var' => 1,
-                'acuan' => $umur,
-                'jk' => $jk,
-                'jenis_tbl' => 2,
-            ])->get();
-        $tb_u = DB::table('z_score')
-            ->select('id', 'm3sd as a3', 'm2sd as b3', '1sd as c3', '2sd as d3', '3sd as e3')
-            ->where([
-                'var' => $var,
-                'acuan' => $umur,
-                'jk' => $jk,
-                'jenis_tbl' => 3,
-            ])->get();
-        $bt_tb = DB::table('z_score')
-            ->select('id', 'm3sd as a4', 'm2sd as b4', '1sd as c4', '2sd as d4', '3sd as e4')
-            ->where([
-                'var' => $var,
-                'acuan' => $tinggi,
-                'jk' => $jk,
-                'jenis_tbl' => 4,
-            ])->get();
-
-        // Guard: skip jika data referensi Z-Score tidak tersedia
-        if ($imt_u->isEmpty() || $bb_u->isEmpty() || $tb_u->isEmpty() || $bt_tb->isEmpty()) {
-            $hasilx[$key] = array(
-                "bln" => $umur,
-                "tinggi" => $tinggi,
-                "berat" => $berat,
-                "imt" => "Data Z-Score tidak tersedia",
-                "bb" => "Data Z-Score tidak tersedia",
-                "tb" => "Data Z-Score tidak tersedia",
-                "bt" => "Data Z-Score tidak tersedia"
-            );
-            continue;
-        }
-
-        if ($umur <= 60) {
-            if ($bmi < $imt_u[0]->a1) {
-                $s1 = "Gizi buruk (severely wasted)";
-            } elseif ($bmi >= $imt_u[0]->a1 && $bmi < $imt_u[0]->b1) {
-                $s1 = "Gizi kurang (wasted)";
-            } elseif ($bmi >= $imt_u[0]->b1 && $bmi <= $imt_u[0]->c1) {
-                $s1 = "Gizi baik (normal)";
-            } elseif ($bmi > $imt_u[0]->c1 && $bmi <= $imt_u[0]->d1) {
-                $s1 = "Berisiko gizi lebih (possible risk of overweight)";
-            } elseif ($bmi > $imt_u[0]->d1 && $bmi <= $imt_u[0]->e1) {
-                $s1 = "Gizi lebih (overweight)";
-            } else {
-                $s1 = "Obesitas (obese)";
-            }
-        } elseif ($umur > 60) {
-            if ($bmi < $imt_u[0]->a1) {
-                $s1 = "Gizi buruk (severely thinness)";
-            } elseif ($bmi >= $imt_u[0]->a1 && $bmi < $imt_u[0]->b1) {
-                $s1 = "Gizi kurang (thinness)";
-            } elseif ($bmi >= $imt_u[0]->b1 && $bmi <= $imt_u[0]->c1) {
-                $s1 = "Gizi baik (normal)";
-            } elseif ($bmi > $imt_u[0]->c1 && $bmi <= $imt_u[0]->d1) {
-                $s1 = "Gizi lebih (overweight)";
-            } else {
-                $s1 = "Obesitas (obese)";
-            }
-        }
-
-
-        if ($berat < $bb_u[0]->a2) {
-            $s2 = "Berat badan sangat kurang (severely underweight)";
-        } elseif ($berat >= $bb_u[0]->a2 && $berat < $bb_u[0]->b2) {
-            $s2 = "Berat badan kurang (underweight)";
-        } elseif ($berat >= $bb_u[0]->b2 && $berat <= $bb_u[0]->c2) {
-            $s2 = "Berat badan normal";
-        } else {
-            $s2 = "Risiko Berat badan lebih";
-        }
-
-        if ($tinggi < $tb_u[0]->a3) {
-            $s3 = "Sangat pendek (severely stunted)";
-        } elseif ($tinggi >= $tb_u[0]->a3 && $tinggi < $tb_u[0]->b3) {
-            $s3 = "Pendek (stunted)";
-        } elseif ($tinggi >= $tb_u[0]->b3 && $tinggi <= $tb_u[0]->e3) {
-            $s3 = "Normal";
-        } else {
-            $s3 = "Tinggi";
-        }
-
-        try {
-            if ($berat < $bt_tb[0]->a4) {
-                $s4 = "Gizi buruk (severely wasted)";
-            } elseif ($berat >= $bt_tb[0]->a4 && $berat < $bt_tb[0]->b4) {
-                $s4 = "Gizi kurang (wasted)";
-            } elseif ($berat >= $bt_tb[0]->b4 && $berat <= $bt_tb[0]->c4) {
-                $s4 = "Gizi baik (normal)";
-            } elseif ($berat > $bt_tb[0]->c4 && $berat <= $bt_tb[0]->d4) {
-                $s4 = "Berisiko gizi lebih (possible risk of overweight)";
-            } elseif ($berat > $bt_tb[0]->d4 && $berat <= $bt_tb[0]->e4) {
-                $s4 = "Gizi lebih (overweight)";
-            } else {
-                $s4 = "Obesitas (obese)";
-            }
-        } catch (\Exception $e) {
-            $s4 = "Data Tidak Valid";
-        }
-
-
-        $hasilx[$key] = array(
-            "bln" => $umur,
-            "tinggi" => $tinggi,
-            "berat" => $berat,
-            "imt" => $s1,
-            "bb" => $s2,
-            "tb" => $s3,
-            "bt" => $s4
-        );
+        $r = $svc->klasifikasi($data->bb, $data->tb, $data->bln, $data->posisi, $data->jk);
+        $hasilx[$key] = [
+            'bln' => $r['bln'],
+            'tinggi' => $r['tinggi'],
+            'berat' => $r['berat'],
+            'imt' => $r['imt'],
+            'bb' => $r['bb'],
+            'tb' => $r['tb'],
+            'bt' => $r['bt'],
+        ];
     }
     return $hasilx;
 }

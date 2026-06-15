@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Anak;
 use App\Models\Kelurahan;
+use App\Services\StatusGiziService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Illuminate\View\View;
 
 class TimbangDashboardController extends Controller
 {
-    public function __construct()
+    public function __construct(private StatusGiziService $statusGizi)
     {
         $this->middleware('auth');
     }
@@ -93,50 +94,25 @@ class TimbangDashboardController extends Controller
 
         $measurements = $q->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')->get();
 
-        $zScoreRefs = DB::table('z_score')
-            ->whereIn('jenis_tbl', [1, 2, 3])
-            ->get()
-            ->groupBy(fn($r) => $r->jenis_tbl . '_' . $r->jk . '_' . $r->acuan . '_' . ($r->var ?? 0));
+        // Pemetaan enum kanonik StatusGiziService → bucket dashboard.
+        $imtMap = [
+            'severely_wasted' => 'buruk', 'wasted' => 'kurang', 'normal' => 'normal',
+            'risiko_lebih' => 'lebih', 'overweight' => 'lebih', 'obese' => 'obesitas',
+        ];
+        $bbMap = [
+            'severely_underweight' => 'sangat_kurang', 'underweight' => 'kurang',
+            'normal' => 'normal', 'lebih' => 'lebih',
+        ];
+        $tbMap = [
+            'severely_stunted' => 'sangat_pendek', 'stunted' => 'pendek',
+            'normal' => 'normal', 'tinggi' => 'tinggi',
+        ];
 
         foreach ($measurements as $m) {
-            $tb  = $m->tb;
-            if ($m->bln < 24 && strtoupper($m->posisi ?? '') === 'H') $tb += 0.7;
-            elseif ($m->bln >= 24 && strtoupper($m->posisi ?? '') === 'L') $tb -= 0.7;
-            $tb  = round($tb);
-            // var=1 tabel panjang (0–<24 bln), var=2 tabel tinggi (>=24 bln) —
-            // selaras dgn koreksi posisi di atas (24 bln pakai basis tinggi berdiri).
-            $var = $m->bln < 24 ? 1 : 2;
-            $bmi = $tb > 0 ? round(10000 * $m->bb / pow($tb, 2), 2) : 0;
-
-            $imtKey = "1_{$m->jk}_{$m->bln}_{$var}";
-            if (isset($zScoreRefs[$imtKey]) && $zScoreRefs[$imtKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$imtKey]->first();
-                // Ambang selaras dgn z_score() di helpers.php:
-                // obesitas = >+3SD; "lebih" menggabung berisiko (+1..+2) & overweight (+2..+3).
-                if ($bmi < $ref->m3sd)          $results['imt_u']['buruk']++;
-                elseif ($bmi < $ref->m2sd)      $results['imt_u']['kurang']++;
-                elseif ($bmi <= $ref->{'1sd'})  $results['imt_u']['normal']++;
-                elseif ($bmi <= $ref->{'3sd'})  $results['imt_u']['lebih']++;
-                else                            $results['imt_u']['obesitas']++;
-            }
-
-            $bbKey = "2_{$m->jk}_{$m->bln}_1";
-            if (isset($zScoreRefs[$bbKey]) && $zScoreRefs[$bbKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$bbKey]->first();
-                if ($m->bb < $ref->m3sd)        $results['bb_u']['sangat_kurang']++;
-                elseif ($m->bb < $ref->m2sd)    $results['bb_u']['kurang']++;
-                elseif ($m->bb <= $ref->{'1sd'}) $results['bb_u']['normal']++;
-                else                            $results['bb_u']['lebih']++;
-            }
-
-            $tbKey = "3_{$m->jk}_{$m->bln}_{$var}";
-            if (isset($zScoreRefs[$tbKey]) && $zScoreRefs[$tbKey]->isNotEmpty()) {
-                $ref = $zScoreRefs[$tbKey]->first();
-                if ($tb < $ref->m3sd)           $results['tb_u']['sangat_pendek']++;
-                elseif ($tb < $ref->m2sd)       $results['tb_u']['pendek']++;
-                elseif ($tb <= $ref->{'3sd'})   $results['tb_u']['normal']++;
-                else                            $results['tb_u']['tinggi']++;
-            }
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            if ($g['enum']['imt_u'] !== null) $results['imt_u'][$imtMap[$g['enum']['imt_u']]]++;
+            if ($g['enum']['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
+            if ($g['enum']['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
         }
 
         $total = count($measurements);
