@@ -149,9 +149,42 @@
 .tb-loading { text-align:center; padding:32px; color:oklch(0.52 0.008 145); }
 .tb-spin { animation:tb-spin .8s linear infinite; display:inline-block; font-size:28px; color:oklch(0.48 0.14 145 / 0.6); }
 @keyframes tb-spin{ to{ transform:rotate(360deg); } }
+
+/* 6-card grid + clickable */
+.tb-kpi-grid--6 { grid-template-columns:repeat(3,1fr); }
+@media(max-width:900px){ .tb-kpi-grid--6{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:480px){ .tb-kpi-grid--6{ grid-template-columns:1fr; } }
+.tb-kpi--click { cursor:pointer; }
+.tb-kpi--click:focus-visible { outline:2px solid oklch(0.48 0.14 145); outline-offset:2px; }
+
+/* Daftar modal */
+.tb-modal-back {
+    display:none; position:fixed; inset:0; z-index:1080;
+    background:oklch(0 0 0 / 0.45); padding:4vh 16px; overflow:auto;
+}
+.tb-modal-back.open { display:block; }
+.tb-modal {
+    background:#fff; border-radius:14px; max-width:980px; margin:0 auto;
+    box-shadow:0 20px 60px oklch(0 0 0 / 0.3); overflow:hidden;
+}
+.tb-modal__head {
+    display:flex; align-items:center; gap:12px; padding:18px 22px;
+    border-bottom:1px solid oklch(0.90 0.012 145);
+}
+.tb-modal__head h3 { font-size:1.05rem; font-weight:800; margin:0; color:oklch(0.20 0.012 145); }
+.tb-modal__count { font-size:.8rem; color:oklch(0.50 0.008 145); }
+.tb-modal__close { margin-left:auto; background:none; border:none; cursor:pointer; font-size:24px; line-height:1; color:oklch(0.46 0.01 145); }
+.tb-modal__body { padding:16px 22px; max-height:62vh; overflow:auto; }
+.tb-modal__tools { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+.tb-modal__search { flex:1; min-width:160px; padding:7px 12px; border:1px solid oklch(0.82 0.012 145); border-radius:8px; font-size:.8125rem; font-family:'Barlow',sans-serif; }
+.tb-dt { width:100%; border-collapse:collapse; font-size:.8125rem; }
+.tb-dt thead th { background:oklch(0.95 0.016 145); padding:8px 10px; text-align:left; font-size:.6875rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:oklch(0.44 0.010 145); white-space:nowrap; position:sticky; top:0; }
+.tb-dt tbody td { padding:8px 10px; border-top:1px solid oklch(0.93 0.012 145); }
+.tb-dt tbody tr:hover { background:oklch(0.97 0.012 145); }
 </style>
 
 {{-- ── Filter bar ────────────────────────────────────────────── --}}
+@php($isSuper = Auth::user()->isSuperAdmin())
 <div class="tb-filter">
     <span class="material-symbols-outlined" style="font-size:20px;color:oklch(0.48 0.14 145);">filter_alt</span>
     <label for="f-tahun">Tahun</label>
@@ -161,6 +194,14 @@
         <option value="{{ $th }}">{{ $th }}</option>
         @endforeach
     </select>
+    @if($isSuper)
+    <label for="f-kec">Kecamatan</label>
+    <select id="f-kec">
+        <option value="">Semua Kecamatan</option>
+        @foreach($kecamatanList as $kc)
+        <option value="{{ $kc->id }}">{{ $kc->name }}</option>
+        @endforeach
+    </select>
     <label for="f-kel">Kelurahan</label>
     <select id="f-kel">
         <option value="">Semua Kelurahan</option>
@@ -168,21 +209,56 @@
         <option value="{{ $kel->id }}">{{ $kel->name }}</option>
         @endforeach
     </select>
+    @else
+    <input type="hidden" id="f-kec" value="">
+    <input type="hidden" id="f-kel" value="{{ $kelurahanList->first()->id ?? '' }}">
+    @endif
+    <label for="f-posyandu">Posyandu</label>
+    <select id="f-posyandu">
+        <option value="">Semua Posyandu</option>
+    </select>
+    <label for="f-rt">RT</label>
+    <select id="f-rt">
+        <option value="">Semua RT</option>
+    </select>
     <button class="tb-filter-btn" id="btn-apply">
         <span class="material-symbols-outlined">search</span>Terapkan
     </button>
     <button class="tb-filter-btn" id="btn-reset" style="background:oklch(0.56 0.010 145 / 0.6);">
         <span class="material-symbols-outlined">restart_alt</span>Reset
     </button>
+    <a class="tb-filter-btn" id="btn-peta" style="background:#0891b2;text-decoration:none;" href="{{ route('admin.map') }}">
+        <span class="material-symbols-outlined">map</span>Peta Sebaran
+    </a>
 </div>
 
-{{-- ── KPI Cards ─────────────────────────────────────────────── --}}
-<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">monitoring</span>Ringkasan Operasi Timbang</p>
-<div class="tb-kpi-grid" id="kpi-grid">
-    <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--green"><span class="material-symbols-outlined">groups</span></div><div><div class="tb-kpi__val" id="kpi-ditimbang">—</div><div class="tb-kpi__lbl">Anak Ditimbang</div><div class="tb-kpi__sub" id="kpi-coverage">dari <span id="kpi-total-anak">—</span> terdaftar</div></div></div>
-    <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--blue"><span class="material-symbols-outlined">event_available</span></div><div><div class="tb-kpi__val" id="kpi-kunjungan">—</div><div class="tb-kpi__lbl">Total Kunjungan Timbang</div><div class="tb-kpi__sub">sesuai filter</div></div></div>
-    <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">vaccines</span></div><div><div class="tb-kpi__val" id="kpi-vita">—</div><div class="tb-kpi__lbl">Coverage Vitamin A</div><div class="tb-kpi__sub">kunjungan terakhir per anak</div></div></div>
-    <div class="tb-kpi"><div class="tb-kpi__icon tb-kpi__icon--teal"><span class="material-symbols-outlined">restaurant</span></div><div><div class="tb-kpi__val" id="kpi-mbg">—</div><div class="tb-kpi__lbl">Coverage MBG</div><div class="tb-kpi__sub">Makanan Bergizi</div></div></div>
+{{-- ── KPI Cards (6 kartu clickable) ─────────────────────────── --}}
+<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">monitoring</span>Ringkasan Operasi Timbang <small style="font-weight:600;text-transform:none;letter-spacing:0;color:oklch(0.56 0.008 145);">— klik kartu untuk daftar nama</small></p>
+<div class="tb-kpi-grid tb-kpi-grid--6" id="kpi-grid">
+    <div class="tb-kpi tb-kpi--click" data-kategori="sasaran" role="button" tabindex="0">
+        <div class="tb-kpi__icon tb-kpi__icon--green"><span class="material-symbols-outlined">groups</span></div>
+        <div><div class="tb-kpi__val" id="kpi-sasaran">—</div><div class="tb-kpi__lbl">Balita Sasaran</div><div class="tb-kpi__sub">total terdaftar (filter)</div></div>
+    </div>
+    <div class="tb-kpi tb-kpi--click" data-kategori="hadir" role="button" tabindex="0">
+        <div class="tb-kpi__icon tb-kpi__icon--blue"><span class="material-symbols-outlined">event_available</span></div>
+        <div><div class="tb-kpi__val" id="kpi-hadir">—</div><div class="tb-kpi__lbl">Hadir (Ditimbang)</div><div class="tb-kpi__sub" id="kpi-coverage">coverage —</div></div>
+    </div>
+    <div class="tb-kpi tb-kpi--click" data-kategori="stunting" role="button" tabindex="0">
+        <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">height</span></div>
+        <div><div class="tb-kpi__val" id="kpi-stunting">—</div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
+    </div>
+    <div class="tb-kpi tb-kpi--click" data-kategori="gizi_kurang" role="button" tabindex="0">
+        <div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">monitor_weight</span></div>
+        <div><div class="tb-kpi__val" id="kpi-gizi-kurang">—</div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">IMT/U -3..-2 SD</div></div>
+    </div>
+    <div class="tb-kpi tb-kpi--click" data-kategori="gizi_buruk" role="button" tabindex="0">
+        <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">emergency</span></div>
+        <div><div class="tb-kpi__val" id="kpi-gizi-buruk">—</div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">IMT/U &lt; -3SD</div></div>
+    </div>
+    <div class="tb-kpi tb-kpi--click" data-kategori="bb_tidak_naik" role="button" tabindex="0">
+        <div class="tb-kpi__icon tb-kpi__icon--orange"><span class="material-symbols-outlined">trending_down</span></div>
+        <div><div class="tb-kpi__val" id="kpi-bbtn">—</div><div class="tb-kpi__lbl">BB Tidak Naik</div><div class="tb-kpi__sub">2 kunjungan / NTOB</div></div>
+    </div>
 </div>
 
 {{-- ── STATUS GIZI ───────────────────────────────────────────── --}}
@@ -275,6 +351,30 @@
         </div>
     </div>
 </div>
+{{-- ── Daftar modal ─────────────────────────────────────────── --}}
+<div class="tb-modal-back" id="daftar-modal">
+    <div class="tb-modal">
+        <div class="tb-modal__head">
+            <span class="material-symbols-outlined" style="color:oklch(0.48 0.14 145);">list_alt</span>
+            <div>
+                <h3 id="daftar-title">Daftar</h3>
+                <div class="tb-modal__count" id="daftar-count">—</div>
+            </div>
+            <button class="tb-modal__close" id="daftar-close" aria-label="Tutup">&times;</button>
+        </div>
+        <div class="tb-modal__body">
+            <div class="tb-modal__tools">
+                <input type="text" class="tb-modal__search" id="daftar-search" placeholder="Cari nama / NIK / wilayah…">
+                <a class="tb-filter-btn" id="daftar-export" style="background:oklch(0.48 0.14 145);text-decoration:none;" href="#">
+                    <span class="material-symbols-outlined">download</span>Export Excel
+                </a>
+            </div>
+            <div id="daftar-table-wrap">
+                <div class="tb-loading"><span class="material-symbols-outlined tb-spin">sync</span></div>
+            </div>
+        </div>
+    </div>
+</div>
 </div>{{-- /tb-page --}}
 @endsection
 
@@ -290,23 +390,60 @@ var API_GIZI      = '{{ route("admin.timbang.gizi") }}';
 var API_TREN      = '{{ route("admin.timbang.tren") }}';
 var API_COVERAGE  = '{{ route("admin.timbang.coverage") }}';
 var API_PROGRAM   = '{{ route("admin.timbang.program") }}';
+var API_DAFTAR    = '{{ route("admin.timbang.daftar") }}';
+var API_DAFTAR_EXPORT = '{{ route("admin.timbang.daftar.export") }}';
+var URL_KEL_BY_KEC = '{{ url("admin/get-kel-dasar-anak") }}';
+var URL_RT_BY_KEL  = '{{ url("admin/get-rt-by-kel-anak") }}';
+var URL_POS_BY_KEL = '{{ url("admin/get-posyandu-by-kel-anak") }}';
+var IS_SUPER = {{ Auth::user()->isSuperAdmin() ? 'true' : 'false' }};
 
 var charts = {};
 
 // ── Filters ──────────────────────────────────────────────────
+function val(id){ var el = document.getElementById(id); return el ? el.value : ''; }
+
 function getParams(){
-    var t = document.getElementById('f-tahun').value;
-    var k = document.getElementById('f-kel').value;
     var p = [];
-    if(t) p.push('tahun='+t);
-    if(k) p.push('kelurahan='+k);
+    if(val('f-tahun'))    p.push('tahun='+val('f-tahun'));
+    if(val('f-kec'))      p.push('kecamatan='+val('f-kec'));
+    if(val('f-kel'))      p.push('kelurahan='+val('f-kel'));
+    if(val('f-rt'))       p.push('rt='+val('f-rt'));
+    if(val('f-posyandu')) p.push('posyandu='+val('f-posyandu'));
     return p.length ? '?'+p.join('&') : '';
+}
+
+function fillSelect(id, data, placeholder){
+    var sel = document.getElementById(id);
+    if(!sel || sel.tagName !== 'SELECT') return;
+    sel.innerHTML = '<option value="">'+placeholder+'</option>';
+    $.each(data, function(k, name){ sel.appendChild(new Option(name, k)); });
+}
+
+function loadRtPosyandu(kelId){
+    if(!kelId){ fillSelect('f-rt', {}, 'Semua RT'); fillSelect('f-posyandu', {}, 'Semua Posyandu'); return; }
+    $.getJSON(URL_RT_BY_KEL+'/'+kelId, function(d){ fillSelect('f-rt', d, 'Semua RT'); });
+    $.getJSON(URL_POS_BY_KEL+'/'+kelId, function(d){ fillSelect('f-posyandu', d, 'Semua Posyandu'); });
+}
+
+// Cascade (superadmin punya dropdown; faskes terkunci ke kelurahannya)
+if(IS_SUPER){
+    $('#f-kec').on('change', function(){
+        var kec = this.value;
+        fillSelect('f-rt', {}, 'Semua RT');
+        fillSelect('f-posyandu', {}, 'Semua Posyandu');
+        if(!kec){ fillSelect('f-kel', {}, 'Semua Kelurahan'); return; }
+        $.getJSON(URL_KEL_BY_KEC+'/'+kec, function(d){ fillSelect('f-kel', d, 'Semua Kelurahan'); });
+    });
+    $('#f-kel').on('change', function(){ loadRtPosyandu(this.value); });
 }
 
 document.getElementById('btn-apply').addEventListener('click', loadAll);
 document.getElementById('btn-reset').addEventListener('click', function(){
     document.getElementById('f-tahun').value = '';
-    document.getElementById('f-kel').value   = '';
+    if(IS_SUPER){ document.getElementById('f-kec').value = ''; document.getElementById('f-kel').value = ''; }
+    fillSelect('f-rt', {}, 'Semua RT');
+    fillSelect('f-posyandu', {}, 'Semua Posyandu');
+    if(!IS_SUPER){ loadRtPosyandu(val('f-kel')); }
     loadAll();
 });
 
@@ -329,7 +466,7 @@ function showError(id, label){
     }
 }
 function kpiFail(){
-    ['kpi-ditimbang','kpi-kunjungan','kpi-vita','kpi-mbg'].forEach(function(id){
+    ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-gizi-kurang','kpi-gizi-buruk','kpi-bbtn'].forEach(function(id){
         var el = document.getElementById(id);
         if(el) el.textContent = '!';
     });
@@ -361,12 +498,10 @@ var LIGHT     = '#e2e8f0';
 // ── RINGKASAN ─────────────────────────────────────────────────
 function loadRingkasan(){
     $.getJSON(API_RINGKASAN+getParams(), function(d){
-        document.getElementById('kpi-ditimbang').textContent   = num(d.total_ditimbang);
-        document.getElementById('kpi-total-anak').textContent  = num(d.total_anak);
-        document.getElementById('kpi-coverage').innerHTML      = 'Coverage <strong style="color:oklch(0.38 0.13 145)">'+pct(d.coverage)+'</strong> dari '+num(d.total_anak)+' terdaftar';
-        document.getElementById('kpi-kunjungan').textContent   = num(d.total_kunjungan);
-        document.getElementById('kpi-vita').textContent        = pct(d.vit_a_coverage);
-        document.getElementById('kpi-mbg').textContent         = pct(d.mbg_rate);
+        document.getElementById('kpi-sasaran').textContent = num(d.total_anak);
+        document.getElementById('kpi-hadir').textContent   = num(d.total_ditimbang);
+        document.getElementById('kpi-coverage').innerHTML  = 'coverage <strong style="color:oklch(0.38 0.13 145)">'+pct(d.coverage)+'</strong>';
+        document.getElementById('kpi-bbtn').textContent    = num(d.bb_tidak_naik);
     }).fail(function(xhr){ kpiFail(); fail('ringkasan')(xhr); });
 }
 
@@ -378,6 +513,11 @@ function loadGizi(){
         document.getElementById('hl-underweight').textContent = pct(d.underweight_pct);
         var normalPct = d.total > 0 ? Math.round(d.bb_u.normal / d.total * 100) : 0;
         document.getElementById('hl-normal').textContent = normalPct+'%';
+
+        // KPI cards gizi
+        document.getElementById('kpi-stunting').textContent    = num(d.stunting);
+        document.getElementById('kpi-gizi-kurang').textContent = num(d.gizi_kurang);
+        document.getElementById('kpi-gizi-buruk').textContent  = num(d.gizi_buruk);
 
         // TB/U donut
         destroyChart('chart-tbu');
@@ -563,8 +703,81 @@ function loadProgram(){
 }
 
 function escHtml(s){
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// ── DAFTAR MODAL (actionable list) ────────────────────────────
+var KAT_LABEL = {
+    sasaran:'Balita Sasaran', hadir:'Hadir (Ditimbang)', stunting:'Stunting',
+    gizi_kurang:'Gizi Kurang', gizi_buruk:'Gizi Buruk', bb_tidak_naik:'BB Tidak Naik'
+};
+var daftarRows = [];
+
+function renderDaftar(filterText){
+    var rows = daftarRows;
+    if(filterText){
+        var q = filterText.toLowerCase();
+        rows = rows.filter(function(r){
+            return (String(r.nama||'')+' '+String(r.nik||'')+' '+String(r.kelurahan||'')
+                +' '+String(r.rt||'')+' '+String(r.posyandu||'')+' '+String(r.alamat||'')).toLowerCase().indexOf(q) >= 0;
+        });
+    }
+    if(!rows.length){
+        document.getElementById('daftar-table-wrap').innerHTML =
+            '<div style="text-align:center;padding:28px;color:#94a3b8;">Tidak ada data</div>';
+        return;
+    }
+    var h = '<table class="tb-dt"><thead><tr>'
+        +'<th>No</th><th>Nama</th><th>NIK</th><th>Kelurahan</th><th>RT</th><th>Posyandu</th>'
+        +'<th>Alamat Domisili</th><th>Indikator</th><th>Tgl Kunjungan</th></tr></thead><tbody>';
+    rows.forEach(function(r, i){
+        h += '<tr><td>'+(i+1)+'</td>'
+            +'<td>'+escHtml(r.nama)+'</td>'
+            +'<td>'+escHtml(r.nik)+'</td>'
+            +'<td>'+escHtml(r.kelurahan)+'</td>'
+            +'<td>'+escHtml(r.rt)+'</td>'
+            +'<td>'+escHtml(r.posyandu)+'</td>'
+            +'<td>'+escHtml(r.alamat)+'</td>'
+            +'<td>'+escHtml(r.indikator)+'</td>'
+            +'<td>'+escHtml(r.tgl_kunjungan)+'</td></tr>';
+    });
+    h += '</tbody></table>';
+    document.getElementById('daftar-table-wrap').innerHTML = h;
+}
+
+function openDaftar(kategori){
+    var params = getParams();
+    var sep = params ? '&' : '?';
+    document.getElementById('daftar-title').textContent = KAT_LABEL[kategori] || 'Daftar';
+    document.getElementById('daftar-count').textContent = 'Memuat…';
+    document.getElementById('daftar-search').value = '';
+    document.getElementById('daftar-table-wrap').innerHTML =
+        '<div class="tb-loading"><span class="material-symbols-outlined tb-spin">sync</span></div>';
+    document.getElementById('daftar-export').href = API_DAFTAR_EXPORT+params+sep+'kategori='+kategori;
+    document.getElementById('daftar-modal').classList.add('open');
+
+    $.getJSON(API_DAFTAR+params+sep+'kategori='+kategori, function(d){
+        daftarRows = d.rows || [];
+        document.getElementById('daftar-count').textContent = daftarRows.length+' anak';
+        renderDaftar('');
+    }).fail(function(){
+        document.getElementById('daftar-count').textContent = '';
+        document.getElementById('daftar-table-wrap').innerHTML =
+            '<div style="text-align:center;padding:24px;color:#dc2626;">Gagal memuat daftar</div>';
+    });
+}
+
+function closeDaftar(){ document.getElementById('daftar-modal').classList.remove('open'); }
+
+document.querySelectorAll('.tb-kpi--click').forEach(function(card){
+    card.addEventListener('click', function(){ openDaftar(card.getAttribute('data-kategori')); });
+    card.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openDaftar(card.getAttribute('data-kategori')); }
+    });
+});
+document.getElementById('daftar-close').addEventListener('click', closeDaftar);
+document.getElementById('daftar-modal').addEventListener('click', function(e){ if(e.target === this) closeDaftar(); });
+document.getElementById('daftar-search').addEventListener('input', function(){ renderDaftar(this.value); });
 
 function loadAll(){
     loadRingkasan();
@@ -573,6 +786,9 @@ function loadAll(){
     loadCoverage();
     loadProgram();
 }
+
+// Faskes terkunci ke kelurahannya → muat opsi RT/Posyandu-nya saat awal.
+if(!IS_SUPER){ loadRtPosyandu(val('f-kel')); }
 
 loadAll();
 

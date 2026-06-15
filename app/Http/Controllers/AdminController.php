@@ -189,6 +189,15 @@ ANAK
         return response()->json($posyandu);
     }
 
+    /** Posyandu pada satu kelurahan (lewat tabel rt yg menaut kel↔posyandu). */
+    public function getPosyanduByKelAnak($id)
+    {
+        $posyandu = Posyandu::whereIn('id', Rt::where('id_kelurahan', $id)->pluck('id_posyandu')->filter()->unique())
+            ->orderBy('name')
+            ->pluck('name', 'id');
+        return response()->json($posyandu);
+    }
+
     public function editAnak($id)
     {
         $anak = Anak::findByHashIdOrFail($id);
