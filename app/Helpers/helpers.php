@@ -28,6 +28,28 @@ function usia_bulan($tglLahir, $tglAcuan): ?int
     return (int) $lahir->diffInMonths($acuan);
 }
 
+/**
+ * Normalkan nilai posisi/cara ukur ke kanonik yang dikenal z_score():
+ *   'H' = Berdiri / Tinggi Badan
+ *   'L' = Terlentang / Panjang Badan
+ *
+ * Importer & form historis menyimpan beragam kosakata ("Bb", "berdiri",
+ * "terlentang", "panjang", "1"/"2", dst). z_score() hanya mengenal 'H'/'L',
+ * jadi semua varian harus dipetakan ke sini sebelum disimpan. Default 'L'
+ * (panjang badan) bila kosong/tidak dikenali — selaras default importer lama.
+ */
+function normalisasi_posisi($raw): string
+{
+    $v = strtolower(trim((string) $raw));
+
+    $berdiri = ['h', 'b', 'bb', 'berdiri', 'tinggi', 'tinggi badan', 'standing', 'std', '2'];
+    if (in_array($v, $berdiri, true)) {
+        return 'H';
+    }
+    // Sisanya (l, terlentang, berbaring, panjang, lying, '1', kosong) → 'L'.
+    return 'L';
+}
+
 function z_score($x)
 {
 

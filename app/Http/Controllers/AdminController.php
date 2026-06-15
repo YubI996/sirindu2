@@ -543,10 +543,9 @@ ANAK
     public function dataAnak($id)
     {
         $anak = Anak::findByHashIdOrFail($id);
-        $query = DB::table('data_anak')->where('id_anak', $anak->id)->max('bln');
-        $bulanSekarang = $query + 1;
         $jenisVaksin = $this->anakRepository->getJenisVaksin();
-        return view('admin.anak.data-anak', compact('anak', 'bulanSekarang', 'jenisVaksin'));
+        $alasanTidakImunisasi = config('imunisasi.alasan_tidak_imunisasi', []);
+        return view('admin.anak.data-anak', compact('anak', 'jenisVaksin', 'alasanTidakImunisasi'));
     }
 
     public function storeDataAnak(Request $request)
@@ -554,7 +553,6 @@ ANAK
         $request->validate([
             'id_anak_hash' => 'required',
             'tgl_kunjungan' => 'required|date',
-            'bln' => 'required|numeric',
             'posisi' => 'required|in:H,L',
             'tb' => 'required|numeric',
             'bb' => 'required|numeric',
@@ -563,7 +561,6 @@ ANAK
         ], [
             'tgl_kunjungan.required' => 'Tanggal kunjungan wajib diisi.',
             'tgl_kunjungan.date' => 'Format tanggal kunjungan tidak valid.',
-            'bln.required' => 'Umur (bulan) wajib diisi.',
             'posisi.required' => 'Posisi wajib dipilih.',
             'posisi.in' => 'Posisi harus H atau L.',
             'tb.required' => 'Tinggi badan wajib diisi.',
@@ -578,7 +575,22 @@ ANAK
 
         try {
             $anak = Anak::findByHashIdOrFail($request->id_anak_hash);
-            $request->merge(['id_anak' => $anak->id]);
+
+            // Umur (bln) dihitung otomatis dari tgl lahir → tgl kunjungan,
+            // tidak lagi diinput manual di form.
+            $bln = usia_bulan($anak->tgl_lahir, $request->tgl_kunjungan) ?? 0;
+
+            // Alasan "Lainnya" → ambil dari input teks bebas.
+            $alasan = $request->alasan_tidak_imunisasi;
+            if ($alasan === 'Lainnya') {
+                $alasan = $request->alasan_tidak_imunisasi_lain;
+            }
+
+            $request->merge([
+                'id_anak' => $anak->id,
+                'bln' => $bln,
+                'alasan_tidak_imunisasi' => $alasan,
+            ]);
 
             DB::beginTransaction();
 

@@ -165,7 +165,7 @@ class PengukuranImport implements ToCollection, WithStartRow, WithChunkReading
                     ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglKunjungan],
                     [
                         'bln'            => $bln,
-                        'posisi'         => $this->parseShortStr($this->colVal($row, $map, 'posisi'), 10) ?? 'L',
+                        'posisi'         => normalisasi_posisi($this->colVal($row, $map, 'posisi')),
                         'bb'             => $this->parseDecimal($this->colVal($row, $map, 'bb_kg')) ?? 0,
                         'tb'             => $this->parseDecimal($this->colVal($row, $map, 'tb_cm')) ?? 0,
                         'lla'            => $this->parseDecimal($this->colVal($row, $map, 'lla_cm')) ?? 0,

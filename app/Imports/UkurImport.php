@@ -164,7 +164,7 @@ class UkurImport implements ToCollection, WithStartRow, WithChunkReading
                     ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglUkur],
                     [
                         'bln'             => $bln,
-                        'posisi'          => trim((string) ($this->colVal($row, $map, 'caraukur') ?? 'terlentang')),
+                        'posisi'          => normalisasi_posisi($this->colVal($row, $map, 'caraukur')),
                         'bb'              => $this->parseDecimal($this->colVal($row, $map, 'berat')) ?? 0,
                         'tb'              => $this->parseDecimal($this->colVal($row, $map, 'tinggi')) ?? 0,
                         'lla'             => $this->parseDecimal($this->colVal($row, $map, 'lila')) ?? 0,

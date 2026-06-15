@@ -1,6 +1,6 @@
 # Template Import Operasi Timbang
 # Kolom wajib: NIK, nama_anak, TANGGALUKUR, BERAT, TINGGI
-# Kolom opsional: LILA, lingkar_kepala, Pitting_edema (0-3), CARAUKUR (berdiri/terlentang)
+# Kolom opsional: LILA, lingkar_kepala, Pitting_edema (0-3), CARAUKUR (berdiri/terlentang; disimpan H/L)
 #                 vita (ya/tidak), asi_bulan_0 s/d asi_bulan_6 (ya/tidak)
 #                 kelas_ibu_balita (ya/tidak), mbg (ya/tidak)
 #                 imunisasi_terakhir (nama vaksin, contoh: BCG, DPT-HB-Hib 1)

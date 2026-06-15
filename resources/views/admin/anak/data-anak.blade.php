@@ -39,17 +39,12 @@ Data Anak
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label for="bln">Umur (Bulan) <span class="text-danger" aria-hidden="true">*</span></label>
-                <input type="text" name="bln" id="bln" value="{{$bulanSekarang}}" class="form-control" required readonly>
-            </div>
-        </div>
-        <div class="col-md-4 col-sm-12">
-            <div class="form-group">
-                <label for="posisi">Posisi <span class="text-danger" aria-hidden="true">*</span></label>
+                <label for="posisi">Posisi Pengukuran <span class="text-danger" aria-hidden="true">*</span></label>
                 <select name="posisi" id="posisi" class="form-control" required>
-                    <option value="H">H</option>
-                    <option value="L">L</option>
+                    <option value="L">Terlentang (Panjang Badan)</option>
+                    <option value="H">Berdiri (Tinggi Badan)</option>
                 </select>
+                <small class="form-text text-muted">Umur (bulan) dihitung otomatis dari tanggal lahir & tanggal kunjungan.</small>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
@@ -124,11 +119,23 @@ Data Anak
                 </select>
             </div>
         </div>
-        <div class="col-md-8 col-sm-12">
+        <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label for="alasan_tidak_imunisasi">Alasan Tidak Menerima Imunisasi</label>
-                <input type="text" name="alasan_tidak_imunisasi" id="alasan_tidak_imunisasi"
-                       class="form-control" placeholder="Contoh: sakit, orang tua menolak, vaksin habis...">
+                <select name="alasan_tidak_imunisasi" id="alasan_tidak_imunisasi" class="form-control">
+                    <option value="">-- Pilih Alasan --</option>
+                    @foreach($alasanTidakImunisasi as $alasan)
+                    <option value="{{ $alasan }}">{{ $alasan }}</option>
+                    @endforeach
+                    <option value="Lainnya">Lainnya...</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-12" id="alasanLainWrap" style="display: none;">
+            <div class="form-group">
+                <label for="alasan_tidak_imunisasi_lain">Alasan Lainnya</label>
+                <input type="text" name="alasan_tidak_imunisasi_lain" id="alasan_tidak_imunisasi_lain"
+                       class="form-control" placeholder="Tuliskan alasan...">
             </div>
         </div>
     </div>
@@ -318,6 +325,18 @@ Data Anak
             e.target.closest('.imunisasi-row').remove();
         }
     });
+
+    // Toggle input "Alasan Lainnya" saat opsi "Lainnya" dipilih
+    var alasanSelect = document.getElementById('alasan_tidak_imunisasi');
+    var alasanLainWrap = document.getElementById('alasanLainWrap');
+    var alasanLainInput = document.getElementById('alasan_tidak_imunisasi_lain');
+    if (alasanSelect) {
+        alasanSelect.addEventListener('change', function() {
+            var isLain = this.value === 'Lainnya';
+            alasanLainWrap.style.display = isLain ? 'block' : 'none';
+            if (!isLain) { alasanLainInput.value = ''; }
+        });
+    }
 })();
 </script>
 @endsection

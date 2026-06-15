@@ -196,8 +196,8 @@ Edit Anak
             <div class="form-group">
                 <label for="posisi">Cara Ukur (Posisi)</label>
                 <select name="posisi" id="posisi" class="form-control">
-                    <option value="L" @if($dt->posisi == 'L') selected @endif>Berdiri (L)</option>
-                    <option value="H" @if($dt->posisi == 'H') selected @endif>Telentang (H)</option>
+                    <option value="L" @if($dt->posisi == 'L') selected @endif>Terlentang (Panjang Badan)</option>
+                    <option value="H" @if($dt->posisi == 'H') selected @endif>Berdiri (Tinggi Badan)</option>
                 </select>
             </div>
         </div>
@@ -291,8 +291,8 @@ Edit Anak
                 <input type="date" name="tgl_kunjungan" value="{{$data->tgl_kunjungan}}" class="form-control" required>
                 <label>Posisi</label>
                 <select name="posisi" class="form-control" required>
-                    <option value="H" @if($data->posisi == 'H') selected @endif>H</option>
-                    <option value="L" @if($data->posisi == 'L') selected @endif>L</option>
+                    <option value="L" @if($data->posisi == 'L') selected @endif>Terlentang (Panjang Badan)</option>
+                    <option value="H" @if($data->posisi == 'H') selected @endif>Berdiri (Tinggi Badan)</option>
                 </select>
                 <label>Tinggi Badan <span class="text-danger" aria-hidden="true">*</span></label>
                 <input type="text" name="tb" value="{{$data->tb}}" class="form-control" required>

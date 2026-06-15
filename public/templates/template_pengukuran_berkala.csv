@@ -10,7 +10,7 @@
 #   tgl_lahir_anak : Tanggal lahir anak (YYYY-MM-DD),,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 # ============================================================,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-# KOLOM WAJIB (*): nik_anak/nama_anak/tgl_lahir_anak (min 2), tgl_kunjungan, bln, posisi, bb_kg, tb_cm,,,,,,,,,,,,,,,,,,,,,,,,,,,
+# KOLOM WAJIB (*): nik_anak/nama_anak/tgl_lahir_anak (min 2), tgl_kunjungan, posisi, bb_kg, tb_cm,,,,,,,,,,,,,,,,,,,,,,,,,,,
 # ============================================================,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 # KETENTUAN FORMAT:,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 "#   1. Penyimpanan  : Simpan dari Excel sebagai ""CSV UTF-8 (Comma delimited)""",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -23,8 +23,8 @@
 "#                    Contoh: ""Kemerahan, bengkak ringan""",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 # ============================================================,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 # REFERENSI NILAI:,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-#   posisi    : L = Berbaring/Panjang Badan | Bb = Berdiri/Tinggi Badan,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-#   bln       : Usia anak dalam bulan saat pengukuran (0–72),,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+#   posisi    : L = Terlentang/Panjang Badan | H = Berdiri/Tinggi Badan,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+#   bln       : OPSIONAL — dihitung otomatis dari tgl_lahir → tgl_kunjungan. Boleh dikosongkan (hanya fallback bila tgl lahir anak belum terisi),,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 #   bb_kg     : Berat badan dalam kg, 1 desimal (contoh: 9.5),,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 #   tb_cm     : Tinggi/panjang badan dalam cm, 1 desimal (contoh: 76.5),,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 #   lla_cm    : Lingkar lengan atas dalam cm (contoh: 13.5),,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
@@ -41,5 +41,5 @@
 # ============================================================,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 nik_anak,nama_anak,tgl_lahir_anak,tgl_kunjungan,bln,posisi,bb_kg,tb_cm,lla_cm,lk_cm,ntob,ddtka,asi,vit_a,obat_cacing,rujuk,taburia,popm,garam_yodium,makanan_pokok,mkn_kacang,mkn_susu,mkn_daging,mkn_telur,mkn_buah_vita,mkn_buah_lain,hasil_lk,hasil_lila,zscore_bb_u,zscore_pb_u,zscore_bb_pb,imt,imt_u
 3201011501200000,Budi Santoso,2020-01-15,2021-01-15,12,L,9.5,76.5,13.5,47,T,Normal,Ya,Ya,Tidak,Tidak,Tidak,Tidak,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Normal,Normal,-0.52,-0.31,-0.12,16.2,-0.34
-3201010302210000,Siti Aminah,2021-03-03,2024-01-20,34,Bb,14.2,98,15,50,,Normal,Tidak,Tidak,Ya,Tidak,Tidak,Tidak,Ya,Ya,Tidak,Ya,Tidak,Ya,Tidak,Ya,Normal,Normal,0.12,0.45,0.31,14.8,-0.21
+3201010302210000,Siti Aminah,2021-03-03,2024-01-20,34,H,14.2,98,15,50,,Normal,Tidak,Tidak,Ya,Tidak,Tidak,Tidak,Ya,Ya,Tidak,Ya,Tidak,Ya,Tidak,Ya,Normal,Normal,0.12,0.45,0.31,14.8,-0.21
 ,Budi Santoso,2020-01-15,2021-02-15,13,L,9.9,78,13.6,47.3,O,Normal,Ya,Tidak,Tidak,Tidak,Tidak,Tidak,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Ya,Normal,Normal,-0.41,-0.29,-0.09,16.27,-0.28

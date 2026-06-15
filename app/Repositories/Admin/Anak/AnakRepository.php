@@ -217,8 +217,14 @@ class AnakRepository implements AnakRepositoryInterface
     public function updateDataAnak($request, $id)
     {
         $dataAnak = DataAnak::find($id);
+
+        // Recompute umur (bln) bila tgl_kunjungan berubah agar tidak basi.
+        $anak = Anak::find($dataAnak->id_anak);
+        $bln = usia_bulan($anak?->tgl_lahir, $request->tgl_kunjungan) ?? $dataAnak->bln;
+
         $dataAnak->update([
-            'posisi' => $request->posisi,
+            'bln' => $bln,
+            'posisi' => normalisasi_posisi($request->posisi),
             'tb' => $request->tb,
             'bb' => $request->bb,
             'lla' => $request->lla,
