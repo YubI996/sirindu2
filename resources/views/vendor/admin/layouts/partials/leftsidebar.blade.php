@@ -53,7 +53,7 @@
 
 				<li class="dropdown section-group {{ $pd3i ? 'show' : '' }}">
 					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $pd3i ? 'active' : '' }}">
-						<span class="micon fa fa-clipboard-list"></span><span class="mtext">PD3I</span>
+						<span class="micon fa fa-clipboard"></span><span class="mtext">PD3I</span>
 					</a>
 					<ul class="submenu" {!! $pd3i ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
@@ -63,7 +63,7 @@
 
 				<li class="dropdown section-group {{ $export ? 'show' : '' }}">
 					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $export ? 'active' : '' }}">
-						<span class="micon fa fa-file-export"></span><span class="mtext">Export Data</span>
+						<span class="micon fa fa-download"></span><span class="mtext">Export Data</span>
 					</a>
 					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
@@ -72,7 +72,7 @@
 
 				<li class="dropdown section-group {{ $import ? 'show' : '' }}">
 					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $import ? 'active' : '' }}">
-						<span class="micon fa fa-file-upload"></span><span class="mtext">Import Data</span>
+						<span class="micon fa fa-upload"></span><span class="mtext">Import Data</span>
 					</a>
 					<ul class="submenu" {!! $import ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.importCsv.index')}}" class="{{ request()->routeIs('admin.importCsv.*') ? 'active' : '' }}">Import CSV</a></li>
@@ -92,7 +92,7 @@
 
 				<li class="dropdown section-group {{ $admin ? 'show' : '' }}">
 					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $admin ? 'active' : '' }}">
-						<span class="micon fa fa-user-shield"></span><span class="mtext">Administrasi</span>
+						<span class="micon fa fa-users"></span><span class="mtext">Administrasi</span>
 					</a>
 					<ul class="submenu" {!! $admin ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('super.admin.user')}}" class="{{ request()->routeIs('super.admin.*') ? 'active' : '' }}">Pengguna</a></li>
@@ -121,7 +121,7 @@
 
 				<li class="dropdown section-group {{ $pd3i ? 'show' : '' }}">
 					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $pd3i ? 'active' : '' }}">
-						<span class="micon fa fa-clipboard-list"></span><span class="mtext">PD3I</span>
+						<span class="micon fa fa-clipboard"></span><span class="mtext">PD3I</span>
 					</a>
 					<ul class="submenu" {!! $pd3i ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
@@ -162,7 +162,7 @@
 
 				<li class="dropdown section-group {{ $export ? 'show' : '' }}">
 					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $export ? 'active' : '' }}">
-						<span class="micon fa fa-file-export"></span><span class="mtext">Export Data</span>
+						<span class="micon fa fa-download"></span><span class="mtext">Export Data</span>
 					</a>
 					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
