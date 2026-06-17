@@ -180,6 +180,38 @@ class ImunisasiStatusService
     }
 
     /**
+     * Versi ringan statusKejarVaksin: hanya flag kejar IDL/IBL, tanpa membangun
+     * jadwal lengkap & string tanggal. Dipakai di agregasi populasi (getIdlCoverage)
+     * agar tak ada ~370rb date() sia-sia saat memindai ribuan anak.
+     *
+     * @return array{kejar_idl: bool, kejar_ibl: bool}
+     */
+    public function kejarFlags(Anak $anak): array
+    {
+        $imunisasi   = $this->imunisasiAnak($anak)->keyBy('id_jenis_vaksin');
+        $usiaSaatIni = (int) Carbon::parse($anak->tgl_lahir)->diffInDays(now());
+
+        $kejarIdl = false;
+        $kejarIbl = false;
+
+        foreach ($this->jenisVaksinAktif() as $vaksin) {
+            $status = $this->getVaccineStatus($anak, $vaksin, $imunisasi->get($vaksin->id), $usiaSaatIni);
+            if ($status !== 'terlambat') {
+                continue;
+            }
+
+            $kode = $vaksin->kelompokVaksin?->kode;
+            if ($kode === 'IDL') {
+                $kejarIdl = true;
+            } elseif ($kode === 'IBL') {
+                $kejarIbl = true;
+            }
+        }
+
+        return ['kejar_idl' => $kejarIdl, 'kejar_ibl' => $kejarIbl];
+    }
+
+    /**
      * IDL completeness: true if child has received all IDL vaccines that are applicable.
      */
     public function isIdlLengkap(Anak $anak): bool
@@ -218,10 +250,12 @@ class ImunisasiStatusService
      * Aggregate IDL coverage stats, optionally filtered by id_kelurahan or id_kecamatan.
      *
      * @param  array{id_kelurahan?: int, id_kecamatan?: int, id_posyandu?: int}  $filters
-     * @return array{total: int, idl_lengkap: int, persen: float,
+     * @param  bool  $withKejar  Sertakan hitung "butuh_kejar" (kejar IDL/IBL) di pass yang sama,
+     *                           agar dashboard tak perlu memindai populasi dua kali.
+     * @return array{total: int, idl_lengkap: int, persen: float, butuh_kejar: int,
      *               per_kelurahan: array<string, array{nama: string, total: int, lengkap: int, persen: float}>}
      */
-    public function getIdlCoverage(array $filters = []): array
+    public function getIdlCoverage(array $filters = [], bool $withKejar = false): array
     {
         $query = Anak::query()
             ->with(['imunisasi.jenisVaksin', 'kel'])
@@ -239,6 +273,7 @@ class ImunisasiStatusService
 
         $perKelurahan = [];
         $totalLengkap = 0;
+        $butuhKejar   = 0;
 
         foreach ($anakList as $anak) {
             $namaKel = $anak->kel?->name ?? 'Tidak Diketahui';
@@ -259,6 +294,15 @@ class ImunisasiStatusService
                 $perKelurahan[$kelId]['lengkap']++;
                 $totalLengkap++;
             }
+
+            // Hitung "butuh kejar" di pass yang sama (akurat, lintas seluruh populasi).
+            // Pakai versi ringan (flag saja) — tanpa membangun jadwal & string tanggal.
+            if ($withKejar) {
+                $kejar = $this->kejarFlags($anak);
+                if ($kejar['kejar_idl'] || $kejar['kejar_ibl']) {
+                    $butuhKejar++;
+                }
+            }
         }
 
         // Calculate percentages
@@ -274,6 +318,7 @@ class ImunisasiStatusService
             'total'         => $total,
             'idl_lengkap'   => $totalLengkap,
             'persen'        => $total > 0 ? round(($totalLengkap / $total) * 100, 1) : 0.0,
+            'butuh_kejar'   => $butuhKejar,
             'per_kelurahan' => $perKelurahan,
         ];
     }

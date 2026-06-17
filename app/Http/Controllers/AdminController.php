@@ -557,11 +557,15 @@ ANAK
         ]);
 
         $service  = app(\App\Services\ImunisasiStatusService::class);
-        $coverage = $service->getIdlCoverage($filters);
+        // Satu pass populasi: cakupan IDL + hitung "butuh kejar" akurat (lintas semua anak).
+        $coverage = $service->getIdlCoverage($filters, withKejar: true);
+        $butuhKejar = $coverage['butuh_kejar'] ?? 0;
 
-        // Children that need catch-up (≥12 months, IDL not complete)
+        // Daftar anak ≥12 bln — dipaginasi server-side agar tak membangun/mengirim ribuan
+        // baris. Hanya baris pada halaman aktif yang dihitung statusnya.
         $anakKejarQuery = Anak::with(['imunisasi.jenisVaksin', 'kel', 'posyandu'])
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
+            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12')
+            ->orderBy('nama');
 
         if (!empty($filters['id_posyandu'])) {
             $anakKejarQuery->where('id_posyandu', $filters['id_posyandu']);
@@ -571,13 +575,13 @@ ANAK
             $anakKejarQuery->where('id_kec', $filters['id_kecamatan']);
         }
 
-        $anakList = $anakKejarQuery->get()->map(function ($anak) use ($service) {
-            $kejar   = $anak->statusKejarVaksin();
-            $idlLengkap = $service->isIdlLengkap($anak);
+        $anakList = $anakKejarQuery->paginate(25)->withQueryString();
+        $anakList->getCollection()->transform(function ($anak) use ($service) {
+            $kejar = $anak->statusKejarVaksin();
 
             return [
                 'anak'          => $anak,
-                'idl_lengkap'   => $idlLengkap,
+                'idl_lengkap'   => $service->isIdlLengkap($anak),
                 'kejar_idl'     => $kejar['kejar_idl'],
                 'kejar_ibl'     => $kejar['kejar_ibl'],
                 'vaksin_kejar'  => $kejar['vaksin_kejar'],
@@ -592,7 +596,7 @@ ANAK
         $korelasiData = $this->korelasiStuntingVaksin($filters, $coverage);
 
         return view('admin.imunisasi.dashboard', compact(
-            'coverage', 'anakList', 'filters',
+            'coverage', 'anakList', 'butuhKejar', 'filters',
             'kecamatanList', 'kelurahanList', 'posyanduList', 'korelasiData'
         ));
     }

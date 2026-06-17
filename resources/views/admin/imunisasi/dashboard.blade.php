@@ -67,7 +67,7 @@
     $totalAnak       = $coverage['total'];
     $idlLengkap      = $coverage['idl_lengkap'];
     $persen          = $coverage['persen'];
-    $butuhKejar      = $anakList->where('kejar_idl', true)->count() + $anakList->where('kejar_ibl', true)->count();
+    // $butuhKejar dihitung akurat lintas seluruh populasi di controller (bukan per halaman).
     $targetTercapai  = $persen >= 95;
 @endphp
 
@@ -159,7 +159,7 @@
         <div class="card">
             <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Daftar Anak</h5>
-                <span class="badge bg-secondary">{{ $anakList->count() }} anak</span>
+                <span class="badge bg-secondary">{{ number_format($anakList->total()) }} anak</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -177,7 +177,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($anakList as $i => $row)
+                            @forelse($anakList as $row)
                             @php
                                 $anak    = $row['anak'];
                                 $diff    = (new DateTime($anak->tgl_lahir))->diff(new DateTime());
@@ -185,7 +185,7 @@
                                 $rowClass = $row['idl_lengkap'] ? '' : ($row['kejar_idl'] || $row['kejar_ibl'] ? 'table-warning' : '');
                             @endphp
                             <tr class="{{ $rowClass }}">
-                                <td>{{ $i + 1 }}</td>
+                                <td>{{ $anakList->firstItem() + $loop->index }}</td>
                                 <td>
                                     <a href="{{ route('admin.showAnak', $anak->hashid) }}" class="fw-semibold text-decoration-none">
                                         {{ $anak->nama }}
@@ -226,11 +226,20 @@
                                     <a href="{{ route('admin.jadwalImunisasi', $anak->hashid) }}" class="btn btn-sm btn-outline-primary">Jadwal</a>
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">Tidak ada anak pada filter ini.</td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
+            @if($anakList->hasPages())
+            <div class="card-footer bg-white">
+                {{ $anakList->links('pagination::bootstrap-4') }}
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -256,23 +265,8 @@
 @endsection
 
 @section('custom_scripts')
-<script src="{{ asset('admin/src/plugins/datatables/js/jquery.dataTables.min.js') }}"></script>
-<script src="{{ asset('admin/src/plugins/datatables/js/dataTables.bootstrap4.min.js') }}"></script>
-<script>
-$(document).ready(function () {
-    $('#tabelAnakImunisasi').DataTable({
-        responsive: true,
-        pageLength: 25,
-        language: {
-            search: 'Cari:',
-            lengthMenu: 'Tampilkan _MENU_ data',
-            info: 'Menampilkan _START_ s/d _END_ dari _TOTAL_ data',
-            paginate: { previous: 'Sebelumnya', next: 'Selanjutnya' },
-        },
-        columnDefs: [{ orderable: false, targets: [7] }],
-    });
-});
-</script>
+{{-- Daftar Anak kini dipaginasi server-side (lihat AdminController::imunisasiDashboard);
+     DataTables client-side dilepas agar tak menduplikasi paging. --}}
 
 {{-- Scatter korelasi IDL vs stunting --}}
 @if(count($korelasiData) > 0)
