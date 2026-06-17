@@ -16,3 +16,12 @@ yarn-error.log
 /.specify
 /docs
 /import_log_*.txt
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/e2e/.auth/

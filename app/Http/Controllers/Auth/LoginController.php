@@ -80,6 +80,12 @@ class LoginController extends Controller
 
     private function verifyRecaptcha(Request $request): void
     {
+        // Bypass HANYA di env testing dengan flag eksplisit mati — agar tes E2E
+        // bisa login. Dev local manual tetap memverifikasi reCAPTCHA seperti biasa.
+        if (config('services.recaptcha.enabled') === false) {
+            return;
+        }
+
         $token = $request->input('g-recaptcha-response');
 
         if (empty($token)) {
