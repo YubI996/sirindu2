@@ -14,11 +14,44 @@ class ImunisasiStatusService
     private const HPV_CODES = ['HPV', 'HPV1', 'HPV2'];
 
     /**
+     * Cache data referensi per-request. Identik untuk semua anak, jadi tak perlu
+     * di-query ulang di loop dashboard (sebelumnya sumber N+1 ribuan query).
+     * Static agar dibagi lintas instance service (model & controller membuat
+     * instance terpisah lewat app()); PHP membersihkannya tiap akhir request.
+     */
+    private static ?Collection $jenisVaksinAktifCache = null;
+    private static bool $idlLoaded = false;
+    private static ?KelompokVaksin $idlKelompokCache = null;
+
+    /** Jenis vaksin aktif beserta kelompokVaksin (untuk statusKejarVaksin). */
+    private function jenisVaksinAktif(): Collection
+    {
+        return self::$jenisVaksinAktifCache ??= JenisVaksin::aktif()->with('kelompokVaksin')->get();
+    }
+
+    /** Kelompok IDL beserta jenisVaksin-nya (sekali per request). */
+    private function idlKelompok(): ?KelompokVaksin
+    {
+        if (!self::$idlLoaded) {
+            self::$idlLoaded = true;
+            self::$idlKelompokCache = KelompokVaksin::where('kode', 'IDL')->with('jenisVaksin')->first();
+        }
+
+        return self::$idlKelompokCache;
+    }
+
+    /** Imunisasi anak — pakai relasi eager bila sudah dimuat (0 query di loop). */
+    private function imunisasiAnak(Anak $anak): Collection
+    {
+        return $anak->relationLoaded('imunisasi') ? $anak->imunisasi : $anak->imunisasi()->get();
+    }
+
+    /**
      * Determine immunization status for one vaccine relative to a child.
      *
      * Returns: 'sudah' | 'belum' | 'terlambat' | 'kadaluarsa' | 'tidak_relevan'
      */
-    public function getVaccineStatus(Anak $anak, JenisVaksin $vaksin, ?Imunisasi $record): string
+    public function getVaccineStatus(Anak $anak, JenisVaksin $vaksin, ?Imunisasi $record, ?int $usiaSaatIni = null): string
     {
         // HPV is not relevant for males
         if (in_array($vaksin->kode, self::HPV_CODES) && $anak->jk == 1) {
@@ -29,7 +62,9 @@ class ImunisasiStatusService
             return 'sudah';
         }
 
-        $usiaSaatIni = Carbon::parse($anak->tgl_lahir)->diffInDays(now());
+        // Umur identik untuk semua vaksin anak → boleh dihitung sekali oleh pemanggil
+        // (lihat getJadwal) untuk menghindari ribuan Carbon::parse di loop dashboard.
+        $usiaSaatIni ??= (int) Carbon::parse($anak->tgl_lahir)->diffInDays(now());
 
         // HB0 and other non-catchable vaccines
         if (!$vaksin->bisa_dikejar && $usiaSaatIni > $vaksin->usia_pemberian_max) {
@@ -57,20 +92,22 @@ class ImunisasiStatusService
      */
     public function getJadwal(Anak $anak): array
     {
-        $jenisVaksin = JenisVaksin::aktif()->get();
-        $imunisasiDiberikan = Imunisasi::where('id_anak', $anak->id)
-            ->get()
-            ->keyBy('id_jenis_vaksin');
+        $jenisVaksin = $this->jenisVaksinAktif();
+        $imunisasiDiberikan = $this->imunisasiAnak($anak)->keyBy('id_jenis_vaksin');
+
+        // Hitung sekali per anak (bukan per vaksin) — kunci performa di loop ribuan anak.
+        $tglLahirTs  = strtotime($anak->tgl_lahir);
+        $usiaSaatIni = (int) Carbon::parse($anak->tgl_lahir)->diffInDays(now());
 
         $jadwal = [];
         foreach ($jenisVaksin as $vaksin) {
             $record = $imunisasiDiberikan->get($vaksin->id);
-            $status = $this->getVaccineStatus($anak, $vaksin, $record);
+            $status = $this->getVaccineStatus($anak, $vaksin, $record, $usiaSaatIni);
 
-            $tanggalMin = date('Y-m-d', strtotime($anak->tgl_lahir . ' +' . $vaksin->usia_pemberian_min . ' days'));
-            $tanggalMax = date('Y-m-d', strtotime($anak->tgl_lahir . ' +' . $vaksin->usia_pemberian_max . ' days'));
+            $tanggalMin = date('Y-m-d', $tglLahirTs + $vaksin->usia_pemberian_min * 86400);
+            $tanggalMax = date('Y-m-d', $tglLahirTs + $vaksin->usia_pemberian_max * 86400);
             $catchupDeadline = $vaksin->catchup_max_hari
-                ? date('Y-m-d', strtotime($anak->tgl_lahir . ' +' . $vaksin->catchup_max_hari . ' days'))
+                ? date('Y-m-d', $tglLahirTs + $vaksin->catchup_max_hari * 86400)
                 : null;
 
             $jadwal[] = [
@@ -147,15 +184,17 @@ class ImunisasiStatusService
      */
     public function isIdlLengkap(Anak $anak): bool
     {
-        $idl = KelompokVaksin::where('kode', 'IDL')->with('jenisVaksin')->first();
+        $idl = $this->idlKelompok();
         if (!$idl) {
             return false;
         }
 
-        $receivedIds = Imunisasi::where('id_anak', $anak->id)
+        $receivedIds = $this->imunisasiAnak($anak)
             ->where('status', 'sudah')
             ->pluck('id_jenis_vaksin')
-            ->toArray();
+            ->all();
+
+        $usiaSaatIni = Carbon::parse($anak->tgl_lahir)->diffInDays(now());
 
         foreach ($idl->jenisVaksin as $vaksin) {
             // Skip if not applicable (HPV for male, but IDL usually has no HPV)
@@ -163,7 +202,6 @@ class ImunisasiStatusService
                 continue;
             }
             // Skip if kadaluarsa (window closed — can't blame child for this)
-            $usiaSaatIni = Carbon::parse($anak->tgl_lahir)->diffInDays(now());
             if (!$vaksin->bisa_dikejar && $usiaSaatIni > $vaksin->usia_pemberian_max) {
                 continue;
             }
