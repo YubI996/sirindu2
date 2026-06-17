@@ -26,7 +26,7 @@
                             <option value="">Semua Kecamatan</option>
                             @foreach($kecamatanList as $kec)
                                 <option value="{{ $kec->id }}" {{ ($filters['id_kecamatan'] ?? null) == $kec->id ? 'selected' : '' }}>
-                                    {{ $kec->nama }}
+                                    {{ $kec->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -37,7 +37,7 @@
                             <option value="">Semua Kelurahan</option>
                             @foreach($kelurahanList as $kel)
                                 <option value="{{ $kel->id }}" {{ ($filters['id_kelurahan'] ?? null) == $kel->id ? 'selected' : '' }}>
-                                    {{ $kel->nama }}
+                                    {{ $kel->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -48,7 +48,7 @@
                             <option value="">Semua Posyandu</option>
                             @foreach($posyanduList as $pos)
                                 <option value="{{ $pos->id }}" {{ ($filters['id_posyandu'] ?? null) == $pos->id ? 'selected' : '' }}>
-                                    {{ $pos->nama }}
+                                    {{ $pos->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -234,6 +234,25 @@
         </div>
     </div>
 </div>
+
+{{-- Korelasi IDL vs Stunting (Paket E) --}}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">Korelasi Cakupan IDL vs Prevalensi Stunting</h5>
+                <small class="text-muted">Tiap titik = 1 kelurahan. Korelasi tingkat wilayah, bukan kausalitas individual.</small>
+            </div>
+            <div class="card-body">
+                @if(count($korelasiData) > 0)
+                <canvas id="chartKorelasi" height="110"></canvas>
+                @else
+                <div class="text-center text-muted py-4">Belum ada data balita terukur untuk membentuk korelasi.</div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('custom_scripts')
@@ -254,4 +273,66 @@ $(document).ready(function () {
     });
 });
 </script>
+
+{{-- Scatter korelasi IDL vs stunting --}}
+@if(count($korelasiData) > 0)
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    var data = @json($korelasiData);
+    var points = data.map(function (d) {
+        return { x: d.idl_pct, y: d.stunting_pct, nama: d.nama, total: d.total_balita, idl: d.idl_lengkap, stunt: d.stunting };
+    });
+
+    // Garis tren linear sederhana (least squares).
+    var n = points.length, sx = 0, sy = 0, sxy = 0, sxx = 0;
+    points.forEach(function (p) { sx += p.x; sy += p.y; sxy += p.x * p.y; sxx += p.x * p.x; });
+    var trend = [];
+    if (n >= 2 && (n * sxx - sx * sx) !== 0) {
+        var b = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+        var a = (sy - b * sx) / n;
+        trend = [{ x: 0, y: a }, { x: 100, y: a + b * 100 }];
+    }
+
+    var ctx = document.getElementById('chartKorelasi');
+    if (!ctx) return;
+    new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Kelurahan',
+                    data: points,
+                    backgroundColor: 'rgba(8,145,178,0.7)',
+                    pointRadius: 6, pointHoverRadius: 8
+                },
+                {
+                    type: 'line', label: 'Tren', data: trend,
+                    borderColor: '#dc2626', borderDash: [6, 4], borderWidth: 2,
+                    pointRadius: 0, fill: false
+                }
+            ]
+        },
+        options: {
+            scales: {
+                x: { title: { display: true, text: '% Imunisasi Dasar Lengkap (IDL)' }, min: 0, max: 100 },
+                y: { title: { display: true, text: '% Stunting' }, min: 0, max: 100 }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (c) {
+                            var p = c.raw;
+                            if (p.nama === undefined) return '';
+                            return [p.nama, 'IDL: ' + p.idl + '/' + p.total + ' (' + p.x + '%)', 'Stunting: ' + p.stunt + '/' + p.total + ' (' + p.y + '%)'];
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
+@endif
 @endsection

@@ -584,14 +584,73 @@ ANAK
             ];
         });
 
-        $kecamatanList = \App\Models\Kecamatan::orderBy('nama')->get();
-        $kelurahanList = \App\Models\Kelurahan::orderBy('nama')->get();
-        $posyanduList  = \App\Models\Posyandu::orderBy('nama')->get();
+        $kecamatanList = \App\Models\Kecamatan::orderBy('name')->get();
+        $kelurahanList = \App\Models\Kelurahan::orderBy('name')->get();
+        $posyanduList  = \App\Models\Posyandu::orderBy('name')->get();
+
+        // Korelasi cakupan IDL vs prevalensi stunting per kelurahan (Paket E).
+        $korelasiData = $this->korelasiStuntingVaksin($filters, $coverage);
 
         return view('admin.imunisasi.dashboard', compact(
             'coverage', 'anakList', 'filters',
-            'kecamatanList', 'kelurahanList', 'posyanduList'
+            'kecamatanList', 'kelurahanList', 'posyanduList', 'korelasiData'
         ));
+    }
+
+    /**
+     * Data korelasi per kelurahan: % IDL (ImunisasiStatusService) vs % stunting
+     * (StatusGiziService pada kunjungan terakhir). Kelurahan tanpa balita terukur di-skip.
+     *
+     * @return list<array{nama:string,total_balita:int,idl_lengkap:int,idl_pct:float,stunting:int,stunting_pct:float}>
+     */
+    private function korelasiStuntingVaksin(array $filters, array $coverage): array
+    {
+        // Kunjungan terakhir per anak (terfilter wilayah) → stunting per kelurahan.
+        $maxTgl = DB::table('data_anak as dm')
+            ->join('anak as am', 'dm.id_anak', '=', 'am.id')
+            ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
+            ->whereNotNull('dm.tgl_kunjungan');
+        if (!empty($filters['id_posyandu']))      $maxTgl->where('am.id_posyandu', $filters['id_posyandu']);
+        elseif (!empty($filters['id_kelurahan'])) $maxTgl->where('am.id_kel', $filters['id_kelurahan']);
+        elseif (!empty($filters['id_kecamatan'])) $maxTgl->where('am.id_kec', $filters['id_kecamatan']);
+        $maxTgl->groupBy('dm.id_anak');
+
+        $rows = DB::table('data_anak as da')
+            ->joinSub($maxTgl, 'm', function ($j) {
+                $j->on('m.id_anak', '=', 'da.id_anak')->on('m.max_tgl', '=', 'da.tgl_kunjungan');
+            })
+            ->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->where('da.bln', '<=', 60)->where('da.bb', '>', 0)->where('da.tb', '>', 0)
+            ->select('a.id_kel', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')
+            ->get();
+
+        $stuntPerKel = [];
+        foreach ($rows as $m) {
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            if ($g['enum']['tb_u'] === null) continue;
+            $k = $m->id_kel ?? 0;
+            if (!isset($stuntPerKel[$k])) $stuntPerKel[$k] = ['measured' => 0, 'stunting' => 0];
+            $stuntPerKel[$k]['measured']++;
+            if (in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true)) {
+                $stuntPerKel[$k]['stunting']++;
+            }
+        }
+
+        $out = [];
+        foreach (($coverage['per_kelurahan'] ?? []) as $kelId => $idl) {
+            $st = $stuntPerKel[$kelId] ?? null;
+            if (!$st || $st['measured'] <= 0) continue; // butuh sumbu Y (stunting)
+            $out[] = [
+                'nama'         => $idl['nama'],
+                'total_balita' => $st['measured'],
+                'idl_lengkap'  => $idl['lengkap'],
+                'idl_pct'      => $idl['persen'],
+                'stunting'     => $st['stunting'],
+                'stunting_pct' => round($st['stunting'] / $st['measured'] * 100, 1),
+            ];
+        }
+
+        return $out;
     }
 
     public function storeImunisasiDetail(Request $request)

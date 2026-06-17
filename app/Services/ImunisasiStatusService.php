@@ -203,7 +203,7 @@ class ImunisasiStatusService
         $totalLengkap = 0;
 
         foreach ($anakList as $anak) {
-            $namaKel = $anak->kel?->nama ?? 'Tidak Diketahui';
+            $namaKel = $anak->kel?->name ?? 'Tidak Diketahui';
             $kelId   = $anak->id_kel ?? 0;
 
             if (!isset($perKelurahan[$kelId])) {
