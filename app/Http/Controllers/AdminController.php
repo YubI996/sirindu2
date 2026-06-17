@@ -1078,7 +1078,9 @@ All Super Admin Controller
 --------------------------------------------*/
     public function superAdminHome()
     {
-        return view('admin.dashboard.super_admin');
+        return view('admin.dashboard.super_admin', [
+            'quicklinks' => $this->berandaQuicklinks(auth()->user()),
+        ]);
     }
     /*------------------------------------------
 --------------------------------------------
@@ -1087,7 +1089,69 @@ All Admin Controller
 --------------------------------------------*/
     public function adminHome()
     {
-        return view('admin.dashboard.admin');
+        return view('admin.dashboard.admin', [
+            'quicklinks' => $this->berandaQuicklinks(auth()->user()),
+        ]);
+    }
+
+    /**
+     * Token role beranda untuk menyaring quicklink (Paket F).
+     */
+    private function berandaRole(\App\Models\User $user): string
+    {
+        if ($user->isSuperAdmin())       return 'superadmin';
+        if ($user->isFaskesSurveilans()) return 'surveilans';
+        return 'imunisasi'; // legacy admin / imunisasi faskes
+    }
+
+    /**
+     * Daftar quicklink beranda yang tersedia bagi role user, ditandai mana
+     * yang dipilih tampil. NULL preferensi = semua tampil (default).
+     *
+     * @return list<array{key:string,label:string,icon:string,url:string,selected:bool}>
+     */
+    private function berandaQuicklinks(\App\Models\User $user): array
+    {
+        $role     = $this->berandaRole($user);
+        $selected = $user->beranda_quicklinks; // array<string>|null
+
+        $out = [];
+        foreach (config('beranda.quicklinks', []) as $ql) {
+            if (!in_array($role, $ql['roles'], true)) continue;
+            $out[] = [
+                'key'      => $ql['key'],
+                'label'    => $ql['label'],
+                'icon'     => $ql['icon'],
+                'url'      => route($ql['route']),
+                'selected' => $selected === null ? true : in_array($ql['key'], $selected, true),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Simpan preferensi quicklink beranda user (Paket F). Hanya menerima key
+     * yang valid bagi role user (cegah tamper).
+     */
+    public function updateQuicklinks(Request $request)
+    {
+        $user      = auth()->user();
+        $role      = $this->berandaRole($user);
+        $tersedia  = collect(config('beranda.quicklinks', []))
+            ->filter(fn ($q) => in_array($role, $q['roles'], true))
+            ->pluck('key')
+            ->all();
+
+        $dipilih = collect($request->input('keys', []))
+            ->filter(fn ($k) => in_array($k, $tersedia, true))
+            ->values()
+            ->all();
+
+        $user->beranda_quicklinks = $dipilih;
+        $user->save();
+
+        return response()->json(['status' => 'ok', 'keys' => $dipilih]);
     }
 
     /**

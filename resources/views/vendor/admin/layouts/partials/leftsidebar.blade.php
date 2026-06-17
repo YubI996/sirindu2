@@ -18,28 +18,27 @@
 				@if (Auth::user()->isSuperAdmin())
 
 				@php
-					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.pd3i.dashboard', 'admin.timbang.*', 'admin.home', 'super.admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
-					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit', 'admin.pd3i.dashboard');
-					$gizi = request()->routeIs('admin.timbang.*');
+					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
 					$export = request()->routeIs('admin.export.*');
 					$import = request()->routeIs('admin.importCsv.*');
 					$master = request()->routeIs('admin.masterdata.*');
-					$admin = request()->routeIs('super.admin.*');
+					$admin = request()->routeIs('super.admin.user', 'super.admin.storeUser', 'super.admin.editUser', 'super.admin.updateUser', 'super.admin.destroyUser');
 				@endphp
 
-				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">
-					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $beranda ? 'active' : '' }}">
-						<span class="micon fa fa-th-large"></span><span class="mtext">Beranda</span>
+				<li class="dropdown section-group {{ $dashboard ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $dashboard ? 'active' : '' }}">
+						<span class="micon fa fa-tachometer"></span><span class="mtext">Dashboard</span>
 					</a>
-					<ul class="submenu" {!! $beranda ? 'style="display:block;"' : '' !!}>
-						<li class="submenu-label">Imunisasi</li>
-						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Dashboard</a></li>
+					<ul class="submenu" {!! $dashboard ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Imunisasi</a></li>
+						<li><a href="{{route('admin.timbang.dashboard')}}" class="{{ request()->routeIs('admin.timbang.*') ? 'active' : '' }}">Gizi &amp; Timbang</a></li>
+						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}">Surveilans PD3I</a></li>
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Surveilans (legacy)</a></li>
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
-						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
-						<li class="submenu-label">Surveilans</li>
-						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Dashboard</a></li>
 						<li><a href="{{route('admin.epidemiologi.map')}}" class="{{ request()->routeIs('admin.epidemiologi.map') ? 'active' : '' }}">Peta Sebaran</a></li>
+						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 					</ul>
 				</li>
 
@@ -57,18 +56,8 @@
 						<span class="micon fa fa-clipboard-list"></span><span class="mtext">PD3I</span>
 					</a>
 					<ul class="submenu" {!! $pd3i ? 'style="display:block;"' : '' !!}>
-						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}"><i class="fa fa-chart-bar mr-1" style="font-size:.8rem;"></i>Dashboard PD3I</a></li>
 						<li><a href="{{route('admin.epidemiologi.index')}}" class="{{ request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.show', 'admin.epidemiologi.edit') ? 'active' : '' }}">Daftar Kasus</a></li>
 						<li><a href="{{route('admin.epidemiologi.create')}}" class="{{ request()->routeIs('admin.epidemiologi.create') ? 'active' : '' }}">Tambah Kasus</a></li>
-					</ul>
-				</li>
-
-				<li class="dropdown section-group {{ $gizi ? 'show' : '' }}">
-					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $gizi ? 'active' : '' }}">
-						<span class="micon fa fa-weight"></span><span class="mtext">Gizi &amp; Timbang</span>
-					</a>
-					<ul class="submenu" {!! $gizi ? 'style="display:block;"' : '' !!}>
-						<li><a href="{{route('admin.timbang.dashboard')}}" class="{{ request()->routeIs('admin.timbang.dashboard') ? 'active' : '' }}">Dashboard Timbang</a></li>
 					</ul>
 				</li>
 
@@ -116,17 +105,16 @@
 				@elseif (Auth::user()->isFaskesSurveilans())
 
 				@php
-					$beranda = request()->routeIs('admin.epidemiologi.dashboard', 'admin.epidemiologi.map');
-					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit', 'admin.pd3i.dashboard');
+					$dashboard = request()->routeIs('admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.home');
+					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
 				@endphp
 
-				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">
-					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $beranda ? 'active' : '' }}">
-						<span class="micon fa fa-th-large"></span><span class="mtext">Beranda</span>
+				<li class="dropdown section-group {{ $dashboard ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $dashboard ? 'active' : '' }}">
+						<span class="micon fa fa-tachometer"></span><span class="mtext">Dashboard</span>
 					</a>
-					<ul class="submenu" {!! $beranda ? 'style="display:block;"' : '' !!}>
-						<li class="submenu-label">Surveilans</li>
-						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Dashboard</a></li>
+					<ul class="submenu" {!! $dashboard ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Surveilans</a></li>
 						<li><a href="{{route('admin.epidemiologi.map')}}" class="{{ request()->routeIs('admin.epidemiologi.map') ? 'active' : '' }}">Peta Sebaran</a></li>
 					</ul>
 				</li>
@@ -147,18 +135,17 @@
 				@else
 
 				@php
-					$beranda = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.map', 'admin.earlyWarning', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$export = request()->routeIs('admin.export.*');
 				@endphp
 
-				<li class="dropdown section-group {{ $beranda ? 'show' : '' }}">
-					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $beranda ? 'active' : '' }}">
-						<span class="micon fa fa-th-large"></span><span class="mtext">Beranda</span>
+				<li class="dropdown section-group {{ $dashboard ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $dashboard ? 'active' : '' }}">
+						<span class="micon fa fa-tachometer"></span><span class="mtext">Dashboard</span>
 					</a>
-					<ul class="submenu" {!! $beranda ? 'style="display:block;"' : '' !!}>
-						<li class="submenu-label">Imunisasi</li>
-						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Dashboard</a></li>
+					<ul class="submenu" {!! $dashboard ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Imunisasi</a></li>
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 					</ul>

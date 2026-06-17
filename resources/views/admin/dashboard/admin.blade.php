@@ -83,36 +83,5 @@
 
 <div class="srd-divider"></div>
 
-<nav class="srd-quicklinks" aria-label="Akses cepat">
-    <a class="srd-ql" href="{{ route('admin.analytics') }}">
-        <i class="fa fa-chart-bar" aria-hidden="true"></i>Dashboard
-    </a>
-    <a class="srd-ql" href="{{ route('admin.map') }}">
-        <i class="fa fa-map-marked-alt" aria-hidden="true"></i>Peta Statistik
-    </a>
-    <a class="srd-ql" href="{{ route('admin.earlyWarning') }}">
-        <i class="fa fa-chart-line" aria-hidden="true"></i>Proyeksi
-    </a>
-    <a class="srd-ql" href="{{ route('admin.anak') }}">
-        <i class="fa fa-child" aria-hidden="true"></i>Data Anak
-    </a>
-    <a class="srd-ql" href="{{ route('admin.export.imunisasi.index') }}">
-        <i class="fa fa-file-export" aria-hidden="true"></i>Export Data
-    </a>
-</nav>
-@endsection
-
-@section('scripts')
-@parent
-<script>
-(function () {
-    var hour = new Date().getHours();
-    var greet = hour < 11 ? 'Selamat pagi,'
-              : hour < 15 ? 'Selamat siang,'
-              : hour < 19 ? 'Selamat sore,'
-              :              'Selamat malam,';
-    var el = document.getElementById('js-home-greeting');
-    if (el) el.textContent = greet;
-})();
-</script>
+@include('admin.dashboard.partials.quicklinks')
 @endsection

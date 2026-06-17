@@ -56,6 +56,7 @@ All Admin Routes List
 
 Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('home', [App\Http\Controllers\AdminController::class, 'adminHome'])->name('admin.home');
+    Route::post('beranda/quicklinks', [App\Http\Controllers\AdminController::class, 'updateQuicklinks'])->name('admin.beranda.quicklinks');
     Route::get('analytics', [App\Http\Controllers\AdminController::class, 'analyticsDashboard'])->name('admin.analytics');
     Route::get('analytics/filter-imunisasi', [App\Http\Controllers\AdminController::class, 'analyticsFilterImunisasi'])->name('admin.analytics.filterImunisasi');
     Route::get('map', [App\Http\Controllers\AdminController::class, 'mapDashboard'])->name('admin.map');

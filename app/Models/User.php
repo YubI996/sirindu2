@@ -34,6 +34,14 @@ class User extends Authenticatable
         'id_puskesmas',
         'id_rs',
         'id_posyandu',
+        'beranda_quicklinks', // Paket F: key quicklink beranda yang dipilih user (JSON)
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'beranda_quicklinks' => 'array',
     ];
 
     /**
