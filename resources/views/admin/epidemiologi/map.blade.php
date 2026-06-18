@@ -1,5 +1,5 @@
 @extends('admin::layouts.app')
-@section('title') Admin @endsection
+@section('title') Peta Sebaran Kasus Surveillance @endsection
 @section('title-content') Epidemiologi @endsection
 @section('item') Surveillance @endsection
 @section('item-active') Peta Sebaran @endsection
