@@ -243,6 +243,58 @@
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
     .skel-text  { height: 1.4rem; width: 60%; margin: 0.25rem auto; }
     .skel-value { height: 2rem;   width: 50%; margin: 0.15rem auto; }
+
+    /* ─── PETA (choropleth) ─── */
+    .peta-toolbar .btn-group .btn {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+    .peta-legend {
+        position: absolute;
+        z-index: 1000;
+        bottom: 12px;
+        right: 12px;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid oklch(0.88 0.02 145);
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-family: 'Barlow', Arial, sans-serif;
+        font-size: 0.72rem;
+        color: var(--text-primary, #1a2e1a);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+        line-height: 1.5;
+    }
+    .peta-legend .legend-title {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-size: 0.68rem;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+    }
+    .peta-legend .legend-row { display: flex; align-items: center; gap: 6px; }
+    .peta-legend .legend-swatch {
+        width: 16px; height: 12px; border-radius: 2px; flex-shrink: 0;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .peta-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 1100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.82);
+        font-family: 'Barlow', Arial, sans-serif;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        text-align: center;
+        padding: 1rem;
+    }
 </style>
 
 <div class="container-fluid" id="main-content">
@@ -764,9 +816,28 @@
         {{-- ===== TAB 5: PETA ===== --}}
         <div class="tab-pane fade" id="tab-peta" role="tabpanel" aria-labelledby="tab-peta-link">
             <div class="info-card">
-                <div class="card-header"><i class="fa fa-map mr-1"></i> Peta Persebaran Kasus</div>
-                <div class="card-body p-0">
+                <div class="card-header peta-toolbar d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
+                    <span><i class="fa fa-map mr-1"></i> Peta Kepadatan Kasus per Wilayah</span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Pilih tingkat wilayah peta">
+                        <button type="button" class="btn btn-outline-primary" id="peta-btn-kecamatan" data-peta-layer="kecamatan">
+                            <i class="fa fa-city mr-1"></i> Kecamatan
+                        </button>
+                        <button type="button" class="btn btn-primary" id="peta-btn-kelurahan" data-peta-layer="kelurahan">
+                            <i class="fa fa-map mr-1"></i> Kelurahan
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0" style="position:relative;">
                     <div id="map-wilayah" style="height:500px; border-radius:0 0 10px 10px;"></div>
+                    <div id="peta-legend" class="peta-legend" style="display:none;">
+                        <div class="legend-title">Jumlah Kasus (Suspek + Confirmed)</div>
+                        <div class="legend-row"><span class="legend-swatch" style="background:#7f1d1d;"></span> &gt; 50</div>
+                        <div class="legend-row"><span class="legend-swatch" style="background:#b91c1c;"></span> 21 – 50</div>
+                        <div class="legend-row"><span class="legend-swatch" style="background:#e08a00;"></span> 11 – 20</div>
+                        <div class="legend-row"><span class="legend-swatch" style="background:#00A651;"></span> 1 – 10</div>
+                        <div class="legend-row"><span class="legend-swatch" style="background:#e5e7eb;"></span> 0</div>
+                    </div>
+                    <div id="peta-overlay" class="peta-overlay">Memuat peta…</div>
                 </div>
             </div>
         </div>{{-- /tab-peta --}}
@@ -794,8 +865,18 @@
     };
 
     const charts = {};
-    let leafletMap = null;
-    let markersLayer = null;
+
+    // ── Peta state ──
+    let leafletMap     = null;   // Leaflet map instance (created on first peta tab show)
+    let petaGeoLayer   = null;   // current choropleth GeoJSON layer on the map
+    let petaWilayahData= null;   // last wilayah payload from API (per_kecamatan / per_kelurahan)
+    let petaLayerType  = 'kelurahan';
+    let petaMapping    = null;   // mapping.json (name normalisation)
+    const petaGeoCache = { kecamatan: null, kelurahan: null };
+    const PETA_GEOJSON = {
+        kecamatan: '/geojson/Kota Bontang-KECAMATAN.geojson',
+        kelurahan: '/geojson/Kota Bontang-KEL_DESA.geojson',
+    };
 
     const PALETTE = [
         '#00A651','#c68200','#b91c1c','#0f4c81','#7d1847',
@@ -1327,31 +1408,189 @@
         }
     }
 
-    // ======= RENDER PETA =======
-    function renderPeta(data) {
-        if (!data) return;
-        const peta = data.peta || [];
+    // ======= RENDER PETA (choropleth per wilayah) =======
+    // Kasus surveilans tidak menyimpan koordinat titik (lat/lng kosong), jadi
+    // peta digambar sebagai choropleth: tiap poligon kecamatan/kelurahan
+    // diwarnai menurut jumlah kasus (suspek + confirmed) dari agregat API
+    // `per_kecamatan` / `per_kelurahan`. Mengikuti pola peta statistik
+    // (epidemiologi/map) yang sudah terbukti jalan.
 
-        if (!leafletMap) {
-            leafletMap = L.map('map-wilayah').setView([0.1236, 117.4753], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors',
-                maxZoom: 18,
-            }).addTo(leafletMap);
-            markersLayer = L.layerGroup().addTo(leafletMap);
+    function renderPeta(data) {
+        petaWilayahData = data || null;
+        // Hanya render bila map sudah dibuat (tab Peta pernah dibuka). Saat tab
+        // dibuka, handler shown.bs.tab memanggil petaActivate() untuk render.
+        if (leafletMap) petaRenderLayer();
+    }
+
+    function petaColor(count) {
+        return count > 50 ? '#7f1d1d' :
+               count > 20 ? '#b91c1c' :
+               count > 10 ? '#e08a00' :
+               count > 0  ? '#00A651' : '#e5e7eb';
+    }
+
+    function petaCountOf(row) {
+        return row ? ((row.suspek || 0) + (row.confirmed || 0)) : 0;
+    }
+
+    function petaFeatureName(feature) {
+        const p = feature.properties || {};
+        return p.Name || p.nama || p.kel_desa || p.NAME || 'Tidak Diketahui';
+    }
+
+    // Normalkan nama fitur GeoJSON kelurahan ke nama di database via mapping.json.
+    function petaResolveKelName(name) {
+        if (!name) return '';
+        let n = name;
+        const norm = petaMapping && petaMapping.normalisasi;
+        if (norm) {
+            if (norm[n]) n = norm[n];
+            else {
+                const low = n.toLowerCase();
+                for (const k in norm) if (k.toLowerCase() === low) { n = norm[k]; break; }
+            }
+        }
+        const kel = petaMapping && petaMapping.kelurahan;
+        if (kel) {
+            if (kel[n]) return kel[n];
+            const low = n.toLowerCase();
+            for (const k in kel) if (k.toLowerCase() === low) return kel[k];
+        }
+        return n;
+    }
+
+    // Agregat kasus untuk satu poligon wilayah. Sebuah nama kelurahan bisa
+    // muncul di >1 baris (kasus terdaftar di kecamatan berbeda akibat data
+    // tidak konsisten), jadi semua baris yang cocok dijumlahkan. Exact match
+    // diutamakan agar "Tanjung Laut Indah" tidak ikut terhitung di "Tanjung
+    // Laut"; pencocokan toleran hanya dipakai bila tak ada yang persis.
+    function petaLookup(featureName) {
+        const rows = petaLayerType === 'kecamatan'
+            ? (petaWilayahData && petaWilayahData.per_kecamatan) || []
+            : (petaWilayahData && petaWilayahData.per_kelurahan) || [];
+        const key = petaLayerType === 'kecamatan' ? 'kecamatan' : 'kelurahan';
+
+        let target = featureName || '';
+        if (petaLayerType === 'kecamatan') target = target.replace(/^Kecamatan\s+/i, '');
+        else                               target = petaResolveKelName(target);
+        const low = target.toLowerCase();
+
+        let matched = rows.filter(r => (r[key] || '').toLowerCase() === low);
+        if (matched.length === 0) {
+            matched = rows.filter(r => {
+                const nm = (r[key] || '').toLowerCase();
+                return nm && low && (nm.includes(low) || low.includes(nm));
+            });
+        }
+        if (matched.length === 0) return null;
+
+        return matched.reduce((a, r) => ({
+            suspek:    a.suspek    + (r.suspek    || 0),
+            confirmed: a.confirmed + (r.confirmed || 0),
+            meninggal: a.meninggal + (r.meninggal || 0),
+        }), { suspek: 0, confirmed: 0, meninggal: 0 });
+    }
+
+    function petaPopup(feature) {
+        const name    = petaFeatureName(feature);
+        const display = petaLayerType === 'kecamatan' ? name.replace(/^Kecamatan\s+/i, '') : name;
+        const row     = petaLookup(name);
+        const total   = petaCountOf(row);
+        let html = '<div style="min-width:170px;"><b>' + esc(display) + '</b>';
+        if (row && total > 0) {
+            html += '<hr style="margin:6px 0;">'
+                 +  '<div>Suspek: <b>' + (row.suspek || 0) + '</b></div>'
+                 +  '<div>Confirmed: <b>' + (row.confirmed || 0) + '</b></div>'
+                 +  '<div>Meninggal: <b' + (row.meninggal > 0 ? ' style="color:#b91c1c;"' : '') + '>' + (row.meninggal || 0) + '</b></div>'
+                 +  '<div style="margin-top:4px; border-top:1px solid #eee; padding-top:4px;">Total: <b>' + total + '</b> kasus</div>';
         } else {
-            markersLayer.clearLayers();
+            html += '<br><span style="color:#6b7280;">Tidak ada kasus</span>';
+        }
+        return html + '</div>';
+    }
+
+    function petaStyle(feature) {
+        const row = petaLookup(petaFeatureName(feature));
+        return {
+            fillColor: petaColor(petaCountOf(row)),
+            weight: petaLayerType === 'kecamatan' ? 3 : 2,
+            color: '#ffffff',
+            opacity: 1,
+            fillOpacity: 0.72,
+        };
+    }
+
+    // Dipanggil saat tab Peta ditampilkan: buat map (sekali), muat mapping.json,
+    // lalu render layer aktif.
+    async function petaActivate() {
+        const overlay = document.getElementById('peta-overlay');
+        try {
+            if (!leafletMap) {
+                leafletMap = L.map('map-wilayah').setView([0.1236, 117.4753], 12);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors',
+                    maxZoom: 18,
+                }).addTo(leafletMap);
+            }
+            leafletMap.invalidateSize();
+
+            if (petaMapping === null) {
+                petaMapping = await fetch('/geojson/mapping.json').then(r => r.json()).catch(() => ({}));
+            }
+            await petaRenderLayer();
+        } catch (e) {
+            console.error('Gagal menampilkan peta:', e);
+            if (overlay) { overlay.textContent = 'Gagal memuat peta.'; overlay.style.display = 'flex'; }
+        }
+    }
+
+    async function petaRenderLayer() {
+        const overlay = document.getElementById('peta-overlay');
+        const legend  = document.getElementById('peta-legend');
+        if (!leafletMap) return;
+
+        // Lazy-load GeoJSON untuk layer aktif
+        if (!petaGeoCache[petaLayerType]) {
+            if (overlay) { overlay.textContent = 'Memuat peta…'; overlay.style.display = 'flex'; }
+            try {
+                petaGeoCache[petaLayerType] = await fetch(PETA_GEOJSON[petaLayerType]).then(r => {
+                    if (!r.ok) throw new Error('GeoJSON tidak tersedia');
+                    return r.json();
+                });
+            } catch (e) {
+                if (overlay) { overlay.textContent = 'Data batas wilayah tidak tersedia.'; overlay.style.display = 'flex'; }
+                return;
+            }
         }
 
-        peta.forEach(p => {
-            const colorMap = { confirmed: '#b91c1c', discarded: '#8a9e8a', suspected: '#c68200' };
-            const color    = colorMap[p.status] || '#5a7a5a';
-            L.circleMarker([p.lat, p.lng], {
-                radius: 7, color, fillColor: color, fillOpacity: 0.75, weight: 2,
-            })
-            .bindPopup(`<b>${esc(p.nama)}</b><br>${esc(p.penyakit)}<br><em>${p.status}</em>`)
-            .addTo(markersLayer);
+        if (petaGeoLayer) { leafletMap.removeLayer(petaGeoLayer); petaGeoLayer = null; }
+
+        petaGeoLayer = L.geoJSON(petaGeoCache[petaLayerType], {
+            style: petaStyle,
+            onEachFeature: function (feature, layer) {
+                layer.bindPopup(petaPopup(feature));
+                layer.on({
+                    mouseover: e => { e.target.setStyle({ weight: 4, color: '#3d3d3d', fillOpacity: 0.88 }); e.target.bringToFront(); },
+                    mouseout:  e => { if (petaGeoLayer) petaGeoLayer.resetStyle(e.target); },
+                });
+            },
+        }).addTo(leafletMap);
+
+        try { leafletMap.fitBounds(petaGeoLayer.getBounds(), { padding: [12, 12] }); } catch (e) {}
+
+        if (overlay) overlay.style.display = 'none';
+        if (legend)  legend.style.display = 'block';
+    }
+
+    function petaSwitchLayer(type) {
+        if (type === petaLayerType || !PETA_GEOJSON[type]) return;
+        petaLayerType = type;
+        document.querySelectorAll('[data-peta-layer]').forEach(btn => {
+            const active = btn.dataset.petaLayer === type;
+            btn.classList.toggle('btn-primary', active);
+            btn.classList.toggle('btn-outline-primary', !active);
         });
+        petaRenderLayer();
     }
 
     // ======= FILTER LISTENERS =======
@@ -1366,12 +1605,19 @@
     // jadi handler harus pakai jQuery .on() (addEventListener tak menangkapnya).
     $('[data-toggle="tab"]').on('shown.bs.tab', function () {
         Object.values(charts).forEach(c => { try { c.resize(); } catch(e) {} });
-        if (leafletMap) { leafletMap.invalidateSize(); }
+        if (this.dataset && this.dataset.target === '#tab-peta') {
+            petaActivate();                       // init map + render choropleth (lazy)
+        } else if (leafletMap) {
+            leafletMap.invalidateSize();
+        }
     });
 
     // ======= INITIAL LOAD =======
     document.addEventListener('DOMContentLoaded', function () {
         initMultiselects();
+        document.querySelectorAll('[data-peta-layer]').forEach(btn => {
+            btn.addEventListener('click', () => petaSwitchLayer(btn.dataset.petaLayer));
+        });
         buildParams();
         fetchAllTabs();
     });
