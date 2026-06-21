@@ -20,5 +20,19 @@
       "Bash(grep -E '^[* ]*[0-9]+-pd3i-form-surveilans$')",
       "Bash(grep -E '^[0-9]+-pd3i-form-surveilans$')"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "php .claude/hooks/php-lint.php",
+            "statusMessage": "Memeriksa sintaks PHP..."
+          }
+        ]
+      }
+    ]
   }
 }
