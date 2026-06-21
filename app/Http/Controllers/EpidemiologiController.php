@@ -24,7 +24,6 @@ use App\Exports\SurveillanceExport;
 use App\Imports\Pd3iImport;
 use App\Jobs\ImportPd3iJob;
 use App\Models\ImportLog;
-use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
