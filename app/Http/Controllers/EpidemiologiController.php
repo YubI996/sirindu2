@@ -20,9 +20,11 @@ use Yajra\DataTables\DataTables;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Exports\SurveillanceExport;
 use App\Imports\Pd3iImport;
 use App\Jobs\ImportPd3iJob;
 use App\Models\ImportLog;
+use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -807,78 +809,18 @@ class EpidemiologiController extends Controller
         abort_if(auth()->user()->isFaskesSurveilans(), 403, 'Faskes tidak memiliki izin export data.');
 
         try {
-            // This will be implemented with Maatwebsite/Excel later
-            // For now, return a simple CSV export
+            // Export penuh: pakai SurveillanceExport yang sama dengan dashboard PD3I
+            // (seluruh field kasus + relasi, kolom dinamis). Tahun null = semua tahun,
+            // sesuai tabel halaman ini; hormati filter jenis penyakit & status.
+            $export = new SurveillanceExport(
+                tahun: null,
+                jenisKasusId: $request->filled('disease_id') ? (int) $request->disease_id : null,
+                statusKasus: $request->filled('status') ? $request->status : null,
+            );
 
-            $query = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan']);
+            $filename = 'surveilans-pd3i-' . date('Ymd_His') . '.xlsx';
 
-            // Apply filters from request
-            if ($request->has('disease_id') && $request->disease_id != '') {
-                $query->where('id_jenis_kasus', $request->disease_id);
-            }
-
-            if ($request->has('status') && $request->status != '') {
-                $query->where('status_kasus', $request->status);
-            }
-
-            if ($request->has('start_date') && $request->has('end_date')) {
-                $query->whereBetween('tanggal_onset', [$request->start_date, $request->end_date]);
-            }
-
-            $cases = $query->get();
-
-            $filename = 'surveillance_cases_' . date('YmdHis') . '.csv';
-
-            $headers = [
-                'Content-Type' => 'text/csv',
-                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            ];
-
-            $callback = function () use ($cases) {
-                $file = fopen('php://output', 'w');
-
-                // CSV Headers
-                fputcsv($file, [
-                    'No Registrasi',
-                    'NIK',
-                    'Nama Lengkap',
-                    'Tanggal Lahir',
-                    'Jenis Kelamin',
-                    'Alamat',
-                    'Kecamatan',
-                    'Kelurahan',
-                    'Jenis Kasus',
-                    'Tanggal Onset',
-                    'Tanggal Lapor',
-                    'Status Kasus',
-                    'Status Rawat',
-                    'Kondisi Akhir',
-                ]);
-
-                // CSV Data
-                foreach ($cases as $case) {
-                    fputcsv($file, [
-                        $case->no_registrasi,
-                        $case->nik,
-                        $case->nama_lengkap,
-                        $case->tanggal_lahir?->format('d/m/Y') ?? '-',
-                        match($case->jenis_kelamin) { 'L' => 'Laki-laki', 'P' => 'Perempuan', default => '-' },
-                        $case->alamat_lengkap,
-                        $case->kecamatan?->name ?? '-',
-                        $case->kelurahan?->name ?? '-',
-                        $case->jenisKasus?->nama_penyakit ?? '-',
-                        $case->tanggal_onset?->format('d/m/Y') ?? '-',
-                        $case->tanggal_lapor?->format('d/m/Y') ?? '-',
-                        $case->status_kasus,
-                        $case->status_rawat,
-                        $case->kondisi_akhir,
-                    ]);
-                }
-
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
+            return Excel::download($export, $filename);
         } catch (\Exception $e) {
             Alert::error('Gagal', 'Gagal export data: ' . $e->getMessage());
             return back();

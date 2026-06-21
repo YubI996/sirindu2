@@ -29,16 +29,24 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
         protected ?int $jenisKasusId = null,
         protected ?array $wilker = null,
         protected ?array $kelurahanId = null,
-        protected ?array $kabKota = null
+        protected ?array $kabKota = null,
+        protected ?string $statusKasus = null
     ) {
-        $this->tahun = $tahun ?? now()->year;
+        // tahun null = semua tahun (dipakai export halaman Epidemiologi yang tak
+        // membatasi tahun). Dashboard PD3I selalu mengirim tahun eksplisit.
     }
 
     /** Query dasar (filter saja) — dipakai untuk caps & query export. */
     private function baseQuery()
     {
-        $q = SurveillanceCase::query()->whereYear('tanggal_lapor', $this->tahun);
+        $q = SurveillanceCase::query();
 
+        if ($this->tahun !== null) {
+            $q->whereYear('tanggal_lapor', $this->tahun);
+        }
+        if ($this->statusKasus) {
+            $q->where('status_kasus', $this->statusKasus);
+        }
         if ($this->jenisKasusId) {
             $q->where('id_jenis_kasus', $this->jenisKasusId);
         }
@@ -336,6 +344,6 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
 
     public function title(): string
     {
-        return 'Data Surveilans ' . $this->tahun;
+        return 'Data Surveilans ' . ($this->tahun ?? 'Semua Tahun');
     }
 }
