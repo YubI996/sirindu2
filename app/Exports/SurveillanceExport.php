@@ -13,15 +13,16 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 /**
  * Export surveilans "satu sheet lebar": seluruh field kasus utama + data relasi
  * (imunisasi/spesimen/kontak erat/faskes berobat) diratakan jadi kolom berulang.
- * Cap relasi dijadikan konstanta agar mudah disesuaikan.
+ *
+ * Jumlah set kolom relasi DINAMIS — dihitung dari jumlah maksimum record relasi
+ * pada kasus terfilter (klien minta data penuh, tanpa cap statis yang memotong).
+ * Max dihitung lewat satu query agregat (withCount), jadi streaming FromQuery tetap
+ * terjaga (tidak memuat seluruh baris ke memori).
  */
 class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize
 {
-    /** Jumlah set kolom berulang untuk tiap relasi. */
-    private const IMUNISASI_SET = 5;
-    private const SPESIMEN_CAP = 3;
-    private const KONTAK_CAP = 3;
-    private const FASKES_CAP = 3;
+    /** Jumlah set kolom relasi per kasus, dihitung sekali dari data. */
+    private ?array $caps = null;
 
     public function __construct(
         protected ?int $tahun = null,
@@ -33,15 +34,10 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
         $this->tahun = $tahun ?? now()->year;
     }
 
-    public function query()
+    /** Query dasar (filter saja) — dipakai untuk caps & query export. */
+    private function baseQuery()
     {
-        $q = SurveillanceCase::with([
-            'jenisKasus:id,nama_penyakit', 'kecamatan:id,name', 'kelurahan:id,name', 'rt:id,name',
-            'imunisasi', 'spesimen', 'kontakErat', 'faskesBerobat',
-        ])
-            ->whereYear('tanggal_lapor', $this->tahun)
-            ->orderBy('tanggal_lapor')
-            ->orderBy('no_registrasi');
+        $q = SurveillanceCase::query()->whereYear('tanggal_lapor', $this->tahun);
 
         if ($this->jenisKasusId) {
             $q->where('id_jenis_kasus', $this->jenisKasusId);
@@ -57,6 +53,42 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
         }
 
         return $q;
+    }
+
+    /**
+     * Jumlah set kolom tiap relasi = max record per kasus pada data terfilter.
+     * Minimum 1 agar struktur header tetap stabil walau relasi kosong.
+     */
+    private function caps(): array
+    {
+        if ($this->caps !== null) {
+            return $this->caps;
+        }
+
+        $counts = $this->baseQuery()
+            ->withCount(['spesimen', 'kontakErat', 'faskesBerobat'])
+            // Imunisasi dipetakan via slot `imunisasi_ke` (bisa renggang), jadi cap-nya
+            // = nilai slot tertinggi, bukan jumlah baris.
+            ->withMax('imunisasi', 'imunisasi_ke')
+            ->get(['id']);
+
+        return $this->caps = [
+            'imunisasi' => max(1, (int) $counts->max('imunisasi_max_imunisasi_ke')),
+            'spesimen'  => max(1, (int) $counts->max('spesimen_count')),
+            'kontak'    => max(1, (int) $counts->max('kontak_erat_count')),
+            'faskes'    => max(1, (int) $counts->max('faskes_berobat_count')),
+        ];
+    }
+
+    public function query()
+    {
+        return $this->baseQuery()
+            ->with([
+                'jenisKasus:id,nama_penyakit', 'kecamatan:id,name', 'kelurahan:id,name', 'rt:id,name',
+                'imunisasi', 'spesimen', 'kontakErat', 'faskesBerobat',
+            ])
+            ->orderBy('tanggal_lapor')
+            ->orderBy('no_registrasi');
     }
 
     public function headings(): array
@@ -99,15 +131,17 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
             'Status Kasus', 'Catatan Tambahan', 'Foto Dokumentasi', 'Foto Dokumentasi 2', 'Tanggal Input',
         ];
 
-        // Imunisasi (5 set tetap)
-        for ($i = 1; $i <= self::IMUNISASI_SET; $i++) {
+        $caps = $this->caps();
+
+        // Imunisasi (set dinamis)
+        for ($i = 1; $i <= $caps['imunisasi']; $i++) {
             $h[] = "Imunisasi $i Antigen";
             $h[] = "Imunisasi $i Diberikan";
             $h[] = "Imunisasi $i Tanggal";
             $h[] = "Imunisasi $i Sumber Informasi";
         }
-        // Spesimen (cap 3)
-        for ($i = 1; $i <= self::SPESIMEN_CAP; $i++) {
+        // Spesimen (set dinamis)
+        for ($i = 1; $i <= $caps['spesimen']; $i++) {
             $h[] = "Spesimen $i Jenis";
             $h[] = "Spesimen $i Tgl Ambil";
             $h[] = "Spesimen $i Tgl Kirim";
@@ -116,9 +150,9 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
             $h[] = "Spesimen $i Penyakit Terkonfirmasi";
             $h[] = "Spesimen $i Variant/Genotype";
         }
-        // Kontak Erat (cap 3) + jumlah
+        // Kontak Erat (set dinamis) + jumlah
         $h[] = 'Jumlah Kontak Erat';
-        for ($i = 1; $i <= self::KONTAK_CAP; $i++) {
+        for ($i = 1; $i <= $caps['kontak']; $i++) {
             $h[] = "Kontak $i Nama";
             $h[] = "Kontak $i Hubungan";
             $h[] = "Kontak $i Tgl Lahir";
@@ -128,8 +162,8 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
             $h[] = "Kontak $i Ada Gejala";
             $h[] = "Kontak $i Jumlah Imunisasi MR";
         }
-        // Faskes Berobat (cap 3)
-        for ($i = 1; $i <= self::FASKES_CAP; $i++) {
+        // Faskes Berobat (set dinamis)
+        for ($i = 1; $i <= $caps['faskes']; $i++) {
             $h[] = "Faskes $i Jenis";
             $h[] = "Faskes $i Nama";
             $h[] = "Faskes $i Tgl Berobat";
@@ -233,9 +267,11 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
             $case->created_at?->format('d/m/Y H:i'),
         ];
 
-        // ===== Imunisasi (5 set, dipetakan via imunisasi_ke) =====
+        $caps = $this->caps();
+
+        // ===== Imunisasi (set dinamis, dipetakan via imunisasi_ke) =====
         $imun = $case->imunisasi->keyBy('imunisasi_ke');
-        for ($i = 1; $i <= self::IMUNISASI_SET; $i++) {
+        for ($i = 1; $i <= $caps['imunisasi']; $i++) {
             $r = $imun->get($i);
             $row[] = $r?->nama_antigen;
             $row[] = $r?->diberikan;
@@ -243,9 +279,9 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
             $row[] = $r?->sumber_informasi;
         }
 
-        // ===== Spesimen (cap 3) =====
+        // ===== Spesimen (set dinamis) =====
         $spesimen = $case->spesimen->values();
-        for ($i = 0; $i < self::SPESIMEN_CAP; $i++) {
+        for ($i = 0; $i < $caps['spesimen']; $i++) {
             $r = $spesimen->get($i);
             $row[] = $r?->jenis_spesimen;
             $row[] = $this->d($r?->tanggal_ambil_spesimen);
@@ -256,10 +292,10 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
             $row[] = $r?->nama_variant_genotype;
         }
 
-        // ===== Kontak Erat (cap 3) + jumlah =====
+        // ===== Kontak Erat (set dinamis) + jumlah =====
         $row[] = $case->kontakErat->count();
         $kontak = $case->kontakErat->values();
-        for ($i = 0; $i < self::KONTAK_CAP; $i++) {
+        for ($i = 0; $i < $caps['kontak']; $i++) {
             $r = $kontak->get($i);
             $row[] = $r?->nama;
             $row[] = $r?->hubungan;
@@ -271,9 +307,9 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
             $row[] = $r?->jumlah_imunisasi_campak_rubella;
         }
 
-        // ===== Faskes Berobat (cap 3) =====
+        // ===== Faskes Berobat (set dinamis) =====
         $faskes = $case->faskesBerobat->values();
-        for ($i = 0; $i < self::FASKES_CAP; $i++) {
+        for ($i = 0; $i < $caps['faskes']; $i++) {
             $r = $faskes->get($i);
             $row[] = $r?->jenis_faskes;
             $row[] = $r?->nama_faskes;
