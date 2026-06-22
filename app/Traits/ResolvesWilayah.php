@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Rt;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Trait untuk resolve nama wilayah (kecamatan, kelurahan, RT) dengan fuzzy matching.
@@ -13,7 +14,9 @@ use App\Models\Rt;
  *   1. Exact match (uppercase)
  *   2. Exact match setelah normalisasi (strip prefix, collapse spasi)
  *   3. Fuzzy match similar_text >= FUZZY_THRESHOLD %
- *   4. Buat baru (hanya jika benar-benar tidak ada kemiripan)
+ *
+ * Kecamatan & Kelurahan adalah master data dengan daftar tetap → TIDAK pernah dibuat baru.
+ * Nilai yang tak cocok ditandai sebagai gagal-resolve (lihat flagUnresolvedWilayah).
  */
 trait ResolvesWilayah
 {
@@ -21,8 +24,18 @@ trait ResolvesWilayah
     protected array $kelurahanCache = [];
     protected array $rtCache = [];
 
-    /** Threshold kemiripan (0–100). Nilai < threshold → buat data baru. */
-    private const FUZZY_THRESHOLD = 80.0;
+    /** Set nama wilayah yang sudah ditandai gagal-resolve, agar tidak spam peringatan duplikat. */
+    protected array $flaggedWilayah = [];
+
+    /**
+     * Threshold kemiripan (0–100). Kecamatan & Kelurahan < threshold → ditolak (di-flag, id null).
+     *
+     * Dinaikkan dari 80 → 85: "GUNUNG TELIHAN" vs "GUNUNG ELAI" skornya tepat 80% karena
+     * berbagi prefix "GUNUNG " — di threshold lama itu lolos dan kasus Telihan tertimpa ke
+     * Elai (sekaligus bikin "Gunung Elai" nyangkut di Bontang Barat). Variasi/typo yang sah
+     * umumnya >= 90%, jadi 85 cukup ketat tanpa mematikan koreksi ejaan wajar.
+     */
+    private const FUZZY_THRESHOLD = 85.0;
 
     /** Prefix wilayah yang sering muncul di data Excel dan perlu distrip sebelum dibandingkan. */
     private const WILAYAH_PREFIXES = [
@@ -114,18 +127,55 @@ trait ResolvesWilayah
             return $id;
         }
 
-        // 4. Buat baru
-        $kec = Kecamatan::firstOrCreate(['name' => ucwords(strtolower(trim($name)))]);
-        $this->kecamatanCache[$key] = $kec->id;
+        // 4. TIDAK auto-create. Kecamatan adalah master data dengan daftar tetap
+        //    (Bontang hanya punya 3 kecamatan). Nilai yang tak cocok hampir pasti
+        //    salah kolom / typo — mis. "Discarded", "Campak", "Rubella" yang nyasar
+        //    dari kolom klasifikasi akhir. Tandai agar operator melihatnya, lalu null.
+        $this->flagUnresolvedWilayah('Kecamatan', $name);
 
-        return $kec->id;
+        return null;
     }
 
     /**
-     * Resolve kelurahan: exact → fuzzy → buat baru.
-     * $idKec digunakan hanya saat membuat record baru.
+     * Catat nama wilayah yang tidak bisa dicocokkan ke master data.
+     * Didorong ke $this->failures (jika importer menyediakannya) agar tampil di
+     * ringkasan import, dan dicatat ke log. Di-dedup per nama supaya tidak spam.
      */
-    protected function resolveKelurahan(string $name, ?int $idKec): ?int
+    protected function flagUnresolvedWilayah(string $jenis, string $name): void
+    {
+        $clean = trim($name);
+        if ($clean === '') {
+            return;
+        }
+
+        $dedupKey = strtoupper($jenis . '|' . $clean);
+        if (isset($this->flaggedWilayah[$dedupKey])) {
+            return;
+        }
+        $this->flaggedWilayah[$dedupKey] = true;
+
+        $msg = "[PERINGATAN] {$jenis} \"{$clean}\" tidak cocok dengan data master — "
+             . "dilewati (id dikosongkan). Periksa apakah kolom file sumber bergeser.";
+
+        if (property_exists($this, 'failures') && is_array($this->failures)) {
+            $this->failures[] = $msg;
+        }
+
+        Log::warning("Resolve {$jenis} gagal: '{$clean}' tidak ada di master, tidak dibuat baru.");
+    }
+
+    /**
+     * Resolve kelurahan: exact → normalisasi → fuzzy. TIDAK auto-create.
+     *
+     * Sama prinsipnya dengan resolveKecamatan: kelurahan adalah master data dengan
+     * daftar tetap (Bontang punya 15 kelurahan). Auto-create lama menimbulkan dua
+     * masalah: (a) firstOrCreate di-key [name, id_kecamatan] sehingga nama sama +
+     * kecamatan beda bikin baris duplikat; (b) string yang tak cocok (typo / nilai
+     * nyasar dari kolom lain) jadi master palsu. Kalau tak cocok → flag + null.
+     *
+     * $idKec kini tidak dipakai (dipertahankan agar signature pemanggil tak berubah).
+     */
+    protected function resolveKelurahan(string $name, ?int $idKec = null): ?int
     {
         $key = strtoupper(trim($name));
         if (empty($key)) return null;
@@ -151,14 +201,10 @@ trait ResolvesWilayah
             return $id;
         }
 
-        // 4. Buat baru
-        $attrs = ['name' => ucwords(strtolower(trim($name)))];
-        if ($idKec) $attrs['id_kecamatan'] = $idKec;
+        // 4. TIDAK auto-create. Tandai agar operator melihatnya, lalu null.
+        $this->flagUnresolvedWilayah('Kelurahan', $name);
 
-        $kel = Kelurahan::firstOrCreate($attrs);
-        $this->kelurahanCache[$key] = $kel->id;
-
-        return $kel->id;
+        return null;
     }
 
     /**
