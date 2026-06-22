@@ -30,7 +30,7 @@ class KelurahanTableSeeder extends Seeder
             [
                 'id' => '3',
                 'id_kecamatan' => '1',
-                'name' => 'Telihan',
+                'name' => 'Gunung Telihan',
             ],
             //Bontang Selatan
             [
