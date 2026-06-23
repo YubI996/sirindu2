@@ -580,11 +580,13 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         // penyakit_terkonfirmasi pada spesimen untuk entri manual mendatang.
         // hasil_lab hanya diparse pada "Positif" (typo data hanya pada "Negatif").
         $casesCampak = (clone $cr)->where(function ($q) {
-            $q->where('hasil_lab', 'like', '%Campak: Positif%')
+            $q->where('penyakit_terkonfirmasi', 'Campak')
+              ->orWhere('hasil_lab', 'like', '%Campak: Positif%')
               ->orWhereHas('spesimen', fn($s) => $s->where('penyakit_terkonfirmasi', 'Campak'));
         })->count();
         $casesRubella = (clone $cr)->where(function ($q) {
-            $q->where('hasil_lab', 'like', '%Rubella: Positif%')
+            $q->where('penyakit_terkonfirmasi', 'Rubella')
+              ->orWhere('hasil_lab', 'like', '%Rubella: Positif%')
               ->orWhereHas('spesimen', fn($s) => $s->where('penyakit_terkonfirmasi', 'Rubella'));
         })->count();
 

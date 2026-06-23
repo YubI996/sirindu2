@@ -109,6 +109,7 @@ class SurveillanceCase extends Model
         'komplikasi_otitis_media',
         'komplikasi_encephalitis',
         'komplikasi_ulkus_mukosa_mulut',
+        'dengan_komplikasi',
 
         // ===== Category D3: Vitamin A & Status Gizi =====
         'vitamin_a',
@@ -230,6 +231,7 @@ class SurveillanceCase extends Model
 
         // ===== Category J: Metadata =====
         'status_kasus',
+        'penyakit_terkonfirmasi',
         'id_petugas_input',
         'id_faskes_pelapor',
         'catatan_tambahan',
@@ -320,6 +322,7 @@ class SurveillanceCase extends Model
         'komplikasi_otitis_media' => 'boolean',
         'komplikasi_encephalitis' => 'boolean',
         'komplikasi_ulkus_mukosa_mulut' => 'boolean',
+        'dengan_komplikasi' => 'boolean',
 
         // Other
         'riwayat_kontak_kasus' => 'boolean',

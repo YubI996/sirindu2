@@ -80,6 +80,45 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
         return $this->jenisKasusCache[$key];
     }
 
+    /** Nama penyakit yang dikenali pada kolom "Klasifikasi Akhir". */
+    protected const KLASIFIKASI_PENYAKIT = ['Campak', 'Rubella', 'Polio', 'Difteri', 'Pertusis'];
+
+    /**
+     * Petakan nilai kolom "Klasifikasi Akhir" (kolom terakhir file impor) menjadi
+     * status_kasus + nama penyakit terkonfirmasi.
+     *
+     * - Nama penyakit (Campak/Rubella/dll) → confirmed + penyakit tsb
+     * - "Discarded"/"Disingkirkan"/"Bukan Kasus" → discarded
+     * - kosong, "#N/A", atau nilai tak dikenal → status null ("tidak ada info")
+     *
+     * status null = JANGAN ubah status_kasus yang sudah ada saat re-import;
+     * pemanggil yang memutuskan default 'suspected' hanya untuk record baru.
+     *
+     * @return array{status: ?string, penyakit: ?string}
+     */
+    protected static function resolveKlasifikasi(?string $value): array
+    {
+        $val = trim((string) $value);
+        if ($val === '' || strtoupper($val) === '#N/A') {
+            return ['status' => null, 'penyakit' => null];
+        }
+
+        $lower = strtolower($val);
+
+        if (in_array($lower, ['discarded', 'disingkirkan', 'bukan kasus'])) {
+            return ['status' => 'discarded', 'penyakit' => null];
+        }
+
+        foreach (self::KLASIFIKASI_PENYAKIT as $penyakit) {
+            if (str_contains($lower, strtolower($penyakit))) {
+                return ['status' => 'confirmed', 'penyakit' => $penyakit];
+            }
+        }
+
+        // Nilai tak dikenal → jangan asal confirmed / jangan timpa status lama.
+        return ['status' => null, 'penyakit' => null];
+    }
+
     /** Data dimulai dari baris ke-2 (baris 1 = header, baris 2 = data pertama) */
     public function startRow(): int
     {
@@ -331,11 +370,16 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 
                 $statusRawat      = !empty($row[79]) ? 'rawat_inap' : 'rawat_jalan';
 
-                SurveillanceCase::updateOrCreate(
-                    // Kunci upsert
-                    ['no_registrasi' => $noReg],
+                // Kolom terakhir file impor (Google Form export)
+                $klasifikasi      = self::resolveKlasifikasi($row[194] ?? null);  // Klasifikasi Akhir
+                $caseExists       = SurveillanceCase::where('no_registrasi', $noReg)->exists();
+                $denganKomplikasi = match (strtolower(trim((string) ($row[196] ?? '')))) {  // Dengan Komplikasi
+                    'ya', 'y', 'yes', '1'  => true,
+                    'tidak', 'no', 'n', '0' => false,
+                    default                 => null,
+                };
 
-                    [
+                $attrs = [
                         // =================================================
                         // GRUP A: Identitas Pasien
                         // =================================================
@@ -384,9 +428,10 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         'tanggal_onset'          => $tglOnset,
                         'tanggal_konsultasi'     => $tglKonsultasi,               // wajib NOT NULL — fallback ke tanggal_lapor/onset
                         'id_jenis_kasus'         => $idJenisKasus,
-                        'status_kasus'           => 'suspected',
+                        // status_kasus & penyakit_terkonfirmasi diset kondisional setelah array ini
                         'status_rawat'           => $statusRawat,                 // wajib NOT NULL — derived dari nama_rs
                         'nama_faskes_rawat'      => $namaFaskes,                  // wajib NOT NULL — chain fallback
+                        'tanggal_keluar_rawat'   => $parseDate($row[197] ?? null), // kolom "Tanggal KRS"
                         'id_petugas_input'       => $this->userId,                // wajib NOT NULL — user yang upload
 
                         // =================================================
@@ -419,6 +464,7 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         'komplikasi_otitis_media'       => $parseBoolean($row[35] ?? ''),
                         'komplikasi_encephalitis'       => $parseBoolean($row[36] ?? ''),
                         'komplikasi_ulkus_mukosa_mulut' => $parseBoolean($row[37] ?? ''),
+                        'dengan_komplikasi'             => $denganKomplikasi,      // kolom "Dengan Komplikasi"
 
                         // =================================================
                         // GRUP D3-D4: Gizi & Pengobatan (T026)
@@ -475,7 +521,10 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // =================================================
                         // GRUP E: Riwayat Imunisasi (T031)
                         // =================================================
-                        'riwayat_imunisasi'              => $parseRiwayatImunisasi($row[39] ?? null),
+                        // Prioritas kolom "Status Vaksin MR" (195) yang lebih bersih,
+                        // fallback ke "Pengisian Riwayat Imunisasi" (39).
+                        'riwayat_imunisasi'              => $parseRiwayatImunisasi($row[195] ?? null)
+                                                            ?? $parseRiwayatImunisasi($row[39] ?? null),
                         'imunisasi_1'                    => $row[70] ?? null,
                         'imunisasi_2'                    => $row[71] ?? null,
                         'imunisasi_3'                    => $row[72] ?? null,
@@ -541,8 +590,22 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                         // =================================================
                         'created_by'             => $this->userId,
                         'updated_by'             => $this->userId,
-                    ]
-                );
+                ];
+
+                // Status kasus dari "Klasifikasi Akhir":
+                // - ada nilai (confirmed/discarded) → set + penyakit terkonfirmasi
+                // - kosong/#N/A pada record LAMA → JANGAN timpa status yang sudah ada
+                //   (mis. confirmed dari import hasil lab terpisah)
+                // - kosong pada record BARU → default aman 'suspected'
+                if ($klasifikasi['status'] !== null) {
+                    $attrs['status_kasus']           = $klasifikasi['status'];
+                    $attrs['penyakit_terkonfirmasi'] = $klasifikasi['penyakit'];
+                } elseif (!$caseExists) {
+                    $attrs['status_kasus']           = 'suspected';
+                    $attrs['penyakit_terkonfirmasi'] = null;
+                }
+
+                SurveillanceCase::updateOrCreate(['no_registrasi' => $noReg], $attrs);
 
                 $this->successCount++;
 
