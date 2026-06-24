@@ -203,7 +203,9 @@ ANAK
         $anak = Anak::findByHashIdOrFail($id);
         $kec = Kecamatan::all();
         $kel = Kelurahan::all();
-        $dt = DataAnak::where('id_anak', $anak->id)->first();
+        // Anak hasil import bisa belum punya baris DataAnak (data kelahiran).
+        // firstOrNew memberi instance kosong agar form edit tidak error null.
+        $dt = DataAnak::firstOrNew(['id_anak' => $anak->id]);
         $dataAnak = DataAnak::where('id_anak', $anak->id)->get();
         return view('admin.anak.edit', compact('anak', 'kec', 'kel', 'dt', 'dataAnak'));
     }

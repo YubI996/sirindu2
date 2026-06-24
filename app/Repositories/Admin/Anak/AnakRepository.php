@@ -86,7 +86,9 @@ class AnakRepository implements AnakRepositoryInterface
         $m2 = date('m', $now);
         $umur = (($y2 - $y1) * 12) + ($m2 - $m1);
         $anak = Anak::find($id);
-        $dt = DataAnak::where('id_anak', $id)->first();
+        // Anak hasil import bisa belum punya baris DataAnak; firstOrNew agar
+        // save() membuat baris baru, bukan diam-diam gagal seperti update() pada model null.
+        $dt = DataAnak::firstOrNew(['id_anak' => $id]);
         if ($request->id_kec == null) {
             $anak->update([
                 'no_kk' => $request->no_kk,
@@ -111,7 +113,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
             ]);
-            $dt->update([
+            $dt->fill([
                 'bln' => $umur,
                 'posisi' => $request->posisi ?? 'L',
                 'tb' => $request->tb,
@@ -135,7 +137,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'obat_cacing' => $request->obat_cacing,
                 'ddtka' => $request->ddtka,
                 'id_user' => Auth::user()->id,
-            ]);
+            ])->save();
         } else {
             $anak->update([
                 'no_kk' => $request->no_kk,
@@ -160,7 +162,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
             ]);
-            $dt->update([
+            $dt->fill([
                 'bln' => $umur,
                 'posisi' => $request->posisi ?? 'L',
                 'tb' => $request->tb,
@@ -184,7 +186,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'obat_cacing' => $request->obat_cacing,
                 'ddtka' => $request->ddtka,
                 'id_user' => Auth::user()->id,
-            ]);
+            ])->save();
         }
     }
 

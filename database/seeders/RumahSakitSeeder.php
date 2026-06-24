@@ -45,9 +45,9 @@ class RumahSakitSeeder extends Seeder
             ],
             [
                 'id_kecamatan' => $bontangUtara,
-                'name'         => 'RS Siloam Bontang',
+                'name'         => 'RS Amalia Bontang',
                 'kode_rs'      => 'RS-003',
-                'alamat'       => 'Jl. Raya Bontang Samarinda, Bontang Utara',
+                'alamat'       => 'Jl. MT. Haryono, Bontang Utara',
                 'telepon'      => '(0548) 25555',
                 'jenis_rs'     => 'RS Swasta',
                 'is_active'    => true,
@@ -63,11 +63,11 @@ class RumahSakitSeeder extends Seeder
             ],
             [
                 'id_kecamatan' => $bontangUtara,
-                'name'         => 'RS Pertamina Bontang',
+                'name'         => 'RS Badak LNG',
                 'kode_rs'      => 'RS-005',
-                'alamat'       => 'Komplek Pertamina, Bontang Utara',
+                'alamat'       => 'Komplek LNG Badak, Bontang Utara',
                 'telepon'      => '(0548) 41500',
-                'jenis_rs'     => 'RS TNI/Polri',
+                'jenis_rs'     => 'RS Swasta',
                 'is_active'    => true,
             ],
         ];
