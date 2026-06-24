@@ -438,7 +438,7 @@
     <div class="imp-panel-grid">
         <div class="imp-guide">
             <p class="imp-guide__label">Data yang diimpor</p>
-            <p>Riwayat imunisasi: kode vaksin, dosis, tanggal pemberian, batch, lokasi, status (sudah/belum/terlambat), dan reaksi KIPI.</p>
+            <p>Riwayat imunisasi format <strong>wide</strong>: 1 baris per anak, tiap vaksin jadi kolom berisi tanggal pemberian, plus kolom <em>alasan_tidak_imunisasi</em>. Format lama (1 baris per vaksin, kolom <em>kode_vaksin</em>) masih didukung otomatis.</p>
             <div class="imp-guide__rule">
                 <strong>Pencocokan Anak (2 dari 3)</strong>
                 Isi minimal 2 dari 3 kolom: <strong>NIK</strong>, <strong>nama</strong>, atau <strong>tanggal lahir</strong>. Sistem mencari anak yang cocok sebelum menyimpan data.
