@@ -244,6 +244,40 @@
     </div>
 </div>
 
+{{-- Alasan Tidak Menerima Imunisasi --}}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">Alasan Tidak Menerima Imunisasi</h5>
+                <small class="text-muted">Berdasarkan kunjungan terakhir tiap anak pada filter aktif.</small>
+            </div>
+            <div class="card-body">
+                @if(count($alasanTidakImunisasi) > 0)
+                <canvas id="chartAlasan" height="120"></canvas>
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr><th>Alasan</th><th class="text-end" style="width:120px;">Jumlah Anak</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach($alasanTidakImunisasi as $alasan => $jumlah)
+                            <tr>
+                                <td>{{ $alasan }}</td>
+                                <td class="text-end fw-semibold">{{ $jumlah }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @else
+                <div class="text-center text-muted py-4">Belum ada data alasan tidak imunisasi pada filter ini.</div>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Korelasi IDL vs Stunting (Paket E) --}}
 <div class="row mb-4">
     <div class="col-12">
@@ -265,12 +299,46 @@
 @endsection
 
 @section('custom_scripts')
-{{-- Daftar Anak kini dipaginasi server-side (lihat AdminController::imunisasiDashboard);
-     DataTables client-side dilepas agar tak menduplikasi paging. --}}
+{{-- Daftar Anak dipaginasi server-side (lihat AdminController::imunisasiDashboard). --}}
+
+@php $needChart = count($korelasiData) > 0 || count($alasanTidakImunisasi) > 0; @endphp
+@if($needChart)
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@endif
+
+{{-- Bar horizontal: alasan tidak imunisasi --}}
+@if(count($alasanTidakImunisasi) > 0)
+<script>
+(function () {
+    var labels = @json(array_keys($alasanTidakImunisasi));
+    var values = @json(array_values($alasanTidakImunisasi));
+    var ctx = document.getElementById('chartAlasan');
+    if (!ctx) return;
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Jumlah Anak',
+                data: values,
+                backgroundColor: 'rgba(220,38,38,0.75)'
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: function (c) { return c.parsed.x + ' anak'; } } }
+            }
+        }
+    });
+})();
+</script>
+@endif
 
 {{-- Scatter korelasi IDL vs stunting --}}
 @if(count($korelasiData) > 0)
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function () {
     var data = @json($korelasiData);

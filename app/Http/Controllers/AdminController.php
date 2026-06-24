@@ -596,10 +596,12 @@ ANAK
 
         // Korelasi cakupan IDL vs prevalensi stunting per kelurahan (Paket E).
         $korelasiData = $this->korelasiStuntingVaksin($filters, $coverage);
+        $alasanTidakImunisasi = $this->alasanTidakImunisasiData($filters);
 
         return view('admin.imunisasi.dashboard', compact(
             'coverage', 'anakList', 'butuhKejar', 'filters',
-            'kecamatanList', 'kelurahanList', 'posyanduList', 'korelasiData'
+            'kecamatanList', 'kelurahanList', 'posyanduList', 'korelasiData',
+            'alasanTidakImunisasi'
         ));
     }
 
@@ -657,6 +659,45 @@ ANAK
         }
 
         return $out;
+    }
+
+    /**
+     * Distribusi alasan tidak menerima imunisasi, dari kunjungan terakhir tiap
+     * anak (terfilter wilayah). Nilai non-config dikelompokkan ke "Lainnya".
+     *
+     * @return array<string,int> label alasan => jumlah, terurut menurun.
+     */
+    private function alasanTidakImunisasiData(array $filters): array
+    {
+        // Kunjungan terakhir per anak (pola sama seperti korelasiStuntingVaksin).
+        $maxTgl = DB::table('data_anak as dm')
+            ->join('anak as am', 'dm.id_anak', '=', 'am.id')
+            ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
+            ->whereNotNull('dm.tgl_kunjungan');
+        if (!empty($filters['id_posyandu']))      $maxTgl->where('am.id_posyandu', $filters['id_posyandu']);
+        elseif (!empty($filters['id_kelurahan'])) $maxTgl->where('am.id_kel', $filters['id_kelurahan']);
+        elseif (!empty($filters['id_kecamatan'])) $maxTgl->where('am.id_kec', $filters['id_kecamatan']);
+        $maxTgl->groupBy('dm.id_anak');
+
+        $values = DB::table('data_anak as da')
+            ->joinSub($maxTgl, 'm', function ($j) {
+                $j->on('m.id_anak', '=', 'da.id_anak')->on('m.max_tgl', '=', 'da.tgl_kunjungan');
+            })
+            ->whereNotNull('da.alasan_tidak_imunisasi')
+            ->where('da.alasan_tidak_imunisasi', '!=', '')
+            ->pluck('da.alasan_tidak_imunisasi');
+
+        $known  = config('imunisasi.alasan_tidak_imunisasi', []);
+        $counts = [];
+        foreach ($values as $val) {
+            $val = trim((string) $val);
+            if ($val === '') continue;
+            $bucket = in_array($val, $known, true) ? $val : 'Lainnya';
+            $counts[$bucket] = ($counts[$bucket] ?? 0) + 1;
+        }
+        arsort($counts);
+
+        return $counts;
     }
 
     public function storeImunisasiDetail(Request $request)
