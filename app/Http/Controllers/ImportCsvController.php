@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ImportAnakJob;
+use App\Jobs\ImportCapilJob;
 use App\Jobs\ImportHasilLabJob;
 use App\Jobs\ImportImunisasiJob;
 use App\Jobs\ImportPengukuranJob;
@@ -23,6 +24,7 @@ class ImportCsvController extends Controller
     /** Tipe import yang valid dan label tampilan-nya. */
     private const VALID_TYPES = [
         'anak'       => 'Data Anak',
+        'capil'      => 'Data Kependudukan (Capil)',
         'pengukuran' => 'Pengukuran Berkala',
         'imunisasi'  => 'Imunisasi',
         'hasil_lab'  => 'Hasil Laboratorium PD3I',
@@ -32,6 +34,7 @@ class ImportCsvController extends Controller
     /** Nama file template per tipe. */
     private const TEMPLATE_FILES = [
         'anak'       => 'template_anak.csv',
+        'capil'      => 'template_capil.xlsx',
         'pengukuran' => 'template_pengukuran_berkala.csv',
         'imunisasi'  => 'template_imunisasi.csv',
         'ukur'       => 'template_operasi_timbang.csv',
@@ -63,6 +66,11 @@ class ImportCsvController extends Controller
         return $this->handleUpload($request, 'anak', 'file_anak');
     }
 
+    public function uploadCapil(Request $request)
+    {
+        return $this->handleUpload($request, 'capil', 'file_capil');
+    }
+
     public function uploadPengukuran(Request $request)
     {
         return $this->handleUpload($request, 'pengukuran', 'file_pengukuran');
@@ -87,11 +95,18 @@ class ImportCsvController extends Controller
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
 
+        $isCapil = $type === 'capil';
         $request->validate([
-            $inputName => 'required|file|mimes:csv,txt|max:10240',
+            $inputName => $isCapil
+                ? 'required|file|mimes:xlsx,xls|max:20480'
+                : 'required|file|mimes:csv,txt|max:10240',
         ], [
-            "{$inputName}.mimes" => 'File harus berformat CSV (.csv).',
-            "{$inputName}.max"   => 'Ukuran file maksimal 10 MB.',
+            "{$inputName}.mimes" => $isCapil
+                ? 'File harus berformat Excel (.xlsx/.xls).'
+                : 'File harus berformat CSV (.csv).',
+            "{$inputName}.max"   => $isCapil
+                ? 'Ukuran file maksimal 20 MB.'
+                : 'Ukuran file maksimal 10 MB.',
         ]);
 
         $file     = $request->file($inputName);
@@ -108,6 +123,7 @@ class ImportCsvController extends Controller
 
         $jobClass = match ($type) {
             'anak'       => ImportAnakJob::class,
+            'capil'      => ImportCapilJob::class,
             'pengukuran' => ImportPengukuranJob::class,
             'imunisasi'  => ImportImunisasiJob::class,
             'hasil_lab'  => ImportHasilLabJob::class,
@@ -155,6 +171,7 @@ class ImportCsvController extends Controller
 
         $jobClass = match ($log->type) {
             'anak'       => ImportAnakJob::class,
+            'capil'      => ImportCapilJob::class,
             'pengukuran' => ImportPengukuranJob::class,
             'imunisasi'  => ImportImunisasiJob::class,
             'hasil_lab'  => ImportHasilLabJob::class,
@@ -240,8 +257,10 @@ class ImportCsvController extends Controller
             abort(404, "Template {$filename} tidak ditemukan di server.");
         }
 
-        return response()->download($fullPath, $filename, [
-            'Content-Type' => 'text/csv; charset=utf-8',
-        ]);
+        $mime = str_ends_with($filename, '.xlsx')
+            ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            : 'text/csv; charset=utf-8';
+
+        return response()->download($fullPath, $filename, ['Content-Type' => $mime]);
     }
 }
