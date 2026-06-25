@@ -256,6 +256,7 @@
     font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em;
 }
 .imp-chip-anak       { background: oklch(0.92 0.07 228 / 0.35); color: oklch(0.42 0.15 228); }
+.imp-chip-capil      { background: oklch(0.92 0.07 195 / 0.35); color: oklch(0.40 0.13 195); }
 .imp-chip-pengukuran { background: oklch(0.92 0.08 295 / 0.35); color: oklch(0.42 0.14 295); }
 .imp-chip-imunisasi  { background: oklch(0.92 0.07 145 / 0.4);  color: oklch(0.36 0.12 145); }
 .imp-chip-ukur       { background: oklch(0.92 0.09 55 / 0.35);  color: oklch(0.42 0.14 55); }
@@ -333,6 +334,11 @@
         <span class="material-symbols-outlined">child_care</span>
         Data Anak
     </button>
+    <button class="imp-tab-btn" data-tab="capil"
+        role="tab" aria-selected="false" aria-controls="panel-capil" id="tab-capil">
+        <span class="material-symbols-outlined">badge</span>
+        Data Capil
+    </button>
     <button class="imp-tab-btn" data-tab="pengukuran"
         role="tab" aria-selected="false" aria-controls="panel-pengukuran" id="tab-pengukuran">
         <span class="material-symbols-outlined">straighten</span>
@@ -379,6 +385,52 @@
                     <input type="file" id="file-anak" name="file_anak" accept=".csv,text/csv" required>
                 </label>
                 <div class="imp-fname" id="fname-anak">
+                    <span class="material-symbols-outlined">description</span>
+                    <span>Belum ada file dipilih</span>
+                </div>
+                <button type="submit" class="imp-btn-upload">
+                    <span class="material-symbols-outlined">upload</span>
+                    Upload &amp; Import
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- =====================================================================
+     PANEL: Data Kependudukan (Capil)
+     ===================================================================== --}}
+<div class="imp-panel" id="panel-capil" role="tabpanel" aria-labelledby="tab-capil">
+    <div class="imp-panel-grid">
+        <div class="imp-guide">
+            <p class="imp-guide__label">Data yang diimpor</p>
+            <p>Data kependudukan Dukcapil: NIK, nama, jenis kelamin, tanggal lahir, nama orang tua, dan <strong>alamat KTP</strong>. Hanya data kependudukan yang diperbarui — domisili &amp; data kesehatan tetap dari data sigizi.</p>
+            <div class="imp-guide__rule">
+                <strong>Logika Merge</strong>
+                Cocok via <strong>nama + tanggal lahir</strong> → kependudukan ikut Capil, kesehatan tetap.<br>
+                Tanpa padanan → anak baru, domisili kosong (alamat KTP saja).
+            </div>
+            <div class="imp-guide__rule">
+                <strong>Format Excel</strong>
+                Gunakan file <strong>.xlsx</strong> (bukan CSV) agar simbol di alamat KTP tidak merusak data.
+            </div>
+            <a href="{{ route('admin.importCsv.template', 'capil') }}" class="imp-template-link" download>
+                <span class="material-symbols-outlined">download</span>
+                Unduh Template Excel
+            </a>
+        </div>
+        <div class="imp-upload-col">
+            <form method="POST" action="{{ route('admin.importCsv.capil') }}"
+                  enctype="multipart/form-data" class="imp-form" data-type="capil">
+                @csrf
+                <label class="imp-upload-zone" for="file-capil" id="zone-capil">
+                    <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
+                    <span class="imp-upload-zone__label">Klik atau seret file Excel ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .xlsx/.xls &mdash; maksimal 20 MB</span>
+                    <input type="file" id="file-capil" name="file_capil"
+                           accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                </label>
+                <div class="imp-fname" id="fname-capil">
                     <span class="material-symbols-outlined">description</span>
                     <span>Belum ada file dipilih</span>
                 </div>
@@ -528,6 +580,7 @@
         <div class="imp-history-actions">
             <button class="imp-filter-btn is-active" data-filter="all">Semua</button>
             <button class="imp-filter-btn" data-filter="anak">Anak</button>
+            <button class="imp-filter-btn" data-filter="capil">Capil</button>
             <button class="imp-filter-btn" data-filter="pengukuran">Pengukuran</button>
             <button class="imp-filter-btn" data-filter="imunisasi">Imunisasi</button>
             <button class="imp-filter-btn" data-filter="ukur">Op. Timbang</button>
@@ -563,7 +616,7 @@
                         <td class="td-file" title="{{ $log->filename }}">{{ $log->filename }}</td>
                         <td>
                             <span class="imp-chip imp-chip-{{ $log->type }}">
-                                {{ ['anak'=>'Anak','pengukuran'=>'Pengukuran','imunisasi'=>'Imunisasi','ukur'=>'Op. Timbang','hasil_lab'=>'Hasil Lab'][$log->type] ?? $log->type }}
+                                {{ ['anak'=>'Anak','capil'=>'Capil','pengukuran'=>'Pengukuran','imunisasi'=>'Imunisasi','ukur'=>'Op. Timbang','hasil_lab'=>'Hasil Lab'][$log->type] ?? $log->type }}
                             </span>
                         </td>
                         <td>
@@ -798,8 +851,8 @@
     }
 
     /* ── Render helpers ─────────────────────────────────────────── */
-    var typeLabel  = { anak: 'Anak', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi', ukur: 'Op. Timbang' };
-    var typeChip   = { anak: 'imp-chip-anak', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi', ukur: 'imp-chip-ukur' };
+    var typeLabel  = { anak: 'Anak', capil: 'Capil', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi', ukur: 'Op. Timbang' };
+    var typeChip   = { anak: 'imp-chip-anak', capil: 'imp-chip-capil', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi', ukur: 'imp-chip-ukur' };
     var stLabel    = { pending: 'Menunggu', processing: 'Diproses', done: 'Selesai', failed: 'Gagal' };
     var stBadge    = { pending: 'imp-badge-pending', processing: 'imp-badge-processing', done: 'imp-badge-done', failed: 'imp-badge-failed' };
     var stIcon     = { pending: 'schedule', processing: 'sync', done: 'check_circle', failed: 'error' };
