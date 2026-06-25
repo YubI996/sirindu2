@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Imports\CapilImport;
 use App\Models\Anak;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
 class ImportCapilTest extends TestCase
@@ -173,5 +174,30 @@ class ImportCapilTest extends TestCase
         $this->assertEquals('BUDI SANTOSO', $existing->nama);   // diperbaiki dari Capil
         $this->assertEquals(1, Anak::count());                  // tidak duplikat
         $this->assertEquals(1, $import->getResults()['updated']);
+    }
+
+    public function test_import_dari_file_xlsx_nyata_dengan_alamat_bersimbol(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'capil_') . '.xlsx';
+
+        $ss    = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $ss->getActiveSheet();
+        $sheet->fromArray($this->header(), null, 'A1');
+        // Alamat mengandung koma & petik — perusak CSV, aman di xlsx
+        $sheet->fromArray([[
+            '3274010101200005', 'EKO PRASETYO', 'LAKI-LAKI', '2019-07-20',
+            '82', '3274KK', 'IBU EKO', 'AYAH EKO',
+            'JL. "MELATI", NO. 7, RT/RW', '005', '01', 'API-API', '02', 'BONTANG BARAT',
+        ]], null, 'A2');
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($path);
+
+        Excel::import(new CapilImport(1, '2026-06-25'), $path);
+
+        $anak = Anak::where('nik', '3274010101200005')->first();
+        $this->assertNotNull($anak);
+        $this->assertStringContainsString('JL. "MELATI", NO. 7, RT/RW', $anak->alamat_ktp);
+        $this->assertStringContainsString('Kel. API-API', $anak->alamat_ktp);
+
+        @unlink($path);
     }
 }
