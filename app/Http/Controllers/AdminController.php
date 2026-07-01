@@ -327,6 +327,13 @@ ANAK
         // Get latest measurement for current health status
         $latestData = !empty($hasilx) ? end($hasilx) : null;
 
+        // Alasan tidak menerima imunisasi dari kunjungan terakhir anak,
+        // ditampilkan di bagian Riwayat Imunisasi pada halaman detail.
+        $alasanTidakImunisasiTerakhir = DataAnak::where('id_anak', $anak->id)
+            ->orderByDesc('tgl_kunjungan')
+            ->orderByDesc('id')
+            ->value('alasan_tidak_imunisasi');
+
         // Get Z-Score reference data for charts
         $zScoreRef = [];
         if (!empty($hasilx)) {
@@ -373,6 +380,7 @@ ANAK
             'anak',
             'hasilx',
             'latestData',
+            'alasanTidakImunisasiTerakhir',
             'kecamatan',
             'kelurahan',
             'rt',

@@ -965,6 +965,12 @@ Detail
                     </a>
                 </div>
                 <div class="card-body">
+                    @if(!empty($alasanTidakImunisasiTerakhir))
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Alasan belum/tidak imunisasi (kunjungan terakhir):</strong>
+                        {{ $alasanTidakImunisasiTerakhir }}
+                    </div>
+                    @endif
                     @if($imunisasi->count() > 0)
                     <div class="table-responsive" tabindex="0" aria-label="Tabel riwayat imunisasi, dapat digulir secara horizontal">
                         <table class="table table-hover table-accessible" aria-describedby="immunization-title">
