@@ -151,6 +151,8 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
             $namaRaw  = trim((string) ($this->colVal($row, $map, 'nama') ?? ''));
             $nikRaw   = trim((string) ($this->colVal($row, $map, 'nik') ?? ''));
             $tglLahir = $this->parseDate($this->colVal($row, $map, 'tgl_lahir'));
+            $jkInt    = $this->parseJk($this->colVal($row, $map, 'jk'));
+            $jkChar   = $jkInt === 1 ? 'L' : 'P';
 
             if (empty($namaRaw)) continue;
 
@@ -160,8 +162,12 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
                 $nikKey   = $nikValid ? substr($nikRaw, 0, 16) : null;
 
                 if (!$nikValid) {
-                    $nikKey = $this->nikService->findExisting($namaRaw, $tglLahir ?? date('Y-m-d'), 'L')
-                        ?? $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tglLahir ?? date('Y-m-d'), 'L');
+                    // Pakai jenis kelamin sebenarnya — kalau di-hardcode 'L', anak
+                    // perempuan (jk=2) lolos dari dedup findExisting & NIK dummy-nya
+                    // salah encode (harusnya DD+40).
+                    $noKkRaw = trim((string) ($this->colVal($row, $map, 'no_kk') ?? ''));
+                    $nikKey  = $this->nikService->findExisting($namaRaw, $tglLahir ?? date('Y-m-d'), $jkChar, $noKkRaw)
+                        ?? $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tglLahir ?? date('Y-m-d'), $jkChar);
 
                     $msg = empty($nikRaw)
                         ? "[INFO] Baris {$rowNum} ({$namaRaw}): NIK kosong — NIK dummy {$nikKey} digenerate."
@@ -195,7 +201,7 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
                 $data = [
                     'nama'                 => $namaRaw,
                     'tgl_lahir'            => $tglLahir,
-                    'jk'                   => $this->parseJk($this->colVal($row, $map, 'jk')),
+                    'jk'                   => $jkInt,
                     'no_kk'                => $this->colVal($row, $map, 'no_kk'),
                     'nik_ibu'              => $this->colVal($row, $map, 'nik_ibu'),
                     'nik_ayah'             => $this->colVal($row, $map, 'nik_ayah'),

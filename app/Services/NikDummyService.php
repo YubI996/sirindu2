@@ -57,23 +57,37 @@ class NikDummyService
      * Cari NIK dummy yang sudah ada untuk orang dengan data yang sama.
      * Fuzzy match nama ≥87% + exact tanggal_lahir + exact jenis_kelamin.
      *
+     * Pembeda No KK: bila $noKk diberikan dan kandidat juga punya no_kk, tetapi
+     * keduanya BERBEDA → dianggap anak berbeda (keluarga beda) sehingga tidak
+     * digabung. Bila salah satu KK kosong, tak bisa dibedakan → jatuh ke fuzzy
+     * nama (perilaku lama).
+     *
      * @return string|null NIK yang ditemukan atau null
      */
-    public function findExisting(string $nama, string $tanggalLahir, string $jenisKelamin): ?string
+    public function findExisting(string $nama, string $tanggalLahir, string $jenisKelamin, ?string $noKk = null): ?string
     {
         $jkValue = strtoupper($jenisKelamin) === 'L' ? 1 : 2;
+        $noKk    = $noKk !== null ? trim($noKk) : '';
 
         $kandidat = Anak::where('tgl_lahir', $tanggalLahir)
             ->where('jk', $jkValue)
             ->whereRaw("SUBSTRING(nik, 13, 1) = '9'")
             ->whereRaw("LENGTH(nik) = 16")
-            ->get(['nik', 'nama']);
+            ->get(['nik', 'nama', 'no_kk']);
 
         foreach ($kandidat as $anak) {
             similar_text($nama, $anak->nama, $pct);
-            if ($pct >= 87) {
-                return $anak->nik;
+            if ($pct < 87) {
+                continue;
             }
+
+            // Keduanya punya KK tapi beda → bukan anak yang sama.
+            $kkKandidat = trim((string) ($anak->no_kk ?? ''));
+            if ($noKk !== '' && $kkKandidat !== '' && $kkKandidat !== $noKk) {
+                continue;
+            }
+
+            return $anak->nik;
         }
 
         return null;

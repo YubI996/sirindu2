@@ -18,7 +18,7 @@ class ImportAnakJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries   = 1;
-    public int $timeout = 600;
+    public int $timeout = 1800; // 30 menit — beri ruang untuk file Capil ~13k baris
 
     public function __construct(protected ImportLog $importLog) {}
 
