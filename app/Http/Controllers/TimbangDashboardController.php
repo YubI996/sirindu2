@@ -80,15 +80,17 @@ class TimbangDashboardController extends Controller
     {
         $f = $this->parseFilters($request);
 
+        // Dashboard ini khusus balita (<=60 bln). Status wasting balita memakai
+        // indikator BB/TB (Berat Badan menurut Tinggi/Panjang Badan), bukan IMT/U.
         $results = [
-            'imt_u' => ['normal' => 0, 'kurang' => 0, 'buruk' => 0, 'lebih' => 0, 'obesitas' => 0],
+            'bb_tb' => ['normal' => 0, 'kurang' => 0, 'buruk' => 0, 'lebih' => 0, 'obesitas' => 0],
             'bb_u'  => ['normal' => 0, 'kurang' => 0, 'sangat_kurang' => 0, 'lebih' => 0],
             'tb_u'  => ['normal' => 0, 'pendek' => 0, 'sangat_pendek' => 0, 'tinggi' => 0],
         ];
 
         $measurements = $this->latestMeasurements($f);
 
-        $imtMap = [
+        $bbTbMap = [
             'severely_wasted' => 'buruk', 'wasted' => 'kurang', 'normal' => 'normal',
             'risiko_lebih' => 'lebih', 'overweight' => 'lebih', 'obese' => 'obesitas',
         ];
@@ -103,7 +105,7 @@ class TimbangDashboardController extends Controller
 
         foreach ($measurements as $m) {
             $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
-            if ($g['enum']['imt_u'] !== null) $results['imt_u'][$imtMap[$g['enum']['imt_u']]]++;
+            if ($g['enum']['bb_tb'] !== null) $results['bb_tb'][$bbTbMap[$g['enum']['bb_tb']]]++;
             if ($g['enum']['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
             if ($g['enum']['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
         }
@@ -114,15 +116,15 @@ class TimbangDashboardController extends Controller
 
         return response()->json([
             'total'           => $total,
-            'imt_u'           => $results['imt_u'],
+            'bb_tb'           => $results['bb_tb'],
             'bb_u'            => $results['bb_u'],
             'tb_u'            => $results['tb_u'],
             'stunting'        => $stunting,
             'stunting_pct'    => $total > 0 ? round($stunting / $total * 100, 1) : 0,
             'underweight'     => $underweight,
             'underweight_pct' => $total > 0 ? round($underweight / $total * 100, 1) : 0,
-            'gizi_kurang'     => $results['imt_u']['kurang'],
-            'gizi_buruk'      => $results['imt_u']['buruk'],
+            'gizi_kurang'     => $results['bb_tb']['kurang'],
+            'gizi_buruk'      => $results['bb_tb']['buruk'],
         ]);
     }
 
@@ -460,15 +462,15 @@ class TimbangDashboardController extends Controller
             $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
             $hit = match ($kategori) {
                 'stunting'    => in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true),
-                'gizi_kurang' => $g['enum']['imt_u'] === 'wasted',
-                'gizi_buruk'  => $g['enum']['imt_u'] === 'severely_wasted',
+                'gizi_kurang' => $g['enum']['bb_tb'] === 'wasted',
+                'gizi_buruk'  => $g['enum']['bb_tb'] === 'severely_wasted',
                 default       => false,
             };
             if ($hit) {
                 $matchIds[] = $m->id_anak;
                 $label = match ($kategori) {
                     'stunting'    => $g['tb'],
-                    default       => $g['imt'],
+                    default       => $g['bt'],
                 };
                 $detail[$m->id_anak] = ['indikator' => $label, 'tgl' => $m->tgl_kunjungan];
             }

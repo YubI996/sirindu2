@@ -249,11 +249,11 @@
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="gizi_kurang" role="button" tabindex="0">
         <div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">monitor_weight</span></div>
-        <div><div class="tb-kpi__val" id="kpi-gizi-kurang">—</div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">IMT/U -3..-2 SD</div></div>
+        <div><div class="tb-kpi__val" id="kpi-gizi-kurang">—</div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="gizi_buruk" role="button" tabindex="0">
         <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">emergency</span></div>
-        <div><div class="tb-kpi__val" id="kpi-gizi-buruk">—</div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">IMT/U &lt; -3SD</div></div>
+        <div><div class="tb-kpi__val" id="kpi-gizi-buruk">—</div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="bb_tidak_naik" role="button" tabindex="0">
         <div class="tb-kpi__icon tb-kpi__icon--orange"><span class="material-symbols-outlined">trending_down</span></div>
@@ -288,9 +288,9 @@
         <canvas id="chart-bbu" height="220" role="img" aria-label="Distribusi status BB/U (gizi)"></canvas>
     </div>
     <div class="tb-card">
-        <p class="tb-card__title"><span class="material-symbols-outlined">calculate</span>Status IMT/U</p>
-        <p class="tb-card__sub">Indeks massa tubuh per usia</p>
-        <canvas id="chart-imtu" height="220" role="img" aria-label="Distribusi status IMT/U"></canvas>
+        <p class="tb-card__title"><span class="material-symbols-outlined">calculate</span>Status BB/TB</p>
+        <p class="tb-card__sub">Berat badan menurut tinggi badan</p>
+        <canvas id="chart-bbtb" height="220" role="img" aria-label="Distribusi status BB/TB"></canvas>
     </div>
 </div>
 
@@ -545,14 +545,14 @@ function loadGizi(){
             options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } }, cutout:'65%' }
         });
 
-        // IMT/U donut
-        destroyChart('chart-imtu');
-        var imt = d.imt_u;
-        charts['chart-imtu'] = new Chart(document.getElementById('chart-imtu'), {
+        // BB/TB donut
+        destroyChart('chart-bbtb');
+        var bbtb = d.bb_tb;
+        charts['chart-bbtb'] = new Chart(document.getElementById('chart-bbtb'), {
             type:'doughnut',
             data:{
                 labels:['Normal','Kurang','Buruk','Lebih','Obesitas'],
-                datasets:[{ data:[imt.normal,imt.kurang,imt.buruk,imt.lebih,imt.obesitas],
+                datasets:[{ data:[bbtb.normal,bbtb.kurang,bbtb.buruk,bbtb.lebih,bbtb.obesitas],
                     backgroundColor:[GREEN_A,AMBER,RED,BLUE,VIOLET], borderWidth:2, borderColor:'#fff' }]
             },
             options:{ plugins:{ legend:{ position:'bottom', labels:{ font:{ size:11 } } } }, cutout:'65%' }
