@@ -13,6 +13,7 @@ yarn-error.log
 /.idea
 /.vscode
 /.claude
+/.superpowers
 /.specify
 /docs
 /import_log_*.txt
