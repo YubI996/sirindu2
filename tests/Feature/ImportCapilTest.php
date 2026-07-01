@@ -176,6 +176,45 @@ class ImportCapilTest extends TestCase
         $this->assertEquals(1, $import->getResults()['updated']);
     }
 
+    public function test_hanya_sheet_pertama_yang_diproses_pada_file_multi_sheet(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'capil_multi_') . '.xlsx';
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+
+        // Sheet 0 — data yang dikehendaki
+        $s0 = $ss->getActiveSheet();
+        $s0->setTitle('DATA');
+        $s0->fromArray($this->header(), null, 'A1');
+        $s0->fromArray([[
+            '3274010101200010', 'ANAK SHEET SATU', 'LAKI-LAKI', '2020-01-10',
+            '77', '3274KK', 'IBU', 'AYAH', 'JL A', '001', '01', 'KEL', '01', 'KEC',
+        ]], null, 'A2');
+
+        // Sheet 1 — tersembunyi, TIDAK boleh ikut terproses
+        $s1 = $ss->createSheet();
+        $s1->setTitle('TERSEMBUNYI');
+        $s1->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
+        $s1->fromArray($this->header(), null, 'A1');
+        $s1->fromArray([[
+            '3274010101200011', 'ANAK SHEET DUA', 'PEREMPUAN', '2021-02-11',
+            '64', '3274KK', 'IBU', 'AYAH', 'JL B', '002', '01', 'KEL', '01', 'KEC',
+        ]], null, 'A2');
+
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($path);
+
+        $import = new CapilImport(1, '2026-06-25');
+        Excel::import($import, $path);
+
+        // Hanya baris sheet pertama yang masuk
+        $this->assertNotNull(Anak::where('nik', '3274010101200010')->first());
+        $this->assertNull(Anak::where('nik', '3274010101200011')->first());
+        $this->assertEquals(1, Anak::count());
+        $this->assertEquals(1, $import->getResults()['created']);
+
+        @unlink($path);
+    }
+
     public function test_import_dari_file_xlsx_nyata_dengan_alamat_bersimbol(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'capil_') . '.xlsx';
@@ -199,5 +238,65 @@ class ImportCapilTest extends TestCase
         $this->assertStringContainsString('Kel. API-API', $anak->alamat_ktp);
 
         @unlink($path);
+    }
+
+    public function test_sheet_pertama_yang_terlihat_dipilih_bukan_yang_hidden(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'capil_vis_') . '.xlsx';
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+
+        // Sheet 0 — TERSEMBUNYI (meniru "DATA AWAL"), tidak boleh terpilih
+        $s0 = $ss->getActiveSheet();
+        $s0->setTitle('RAW');
+        $s0->fromArray($this->header(), null, 'A1');
+        $s0->fromArray([[
+            '3274010101200010', 'ANAK HIDDEN', 'LAKI-LAKI', '2020-01-10',
+            '77', '3274KK', 'IBU', 'AYAH', 'JL A', '001', '01', 'KEL', '01', 'KEC',
+        ]], null, 'A2');
+
+        // Sheet 1 — TERLIHAT (meniru "DATA OLAH"), yang harus dipilih
+        $s1 = $ss->createSheet();
+        $s1->setTitle('OLAH');
+        $s1->fromArray($this->header(), null, 'A1');
+        $s1->fromArray([[
+            '3274010101200011', 'ANAK VISIBLE', 'PEREMPUAN', '2021-02-11',
+            '64', '3274KK', 'IBU', 'AYAH', 'JL B', '002', '01', 'KEL', '01', 'KEC',
+        ]], null, 'A2');
+
+        $s0->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
+        $ss->setActiveSheetIndex(1); // active sheet tidak boleh hidden
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss))->save($path);
+
+        $sheets = CapilImport::inspectSheets($path);
+        $target = CapilImport::firstVisibleSheet($sheets);
+        $this->assertEquals('OLAH', $target);
+
+        Excel::import(new CapilImport(1, '2026-06-25', $target), $path);
+
+        $this->assertNotNull(Anak::where('nik', '3274010101200011')->first()); // sheet terlihat
+        $this->assertNull(Anak::where('nik', '3274010101200010')->first());    // sheet hidden dilewati
+
+        @unlink($path);
+    }
+
+    public function test_peringatan_dibuat_saat_file_lebih_dari_satu_sheet(): void
+    {
+        $sheets = [
+            ['index' => 0, 'name' => 'DATA AWAL', 'visibility' => 'hidden'],
+            ['index' => 1, 'name' => 'DATA OLAH', 'visibility' => 'visible'],
+        ];
+
+        $warn = CapilImport::sheetWarning($sheets, 'DATA OLAH');
+        $this->assertNotNull($warn);
+        $this->assertStringContainsString('[PERINGATAN]', $warn);
+        $this->assertStringContainsString('DATA AWAL', $warn);
+        $this->assertStringContainsString('DATA OLAH', $warn);
+
+        // Satu sheet → tidak ada peringatan
+        $this->assertNull(CapilImport::sheetWarning(
+            [['index' => 0, 'name' => 'Sheet1', 'visibility' => 'visible']],
+            'Sheet1'
+        ));
     }
 }

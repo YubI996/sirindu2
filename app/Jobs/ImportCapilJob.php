@@ -33,15 +33,26 @@ class ImportCapilJob implements ShouldQueue
                 throw new \RuntimeException("File tidak ditemukan: {$this->importLog->file_path}");
             }
 
-            $import = new CapilImport($this->importLog->user_id);
+            // Penjaga sheet: pilih sheet pertama yang TERLIHAT (hindari sheet
+            // tersembunyi yang pernah merusak impor — insiden 2026-06-26).
+            $sheets = CapilImport::inspectSheets($path);
+            $target = CapilImport::firstVisibleSheet($sheets);
+
+            $import = new CapilImport($this->importLog->user_id, null, $target);
             Excel::import($import, $path);
             $results = $import->getResults();
+
+            // Selipkan peringatan multi-sheet di awal daftar kegagalan/info.
+            $failures = $results['failures'] ?: [];
+            if ($warn = CapilImport::sheetWarning($sheets, $target)) {
+                array_unshift($failures, $warn);
+            }
 
             $this->importLog->update([
                 'status'        => 'done',
                 'success_count' => $results['success'],
                 'failure_count' => $results['error_count'],
-                'failures'      => $results['failures'] ?: null,
+                'failures'      => $failures ?: null,
                 'completed_at'  => now(),
             ]);
 

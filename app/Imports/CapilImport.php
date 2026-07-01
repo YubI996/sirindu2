@@ -10,8 +10,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithStartRow;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Import data kependudukan dari Dukcapil (Capil) — format Excel (.xlsx).
@@ -20,12 +24,13 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  * sigizi. Matching via ResolvesAnakByTwoOfThree (NIK-exact dulu, lalu nama+tgl).
  * Baris tanpa padanan → anak baru dengan domisili kosong + penanda di catatan.
  */
-class CapilImport implements ToCollection, WithStartRow, WithChunkReading
+class CapilImport implements ToCollection, WithStartRow, WithChunkReading, WithMultipleSheets
 {
     use ResolvesAnakByTwoOfThree;
 
     protected int $userId;
     protected string $importDate;            // 'Y-m-d' untuk penanda catatan
+    protected int|string $sheet;             // indeks/nama sheet yang diproses
     protected int $successCount = 0;
     protected int $createdCount = 0;
     protected int $updatedCount = 0;
@@ -39,15 +44,82 @@ class CapilImport implements ToCollection, WithStartRow, WithChunkReading
 
     protected NikDummyService $nikService;
 
-    public function __construct(int $userId, ?string $importDate = null)
+    public function __construct(int $userId, ?string $importDate = null, int|string $sheet = 0)
     {
         $this->userId     = $userId;
         $this->importDate = $importDate ?? Carbon::today()->format('Y-m-d');
+        $this->sheet      = $sheet;
         $this->nikService = new NikDummyService();
     }
 
+    /**
+     * Hanya proses SATU sheet. Tanpa ini, Maatwebsite memberi makan SEMUA sheet
+     * (termasuk yang tersembunyi) ke import yang sama — menggandakan baris.
+     * Default sheet pertama; bisa di-override dengan indeks atau nama sheet.
+     */
+    public function sheets(): array { return [$this->sheet => $this]; }
+
     public function startRow(): int { return 1; }
     public function chunkSize(): int { return 500; }
+
+    // =========================================================================
+    // Penjaga sheet — cegah sheet tersembunyi merusak impor (lihat insiden 2026-06-26)
+    // =========================================================================
+
+    /**
+     * Daftar sheet (nama + visibilitas) tanpa memuat sel data — murah.
+     * Read filter menolak semua sel; visibilitas tetap terbaca dari workbook.xml.
+     *
+     * @return array<int, array{index:int, name:string, visibility:string}>
+     */
+    public static function inspectSheets(string $path): array
+    {
+        $reader = IOFactory::createReaderForFile($path);
+        if (method_exists($reader, 'setReadDataOnly')) {
+            $reader->setReadDataOnly(true);
+        }
+        $reader->setReadFilter(new class implements IReadFilter {
+            public function readCell($columnAddress, $row, $worksheetName = ''): bool { return false; }
+        });
+
+        $ss = $reader->load($path);
+        $sheets = [];
+        foreach ($ss->getAllSheets() as $i => $s) {
+            $sheets[] = [
+                'index'      => $i,
+                'name'       => $s->getTitle(),
+                'visibility' => $s->getSheetState(),
+            ];
+        }
+        $ss->disconnectWorksheets();
+
+        return $sheets;
+    }
+
+    /** Nama sheet pertama yang terlihat; fallback ke sheet pertama bila semua tersembunyi. */
+    public static function firstVisibleSheet(array $sheets): int|string
+    {
+        foreach ($sheets as $s) {
+            if (($s['visibility'] ?? '') === Worksheet::SHEETSTATE_VISIBLE) {
+                return $s['name'];
+            }
+        }
+        return $sheets[0]['name'] ?? 0;
+    }
+
+    /** Peringatan bila file punya >1 sheet; null bila tunggal. */
+    public static function sheetWarning(array $sheets, int|string $target): ?string
+    {
+        if (count($sheets) <= 1) return null;
+
+        $list = implode(', ', array_map(
+            fn ($s) => "{$s['name']} [{$s['visibility']}]",
+            $sheets
+        ));
+
+        return "[PERINGATAN] File berisi " . count($sheets)
+            . " sheet ({$list}). Hanya sheet \"{$target}\" yang diimpor.";
+    }
 
     // =========================================================================
     // Parse helpers
