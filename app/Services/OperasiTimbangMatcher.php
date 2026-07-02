@@ -27,7 +27,7 @@ class OperasiTimbangMatcher
 
         $kandidat = Anak::whereDate('tgl_lahir', $tglLahir)
             ->where('jk', $jkValue)
-            ->get(['id', 'nama', 'nama_ibu', 'nama_ayah']);
+            ->get(['id', 'nama', 'tgl_lahir', 'nama_ibu', 'nama_ayah']);
 
         // Saring berdasarkan kemiripan nama.
         $lolos = $kandidat->filter(fn ($a) => $this->mirip($nama, $a->nama))->values();
