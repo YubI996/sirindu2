@@ -111,4 +111,40 @@ class OperasiTimbangMatcherTest extends TestCase
         $this->assertSame('COCOK', $r['status']);
         $this->assertEquals($target->id, $r['anak']->id);
     }
+
+    public function test_nama_file_subset_dari_nama_db_cocok(): void
+    {
+        $target = $this->buatAnak(['nama' => 'MAUREEN BEA KHALIQA', 'jk' => 2, 'tgl_lahir' => '2022-05-08']);
+
+        $m = new OperasiTimbangMatcher(75);
+        // Nama file lebih pendek (prefix), similar_text ~73% < 75 → hanya lolos via substring.
+        $r = $m->match('MAUREEN BEA', '2022-05-08', 'P');
+
+        $this->assertSame('COCOK', $r['status']);
+        $this->assertEquals($target->id, $r['anak']->id);
+    }
+
+    public function test_bayi_belum_bernama_cocok_via_nama_ibu_dari_placeholder(): void
+    {
+        // Nama anak di DB sudah terisi asli; file masih placeholder "BY NY <ibu>".
+        $target = $this->buatAnak(['nama' => 'AISYAH PUTRI', 'jk' => 2, 'tgl_lahir' => '2026-06-26', 'nama_ibu' => 'MEIRINA DWI FUJIASTUTI', 'nama_ayah' => 'BUDI']);
+        $this->buatAnak(['nama' => 'ANAK LAIN', 'jk' => 2, 'tgl_lahir' => '2026-06-26', 'nama_ibu' => 'SITI LAINNYA', 'nama_ayah' => 'JOKO']);
+
+        $m = new OperasiTimbangMatcher(75);
+        // Nama placeholder, kolom Nama Ortu kosong → ibu diambil dari sisa "BY NY ...".
+        $r = $m->match('BY NY MEIRINA DWI FUJIASTUTI', '2026-06-26', 'P', null);
+
+        $this->assertSame('COCOK', $r['status']);
+        $this->assertEquals($target->id, $r['anak']->id);
+    }
+
+    public function test_bayi_belum_bernama_tanpa_ortu_cocok_tetap_tak_cocok(): void
+    {
+        $this->buatAnak(['nama' => 'AISYAH PUTRI', 'jk' => 2, 'tgl_lahir' => '2026-06-26', 'nama_ibu' => 'MEIRINA', 'nama_ayah' => 'BUDI']);
+
+        $m = new OperasiTimbangMatcher(75);
+        $r = $m->match('BY NY ORANG BERBEDA', '2026-06-26', 'P', null);
+
+        $this->assertSame('TAK_COCOK', $r['status']);
+    }
 }
