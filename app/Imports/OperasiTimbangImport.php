@@ -75,9 +75,10 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
             if ($nama === '') continue;
 
             $tglLahir = $this->parseDate($this->colVal($row, $map, 'tgl lahir'));
-            $jk       = (string) ($this->colVal($row, $map, 'jk') ?? '');
-            $namaOrtu = $this->colVal($row, $map, 'nama ortu');
-            $tglUkur  = $this->parseDate($this->colVal($row, $map, 'tanggal pengukuran'));
+            $jk        = (string) ($this->colVal($row, $map, 'jk') ?? '');
+            $namaOrtu  = $this->colVal($row, $map, 'nama ortu');
+            $kelurahan = $this->colVal($row, $map, 'desa/kel');
+            $tglUkur   = $this->parseDate($this->colVal($row, $map, 'tanggal pengukuran'));
 
             if (!$tglUkur) {
                 $this->skipped++;
@@ -86,7 +87,13 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
             }
 
             try {
-                $res = $this->matcher->match($nama, $tglLahir, $jk, $namaOrtu ? (string) $namaOrtu : null);
+                $res = $this->matcher->match(
+                    $nama,
+                    $tglLahir,
+                    $jk,
+                    $namaOrtu ? (string) $namaOrtu : null,
+                    $kelurahan ? (string) $kelurahan : null,
+                );
 
                 if ($res['status'] === 'COCOK') {
                     $this->matched++;

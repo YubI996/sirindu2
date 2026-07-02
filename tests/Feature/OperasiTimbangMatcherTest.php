@@ -82,4 +82,33 @@ class OperasiTimbangMatcherTest extends TestCase
         $this->assertSame('COCOK', $r['status']);
         $this->assertEquals($target->id, $r['anak']->id);
     }
+
+    public function test_ortu_tertukar_ibu_ayah_tetap_cocok(): void
+    {
+        // File: "IBU / AYAH"; DB: nama_ibu=MARIA, nama_ayah=YUSUF (urutan tertukar)
+        $target = $this->buatAnak(['nama' => 'RAKA', 'jk' => 1, 'tgl_lahir' => '2023-03-03', 'nama_ibu' => 'MARIA', 'nama_ayah' => 'YUSUF']);
+        $this->buatAnak(['nama' => 'RAKA', 'jk' => 1, 'tgl_lahir' => '2023-03-03', 'nama_ibu' => 'FATIMAH', 'nama_ayah' => 'ALI']);
+
+        $m = new OperasiTimbangMatcher(75);
+        $r = $m->match('RAKA', '2023-03-03', 'L', 'MARIA / YUSUF');
+
+        $this->assertSame('COCOK', $r['status']);
+        $this->assertEquals($target->id, $r['anak']->id);
+    }
+
+    public function test_kembar_ortu_sama_dibedakan_oleh_kelurahan(): void
+    {
+        $kelA = \App\Models\Kelurahan::create(['id_kecamatan' => 1, 'name' => 'LOK TUAN']);
+        $kelB = \App\Models\Kelurahan::create(['id_kecamatan' => 1, 'name' => 'TANJUNG LAUT']);
+
+        // Dua anak: nama+tgl+jk+ortu sama; hanya kelurahan beda.
+        $target = $this->buatAnak(['nama' => 'DINDA', 'jk' => 2, 'tgl_lahir' => '2022-07-07', 'nama_ibu' => 'SARI', 'nama_ayah' => 'ANTO', 'id_kel' => $kelA->id]);
+        $this->buatAnak(['nama' => 'DINDA', 'jk' => 2, 'tgl_lahir' => '2022-07-07', 'nama_ibu' => 'SARI', 'nama_ayah' => 'ANTO', 'id_kel' => $kelB->id]);
+
+        $m = new OperasiTimbangMatcher(75);
+        $r = $m->match('DINDA', '2022-07-07', 'P', 'ANTO / SARI', 'Lok Tuan');
+
+        $this->assertSame('COCOK', $r['status']);
+        $this->assertEquals($target->id, $r['anak']->id);
+    }
 }
