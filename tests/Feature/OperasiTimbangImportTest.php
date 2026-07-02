@@ -111,4 +111,76 @@ class OperasiTimbangImportTest extends TestCase
         $this->assertEquals(0, DataAnak::count());
         $this->assertEquals(1, $import->getResults()['skipped']);
     }
+
+    // ── Jalur --keputusan: petakan baris ambigu ke record pilihan ──
+
+    /** Dua anak identik (nama+ibu+tgl+jk) → matcher AMBIGU. */
+    private function buatAmbigu(): array
+    {
+        return [
+            $this->buatAnak(['nama' => 'MUHAMMAD ABIZAR', 'nama_ibu' => 'AGIL ANASTASYA F']),
+            $this->buatAnak(['nama' => 'MUHAMMAD ABIZAR', 'nama_ibu' => 'AGIL ANASTASYA F']),
+        ];
+    }
+
+    public function test_keputusan_menulis_ke_record_pilihan(): void
+    {
+        [$a1, $a2] = $this->buatAmbigu();
+
+        // Baris data = rowNum 2 (header di baris 1)
+        $import = new OperasiTimbangImport(userId: 1, commit: true, minNama: 88, sheet: 0, keputusan: [2 => (string) $a2->id]);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $this->assertEquals(1, DataAnak::where('id_anak', $a2->id)->count());
+        $this->assertEquals(0, DataAnak::where('id_anak', $a1->id)->count());
+        $r = $import->getResults();
+        $this->assertEquals(1, $r['resolved']);
+        $this->assertCount(0, $r['ambiguous']);
+    }
+
+    public function test_keputusan_skip_tidak_menulis(): void
+    {
+        $this->buatAmbigu();
+
+        $import = new OperasiTimbangImport(userId: 1, commit: true, minNama: 88, sheet: 0, keputusan: [2 => 'skip']);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $this->assertEquals(0, DataAnak::count());
+        $this->assertEquals(1, $import->getResults()['resolved_skip']);
+    }
+
+    public function test_keputusan_id_tak_valid_dilaporkan_tetap_ambigu(): void
+    {
+        $this->buatAmbigu();
+
+        $import = new OperasiTimbangImport(userId: 1, commit: true, minNama: 88, sheet: 0, keputusan: [2 => '99999999']);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $this->assertEquals(0, DataAnak::count());
+        $r = $import->getResults();
+        $this->assertNotEmpty($r['keputusan_error']);
+        $this->assertCount(1, $r['ambiguous']);
+    }
+
+    public function test_dry_run_keputusan_menghitung_tanpa_menulis(): void
+    {
+        [$a1, $a2] = $this->buatAmbigu();
+
+        $import = new OperasiTimbangImport(userId: 1, commit: false, minNama: 88, sheet: 0, keputusan: [2 => (string) $a2->id]);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $this->assertEquals(0, DataAnak::count());
+        $this->assertEquals(1, $import->getResults()['resolved']);
+    }
+
+    public function test_tanpa_keputusan_baris_ambigu_tetap_ambigu(): void
+    {
+        $this->buatAmbigu();
+
+        $import = new OperasiTimbangImport(userId: 1, commit: true, minNama: 88);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $this->assertEquals(0, DataAnak::count());
+        $this->assertCount(1, $import->getResults()['ambiguous']);
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Services\OperasiTimbangMatcher;
 use App\Traits\ResolvesAnakByTwoOfThree;
@@ -29,18 +30,26 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
 
     protected int $matched = 0;
     protected int $skipped = 0;
+    protected int $resolved = 0;       // baris ambigu diselesaikan via keputusan → ditulis
+    protected int $resolvedSkip = 0;   // baris ambigu di-skip via keputusan
     protected array $ambiguous = [];
     protected array $unmatched = [];
+    protected array $keputusanError = [];
 
     protected ?array $columnMap = null;
     protected int $headerRowIdx = 0;
     protected int $rowOffset = 0;
 
+    /**
+     * @param array<int,string>|null $keputusan Peta baris(rowNum)→keputusan_id ('skip' atau id anak)
+     *                                           untuk menyelesaikan baris ambigu secara manual.
+     */
     public function __construct(
         protected int $userId,
         protected bool $commit = false,
         protected int $minNama = 88,
         protected int|string $sheet = 0,
+        protected ?array $keputusan = null,
     ) {
         $this->matcher = new OperasiTimbangMatcher($minNama);
     }
@@ -111,6 +120,9 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
                     'kandidat'  => collect($res['kandidat'])->map(fn ($a) => "#{$a->id} {$a->nama} (ibu: {$a->nama_ibu})")->implode('; '),
                 ];
                 if ($res['status'] === 'AMBIGU') {
+                    if ($this->terapkanKeputusan($rowNum, $row, $map, $tglUkur, $nama)) {
+                        continue;
+                    }
                     $this->ambiguous[] = $catatan;
                 } else {
                     $this->unmatched[] = $catatan;
@@ -122,6 +134,38 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
         }
 
         $this->rowOffset += $originalSize;
+    }
+
+    /**
+     * Terapkan keputusan manual untuk baris ambigu.
+     * @return bool true bila baris terselesaikan (ditulis/skip) → jangan catat sbg ambigu.
+     */
+    protected function terapkanKeputusan(int $rowNum, $row, array $map, string $tglUkur, string $nama): bool
+    {
+        $dec = $this->keputusan[$rowNum] ?? null;
+        if ($dec === null || $dec === '') {
+            return false;
+        }
+
+        if (strtolower((string) $dec) === 'skip') {
+            $this->resolvedSkip++;
+            return true;
+        }
+
+        if (ctype_digit((string) $dec)) {
+            $anak = Anak::find((int) $dec);
+            if ($anak) {
+                $this->resolved++;
+                if ($this->commit) {
+                    $this->tulis($anak, $row, $map, $tglUkur);
+                }
+                return true;
+            }
+            // id tak ditemukan → catat error & biarkan tetap dilaporkan sebagai ambigu
+            $this->keputusanError[] = ['baris' => $rowNum, 'nama' => $nama, 'alasan' => "keputusan_id #{$dec} tidak ditemukan di data anak."];
+        }
+
+        return false;
     }
 
     protected function tulis($anak, $row, array $map, string $tglUkur): void
@@ -190,10 +234,13 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
     public function getResults(): array
     {
         return [
-            'matched'   => $this->matched,
-            'ambiguous' => $this->ambiguous,
-            'unmatched' => $this->unmatched,
-            'skipped'   => $this->skipped,
+            'matched'         => $this->matched,
+            'ambiguous'       => $this->ambiguous,
+            'unmatched'       => $this->unmatched,
+            'skipped'         => $this->skipped,
+            'resolved'        => $this->resolved,
+            'resolved_skip'   => $this->resolvedSkip,
+            'keputusan_error' => $this->keputusanError,
         ];
     }
 }

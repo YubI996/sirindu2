@@ -21,7 +21,8 @@ class ImportOperasiTimbang extends Command
         {file : Path file .xlsx ekspor e-PPGBM}
         {--commit : Tulis ke DB (tanpa flag ini hanya dry-run)}
         {--user=1 : id_user pemilik record data_anak}
-        {--min-nama=88 : Ambang kemiripan nama (persen)}';
+        {--min-nama=88 : Ambang kemiripan nama (persen)}
+        {--keputusan= : Path CSV keputusan ambigu (kolom: baris, keputusan_id)}';
 
     protected $description = 'Cocokkan & impor hasil operasi timbang e-PPGBM ke data_anak (default dry-run).';
 
@@ -37,6 +38,19 @@ class ImportOperasiTimbang extends Command
             return self::FAILURE;
         }
 
+        $keputusan = null;
+        if ($kepPath = (string) $this->option('keputusan')) {
+            if (!is_file($kepPath)) {
+                $this->error("File keputusan tidak ditemukan: {$kepPath}");
+                return self::FAILURE;
+            }
+            $keputusan = $this->bacaKeputusan($kepPath);
+            if ($keputusan === null) {
+                return self::FAILURE;
+            }
+            $this->info('Keputusan dimuat: ' . count($keputusan) . ' baris.');
+        }
+
         $this->warn('Mode: ' . ($commit ? 'COMMIT (menulis data_anak)' : 'DRY-RUN (tidak menulis apa pun)'));
 
         // Guard sheet: hanya sheet terlihat pertama (cegah insiden multi-sheet).
@@ -46,7 +60,7 @@ class ImportOperasiTimbang extends Command
             $this->warn($warn);
         }
 
-        $import = new OperasiTimbangImport($userId, $commit, $minNama, $target);
+        $import = new OperasiTimbangImport($userId, $commit, $minNama, $target, $keputusan);
 
         if ($commit) {
             DB::transaction(fn () => Excel::import($import, $file));
@@ -58,9 +72,20 @@ class ImportOperasiTimbang extends Command
 
         $this->newLine();
         $this->info("COCOK      : {$r['matched']}" . ($commit ? ' (ditulis)' : ' (akan ditulis)'));
-        $this->line("AMBIGU     : " . count($r['ambiguous']));
+        if ($keputusan !== null) {
+            $this->info("RESOLVED   : {$r['resolved']}" . ($commit ? ' (ditulis via keputusan)' : ' (akan ditulis via keputusan)'));
+            $this->line("RES-SKIP   : {$r['resolved_skip']} (di-skip via keputusan)");
+        }
+        $this->line("AMBIGU     : " . count($r['ambiguous']) . ($keputusan !== null ? ' (belum diputus)' : ''));
         $this->line("TAK_COCOK  : " . count($r['unmatched']));
         $this->line("DILEWATI   : {$r['skipped']}");
+        if (!empty($r['keputusan_error'])) {
+            $this->newLine();
+            $this->warn('⚠ keputusan_id bermasalah: ' . count($r['keputusan_error']));
+            foreach (array_slice($r['keputusan_error'], 0, 15) as $e) {
+                $this->line("    baris {$e['baris']} {$e['nama']}: {$e['alasan']}");
+            }
+        }
         $this->newLine();
 
         $base = pathinfo($file, PATHINFO_FILENAME);
@@ -72,6 +97,40 @@ class ImportOperasiTimbang extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Baca CSV keputusan → peta baris(int) → keputusan_id (string 'skip'/id).
+     * Return null bila header wajib tidak ada.
+     *
+     * @return array<int,string>|null
+     */
+    private function bacaKeputusan(string $path): ?array
+    {
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (empty($lines)) {
+            return [];
+        }
+
+        $header = array_map(fn ($h) => strtolower(trim($h)), str_getcsv(array_shift($lines), ',', '"', '\\'));
+        $bi = array_search('baris', $header, true);
+        $ki = array_search('keputusan_id', $header, true);
+        if ($bi === false || $ki === false) {
+            $this->error('File keputusan wajib punya kolom "baris" dan "keputusan_id".');
+            return null;
+        }
+
+        $map = [];
+        foreach ($lines as $line) {
+            $row   = str_getcsv($line, ',', '"', '\\');
+            $baris = (int) ($row[$bi] ?? 0);
+            $val   = trim((string) ($row[$ki] ?? ''));
+            if ($baris > 0 && $val !== '') {
+                $map[$baris] = $val;
+            }
+        }
+
+        return $map;
     }
 
     private function tulisCsv(string $path, array $rows): void
