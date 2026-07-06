@@ -417,7 +417,9 @@ body.login-page {
             novalidate
           >
             @csrf
+            @if(config('services.recaptcha.enabled'))
             <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
+            @endif
 
             {{-- Email --}}
             <div class="srd-field">
@@ -478,11 +480,13 @@ body.login-page {
               <span class="srd-spinner" aria-hidden="true"></span>
             </button>
 
+            @if(config('services.recaptcha.enabled'))
             <p style="font-size:11px;color:var(--text-3);text-align:center;margin:14px 0 0;line-height:1.6;">
               Dilindungi oleh reCAPTCHA &mdash;
               <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--text-3);">Privasi</a> &amp;
               <a href="https://policies.google.com/terms" target="_blank" rel="noopener" style="color:var(--text-3);">Ketentuan</a> Google berlaku.
             </p>
+            @endif
 
           </form>
         </div>
@@ -496,12 +500,15 @@ body.login-page {
 
 @section('scripts')
 @parent
+@if(config('services.recaptcha.enabled'))
 <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}" async defer></script>
+@endif
 <script>
 (function () {
   'use strict';
 
   var SITE_KEY = '{{ config('services.recaptcha.site_key') }}';
+  var RECAPTCHA_ENABLED = {{ config('services.recaptcha.enabled') ? 'true' : 'false' }};
 
   // ── Time-based greeting ────────────────────────────────────────
   var hour  = new Date().getHours();
@@ -545,13 +552,20 @@ body.login-page {
     btn.disabled = true;
 
     function doSubmit(token) {
-      document.getElementById('g-recaptcha-response').value = token;
+      var field = document.getElementById('g-recaptcha-response');
+      if (field) field.value = token;
       form.submit(); // native submit — tidak trigger listener ini lagi
     }
 
     function resetBtn() {
       btn.classList.remove('is-loading');
       btn.disabled = false;
+    }
+
+    // reCAPTCHA dimatikan (RECAPTCHA_ENABLED=false) — submit langsung tanpa token.
+    if (!RECAPTCHA_ENABLED) {
+      doSubmit('');
+      return;
     }
 
     if (typeof grecaptcha === 'undefined') {
