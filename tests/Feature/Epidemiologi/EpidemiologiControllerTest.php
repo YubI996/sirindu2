@@ -26,8 +26,9 @@ class EpidemiologiControllerTest extends TestCase
     {
         parent::setUp();
 
-        // type=1 => "admin" (via User accessor)
-        $this->admin = User::factory()->create(['type' => 1]);
+        // type=0 => super-admin (role=null, isSuperAdmin()=true) — lolos middleware
+        // module.role surveilans & melihat SEMUA kasus (scope Dinkes, tanpa batas wilayah).
+        $this->admin = User::factory()->create(['type' => 0]);
 
         $this->kecamatan = Kecamatan::factory()->create();
         $this->kelurahan = Kelurahan::factory()->create(['id_kecamatan' => $this->kecamatan->id]);
