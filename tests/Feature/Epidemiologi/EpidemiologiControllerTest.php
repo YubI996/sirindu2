@@ -185,15 +185,20 @@ class EpidemiologiControllerTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('admin.epidemiologi.create'));
         $response->assertStatus(200);
         $response->assertViewIs('admin.epidemiologi.create');
-        $response->assertViewHasAll(['diseases', 'kecamatanList', 'puskesmasList', 'suggestedRegNumber']);
+        $response->assertViewHasAll(['diseases', 'kecamatanList', 'puskesmasList']);
     }
 
-    public function test_create_form_suggests_registration_number()
+    public function test_store_auto_generates_no_registrasi()
     {
-        $response = $this->actingAs($this->admin)->get(route('admin.epidemiologi.create'));
-        $suggestedRegNumber = $response->viewData('suggestedRegNumber');
+        // no_registrasi tidak lagi diinput/di-suggest di form — dibangkitkan server
+        // saat store (format 1710YYNNN, opsional prefix penyakit). Lihat generateNoRegistrasi.
+        $data = $this->validCaseData();
 
-        $this->assertStringStartsWith('EPI-' . date('Y') . '-', $suggestedRegNumber);
+        $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
+
+        $case = SurveillanceCase::where('nik', $data['nik'])->first();
+        $this->assertNotNull($case);
+        $this->assertStringContainsString('1710' . date('y'), $case->no_registrasi);
     }
 
     // ==================== STORE TESTS ====================
@@ -206,7 +211,6 @@ class EpidemiologiControllerTest extends TestCase
 
         $response->assertRedirect(route('admin.epidemiologi.index'));
         $this->assertDatabaseHas('surveillance_cases', [
-            'no_registrasi' => 'EPI-2026-0001',
             'nik' => '3201011234560001',
             'nama_lengkap' => 'John Doe',
         ]);
@@ -220,7 +224,7 @@ class EpidemiologiControllerTest extends TestCase
 
         $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
 
-        $case = SurveillanceCase::where('no_registrasi', $data['no_registrasi'])->first();
+        $case = SurveillanceCase::where('nik', $data['nik'])->first();
         $this->assertEquals('balita', $case->kategori_umur);
     }
 
@@ -230,7 +234,7 @@ class EpidemiologiControllerTest extends TestCase
 
         $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
 
-        $case = SurveillanceCase::where('no_registrasi', $data['no_registrasi'])->first();
+        $case = SurveillanceCase::where('nik', $data['nik'])->first();
         $this->assertEquals($this->admin->id, $case->id_petugas_input);
         $this->assertEquals($this->admin->id, $case->created_by);
         $this->assertEquals($this->admin->id, $case->updated_by);
@@ -238,14 +242,15 @@ class EpidemiologiControllerTest extends TestCase
 
     public function test_store_handles_boolean_symptoms()
     {
+        // Checkbox gejala submit value="1" (lihat form-section-d); rule nullable|boolean.
         $data = $this->validCaseData([
-            'gejala_demam' => 'on',
-            'gejala_batuk' => 'on',
+            'gejala_demam' => 1,
+            'gejala_batuk' => 1,
         ]);
 
         $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
 
-        $case = SurveillanceCase::where('no_registrasi', $data['no_registrasi'])->first();
+        $case = SurveillanceCase::where('nik', $data['nik'])->first();
         $this->assertTrue($case->gejala_demam);
         $this->assertTrue($case->gejala_batuk);
         $this->assertFalse($case->gejala_diare);
@@ -257,8 +262,9 @@ class EpidemiologiControllerTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), []);
 
+        // no_registrasi (auto-generate) serta status_rawat & nama_faskes_rawat
+        // (diturunkan dari baris faskes_berobat) tak lagi divalidasi sebagai input.
         $response->assertSessionHasErrors([
-            'no_registrasi',
             'nik',
             'nama_lengkap',
             'tanggal_lahir',
@@ -271,8 +277,6 @@ class EpidemiologiControllerTest extends TestCase
             'id_jenis_kasus',
             'tanggal_onset',
             'tanggal_konsultasi',
-            'status_rawat',
-            'nama_faskes_rawat',
         ]);
     }
 
@@ -282,16 +286,6 @@ class EpidemiologiControllerTest extends TestCase
 
         $response = $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
         $response->assertSessionHasErrors('nik');
-    }
-
-    public function test_store_fails_with_duplicate_no_registrasi()
-    {
-        $this->createCase(['no_registrasi' => 'EPI-2026-0001']);
-
-        $data = $this->validCaseData(['no_registrasi' => 'EPI-2026-0001']);
-
-        $response = $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
-        $response->assertSessionHasErrors('no_registrasi');
     }
 
     public function test_store_fails_when_tanggal_onset_after_today()
@@ -509,10 +503,12 @@ class EpidemiologiControllerTest extends TestCase
         $this->createCase();
 
         $response = $this->actingAs($this->admin)
-            ->post(route('admin.epidemiologi.exportExcel'));
+            ->get(route('admin.epidemiologi.exportExcel'));
 
         $response->assertStatus(200);
-        $this->assertStringStartsWith('text/csv', $response->headers->get('content-type'));
+        // exportExcel menghasilkan berkas XLSX (Maatwebsite/Excel), diunduh sebagai attachment.
+        $this->assertStringContainsString('spreadsheetml', $response->headers->get('content-type'));
+        $this->assertStringContainsString('attachment', $response->headers->get('content-disposition'));
     }
 
     public function test_export_excel_filters_by_disease()
@@ -520,9 +516,9 @@ class EpidemiologiControllerTest extends TestCase
         $this->createCase(['id_jenis_kasus' => $this->disease->id]);
 
         $response = $this->actingAs($this->admin)
-            ->post(route('admin.epidemiologi.exportExcel'), [
+            ->get(route('admin.epidemiologi.exportExcel', [
                 'disease_id' => $this->disease->id,
-            ]);
+            ]));
 
         $response->assertStatus(200);
     }

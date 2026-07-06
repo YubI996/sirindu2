@@ -393,7 +393,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
                     'nama_antigen'      => $antigenLabels[$ke],
                     'diberikan'         => $row['diberikan'] ?? 'tidak_tahu',
                     'sumber_informasi'  => $row['sumber_informasi'] ?? null,
-                    'tanggal_imunisasi' => $row['tanggal_imunisasi'] ?: null,
+                    'tanggal_imunisasi' => ($row['tanggal_imunisasi'] ?? null) ?: null,
                 ]
             );
         }
