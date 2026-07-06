@@ -39,13 +39,16 @@ class SurveillanceCaseTest extends TestCase
 
     // ==================== ACCESSOR TESTS ====================
 
-    public function test_umur_accessor_calculates_age_from_tanggal_lahir()
+    public function test_umur_accessor_calculates_age_at_onset()
     {
+        // Umur dihitung pada TANGGAL ONSET (umur saat mulai sakit), bukan umur hari ini.
+        // Tanggal dipatok tetap agar deterministik: lahir 2000-01-01, onset 2025-06-15 → 25.
         $case = $this->createCase([
-            'tanggal_lahir' => Carbon::now()->subYears(25)->format('Y-m-d'),
+            'tanggal_lahir' => '2000-01-01',
+            'tanggal_onset' => '2025-06-15',
         ]);
 
-        $this->assertEquals(25, $case->umur);
+        $this->assertSame(25, $case->umur);
     }
 
     public function test_umur_accessor_returns_null_when_no_tanggal_lahir()
@@ -58,12 +61,14 @@ class SurveillanceCaseTest extends TestCase
 
     public function test_lama_rawat_accessor_calculates_days_between_dates()
     {
+        // Lama rawat dihitung INKLUSIF (hari masuk & hari keluar ikut dihitung):
+        // 1–10 Januari = 10 hari. Lihat accessor lamaRawat (diffInDays + 1).
         $case = $this->createCase([
             'tanggal_masuk_rawat' => '2026-01-01',
             'tanggal_keluar_rawat' => '2026-01-10',
         ]);
 
-        $this->assertEquals(9, $case->lama_rawat);
+        $this->assertEquals(10, $case->lama_rawat);
     }
 
     public function test_lama_rawat_returns_null_when_dates_missing()
@@ -223,7 +228,7 @@ class SurveillanceCaseTest extends TestCase
 
         $symptoms = $case->getSymptoms();
 
-        $this->assertCount(17, $symptoms);
+        $this->assertCount(20, $symptoms);
         $this->assertTrue($symptoms['demam']);
         $this->assertTrue($symptoms['batuk']);
         $this->assertFalse($symptoms['pilek']);
@@ -292,7 +297,8 @@ class SurveillanceCaseTest extends TestCase
     public function test_umur_and_lama_rawat_are_appended_to_json()
     {
         $case = $this->createCase([
-            'tanggal_lahir' => Carbon::now()->subYears(30)->format('Y-m-d'),
+            'tanggal_lahir' => '1995-01-01',
+            'tanggal_onset' => '2025-06-15',   // umur saat onset = 30
             'tanggal_masuk_rawat' => '2026-01-01',
             'tanggal_keluar_rawat' => '2026-01-05',
         ]);
@@ -301,7 +307,7 @@ class SurveillanceCaseTest extends TestCase
 
         $this->assertArrayHasKey('umur', $json);
         $this->assertArrayHasKey('lama_rawat', $json);
-        $this->assertEquals(30, $json['umur']);
-        $this->assertEquals(4, $json['lama_rawat']);
+        $this->assertSame(30, $json['umur']);
+        $this->assertEquals(5, $json['lama_rawat']); // inklusif: 1–5 Januari = 5 hari
     }
 }

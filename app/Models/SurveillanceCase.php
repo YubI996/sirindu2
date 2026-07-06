@@ -355,7 +355,9 @@ class SurveillanceCase extends Model
                     ?? $this->tanggal_onset
                     ?? $this->tanggal_lapor
                     ?? now();
-                return $this->tanggal_lahir->diffInYears($ref);
+                // Tahun penuh (completed years). Carbon 3 mengembalikan float,
+                // jadi dipangkas ke bilangan bulat — umur tak pernah pakai koma.
+                return (int) $this->tanggal_lahir->diffInYears($ref);
             },
         );
     }
