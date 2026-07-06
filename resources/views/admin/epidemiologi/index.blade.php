@@ -851,7 +851,7 @@ $(document).ready(function() {
                 d.disease_filter = $('#disease_filter').val();
                 d.status_filter = $('#status_filter').val();
                 d.kecamatan_filter = $('#kecamatan_filter').val();
-                d.filter_mode = $('input[name="filter_mode"]:checked').val() || 'dilaporkan';
+                d.filter_mode = $('input[name="filter_mode"]:checked').val() || 'wilker';
             }
         },
         columns: [
@@ -882,7 +882,7 @@ $(document).ready(function() {
     });
 
     // Wilker/faskes filter mode toggle
-    $('input[name=”filter_mode”]').on('change', function() {
+    $('input[name="filter_mode"]').on('change', function() {
         table.draw();
     });
 

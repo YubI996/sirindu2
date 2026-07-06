@@ -503,6 +503,68 @@ class SurveillanceCase extends Model
     }
 
     /**
+     * Batasi query ke kasus yang boleh DILIHAT oleh $user (data scoping surveilans).
+     *
+     * Aturan (model "wilayah mereka"):
+     *  - Dinkes / superadmin      → tanpa batas (semua kasus se-kota).
+     *  - surveilans_puskesmas     → kasus di kelurahan catchment wilker puskesmasnya
+     *                               (termasuk data hasil import), berdasarkan id_kel.
+     *  - surveilans_rs            → kasus yang dilaporkan/diinput RS tsb (faskes_type=rs
+     *                               & id_faskes = id_rs); RS tak punya wilayah teritorial.
+     *  - lainnya / tak dikenal    → tidak melihat apa pun.
+     *
+     * $user null diperlakukan sebagai tanpa batas (konteks internal/Dinkes).
+     */
+    public function scopeVisibleTo($query, ?\App\Models\User $user)
+    {
+        if ($user === null || $user->isSuperAdmin()) {
+            return $query;
+        }
+
+        if ($user->isSurveilansPuskesmas()) {
+            $kelIds = $user->puskesmas
+                ? \App\Support\WilkerPuskesmas::catchmentKelurahanIds($user->puskesmas->name)
+                : [];
+            $idPuskesmas = $user->id_puskesmas;
+
+            // Catchment kelurahan wilker-nya ATAU kasus yang dilaporkan puskesmas ini
+            // (agar kasus yang mereka input sendiri tak pernah "hilang" walau di luar wilker).
+            return $query->where(function ($q) use ($kelIds, $idPuskesmas) {
+                $q->whereIn('id_kel', $kelIds ?: [-1]);
+                if ($idPuskesmas) {
+                    $q->orWhere(function ($q2) use ($idPuskesmas) {
+                        $q2->where('faskes_type', 'puskesmas')
+                           ->where('id_faskes', $idPuskesmas);
+                    });
+                }
+            });
+        }
+
+        if ($user->isSurveilansRS()) {
+            return $query->where('faskes_type', 'rs')
+                         ->where('id_faskes', $user->id_rs);
+        }
+
+        // Peran faskes tak dikenal — fail closed.
+        return $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * Apakah kasus ini boleh dilihat oleh $user? (dipakai untuk otorisasi show/edit/foto)
+     */
+    public function isVisibleTo(?\App\Models\User $user): bool
+    {
+        if ($user === null || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return static::query()
+            ->visibleTo($user)
+            ->whereKey($this->getKey())
+            ->exists();
+    }
+
+    /**
      * Get all symptoms as an array
      */
     public function getSymptoms()

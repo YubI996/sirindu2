@@ -206,9 +206,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
      * @param string|null $faskesType  'puskesmas' or 'rs' (null = all)
      * @param int|null    $faskesId    ID of puskesmas/rs (null = all)
      */
-    public function getDashboardStats(?string $faskesType = null, ?int $faskesId = null, ?int $diseaseId = null)
+    public function getDashboardStats(?\App\Models\User $scopeUser = null, ?int $diseaseId = null)
     {
-        $base = $this->scopedQuery($faskesType, $faskesId);
+        $base = $this->scopedQuery($scopeUser);
 
         if ($diseaseId) {
             $base->where('id_jenis_kasus', $diseaseId);
@@ -231,7 +231,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by geography
      */
-    public function getCasesByGeography($level = 'kecamatan', ?array $faskesScope = null, ?int $diseaseId = null)
+    public function getCasesByGeography($level = 'kecamatan', ?\App\Models\User $scopeUser = null, ?int $diseaseId = null)
     {
         $applyDisease = function ($query) use ($diseaseId) {
             if ($diseaseId) {
@@ -241,19 +241,19 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         };
 
         if ($level === 'kecamatan') {
-            $query = $applyDisease($this->scopedQueryFromArray($faskesScope))
+            $query = $applyDisease($this->scopedQuery($scopeUser))
                 ->select('id_kec', DB::raw('count(*) as total'))
                 ->with('kecamatan:id,name')
                 ->groupBy('id_kec');
             return $query->get();
         } elseif ($level === 'kelurahan') {
-            $query = $applyDisease($this->scopedQueryFromArray($faskesScope))
+            $query = $applyDisease($this->scopedQuery($scopeUser))
                 ->select('id_kel', DB::raw('count(*) as total'))
                 ->with('kelurahan:id,name')
                 ->groupBy('id_kel');
             return $query->get();
         } elseif ($level === 'rt') {
-            $query = $applyDisease($this->scopedQueryFromArray($faskesScope))
+            $query = $applyDisease($this->scopedQuery($scopeUser))
                 ->select('id_rt', 'id_kel', DB::raw('count(*) as total'))
                 ->with(['rt:id,name', 'kelurahan:id,name'])
                 ->groupBy('id_rt', 'id_kel');
@@ -266,11 +266,11 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases trend over months
      */
-    public function getCasesTrend($months = 12, ?array $faskesScope = null, ?int $diseaseId = null)
+    public function getCasesTrend($months = 12, ?\App\Models\User $scopeUser = null, ?int $diseaseId = null)
     {
         $startDate = Carbon::now()->subMonths($months);
 
-        $query = $this->scopedQueryFromArray($faskesScope);
+        $query = $this->scopedQuery($scopeUser);
 
         if ($diseaseId) {
             $query->where('id_jenis_kasus', $diseaseId);
@@ -291,9 +291,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by disease type (only active diseases)
      */
-    public function getCasesByDisease(?array $faskesScope = null, ?int $diseaseId = null)
+    public function getCasesByDisease(?\App\Models\User $scopeUser = null, ?int $diseaseId = null)
     {
-        $query = $this->scopedQueryFromArray($faskesScope)
+        $query = $this->scopedQuery($scopeUser)
             ->select('id_jenis_kasus', DB::raw('count(*) as total'))
             ->whereHas('jenisKasus', function ($q) {
                 $q->where('is_active', true);
@@ -312,9 +312,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by status
      */
-    public function getCasesByStatus(?array $faskesScope = null, ?int $diseaseId = null)
+    public function getCasesByStatus(?\App\Models\User $scopeUser = null, ?int $diseaseId = null)
     {
-        $query = $this->scopedQueryFromArray($faskesScope);
+        $query = $this->scopedQuery($scopeUser);
 
         if ($diseaseId) {
             $query->where('id_jenis_kasus', $diseaseId);
@@ -328,9 +328,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Get cases grouped by facility type (lokasi penularan category).
      */
-    public function getCasesByFacilityType(?array $faskesScope = null, ?int $diseaseId = null)
+    public function getCasesByFacilityType(?\App\Models\User $scopeUser = null, ?int $diseaseId = null)
     {
-        $query = $this->scopedQueryFromArray($faskesScope)
+        $query = $this->scopedQuery($scopeUser)
             ->whereNotNull('lokasi_penularan')
             ->where('lokasi_penularan', '!=', '');
 
@@ -361,29 +361,14 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     }
 
     /**
-     * Build a base query scoped to a specific faskes (or unscoped if null).
+     * Build a base query scoped ke kasus yang boleh dilihat $scopeUser.
+     * $scopeUser null = tanpa batas (konteks Dinkes/agregat).
+     *
+     * Seluruh aturan scoping terpusat di SurveillanceCase::scopeVisibleTo.
      */
-    private function scopedQuery(?string $faskesType, ?int $faskesId)
+    private function scopedQuery(?\App\Models\User $scopeUser)
     {
-        $query = $this->model->newQuery();
-
-        if ($faskesType && $faskesId) {
-            $query->where('faskes_type', $faskesType)->where('id_faskes', $faskesId);
-        }
-
-        return $query;
-    }
-
-    /**
-     * Build a scoped query from an array ['faskes_type' => ..., 'id_faskes' => ...] or null.
-     */
-    private function scopedQueryFromArray(?array $faskesScope)
-    {
-        if ($faskesScope) {
-            return $this->scopedQuery($faskesScope['faskes_type'], $faskesScope['id_faskes']);
-        }
-
-        return $this->model->newQuery();
+        return $this->model->newQuery()->visibleTo($scopeUser);
     }
 
     /**

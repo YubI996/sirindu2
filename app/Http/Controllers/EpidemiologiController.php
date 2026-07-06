@@ -33,28 +33,6 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class EpidemiologiController extends Controller
 {
-    /**
-     * Pemetaan nama kelurahan (uppercase) ke nama Wilker Puskesmas.
-     * Sinkron dengan WILKER_MAP di form-section-a.blade.php.
-     */
-    protected const WILKER_MAP = [
-        'API-API'            => 'Bontang Utara 1',
-        'BONTANG BARU'       => 'Bontang Utara 1',
-        'GUNUNG ELAI'        => 'Bontang Utara 1',
-        'BONTANG KUALA'      => 'Bontang Utara 1',
-        'GUNTUNG'            => 'Bontang Utara 2',
-        'LOK TUAN'           => 'Bontang Utara 2',
-        'BELIMBING'          => 'Bontang Barat',
-        'KANAAN'             => 'Bontang Barat',
-        'GUNUNG TELIHAN'     => 'Bontang Barat',
-        'BONTANG LESTARI'    => 'Bontang Lestari',
-        'TANJUNG LAUT'       => 'Bontang Selatan 1',
-        'TANJUNG LAUT INDAH' => 'Bontang Selatan 1',
-        'SATIMPO'            => 'Bontang Selatan 1',
-        'BERBAS PANTAI'      => 'Bontang Selatan 2',
-        'BEREBAS TENGAH'     => 'Bontang Selatan 2',
-    ];
-
     protected $surveillanceRepository;
 
     public function __construct(SurveillanceRepository $surveillanceRepository)
@@ -66,17 +44,12 @@ class EpidemiologiController extends Controller
     }
 
     /**
-     * Resolve wilker puskesmas dari id_kel berdasarkan pemetaan statis WILKER_MAP.
+     * Resolve wilker puskesmas dari id_kel via pemetaan terpusat WilkerPuskesmas.
      * Mengembalikan nama wilker atau string kosong jika tidak ditemukan.
      */
     protected function resolveWilker(int $idKel): string
     {
-        $kelurahan = \App\Models\Kelurahan::find($idKel);
-        if (! $kelurahan) {
-            return '';
-        }
-        $namaUpper = strtoupper(trim($kelurahan->name));
-        return static::WILKER_MAP[$namaUpper] ?? '';
+        return \App\Support\WilkerPuskesmas::wilkerForKelurahanId($idKel);
     }
 
     // ==================== DASHBOARD & ANALYTICS ====================
@@ -89,11 +62,7 @@ class EpidemiologiController extends Controller
         $user = auth()->user();
         $diseases = JenisKasusEpidemiologi::active()->get();
 
-        $faskesScope = $user->isFaskesSurveilans()
-            ? ['faskes_type' => $user->faskes_type, 'id_faskes' => $user->getFaskesId()]
-            : null;
-
-        $dashboardData = $this->buildDashboardData($user, $faskesScope);
+        $dashboardData = $this->buildDashboardData($user);
 
         return view('admin.epidemiologi.dashboard', array_merge(
             $dashboardData,
@@ -108,13 +77,9 @@ class EpidemiologiController extends Controller
     {
         $user = auth()->user();
 
-        $faskesScope = $user->isFaskesSurveilans()
-            ? ['faskes_type' => $user->faskes_type, 'id_faskes' => $user->getFaskesId()]
-            : null;
-
         $diseaseId = $request->filled('disease_id') ? (int) $request->disease_id : null;
 
-        $data = $this->buildDashboardData($user, $faskesScope, $diseaseId);
+        $data = $this->buildDashboardData($user, $diseaseId);
 
         // Convert recent cases to array for JSON
         $data['recentCases'] = $data['recentCases']->map(function ($case) {
@@ -138,28 +103,25 @@ class EpidemiologiController extends Controller
     /**
      * Build dashboard data arrays (shared between initial load and AJAX)
      */
-    private function buildDashboardData($user, ?array $faskesScope, ?int $diseaseId = null)
+    private function buildDashboardData($user, ?int $diseaseId = null)
     {
-        $faskesType = $faskesScope['faskes_type'] ?? null;
-        $faskesId = $faskesScope['id_faskes'] ?? null;
+        // Scope ke kasus yang boleh dilihat user (Dinkes = semua, faskes = wilayahnya).
+        $scopeUser = $user->isSuperAdmin() ? null : $user;
 
-        $stats = $this->surveillanceRepository->getDashboardStats($faskesType, $faskesId ? (int) $faskesId : null, $diseaseId);
+        $stats = $this->surveillanceRepository->getDashboardStats($scopeUser, $diseaseId);
 
-        $recentQuery = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan']);
-        if ($faskesScope) {
-            $recentQuery->where('faskes_type', $faskesScope['faskes_type'])
-                        ->where('id_faskes', $faskesScope['id_faskes']);
-        }
+        $recentQuery = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan'])
+            ->visibleTo($scopeUser);
         if ($diseaseId) {
             $recentQuery->where('id_jenis_kasus', $diseaseId);
         }
         $recentCases = $recentQuery->orderBy('created_at', 'desc')->limit(10)->get();
 
-        $trendData    = $this->surveillanceRepository->getCasesTrend(12, $faskesScope, $diseaseId);
-        $diseaseData  = $this->surveillanceRepository->getCasesByDisease($faskesScope, $diseaseId);
-        $statusData   = $this->surveillanceRepository->getCasesByStatus($faskesScope, $diseaseId);
-        $geoData      = $this->surveillanceRepository->getCasesByGeography('kecamatan', $faskesScope, $diseaseId);
-        $facilityData = $this->surveillanceRepository->getCasesByFacilityType($faskesScope, $diseaseId);
+        $trendData    = $this->surveillanceRepository->getCasesTrend(12, $scopeUser, $diseaseId);
+        $diseaseData  = $this->surveillanceRepository->getCasesByDisease($scopeUser, $diseaseId);
+        $statusData   = $this->surveillanceRepository->getCasesByStatus($scopeUser, $diseaseId);
+        $geoData      = $this->surveillanceRepository->getCasesByGeography('kecamatan', $scopeUser, $diseaseId);
+        $facilityData = $this->surveillanceRepository->getCasesByFacilityType($scopeUser, $diseaseId);
 
         return compact('stats', 'recentCases', 'trendData', 'diseaseData', 'statusData', 'geoData', 'facilityData');
     }
@@ -182,12 +144,9 @@ class EpidemiologiController extends Controller
     {
         $query = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan', 'rt']);
 
-        // Data scoping: faskes hanya lihat data sendiri di peta
+        // Data scoping: faskes hanya lihat data wilayahnya di peta (Dinkes = semua)
         $user = auth()->user();
-        if ($user->isFaskesSurveilans()) {
-            $query->where('faskes_type', $user->faskes_type)
-                  ->where('id_faskes', $user->getFaskesId());
-        }
+        $query->visibleTo($user->isSuperAdmin() ? null : $user);
 
         // Apply filters
         if ($request->has('disease_id') && $request->disease_id != '') {
@@ -316,20 +275,17 @@ class EpidemiologiController extends Controller
     {
         $query = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan', 'rt']);
 
-        // Data scoping berdasarkan filter_mode dan peran pengguna
+        // Data scoping: batasi ke kasus yang boleh dilihat user (Dinkes = semua,
+        // puskesmas = kelurahan catchment wilker-nya, RS = kasus yang diinput RS).
         $user = auth()->user();
-        $filterMode = $request->get('filter_mode', 'dilaporkan'); // default: dilaporkan
+        $query->visibleTo($user->isSuperAdmin() ? null : $user);
 
-        if ($user->isFaskesSurveilans()) {
-            if ($filterMode === 'wilker' && $user->puskesmas) {
-                // Filter berdasarkan wilker: semua kasus yang wilker_puskesmasnya cocok dengan nama puskesmas user
-                $wilkerName = $user->puskesmas->name;
-                $query->where('wilker_puskesmas', $wilkerName);
-            } else {
-                // Default: hanya kasus yang dilaporkan faskes ini
-                $query->where('faskes_type', $user->faskes_type)
-                      ->where('id_faskes', $user->getFaskesId());
-            }
+        // Filter opsional untuk user puskesmas (spec FR-013): mempersempit tampilan
+        // ke kasus yang DILAPORKAN oleh faskes ini saja (subset dari catchment).
+        $filterMode = $request->get('filter_mode', 'wilker'); // default: seluruh wilker
+        if ($user->isSurveilansPuskesmas() && $filterMode === 'dilaporkan') {
+            $query->where('faskes_type', $user->faskes_type)
+                  ->where('id_faskes', $user->getFaskesId());
         }
 
         return DataTables::of($query)
@@ -525,6 +481,9 @@ class EpidemiologiController extends Controller
      */
     public function update(UpdateSurveillanceCaseRequest $request, $id)
     {
+        // Cegah faskes mengedit kasus di luar wilayahnya (juga saat akses URL langsung).
+        $this->authorizeFaskesAccess(SurveillanceCase::findOrFail($id));
+
         try {
             // Override wilker_puskesmas berdasarkan kelurahan yang dipilih
             if ($request->filled('id_kel')) {
@@ -864,13 +823,11 @@ class EpidemiologiController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->isFaskesSurveilans()) {
-            abort_unless(
-                $case->faskes_type === $user->faskes_type && $case->id_faskes == $user->getFaskesId(),
-                403,
-                'Anda tidak memiliki izin mengakses kasus dari faskes lain.'
-            );
-        }
+        abort_unless(
+            $case->isVisibleTo($user),
+            403,
+            'Anda tidak memiliki izin mengakses kasus di luar wilayah Anda.'
+        );
     }
 
     // ==================== LOKASI PENULARAN ====================
