@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Epidemiologi;
 
+use App\Models\Anak;
 use App\Models\JenisKasusEpidemiologi;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
@@ -476,24 +477,66 @@ class EpidemiologiControllerTest extends TestCase
         $this->assertCount(3, $response->json());
     }
 
-    public function test_check_nik_returns_exists_false_for_new_nik()
+    public function test_lookup_nik_returns_not_found_for_unknown_nik()
     {
         $response = $this->actingAs($this->admin)
-            ->getJson(route('admin.epidemiologi.checkNik', '9999999999999999'));
+            ->getJson(route('admin.epidemiologi.lookupNik', '9999999999999999'));
 
         $response->assertStatus(200);
-        $response->assertJson(['exists' => false]);
+        $response->assertJson(['found' => false, 'source' => null]);
     }
 
-    public function test_check_nik_returns_exists_true_for_existing_nik()
+    public function test_lookup_nik_prefers_latest_surveillance_case()
     {
-        $case = $this->createCase(['nik' => '1234567890123456']);
+        // NIK sama boleh dipakai di banyak kasus (orang sama, kasus berbeda).
+        // Autofill mengambil biodata dari kasus TERBARU.
+        $this->createCase(['nik' => '1234567890123456', 'nama_lengkap' => 'Nama Lama']);
+        $this->createCase(['nik' => '1234567890123456', 'nama_lengkap' => 'Nama Baru']);
 
         $response = $this->actingAs($this->admin)
-            ->getJson(route('admin.epidemiologi.checkNik', '1234567890123456'));
+            ->getJson(route('admin.epidemiologi.lookupNik', '1234567890123456'));
 
         $response->assertStatus(200);
-        $response->assertJson(['exists' => true]);
+        $response->assertJson([
+            'found'  => true,
+            'source' => 'surveillance',
+            'data'   => ['nama_lengkap' => 'Nama Baru'],
+        ]);
+    }
+
+    public function test_lookup_nik_falls_back_to_anak_table()
+    {
+        // Tidak ada kasus surveilans dengan NIK ini — biodata diambil dari tabel anak.
+        Anak::create([
+            'nik'       => '3201019876540002',
+            'nama'      => 'Balita Anak',
+            'jk'        => 2, // Perempuan → 'P'
+            'tgl_lahir' => '2022-03-04',
+            'id_kec'    => $this->kecamatan->id,
+            'id_kel'    => $this->kelurahan->id,
+            'id_rt'     => $this->rt->id,
+            'nama_ibu'  => 'Ibu Balita',
+            'no_hp'     => '081200000000',
+            'no'        => 'A1',
+            'status'    => 1,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->getJson(route('admin.epidemiologi.lookupNik', '3201019876540002'));
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'found'  => true,
+            'source' => 'anak',
+            'data'   => [
+                'nama_lengkap'    => 'Balita Anak',
+                'jenis_kelamin'   => 'P',
+                'tanggal_lahir'   => '2022-03-04',
+                'nama_orang_tua'  => 'Ibu Balita',
+                'no_hp_orang_tua' => '081200000000',
+                'no_telepon'      => null,
+            ],
+        ]);
     }
 
     // ==================== EXPORT TESTS ====================

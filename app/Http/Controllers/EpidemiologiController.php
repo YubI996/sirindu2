@@ -632,16 +632,62 @@ class EpidemiologiController extends Controller
     }
 
     /**
-     * Check if NIK is already registered (AJAX)
+     * Cari biodata pasien berdasarkan NIK untuk autofill form (AJAX).
+     *
+     * NIK boleh dipakai di banyak kasus (orang sama, kasus berbeda) — endpoint ini
+     * hanya menyediakan biodata agar entri lebih cepat, BUKAN validasi keunikan.
+     *
+     * Prioritas sumber: kasus surveilans terbaru dengan NIK sama (field paling
+     * lengkap & relevan surveilans), lalu tabel anak sebagai fallback registry.
      */
-    public function checkNik($nik)
+    public function lookupNik($nik)
     {
-        $exists = SurveillanceCase::where('nik', $nik)->exists();
+        // 1) Kasus surveilans lama (paling relevan). Sengaja tanpa scope wilayah:
+        //    biodata ini toh akan diketik ulang oleh petugas untuk NIK yang sama.
+        $case = SurveillanceCase::where('nik', $nik)->latest('id')->first();
+        if ($case) {
+            return response()->json([
+                'found'  => true,
+                'source' => 'surveillance',
+                'data'   => [
+                    'nama_lengkap'    => $case->nama_lengkap,
+                    'tanggal_lahir'   => optional($case->tanggal_lahir)->format('Y-m-d'),
+                    'jenis_kelamin'   => $case->jenis_kelamin,
+                    'alamat_lengkap'  => $case->alamat_lengkap,
+                    'id_kec'          => $case->id_kec,
+                    'id_kel'          => $case->id_kel,
+                    'id_rt'           => $case->id_rt,
+                    'no_telepon'      => $case->no_telepon,
+                    'nama_orang_tua'  => $case->nama_orang_tua,
+                    'no_hp_orang_tua' => $case->no_hp_orang_tua,
+                ],
+            ]);
+        }
 
-        return response()->json([
-            'exists' => $exists,
-            'message' => $exists ? 'NIK sudah terdaftar' : 'NIK tersedia'
-        ]);
+        // 2) Tabel anak (master registry) sebagai fallback.
+        $anak = \App\Models\Anak::where('nik', $nik)->first();
+        if ($anak) {
+            $jenisKelamin = $anak->jk == 1 ? 'L' : ($anak->jk == 2 ? 'P' : null);
+
+            return response()->json([
+                'found'  => true,
+                'source' => 'anak',
+                'data'   => [
+                    'nama_lengkap'    => $anak->nama,
+                    'tanggal_lahir'   => $anak->tgl_lahir ? Carbon::parse($anak->tgl_lahir)->format('Y-m-d') : null,
+                    'jenis_kelamin'   => $jenisKelamin,
+                    'alamat_lengkap'  => $anak->alamat ?: $anak->alamat_ktp,
+                    'id_kec'          => $anak->id_kec,
+                    'id_kel'          => $anak->id_kel,
+                    'id_rt'           => $anak->id_rt,
+                    'no_telepon'      => null,
+                    'nama_orang_tua'  => $anak->nama_ibu ?: $anak->nama_ayah,
+                    'no_hp_orang_tua' => $anak->no_hp,
+                ],
+            ]);
+        }
+
+        return response()->json(['found' => false, 'source' => null, 'data' => null]);
     }
 
     // ==================== IMPORT METHODS ====================

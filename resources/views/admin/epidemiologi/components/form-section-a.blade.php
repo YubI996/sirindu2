@@ -23,8 +23,7 @@
             <input type="text" name="nik" id="nik" class="form-control"
                    value="{{ old('nik', $case->nik ?? '') }}"
                    maxlength="16" pattern="[0-9]{16}" required>
-            <small class="form-text text-muted">16 digit</small>
-            <small id="nikStatus" class="form-text"></small>
+            <small class="form-text text-muted">16 digit — biodata terisi otomatis bila NIK sudah terdata</small>
         </div>
     </div>
     <div class="col-md-4">
@@ -314,28 +313,73 @@ $(document).ready(function() {
         $('#tanggal_lahir').trigger('change');
     }
 
-    // NIK validation
+    // Set kecamatan → kelurahan → RT secara berantai (endpoint AJAX yang sama
+    // dipakai cascading select), lalu segarkan wilker. Nilai di-set langsung
+    // tanpa memicu event 'change' #kec agar tidak saling menghapus pilihan.
+    function setGeoBiodata(id_kec, id_kel, id_rt) {
+        $('#kel').empty().append('<option value="">== Pilih Kelurahan ==</option>');
+        $('#rt').empty().append('<option value="">== Pilih RT ==</option>');
+
+        if (!id_kec) { $('#kec').val(''); updateWilker(); return; }
+        $('#kec').val(String(id_kec));
+
+        $.ajax({
+            url: '{{ url("admin/epidemiologi/get-kelurahan") }}/' + id_kec,
+            type: 'GET', dataType: 'json',
+            success: function(data) {
+                $.each(data, function(key, value) {
+                    $('#kel').append('<option value="' + key + '">' + value + '</option>');
+                });
+                if (!id_kel) { updateWilker(); return; }
+                $('#kel').val(String(id_kel));
+
+                $.ajax({
+                    url: '{{ url("admin/epidemiologi/get-rt") }}/' + id_kel,
+                    type: 'GET', dataType: 'json',
+                    success: function(rtData) {
+                        $.each(rtData, function(key, value) {
+                            $('#rt').append('<option value="' + key + '">' + value + '</option>');
+                        });
+                        if (id_rt) { $('#rt').val(String(id_rt)); }
+                        updateWilker();
+                    }
+                });
+            }
+        });
+    }
+
+    // Autofill biodata dari NIK. Menimpa semua field biodata dengan data sumber
+    // (kasus surveilans terbaru → tabel anak). Diam-diam, tanpa notifikasi.
     var nikTimeout;
     $('#nik').on('input', function() {
         var nik = $(this).val();
         clearTimeout(nikTimeout);
-        if (nik.length === 16) {
-            nikTimeout = setTimeout(function() {
-                $.ajax({
-                    url: '{{ url("admin/epidemiologi/check-nik") }}/' + nik,
-                    type: 'GET',
-                    success: function(response) {
-                        if (response.exists) {
-                            $('#nikStatus').html('<span class="text-danger">⚠ NIK sudah terdaftar</span>');
-                        } else {
-                            $('#nikStatus').html('<span class="text-success">✓ NIK tersedia</span>');
-                        }
+        if (nik.length !== 16) return;
+
+        nikTimeout = setTimeout(function() {
+            $.ajax({
+                url: '{{ url("admin/epidemiologi/lookup-nik") }}/' + nik,
+                type: 'GET', dataType: 'json',
+                success: function(res) {
+                    if (!res || !res.found || !res.data) return;
+                    var d = res.data;
+
+                    $('input[name="nama_lengkap"]').val(d.nama_lengkap || '');
+                    $('select[name="jenis_kelamin"]').val(d.jenis_kelamin || '');
+                    $('input[name="no_telepon"]').val(d.no_telepon || '');
+                    $('textarea[name="alamat_lengkap"]').val(d.alamat_lengkap || '');
+                    $('input[name="nama_orang_tua"]').val(d.nama_orang_tua || '');
+                    $('input[name="no_hp_orang_tua"]').val(d.no_hp_orang_tua || '');
+
+                    // Tanggal lahir → picu change agar umur & kategori umur dihitung ulang.
+                    if (d.tanggal_lahir) {
+                        $('#tanggal_lahir').val(d.tanggal_lahir).trigger('change');
                     }
-                });
-            }, 500);
-        } else {
-            $('#nikStatus').html('');
-        }
+
+                    setGeoBiodata(d.id_kec, d.id_kel, d.id_rt);
+                }
+            });
+        }, 400);
     });
 });
 </script>

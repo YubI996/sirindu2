@@ -236,8 +236,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.getKelurahan');
         Route::get('get-rt/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getRt'])
              ->name('admin.epidemiologi.getRt');
-        Route::get('check-nik/{nik}', [App\Http\Controllers\EpidemiologiController::class, 'checkNik'])
-             ->name('admin.epidemiologi.checkNik');
+        Route::get('lookup-nik/{nik}', [App\Http\Controllers\EpidemiologiController::class, 'lookupNik'])
+             ->name('admin.epidemiologi.lookupNik');
 
         // Lokasi Penularan
         Route::get('api/lokasi-penularan', [App\Http\Controllers\EpidemiologiController::class, 'getLokasiPenularan'])
