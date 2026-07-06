@@ -353,6 +353,108 @@ class CapilDedupTest extends TestCase
         $this->assertCount(0, $pairs);
     }
 
+    public function test_duplicate_groups_by_name_dob_seluruh_tabel_anak(): void
+    {
+        // Duplikat dihitung atas SELURUH tabel anak (bukan hanya Capil-baru): sepasang
+        // record nama+tgl identik → satu kelompok, walau salah satunya bergaya sigizi.
+        $a = $this->capil(['nik' => '3274010101200001', 'nama' => 'RANI MELATI', 'tgl_lahir' => '2020-01-15']);
+        $b = $this->sigizi(['nik' => '9999990101200002', 'nama' => 'RANI MELATI', 'tgl_lahir' => '2020-01-15', 'alamat' => 'ADA', 'id_kel' => 7]);
+        // Nama sama tapi tgl beda → bukan kelompok.
+        $this->capil(['nik' => '3274010101200003', 'nama' => 'RANI MELATI', 'tgl_lahir' => '2019-05-05']);
+        // Tgl sama tapi nama beda → bukan kelompok.
+        $this->capil(['nik' => '3274010101200004', 'nama' => 'DINI PUTRI', 'tgl_lahir' => '2020-01-15']);
+
+        $groups = $this->svc->duplicateGroupsByNameDob();
+
+        $this->assertCount(1, $groups);
+        $this->assertCount(2, $groups[0]);
+    }
+
+    public function test_duplicate_groups_by_kk_name_kk_dan_nama_sama(): void
+    {
+        // No.KK + nama identik (tgl boleh beda) → satu kelompok.
+        $this->capil(['nik' => '3274010101200001', 'no_kk' => 'KKX', 'nama' => 'ANDI WIJAYA', 'tgl_lahir' => '2020-01-01']);
+        $this->capil(['nik' => '3274010101200002', 'no_kk' => 'KKX', 'nama' => 'ANDI WIJAYA', 'tgl_lahir' => '2019-02-02']);
+        // KK sama, nama beda → bukan kelompok (mis. kakak-adik).
+        $this->capil(['nik' => '3274010101200003', 'no_kk' => 'KKX', 'nama' => 'BENI SUSANTO']);
+        // No.KK kosong → diabaikan meski nama sama.
+        $this->capil(['nik' => '3274010101200004', 'no_kk' => '', 'nama' => 'CINDY LARA']);
+        $this->capil(['nik' => '3274010101200005', 'no_kk' => '', 'nama' => 'CINDY LARA']);
+
+        $groups = $this->svc->duplicateGroupsByKkName();
+
+        $this->assertCount(1, $groups);
+        $this->assertCount(2, $groups[0]);
+    }
+
+    public function test_export_internal_duplicates_gabung_sinyal_nama_tgl_dan_kk_nama(): void
+    {
+        // Sinyal B: nama + tgl identik.
+        $this->capil(['nik' => '3274010101200001', 'no_kk' => 'K1', 'nama' => 'RANI MELATI', 'tgl_lahir' => '2020-01-15']);
+        $this->capil(['nik' => '3274010101200002', 'no_kk' => 'K2', 'nama' => 'RANI MELATI', 'tgl_lahir' => '2020-01-15']);
+        // Sinyal C: No.KK + nama identik, tgl beda (jadi bukan B).
+        $this->capil(['nik' => '3274010101200003', 'no_kk' => 'KZ', 'nama' => 'ANDI WIJAYA', 'tgl_lahir' => '2018-03-03']);
+        $this->capil(['nik' => '3274010101200004', 'no_kk' => 'KZ', 'nama' => 'ANDI WIJAYA', 'tgl_lahir' => '2017-05-05']);
+        // Record sendiri tanpa kembaran → tak masuk.
+        $this->capil(['nik' => '3274010101200005', 'no_kk' => 'KS', 'nama' => 'SENDIRIAN', 'tgl_lahir' => '2015-05-05']);
+
+        $path = tempnam(sys_get_temp_dir(), 'dupint_') . '.csv';
+        $res = $this->svc->exportInternalDuplicates($path);
+
+        $this->assertEquals(1, $res['name_dob']['groups']);
+        $this->assertEquals(2, $res['name_dob']['rows']);
+        $this->assertEquals(1, $res['kk_name']['groups']);
+        $this->assertEquals(2, $res['kk_name']['rows']);
+        $this->assertEquals(2, $res['total_groups']);
+        $this->assertEquals(4, $res['total_rows']);
+
+        $lines = array_values(array_filter(explode("\n", file_get_contents($path)), fn($l) => trim($l) !== ''));
+        $this->assertCount(5, $lines); // header + 4 baris
+        $this->assertStringContainsString('signal', $lines[0]);
+
+        $body = implode("\n", array_slice($lines, 1));
+        $this->assertStringContainsString('RANI MELATI', $body);
+        $this->assertStringContainsString('ANDI WIJAYA', $body);
+        $this->assertStringNotContainsString('SENDIRIAN', $body);
+
+        @unlink($path);
+    }
+
+    public function test_export_name_candidates_xlsx_pertahankan_nik_sebagai_teks(): void
+    {
+        // Orphan sigizi vs Capil mirip → satu kandidat. NIK 16-digit harus tetap utuh sebagai teks.
+        $this->sigizi(['nik' => '9999990101200002', 'nama' => 'BUDI SANTOSO', 'no_kk' => '3201099988887777', 'tgl_lahir' => '2018-03-03', 'nama_ibu' => 'BEDA / BEDA']);
+        $this->capil(['nik' => '3274010101200010', 'nama' => 'BUDI SANTOSX', 'no_kk' => '3274000011112222', 'tgl_lahir' => '2010-10-10', 'nama_ibu' => 'LAIN', 'nama_ayah' => 'LAIN']);
+
+        $path = tempnam(sys_get_temp_dir(), 'candx_') . '.xlsx';
+        $count = $this->svc->exportNameCandidatesXlsx($path, 80.0);
+
+        $this->assertEquals(1, $count);
+        $this->assertFileExists($path);
+
+        $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($path)->getActiveSheet();
+        // Baris 1 = header, baris 2 = data pertama.
+        $header = [];
+        foreach ($sheet->getRowIterator(1, 1)->current()->getCellIterator() as $cell) {
+            $header[] = $cell->getValue();
+        }
+        $this->assertContains('nik_sigizi', $header);
+        $this->assertContains('nik_capil', $header);
+
+        $nikSigiziCol = chr(65 + array_search('nik_sigizi', $header));
+        $nikCapilCol  = chr(65 + array_search('nik_capil', $header));
+
+        // NIK utuh 16 digit (tak jadi 9.99999E+15) dan bertipe string.
+        $this->assertSame('9999990101200002', (string) $sheet->getCell($nikSigiziCol . '2')->getValue());
+        $this->assertSame('3274010101200010', (string) $sheet->getCell($nikCapilCol . '2')->getValue());
+        $this->assertSame(
+            \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING,
+            $sheet->getCell($nikSigiziCol . '2')->getDataType()
+        );
+
+        @unlink($path);
+    }
+
     public function test_export_name_candidates_berbasis_nama_saja(): void
     {
         // Orphan sigizi (tak berpadanan): nama ~92% mirip capil, TAPI tgl & ortu beda → tetap kandidat

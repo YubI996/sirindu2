@@ -115,6 +115,98 @@ class CapilDedupService
      */
     public function exportNameCandidates(string $path, float $minChild = 80.0): int
     {
+        $rows = $this->nameCandidateRows($minChild);
+
+        $fh = fopen($path, 'w');
+        fwrite($fh, "\xEF\xBB\xBF");
+        fputcsv($fh, $this->nameCandidateHeader());
+
+        foreach ($rows as $r) {
+            fputcsv($fh, $this->nameCandidateLine($r));
+        }
+
+        fclose($fh);
+
+        return count($rows);
+    }
+
+    /**
+     * Ekspor kandidat dedup longgar ke XLSX. Sama isinya dengan exportNameCandidates,
+     * tapi kolom NIK & No.KK ditulis sebagai TEKS (DataType string) agar Excel tak
+     * merusak angka 16-digit menjadi notasi ilmiah / membuang angka depan.
+     */
+    public function exportNameCandidatesXlsx(string $path, float $minChild = 80.0): int
+    {
+        $rows   = $this->nameCandidateRows($minChild);
+        $header = $this->nameCandidateHeader();
+
+        // Kolom yang harus dipaksa teks (indeks 0-based sesuai urutan header).
+        $textCols = [];
+        foreach (['nik_sigizi', 'no_kk_sigizi', 'nik_capil', 'no_kk_capil'] as $name) {
+            $textCols[] = array_search($name, $header, true);
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        foreach ($header as $i => $title) {
+            $sheet->setCellValueExplicit(
+                [$i + 1, 1],
+                $title,
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+        }
+
+        $rowNum = 2;
+        foreach ($rows as $r) {
+            $line = $this->nameCandidateLine($r);
+            foreach ($line as $i => $value) {
+                if (in_array($i, $textCols, true)) {
+                    $sheet->setCellValueExplicit([$i + 1, $rowNum], (string) $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                } else {
+                    $sheet->setCellValue([$i + 1, $rowNum], $value);
+                }
+            }
+            $rowNum++;
+        }
+
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($path);
+        $spreadsheet->disconnectWorksheets();
+
+        return count($rows);
+    }
+
+    /** Header kolom kandidat dedup (dipakai bersama CSV & XLSX). */
+    private function nameCandidateHeader(): array
+    {
+        return [
+            'child_sim', 'parent_sim', 'selisih_hari', 'kk_sama',
+            'id_sigizi', 'nik_sigizi', 'nama_sigizi', 'tgl_lahir_sigizi', 'no_kk_sigizi', 'nama_ibu_sigizi', 'nama_ayah_sigizi',
+            'id_capil', 'nik_capil', 'nama_capil', 'tgl_lahir_capil', 'no_kk_capil', 'nama_ibu_capil', 'nama_ayah_capil',
+        ];
+    }
+
+    /** Satu baris nilai kandidat (urutan cocok dengan nameCandidateHeader). */
+    private function nameCandidateLine(array $r): array
+    {
+        $s = $r['s'];
+        $c = $r['c'];
+        return [
+            round($r['child'], 1), round($r['parent'], 1), $r['diff'] === PHP_INT_MAX ? '' : $r['diff'], $r['kk'],
+            $s->id, $s->nik, $s->nama, $s->tgl_lahir, $s->no_kk, $s->nama_ibu, $s->nama_ayah,
+            $c->id, $c->nik, $c->nama, $c->tgl_lahir, $c->no_kk, $c->nama_ibu, $c->nama_ayah,
+        ];
+    }
+
+    /**
+     * Bangun daftar baris kandidat dedup longgar (nama anak >= $minChild persen), dari sisa
+     * Capil-baru x sisa sigizi yang BELUM masuk 428 pasangan terkonfirmasi. Mengabaikan
+     * tanggal/ortu/KK pada filter, tapi menghitungnya sebagai kolom konteks. Urut nama termirip dulu.
+     *
+     * @return array<int, array{child:float, parent:float, diff:int, kk:int, s:Anak, c:Anak}>
+     */
+    private function nameCandidateRows(float $minChild): array
+    {
         $usedCapil = [];
         $usedSigizi = [];
         foreach ($this->findPairs($this->capilNew(), $this->sigiziUntouched()) as $p) {
@@ -135,11 +227,10 @@ class CapilDedupService
                 if ($child < $minChild) {
                     continue;
                 }
-                $diff = $this->dayDiff($c->tgl_lahir, $s->tgl_lahir);
                 $rows[] = [
                     'child'  => $child,
                     'parent' => $this->parentMatch($c, $s),
-                    'diff'   => $diff,
+                    'diff'   => $this->dayDiff($c->tgl_lahir, $s->tgl_lahir),
                     'kk'     => $this->kkSame($c, $s) ? 1 : 0,
                     's'      => $s,
                     'c'      => $c,
@@ -149,29 +240,7 @@ class CapilDedupService
 
         usort($rows, fn($a, $b) => $b['child'] <=> $a['child']);
 
-        $header = [
-            'child_sim', 'parent_sim', 'selisih_hari', 'kk_sama',
-            'id_sigizi', 'nik_sigizi', 'nama_sigizi', 'tgl_lahir_sigizi', 'no_kk_sigizi', 'nama_ibu_sigizi', 'nama_ayah_sigizi',
-            'id_capil', 'nik_capil', 'nama_capil', 'tgl_lahir_capil', 'no_kk_capil', 'nama_ibu_capil', 'nama_ayah_capil',
-        ];
-
-        $fh = fopen($path, 'w');
-        fwrite($fh, "\xEF\xBB\xBF");
-        fputcsv($fh, $header);
-
-        foreach ($rows as $r) {
-            $s = $r['s'];
-            $c = $r['c'];
-            fputcsv($fh, [
-                round($r['child'], 1), round($r['parent'], 1), $r['diff'] === PHP_INT_MAX ? '' : $r['diff'], $r['kk'],
-                $s->id, $s->nik, $s->nama, $s->tgl_lahir, $s->no_kk, $s->nama_ibu, $s->nama_ayah,
-                $c->id, $c->nik, $c->nama, $c->tgl_lahir, $c->no_kk, $c->nama_ibu, $c->nama_ayah,
-            ]);
-        }
-
-        fclose($fh);
-
-        return count($rows);
+        return $rows;
     }
 
     /** Tulis kumpulan record Anak ke CSV (kolom identitas standar). Return jumlah baris. */
@@ -240,6 +309,104 @@ class CapilDedupService
         fclose($fh);
 
         return count($pairs);
+    }
+
+    // =========================================================================
+    // Duplikat INTERNAL tabel `anak` (dugaan record kembar di registri gabungan)
+    // =========================================================================
+    //
+    // Dihitung atas SELURUH tabel `anak` (registri hasil merge sigizi+Capil), bukan
+    // hanya Capil-baru — karena dobel-input bisa berada di record sigizi maupun Capil.
+    // Tiga sinyal:
+    //   A. NIK asli identik  → MUSTAHIL: kolom `nik` UNIQUE, DB menolaknya (selalu 0).
+    //   B. Nama + tgl lahir identik (meski NIK beda/kosong).
+    //   C. No. KK + nama identik (tgl boleh beda; tangkap dobel yang tgl-nya salah ketik).
+    // Ini SINYAL untuk ditinjau manusia, bukan auto-merge (bisa saja kakak-adik dsb).
+
+    /**
+     * Kelompok record dengan NAMA + TGL LAHIR identik (seluruh tabel `anak`).
+     * Nama dinormalisasi (trim + lowercase), tanggal dipangkas ke Y-m-d; nama kosong diabaikan.
+     *
+     * @return array<int, Collection<int, Anak>>
+     */
+    public function duplicateGroupsByNameDob(): array
+    {
+        return Anak::all()
+            ->filter(fn($a) => trim((string) $a->nama) !== '')
+            ->groupBy(fn($a) => trim(mb_strtolower((string) $a->nama)) . '|' . $this->dateKey($a->tgl_lahir))
+            ->filter(fn($grp) => $grp->count() > 1)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Kelompok record dengan No. KK + NAMA identik (seluruh tabel `anak`).
+     * No.KK kosong diabaikan (banyak record sigizi tak punya KK → bukan sinyal duplikat).
+     *
+     * @return array<int, Collection<int, Anak>>
+     */
+    public function duplicateGroupsByKkName(): array
+    {
+        return Anak::all()
+            ->filter(fn($a) => trim((string) $a->no_kk) !== '' && trim((string) $a->nama) !== '')
+            ->groupBy(fn($a) => trim((string) $a->no_kk) . '|' . trim(mb_strtolower((string) $a->nama)))
+            ->filter(fn($grp) => $grp->count() > 1)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Ekspor gabungan dugaan duplikat internal (sinyal B nama+tgl & C No.KK+nama) ke satu
+     * CSV berkolom `signal`. Mengembalikan rincian jumlah per sinyal + total.
+     *
+     * Kerahasiaan: data ditulis langsung ke berkas; pemanggil hanya laporkan jumlah & path.
+     *
+     * @return array{name_dob:array{groups:int,rows:int}, kk_name:array{groups:int,rows:int}, total_groups:int, total_rows:int}
+     */
+    public function exportInternalDuplicates(string $path): array
+    {
+        $byNameDob = $this->duplicateGroupsByNameDob();
+        $byKkName  = $this->duplicateGroupsByKkName();
+
+        $header = [
+            'signal', 'group', 'dup_count',
+            'id', 'nik', 'no_kk', 'nama', 'jk', 'tgl_lahir',
+            'nama_ibu', 'nama_ayah', 'alamat_ktp', 'alamat', 'id_kel',
+        ];
+
+        $fh = fopen($path, 'w');
+        fwrite($fh, "\xEF\xBB\xBF");
+        fputcsv($fh, $header);
+
+        $write = function (string $signal, array $groups) use ($fh): int {
+            $rows = 0;
+            $no = 0;
+            foreach ($groups as $group) {
+                $no++;
+                $size = $group->count();
+                foreach ($group as $a) {
+                    fputcsv($fh, [
+                        $signal, $no, $size,
+                        $a->id, $a->nik, $a->no_kk, $a->nama, $a->jk, $a->tgl_lahir,
+                        $a->nama_ibu, $a->nama_ayah, $a->alamat_ktp, $a->alamat, $a->id_kel,
+                    ]);
+                    $rows++;
+                }
+            }
+            return $rows;
+        };
+
+        $rowsNameDob = $write('B_nama_tgl', $byNameDob);
+        $rowsKkName  = $write('C_kk_nama', $byKkName);
+
+        fclose($fh);
+
+        return [
+            'name_dob'     => ['groups' => count($byNameDob), 'rows' => $rowsNameDob],
+            'kk_name'      => ['groups' => count($byKkName),  'rows' => $rowsKkName],
+            'total_groups' => count($byNameDob) + count($byKkName),
+            'total_rows'   => $rowsNameDob + $rowsKkName,
+        ];
     }
 
     // =========================================================================
