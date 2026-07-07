@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Imports\CapilImport;
 use App\Imports\OperasiTimbangImport;
+use App\Services\PrioritasGiziService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -62,10 +63,19 @@ class ImportOperasiTimbang extends Command
 
         $import = new OperasiTimbangImport($userId, $commit, $minNama, $target, $keputusan);
 
+        PrioritasGiziService::$muted = true;
+        try {
+            if ($commit) {
+                DB::transaction(fn () => Excel::import($import, $file));
+            } else {
+                Excel::import($import, $file);
+            }
+        } finally {
+            PrioritasGiziService::$muted = false;
+        }
+
         if ($commit) {
-            DB::transaction(fn () => Excel::import($import, $file));
-        } else {
-            Excel::import($import, $file);
+            app(PrioritasGiziService::class)->refreshAll();
         }
 
         $r = $import->getResults();

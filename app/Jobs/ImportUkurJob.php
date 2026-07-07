@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Imports\UkurImport;
 use App\Models\ImportLog;
+use App\Services\PrioritasGiziService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,9 +34,16 @@ class ImportUkurJob implements ShouldQueue
                 throw new \RuntimeException("File tidak ditemukan: {$this->importLog->file_path}");
             }
 
-            $import  = new UkurImport($this->importLog->user_id);
-            Excel::import($import, $path);
-            $results = $import->getResults();
+            PrioritasGiziService::$muted = true;
+            try {
+                $import  = new UkurImport($this->importLog->user_id);
+                Excel::import($import, $path);
+                $results = $import->getResults();
+            } finally {
+                PrioritasGiziService::$muted = false;
+            }
+
+            app(PrioritasGiziService::class)->refreshAll();
 
             $this->importLog->update([
                 'status'        => 'done',
