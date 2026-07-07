@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Anak;
 use App\Models\DataAnak;
+use App\Models\PrioritasGizi;
 
 /**
  * Menghitung & menyimpan snapshot prioritas gizi per anak.
@@ -78,5 +79,47 @@ class PrioritasGiziService
             return strtoupper(trim((string) $visits[0]->ntob)) === 'T';
         }
         return false;
+    }
+
+    public function refreshAnak(int $idAnak): void
+    {
+        $anak = Anak::find($idAnak);
+        if (!$anak) {
+            PrioritasGizi::where('id_anak', $idAnak)->delete();
+            return;
+        }
+
+        $hasil = $this->hitungUntukAnak($anak);
+
+        PrioritasGizi::updateOrCreate(
+            ['id_anak' => $anak->id],
+            $hasil + [
+                'id_kec' => $anak->id_kec,
+                'id_kel' => $anak->id_kel,
+                'id_rt' => $anak->id_rt,
+                'id_posyandu' => $anak->id_posyandu,
+                'refreshed_at' => now(),
+            ]
+        );
+    }
+
+    /** @param array<int> $idAnak */
+    public function refreshBatch(array $idAnak): void
+    {
+        foreach (array_unique($idAnak) as $id) {
+            $this->refreshAnak((int) $id);
+        }
+    }
+
+    public function refreshAll(): int
+    {
+        $ditulis = 0;
+        Anak::query()->select('id')->chunkById(500, function ($anaks) use (&$ditulis) {
+            foreach ($anaks as $a) {
+                $this->refreshAnak($a->id);
+                $ditulis++;
+            }
+        });
+        return $ditulis;
     }
 }
