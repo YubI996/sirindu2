@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Anak;
+use App\Models\DataAnak;
+use App\Observers\AnakObserver;
+use App\Observers\DataAnakObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -41,5 +45,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
+
+        DataAnak::observe(DataAnakObserver::class);
+        Anak::observe(AnakObserver::class);
     }
 }
