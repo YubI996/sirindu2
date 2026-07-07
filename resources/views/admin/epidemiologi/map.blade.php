@@ -152,7 +152,7 @@
             <h5 class="mb-0"><i class="fa fa-globe"></i> Peta Interaktif Sebaran Kasus</h5>
             <span class="badge badge-light" id="layer_label">Layer: Kelurahan</span>
         </div>
-        <div class="card-body p-0" style="position: relative;">
+        <div class="card-body p-0" style="position: relative; isolation: isolate;">
             <div id="map" style="height: 600px; width: 100%;"></div>
             <div id="loadingOverlay" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.8); z-index:1000; display:none; align-items:center; justify-content:center;">
                 <div class="text-center">

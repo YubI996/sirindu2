@@ -289,7 +289,7 @@ Peta
 
     <div class="row">
         <div class="col-lg-9">
-            <div style="position: relative;">
+            <div style="position: relative; isolation: isolate;">
                 <div id="map"></div>
                 <div class="info-panel" id="infoPanel">
                     <h5 id="infoTitle">-</h5>

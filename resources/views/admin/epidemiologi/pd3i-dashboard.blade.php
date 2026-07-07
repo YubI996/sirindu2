@@ -827,7 +827,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="card-body p-0" style="position:relative;">
+                <div class="card-body p-0" style="position:relative; isolation:isolate;">
                     <div id="map-wilayah" style="height:500px; border-radius:0 0 10px 10px;"></div>
                     <div id="peta-legend" class="peta-legend" style="display:none;">
                         <div class="legend-title">Jumlah Kasus (Suspek + Confirmed)</div>

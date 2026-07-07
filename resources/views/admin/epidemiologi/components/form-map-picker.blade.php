@@ -30,7 +30,7 @@
                 <span id="gpsStatus" class="text-muted small ml-2"></span>
             </div>
 
-            <div id="mapPickerContainer" style="position: relative;">
+            <div id="mapPickerContainer" style="position: relative; isolation: isolate;">
                 <div id="mapPicker" style="height: 380px; width: 100%; border: 1px solid #ced4da; border-radius: 4px;"></div>
             </div>
 
