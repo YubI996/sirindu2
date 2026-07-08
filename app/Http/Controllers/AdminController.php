@@ -19,9 +19,11 @@ use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Posyandu;
 use App\Models\Puskesmas;
+use App\Models\PrioritasGizi;
 use App\Models\RumahSakit;
 use App\Models\Rt;
 use App\Models\User;
+use App\Support\WilkerPuskesmas;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\AnakExport;
 use App\Exports\VaccineNeedsExport;
@@ -2181,6 +2183,40 @@ All Admin Controller
             uasort($vaccines, fn($a, $b) => $b['count'] <=> $a['count']);
         }
 
+        $prioritasRows = PrioritasGizi::query()
+            ->whereNotNull('prioritas')
+            ->join('anak', 'anak.id', '=', 'prioritas_gizi.id_anak')
+            ->leftJoin('kelurahan', 'anak.id_kel', '=', 'kelurahan.id')
+            ->leftJoin('rt', 'anak.id_rt', '=', 'rt.id')
+            ->leftJoin('posyandu', 'anak.id_posyandu', '=', 'posyandu.id')
+            ->select(
+                'prioritas_gizi.prioritas',
+                'prioritas_gizi.usia_bln',
+                'anak.id as anak_id',
+                'anak.nama',
+                'anak.nik',
+                'anak.id_kel',
+                'kelurahan.name as kelurahan',
+                'rt.name as rt',
+                'posyandu.name as posyandu'
+            )
+            ->orderBy('anak.nama')
+            ->get();
+
+        $prioritasTiers = [1 => [], 2 => [], 3 => []];
+        foreach ($prioritasRows as $r) {
+            $prioritasTiers[(int) $r->prioritas][] = [
+                'nama' => $r->nama,
+                'nik' => $r->nik,
+                'usia_bln' => $r->usia_bln,
+                'posyandu' => $r->posyandu ?: '-',
+                'puskesmas' => WilkerPuskesmas::wilkerForKelurahanId($r->id_kel ? (int) $r->id_kel : null) ?: '-',
+                'kelurahan' => $r->kelurahan ?: '-',
+                'rt' => $r->rt ?: '-',
+                'hashid' => \App\Models\Anak::find($r->anak_id)?->hashid,
+            ];
+        }
+
         return view('admin.dashboard.early-warning', compact(
             'paginatedList',
             'priorityList',
@@ -2190,7 +2226,8 @@ All Admin Controller
             'vaccineNeedsByLocation',
             'vaccineNeedsByType',
             'vaccineSchedule',
-            'vaccineProjection'
+            'vaccineProjection',
+            'prioritasTiers'
         ));
     }
 
