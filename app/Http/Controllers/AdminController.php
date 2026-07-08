@@ -26,6 +26,7 @@ use App\Models\User;
 use App\Support\WilkerPuskesmas;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\AnakExport;
+use App\Exports\PrioritasTierExport;
 use App\Exports\VaccineNeedsExport;
 use App\Models\AllData;
 use Maatwebsite\Excel\Facades\Excel;
@@ -2184,6 +2185,24 @@ All Admin Controller
             uasort($vaccines, fn($a, $b) => $b['count'] <=> $a['count']);
         }
 
+        $prioritasTiers = $this->buildPrioritasTiers();
+
+        return view('admin.dashboard.early-warning', compact(
+            'paginatedList',
+            'priorityList',
+            'summary',
+            'pagination',
+            'filter',
+            'vaccineNeedsByLocation',
+            'vaccineNeedsByType',
+            'vaccineSchedule',
+            'vaccineProjection',
+            'prioritasTiers'
+        ));
+    }
+
+    private function buildPrioritasTiers(): array
+    {
         $prioritasRows = PrioritasGizi::query()
             ->whereNotNull('prioritas')
             ->join('anak', 'anak.id', '=', 'prioritas_gizi.id_anak')
@@ -2218,18 +2237,19 @@ All Admin Controller
             ];
         }
 
-        return view('admin.dashboard.early-warning', compact(
-            'paginatedList',
-            'priorityList',
-            'summary',
-            'pagination',
-            'filter',
-            'vaccineNeedsByLocation',
-            'vaccineNeedsByType',
-            'vaccineSchedule',
-            'vaccineProjection',
-            'prioritasTiers'
-        ));
+        return $prioritasTiers;
+    }
+
+    public function exportPrioritasTier(Request $request)
+    {
+        $tier = (int) $request->query('tier', 1);
+        $tiers = $this->buildPrioritasTiers();
+        $rows = $tiers[$tier] ?? [];
+
+        $judul = ['Prioritas 1 - Gizi Buruk', 'Prioritas 2 - Stunting', 'Prioritas 3 - BB Tidak Naik'][$tier - 1] ?? 'Prioritas';
+        $file = 'prioritas-' . $tier . '-' . now()->format('Ymd_His') . '.xlsx';
+
+        return Excel::download(new PrioritasTierExport($rows, $judul), $file);
     }
 
     public function exportVaccineNeeds()

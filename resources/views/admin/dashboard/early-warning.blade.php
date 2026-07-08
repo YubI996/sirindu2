@@ -841,6 +841,11 @@ Proyeksi
             <span><i class="fa fa-layer-group mr-2"></i>{{ $meta['label'] }}</span>
             <span class="badge badge-light">{{ count($rows) }} anak</span>
         </button>
+        <div style="padding:0.5rem 1rem;background:#f9fafb;">
+            <a href="{{ route('admin.prioritas.export', ['tier' => $tier]) }}" class="btn btn-sm btn-outline-success">
+                <i class="fa fa-file-excel mr-1"></i> Export Prioritas {{ $tier }}
+            </a>
+        </div>
         <div class="alert-card-body" id="tierBody{{ $tier }}" style="display:none;">
             @if(count($rows))
             <div class="table-responsive">
