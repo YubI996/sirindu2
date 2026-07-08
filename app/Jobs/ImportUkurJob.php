@@ -34,14 +34,9 @@ class ImportUkurJob implements ShouldQueue
                 throw new \RuntimeException("File tidak ditemukan: {$this->importLog->file_path}");
             }
 
-            PrioritasGiziService::$muted = true;
-            try {
-                $import  = new UkurImport($this->importLog->user_id);
-                Excel::import($import, $path);
-                $results = $import->getResults();
-            } finally {
-                PrioritasGiziService::$muted = false;
-            }
+            $import = new UkurImport($this->importLog->user_id);
+            app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
+            $results = $import->getResults();
 
             app(PrioritasGiziService::class)->refreshAll();
 

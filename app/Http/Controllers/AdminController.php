@@ -2233,7 +2233,7 @@ All Admin Controller
                 'puskesmas' => WilkerPuskesmas::wilkerForKelurahanId($r->id_kel ? (int) $r->id_kel : null) ?: '-',
                 'kelurahan' => $r->kelurahan ?: '-',
                 'rt' => $r->rt ?: '-',
-                'hashid' => \App\Models\Anak::find($r->anak_id)?->hashid,
+                'hashid' => \App\Services\HashIdService::encode((int) $r->anak_id, 'anak'),
             ];
         }
 

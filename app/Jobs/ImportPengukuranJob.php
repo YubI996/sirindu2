@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Imports\PengukuranImport;
 use App\Models\ImportLog;
+use App\Services\PrioritasGiziService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -34,7 +35,8 @@ class ImportPengukuranJob implements ShouldQueue
             }
 
             $import  = new PengukuranImport($this->importLog->user_id);
-            Excel::import($import, $path);
+            app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
+            app(PrioritasGiziService::class)->refreshAll();
             $results = $import->getResults();
 
             $this->importLog->update([

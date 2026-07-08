@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Imports\KohortImport;
 use App\Models\ImportLog;
+use App\Services\PrioritasGiziService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,7 +40,8 @@ class ImportKohortJob implements ShouldQueue
             }
 
             $import = new KohortImport($this->importLog->user_id);
-            Excel::import($import, $path);
+            app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
+            app(PrioritasGiziService::class)->refreshAll();
 
             $results = $import->getResults();
 

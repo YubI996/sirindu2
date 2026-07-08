@@ -20,6 +20,17 @@ class PrioritasGiziService
 
     public function __construct(private StatusGiziService $statusGizi) {}
 
+    /** Jalankan $fn dengan observer refresh dibisukan, lalu pastikan flag dipulihkan. */
+    public function duringMutedImport(callable $fn): mixed
+    {
+        self::$muted = true;
+        try {
+            return $fn();
+        } finally {
+            self::$muted = false;
+        }
+    }
+
     /**
      * @return array{gizi_buruk:bool,gizi_kurang:bool,stunting:bool,bb_tidak_naik:bool,prioritas:?int,usia_bln:?int}
      */

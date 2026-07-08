@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Imports\CapilImport;
 use App\Models\ImportLog;
+use App\Services\PrioritasGiziService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,7 +40,8 @@ class ImportCapilJob implements ShouldQueue
             $target = CapilImport::firstVisibleSheet($sheets);
 
             $import = new CapilImport($this->importLog->user_id, null, $target);
-            Excel::import($import, $path);
+            app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
+            app(PrioritasGiziService::class)->refreshAll();
             $results = $import->getResults();
 
             // Selipkan peringatan multi-sheet di awal daftar kegagalan/info.

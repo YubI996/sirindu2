@@ -63,16 +63,13 @@ class ImportOperasiTimbang extends Command
 
         $import = new OperasiTimbangImport($userId, $commit, $minNama, $target, $keputusan);
 
-        PrioritasGiziService::$muted = true;
-        try {
+        app(PrioritasGiziService::class)->duringMutedImport(function () use ($commit, $import, $file) {
             if ($commit) {
                 DB::transaction(fn () => Excel::import($import, $file));
             } else {
                 Excel::import($import, $file);
             }
-        } finally {
-            PrioritasGiziService::$muted = false;
-        }
+        });
 
         if ($commit) {
             app(PrioritasGiziService::class)->refreshAll();
