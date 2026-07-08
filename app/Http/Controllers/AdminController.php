@@ -1736,9 +1736,12 @@ All Admin Controller
         $kelurahanWithData = $kelurahanStats->count();
         $rtWithData = $rtStats->count();
 
-        // Stunting summary
-        $totalStunting = collect($kelurahanZScore)->sum('stunting');
-        $totalWasting = collect($kelurahanZScore)->sum('wasting');
+        // Ringkasan stunting/wasting dari snapshot (BB/TB) agar konsisten dgn popup peta.
+        $snap = DB::table('prioritas_gizi')->whereNotNull('usia_bln');
+        $totalStunting = (clone $snap)->where('stunting', 1)->count();
+        $totalWasting = (clone $snap)->where(function ($q) {
+            $q->where('gizi_buruk', 1)->orWhere('gizi_kurang', 1);
+        })->count();
 
         // Immunization summary
         $totalImunisasiLengkap = collect($kelurahanImunisasi)->sum('lengkap');

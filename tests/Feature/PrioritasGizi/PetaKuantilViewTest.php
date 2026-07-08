@@ -55,5 +55,10 @@ class PetaKuantilViewTest extends TestCase
         $this->assertArrayHasKey('gizi', $kuantil['kelurahan']);
         $this->assertArrayHasKey('bbtn', $kuantil['kelurahan']);
         $this->assertArrayHasKey('prioritas', $kuantil['kelurahan']);
+
+        // Ringkasan stunting/wasting kini dari snapshot BB/TB: anak bb=12/tb=90
+        // → gizi buruk (wasting=1), tinggi 90 tidak stunted (stunting=0).
+        $this->assertSame(0, $response->viewData('totalStunting'));
+        $this->assertSame(1, $response->viewData('totalWasting'));
     }
 }

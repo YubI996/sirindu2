@@ -181,7 +181,7 @@
 <script>
 (function () {
     'use strict';
-    var STORE_URL = '{{ route("admin.intervensi.index") }}'.replace(/\/intervensi-gizi.*$/, '/intervensi-gizi');
+    var STORE_URL = '{{ route("admin.intervensi.store") }}';
     var back = document.getElementById('ig-modal-back');
     var form = document.getElementById('ig-form');
 
