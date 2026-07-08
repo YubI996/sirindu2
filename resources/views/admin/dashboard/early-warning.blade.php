@@ -822,75 +822,93 @@ Proyeksi
 </div>
 
 {{-- Subsection Prioritas Berjenjang (P1–P3) dari snapshot prioritas_gizi --}}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap');
+.pr-tiers{ --pr-green:oklch(0.48 0.14 145); --pr-ink:oklch(0.24 0.02 145); --pr-muted:oklch(0.50 0.015 145); --pr-line:oklch(0.90 0.012 145); }
+.pr-tier{ background:#fff; border:1px solid var(--pr-line); border-radius:12px; margin-bottom:.7rem; overflow:hidden; box-shadow:0 1px 3px oklch(0 0 0 / .04); }
+.pr-head{ width:100%; display:flex; align-items:center; gap:.7rem; padding:.8rem 1.1rem; background:#fff; border:none; cursor:pointer; text-align:left; font-family:inherit; }
+.pr-head:hover{ background:oklch(0.98 0.012 145); }
+.pr-chip{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:.85rem; letter-spacing:.02em; padding:.1rem .5rem; border-radius:6px; }
+.pr-chip--1{ background:oklch(0.94 0.055 25); color:oklch(0.46 0.17 25); }
+.pr-chip--2{ background:oklch(0.94 0.06 70); color:oklch(0.44 0.13 70); }
+.pr-chip--3{ background:oklch(0.93 0.05 235); color:oklch(0.45 0.12 235); }
+.pr-title{ font-weight:600; color:var(--pr-ink); font-size:.95rem; }
+.pr-count{ margin-left:auto; font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:1.15rem; color:var(--pr-ink); font-variant-numeric:tabular-nums; }
+.pr-count small{ font-family:'Barlow',sans-serif; font-weight:600; font-size:.68rem; color:var(--pr-muted); margin-left:.25rem; }
+.pr-chev{ color:var(--pr-muted); transition:transform .2s ease; }
+.pr-head[aria-expanded="true"] .pr-chev{ transform:rotate(180deg); }
+.pr-body{ display:none; border-top:1px solid var(--pr-line); }
+.pr-body.open{ display:block; }
+.pr-toolbar{ display:flex; justify-content:flex-end; padding:.5rem .9rem 0; }
+.pr-export{ font-size:.8rem; color:var(--pr-green); text-decoration:none; font-weight:600; display:inline-flex; align-items:center; gap:.35rem; }
+.pr-export:hover{ text-decoration:underline; color:oklch(0.38 0.13 145); }
+.pr-table{ width:100%; border-collapse:collapse; font-size:.83rem; }
+.pr-table thead th{ background:oklch(0.96 0.015 145); text-align:left; padding:.5rem .8rem; font-size:.64rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--pr-muted); white-space:nowrap; }
+.pr-table tbody td{ padding:.5rem .8rem; border-top:1px solid var(--pr-line); }
+.pr-table tbody tr:hover{ background:oklch(0.98 0.012 145); }
+.pr-empty{ padding:1.25rem; color:var(--pr-muted); font-size:.85rem; }
+.pr-tier--off{ opacity:.65; }
+.pr-tier--off .pr-head{ cursor:default; }
+.pr-tier--off .pr-head:hover{ background:#fff; }
+</style>
 @php
     $tierMeta = [
-        1 => ['label' => 'Prioritas 1 — Gizi Buruk', 'cls' => 'high'],
-        2 => ['label' => 'Prioritas 2 — Stunting', 'cls' => 'medium'],
-        3 => ['label' => 'Prioritas 3 — BB Tidak Naik 2 Bulan', 'cls' => 'low'],
+        1 => ['label' => 'Gizi Buruk', 'sub' => 'BB/TB < −3 SD'],
+        2 => ['label' => 'Stunting', 'sub' => 'TB/U < −2 SD'],
+        3 => ['label' => 'BB Tidak Naik', 'sub' => '2 penimbangan turun / tetap'],
     ];
 @endphp
-<div class="mb-4">
+<div class="pr-tiers mb-4">
     @foreach($tierMeta as $tier => $meta)
     @php $rows = $prioritasTiers[$tier] ?? []; @endphp
-    <div class="alert-card">
-        <button type="button"
-                class="alert-card-header {{ $meta['cls'] }} w-100 text-left border-0"
-                style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
-                aria-expanded="false" aria-controls="tierBody{{ $tier }}"
-                onclick="toggleTier({{ $tier }}, this)">
-            <span><i class="fa fa-layer-group mr-2"></i>{{ $meta['label'] }}</span>
-            <span class="badge badge-light">{{ count($rows) }} anak</span>
+    <div class="pr-tier">
+        <button type="button" class="pr-head" aria-expanded="false" aria-controls="tierBody{{ $tier }}" onclick="toggleTier({{ $tier }}, this)">
+            <span class="pr-chip pr-chip--{{ $tier }}">P{{ $tier }}</span>
+            <span class="pr-title">{{ $meta['label'] }} <span class="text-muted" style="font-weight:400;font-size:.8rem;">· {{ $meta['sub'] }}</span></span>
+            <span class="pr-count">{{ count($rows) }}<small>anak</small></span>
+            <i class="fa fa-chevron-down pr-chev ml-1"></i>
         </button>
-        <div style="padding:0.5rem 1rem;background:#f9fafb;">
-            <a href="{{ route('admin.prioritas.export', ['tier' => $tier]) }}" class="btn btn-sm btn-outline-success">
-                <i class="fa fa-file-excel mr-1"></i> Export Prioritas {{ $tier }}
-            </a>
-        </div>
-        <div class="alert-card-body" id="tierBody{{ $tier }}" style="display:none;">
+        <div class="pr-body" id="tierBody{{ $tier }}">
             @if(count($rows))
+            <div class="pr-toolbar">
+                <a href="{{ route('admin.prioritas.export', ['tier' => $tier]) }}" class="pr-export"><i class="fa fa-file-excel"></i> Export daftar P{{ $tier }}</a>
+            </div>
             <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>No</th><th>Nama</th><th>NIK</th><th>Usia (bln)</th>
-                            <th>Posyandu</th><th>Puskesmas</th><th>Kelurahan</th><th>RT</th><th></th>
-                        </tr>
-                    </thead>
+                <table class="pr-table">
+                    <thead><tr>
+                        <th>No</th><th>Nama</th><th>NIK</th><th>Usia</th>
+                        <th>Posyandu</th><th>Puskesmas</th><th>Kelurahan</th><th>RT</th><th></th>
+                    </tr></thead>
                     <tbody>
                         @foreach($rows as $i => $r)
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td><strong>{{ $r['nama'] }}</strong></td>
-                            <td>{{ $r['nik'] }}</td>
+                            <td style="font-variant-numeric:tabular-nums;">{{ $r['nik'] }}</td>
                             <td>{{ $r['usia_bln'] ?? '-' }}</td>
                             <td>{{ $r['posyandu'] }}</td>
                             <td>{{ $r['puskesmas'] }}</td>
                             <td>{{ $r['kelurahan'] }}</td>
                             <td>{{ $r['rt'] }}</td>
-                            <td>
-                                @if($r['hashid'])
-                                <a href="{{ route('admin.showAnak', $r['hashid']) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="fa fa-eye"></i>
-                                </a>
-                                @endif
-                            </td>
+                            <td>@if($r['hashid'])<a href="{{ route('admin.showAnak', $r['hashid']) }}" class="btn btn-sm btn-outline-primary" title="Detail"><i class="fa fa-eye"></i></a>@endif</td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
             @else
-            <p class="text-muted mb-0">Tidak ada anak pada tingkat ini.</p>
+            <div class="pr-empty">Tidak ada anak pada tingkat ini.</div>
             @endif
         </div>
     </div>
     @endforeach
 
     {{-- P4 nonaktif (butuh data keluarga miskin) --}}
-    <div class="alert-card">
-        <div class="alert-card-header" style="background:#9ca3af;display:flex;justify-content:space-between;align-items:center;">
-            <span><i class="fa fa-lock mr-2"></i>Prioritas 4 — Keluarga Miskin Berisiko</span>
-            <span class="badge badge-light" title="Butuh data keluarga miskin (DTKS/P3KE) — belum tersedia">Belum tersedia</span>
+    <div class="pr-tier pr-tier--off">
+        <div class="pr-head" aria-disabled="true">
+            <span class="pr-chip" style="background:oklch(0.93 0.008 145);color:oklch(0.5 0.01 145);">P4</span>
+            <span class="pr-title">Keluarga Miskin Berisiko <span class="text-muted" style="font-weight:400;font-size:.8rem;">· butuh data DTKS/P3KE</span></span>
+            <span class="pr-count" style="font-family:'Barlow',sans-serif;font-size:.78rem;font-weight:600;color:oklch(0.55 0.01 145);" title="Belum tersedia">Belum tersedia</span>
         </div>
     </div>
 </div>
@@ -1147,9 +1165,8 @@ Proyeksi
 function toggleTier(tier, btn) {
     var body = document.getElementById('tierBody' + tier);
     if (!body) return;
-    var open = body.style.display !== 'none';
-    body.style.display = open ? 'none' : 'block';
-    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    var open = body.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
 // Tab switching for vaccine projection
