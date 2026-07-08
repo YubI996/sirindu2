@@ -134,4 +134,60 @@ class IntervensiGiziControllerTest extends TestCase
         $this->assertCount(1, $daftar);
         $this->assertSame('Api-Api', $daftar[0]['kelurahan']);
     }
+
+    public function test_non_super_tidak_bisa_store_anak_kelurahan_lain(): void
+    {
+        $kelA = Kelurahan::create(['name' => 'Api-Api', 'id_kecamatan' => 1]);
+        $kelB = Kelurahan::create(['name' => 'Kanaan', 'id_kecamatan' => 1]);
+        $anakB = $this->anakPrioritas('3201000000009420', $kelB->id);
+        $faskes = User::factory()->create(['type' => 1, 'id_kel' => $kelA->id]);
+
+        $this->actingAs($faskes)->post(route('admin.intervensi.store'), [
+            'id_anak' => $anakB->id, 'jenis' => 'PMT', 'status' => 'Direncanakan',
+        ])->assertForbidden();
+
+        $this->assertDatabaseCount('intervensi_gizi', 0);
+    }
+
+    public function test_non_super_tidak_bisa_update_intervensi_kelurahan_lain(): void
+    {
+        $kelA = Kelurahan::create(['name' => 'Api-Api', 'id_kecamatan' => 1]);
+        $kelB = Kelurahan::create(['name' => 'Kanaan', 'id_kecamatan' => 1]);
+        $anakB = $this->anakPrioritas('3201000000009421', $kelB->id);
+        $iv = IntervensiGizi::create(['id_anak' => $anakB->id, 'jenis' => 'PMT', 'status' => 'Direncanakan']);
+        $faskes = User::factory()->create(['type' => 1, 'id_kel' => $kelA->id]);
+
+        $this->actingAs($faskes)->put(route('admin.intervensi.update', $iv), [
+            'jenis' => 'PMT', 'status' => 'Selesai',
+        ])->assertForbidden();
+
+        $this->assertSame('Direncanakan', $iv->fresh()->status);
+    }
+
+    public function test_non_super_tidak_bisa_destroy_intervensi_kelurahan_lain(): void
+    {
+        $kelA = Kelurahan::create(['name' => 'Api-Api', 'id_kecamatan' => 1]);
+        $kelB = Kelurahan::create(['name' => 'Kanaan', 'id_kecamatan' => 1]);
+        $anakB = $this->anakPrioritas('3201000000009422', $kelB->id);
+        $iv = IntervensiGizi::create(['id_anak' => $anakB->id, 'jenis' => 'PMT', 'status' => 'Direncanakan']);
+        $faskes = User::factory()->create(['type' => 1, 'id_kel' => $kelA->id]);
+
+        $this->actingAs($faskes)->delete(route('admin.intervensi.destroy', $iv))->assertForbidden();
+
+        $this->assertDatabaseHas('intervensi_gizi', ['id' => $iv->id]);
+    }
+
+    public function test_non_super_bisa_update_intervensi_kelurahannya(): void
+    {
+        $kelA = Kelurahan::create(['name' => 'Api-Api', 'id_kecamatan' => 1]);
+        $anakA = $this->anakPrioritas('3201000000009423', $kelA->id);
+        $iv = IntervensiGizi::create(['id_anak' => $anakA->id, 'jenis' => 'PMT', 'status' => 'Direncanakan']);
+        $faskes = User::factory()->create(['type' => 1, 'id_kel' => $kelA->id]);
+
+        $this->actingAs($faskes)->put(route('admin.intervensi.update', $iv), [
+            'jenis' => 'PMT', 'status' => 'Selesai',
+        ])->assertRedirect(route('admin.intervensi.index'));
+
+        $this->assertSame('Selesai', $iv->fresh()->status);
+    }
 }

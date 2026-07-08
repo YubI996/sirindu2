@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Anak;
 use App\Models\IntervensiGizi;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
@@ -48,6 +49,7 @@ class IntervensiGiziController extends Controller
             'pelaksana' => 'nullable|string|max:255',
             'catatan'   => 'nullable|string|max:2000',
         ]);
+        $this->pastikanBolehAksesAnak((int) $data['id_anak']);
         $data['created_by'] = auth()->id();
         IntervensiGizi::create($data);
 
@@ -56,6 +58,7 @@ class IntervensiGiziController extends Controller
 
     public function update(Request $request, IntervensiGizi $intervensi)
     {
+        $this->pastikanBolehAksesAnak((int) $intervensi->id_anak);
         $data = $request->validate([
             'jenis'     => ['required', Rule::in(IntervensiGizi::JENIS)],
             'status'    => ['required', Rule::in(IntervensiGizi::STATUS)],
@@ -70,9 +73,22 @@ class IntervensiGiziController extends Controller
 
     public function destroy(IntervensiGizi $intervensi)
     {
+        $this->pastikanBolehAksesAnak((int) $intervensi->id_anak);
         $intervensi->delete();
 
         return redirect()->route('admin.intervensi.index')->with('success', 'Intervensi dihapus.');
+    }
+
+    /** Scoping tulis: user non-super hanya boleh mengelola anak di kelurahannya. */
+    private function pastikanBolehAksesAnak(int $idAnak): void
+    {
+        $user = auth()->user();
+        if ($user->isSuperAdmin()) {
+            return;
+        }
+        abort_if(!$user->id_kel, 403);
+        $anak = Anak::find($idAnak);
+        abort_if(!$anak || (int) $anak->id_kel !== (int) $user->id_kel, 403);
     }
 
     /** Filter wilayah + scoping: user non-super dikunci ke kelurahannya. */
