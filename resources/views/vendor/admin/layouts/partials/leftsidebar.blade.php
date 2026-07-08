@@ -18,7 +18,7 @@
 				@if (Auth::user()->isSuperAdmin())
 
 				@php
-					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.pd3i.dashboard', 'admin.timbang.*', 'admin.home', 'super.admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.pd3i.dashboard', 'admin.timbang.*', 'admin.home', 'super.admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
 					$export = request()->routeIs('admin.export.*');
@@ -40,6 +40,7 @@
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.epidemiologi.map')}}" class="{{ request()->routeIs('admin.epidemiologi.map') ? 'active' : '' }}">Peta Sebaran</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
+						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>
 					</ul>
 				</li>
 
@@ -136,7 +137,7 @@
 				@else
 
 				@php
-					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$export = request()->routeIs('admin.export.*');
 				@endphp
@@ -150,6 +151,7 @@
 						<li><a href="{{route('admin.imunisasiDashboard')}}" class="{{ request()->routeIs('admin.imunisasiDashboard') ? 'active' : '' }}">Cakupan IDL &amp; Kejar</a></li>
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
+						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>
 					</ul>
 				</li>
 
