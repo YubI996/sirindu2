@@ -64,6 +64,11 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('early-warning', [App\Http\Controllers\AdminController::class, 'earlyWarningSystem'])->name('admin.earlyWarning');
     Route::get('early-warning/export-vaccine-needs', [App\Http\Controllers\AdminController::class, 'exportVaccineNeeds'])->name('admin.exportVaccineNeeds');
     Route::get('early-warning/prioritas/export', [App\Http\Controllers\AdminController::class, 'exportPrioritasTier'])->name('admin.prioritas.export');
+    // Modul Intervensi Gizi
+    Route::get('intervensi-gizi', [App\Http\Controllers\IntervensiGiziController::class, 'index'])->name('admin.intervensi.index');
+    Route::post('intervensi-gizi', [App\Http\Controllers\IntervensiGiziController::class, 'store'])->name('admin.intervensi.store');
+    Route::put('intervensi-gizi/{intervensi}', [App\Http\Controllers\IntervensiGiziController::class, 'update'])->name('admin.intervensi.update');
+    Route::delete('intervensi-gizi/{intervensi}', [App\Http\Controllers\IntervensiGiziController::class, 'destroy'])->name('admin.intervensi.destroy');
     //Anak Route List
     Route::get('data-dasar-anak', [App\Http\Controllers\AdminController::class, 'anak'])->name('admin.anak');
     Route::get('get-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'getAnak'])->name('admin.getAnak');
