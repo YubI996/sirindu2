@@ -59,44 +59,82 @@ Peta
 
     .legend-box {
         background: #fff;
-        border-radius: 8px;
-        padding: 1rem;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border: 1px solid oklch(0.90 0.012 145);
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+        box-shadow: 0 1px 3px oklch(0 0 0 / 0.04);
         margin-bottom: 1rem;
+    }
+
+    .legend-box h6 {
+        font-size: 0.66rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: oklch(0.50 0.015 145);
     }
 
     .legend-item {
         display: flex;
         align-items: center;
-        margin-bottom: 0.5rem;
-        font-size: 0.85rem;
+        margin-bottom: 0.45rem;
+        font-size: 0.82rem;
+        color: oklch(0.35 0.015 145);
     }
 
     .legend-color {
-        width: 18px;
-        height: 18px;
-        border-radius: 4px;
-        margin-right: 8px;
+        width: 16px;
+        height: 16px;
+        border-radius: 5px;
+        margin-right: 9px;
         flex-shrink: 0;
+        box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.06);
     }
 
     .layer-toggle {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.4rem;
         flex-wrap: wrap;
+        align-items: center;
         margin-bottom: 1rem;
     }
 
     .layer-toggle .btn {
-        border-radius: 20px;
-        padding: 0.4rem 0.8rem;
-        font-size: 0.8rem;
+        border-radius: 8px;
+        padding: 0.35rem 0.7rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        background: #fff;
+        border-color: oklch(0.86 0.012 145);
+        color: oklch(0.42 0.015 145);
     }
 
-    .layer-toggle .btn.active {
+    .layer-toggle .btn:hover {
+        border-color: oklch(0.60 0.15 145);
+        color: oklch(0.38 0.13 145);
+    }
+
+    .layer-toggle .btn.active,
+    .layer-toggle .btn.active:hover {
         background: var(--primary);
         color: #fff;
         border-color: var(--primary);
+    }
+
+    .map-lbl {
+        font-size: 0.64rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: oklch(0.55 0.012 145);
+        margin: 0 0.1rem 0 0.2rem;
+    }
+
+    .map-div {
+        width: 1px;
+        height: 22px;
+        background: oklch(0.88 0.012 145);
+        margin: 0 0.35rem;
     }
 
     .info-panel {
@@ -262,32 +300,34 @@ Peta
     <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
         <h5 class="mb-2"><i class="fa fa-map-marked-alt text-primary mr-2"></i> Peta Interaktif Kota Bontang</h5>
         <div class="layer-toggle">
-            <button class="btn btn-outline-primary btn-sm" id="btnKecamatan" onclick="showLayer('kecamatan')">
+            <span class="map-lbl">Wilayah</span>
+            <button class="btn btn-outline-secondary btn-sm" id="btnKecamatan" onclick="showLayer('kecamatan')">
                 <i class="fa fa-city mr-1"></i> Kecamatan
             </button>
-            <button class="btn btn-outline-primary btn-sm active" id="btnKelurahan" onclick="showLayer('kelurahan')">
+            <button class="btn btn-outline-secondary btn-sm active" id="btnKelurahan" onclick="showLayer('kelurahan')">
                 <i class="fa fa-map mr-1"></i> Kelurahan
             </button>
-            <button class="btn btn-outline-primary btn-sm" id="btnRT" onclick="showLayer('rt')">
+            <button class="btn btn-outline-secondary btn-sm" id="btnRT" onclick="showLayer('rt')">
                 <i class="fa fa-home mr-1"></i> RT
             </button>
-            <span class="mx-2 text-muted">|</span>
-            <button class="btn btn-outline-success btn-sm" id="btnCount" onclick="showMode('count')">
+            <span class="map-div" aria-hidden="true"></span>
+            <span class="map-lbl">Tampilkan</span>
+            <button class="btn btn-outline-secondary btn-sm active" id="btnCount" onclick="showMode('count')">
                 <i class="fa fa-users mr-1"></i> Jumlah
             </button>
-            <button class="btn btn-outline-danger btn-sm" id="btnStunting" onclick="showMode('stunting')">
+            <button class="btn btn-outline-secondary btn-sm" id="btnStunting" onclick="showMode('stunting')">
                 <i class="fa fa-child mr-1"></i> Stunting
             </button>
-            <button class="btn btn-outline-warning btn-sm" id="btnGizi" onclick="showMode('gizi')">
-                <i class="fa fa-weight mr-1"></i> Gizi Kurang/Buruk
+            <button class="btn btn-outline-secondary btn-sm" id="btnGizi" onclick="showMode('gizi')">
+                <i class="fa fa-weight mr-1"></i> Gizi Buruk/Kurang
             </button>
-            <button class="btn btn-outline-danger btn-sm" id="btnBbtn" onclick="showMode('bbtn')">
+            <button class="btn btn-outline-secondary btn-sm" id="btnBbtn" onclick="showMode('bbtn')">
                 <i class="fa fa-arrow-down mr-1"></i> BB Tidak Naik
             </button>
-            <button class="btn btn-outline-dark btn-sm" id="btnPrioritas" onclick="showMode('prioritas')">
+            <button class="btn btn-outline-secondary btn-sm" id="btnPrioritas" onclick="showMode('prioritas')">
                 <i class="fa fa-triangle-exclamation mr-1"></i> Anak Prioritas
             </button>
-            <button class="btn btn-outline-info btn-sm" id="btnImunisasi" onclick="showMode('imunisasi')">
+            <button class="btn btn-outline-secondary btn-sm" id="btnImunisasi" onclick="showMode('imunisasi')">
                 <i class="fa fa-syringe mr-1"></i> Imunisasi
             </button>
         </div>
