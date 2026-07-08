@@ -24,6 +24,8 @@ use App\Models\RumahSakit;
 use App\Models\Rt;
 use App\Models\User;
 use App\Support\WilkerPuskesmas;
+use App\Support\Kuantil;
+use App\Services\PetaPrioritasService;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\AnakExport;
 use App\Exports\PrioritasTierExport;
@@ -1742,6 +1744,28 @@ All Admin Controller
         $totalImunisasiLengkap = collect($kelurahanImunisasi)->sum('lengkap');
         $persenImunisasiLengkap = $totalAnak > 0 ? round(($totalImunisasiLengkap / $totalAnak) * 100, 1) : 0;
 
+        // Agregasi prioritas per wilayah (dari snapshot) + ambang kuantil per indikator.
+        $peta = app(PetaPrioritasService::class);
+        $petaAgregat = [
+            'kecamatan' => $peta->agregat('kecamatan'),
+            'kelurahan' => $peta->agregat('kelurahan'),
+            'rt'        => $peta->agregat('rt'),
+        ];
+
+        $indikatorNilai = [
+            'stunting'  => 'stunting_pct',
+            'gizi'      => 'gizi_kurang_buruk_pct',
+            'bbtn'      => 'bb_tidak_naik_pct',
+            'prioritas' => 'anak_prioritas',
+        ];
+        $petaKuantil = [];
+        foreach ($petaAgregat as $level => $wilayah) {
+            foreach ($indikatorNilai as $indikator => $kolom) {
+                $nilai = array_map(fn ($w) => (float) $w[$kolom], array_values($wilayah));
+                $petaKuantil[$level][$indikator] = Kuantil::ambangTertil($nilai);
+            }
+        }
+
         return view('admin.dashboard.map', compact(
             'kelurahanStats',
             'kecamatanStats',
@@ -1759,7 +1783,9 @@ All Admin Controller
             'totalStunting',
             'totalWasting',
             'totalImunisasiLengkap',
-            'persenImunisasiLengkap'
+            'persenImunisasiLengkap',
+            'petaAgregat',
+            'petaKuantil'
         ));
     }
 
