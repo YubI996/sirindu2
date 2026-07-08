@@ -281,6 +281,12 @@ Peta
             <button class="btn btn-outline-warning btn-sm" id="btnGizi" onclick="showMode('gizi')">
                 <i class="fa fa-weight mr-1"></i> Gizi Kurang/Buruk
             </button>
+            <button class="btn btn-outline-danger btn-sm" id="btnBbtn" onclick="showMode('bbtn')">
+                <i class="fa fa-arrow-down mr-1"></i> BB Tidak Naik
+            </button>
+            <button class="btn btn-outline-dark btn-sm" id="btnPrioritas" onclick="showMode('prioritas')">
+                <i class="fa fa-triangle-exclamation mr-1"></i> Anak Prioritas
+            </button>
             <button class="btn btn-outline-info btn-sm" id="btnImunisasi" onclick="showMode('imunisasi')">
                 <i class="fa fa-syringe mr-1"></i> Imunisasi
             </button>
@@ -432,6 +438,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const rtZScore = @json($rtZScore);
     const kelurahanImunisasi = @json($kelurahanImunisasi);
     const rtImunisasi = @json($rtImunisasi);
+    const petaAgregat = @json($petaAgregat);
+    const petaKuantil = @json($petaKuantil);
 
     // Mapping from GeoJSON names
     const mapping = @json(json_decode(file_get_contents(public_path('geojson/mapping.json')), true));
@@ -639,6 +647,44 @@ document.addEventListener('DOMContentLoaded', function() {
         return '#be123c';
     }
 
+    // ── Pewarnaan kuantil (mode prioritas) ───────────────────────
+    // kelas 0 hijau (rendah), 1 kuning (sedang), 2 merah (tinggi); abu-abu bila tak ada data.
+    const KUANTIL_WARNA = ['#047857', '#f59e0b', '#be123c'];
+
+    function kelasKuantil(nilai, ambang) {
+        if (!ambang || ambang.length < 2) return 0;
+        if (nilai <= ambang[0]) return 0;
+        if (nilai <= ambang[1]) return 1;
+        return 2;
+    }
+
+    // Baris agregat wilayah utk layer aktif berdasarkan nama tampilan.
+    function agregatWilayah(type, name, feature) {
+        let key = name;
+        if (type === 'kelurahan') key = resolveKelurahanName(name);
+        else if (type === 'kecamatan') key = name.replace('Kecamatan ', '');
+        else if (type === 'rt') {
+            const info = getRtLookup(feature);
+            key = info && info.dbRTName ? info.dbRTName : name;
+        }
+        const level = (type === 'kecamatan') ? 'kecamatan' : (type === 'rt' ? 'rt' : 'kelurahan');
+        return (petaAgregat[level] || {})[key] || null;
+    }
+
+    // Warna kuantil utk mode prioritas aktif.
+    function warnaKuantilMode(type, agg) {
+        if (!agg) return '#e5e7eb';
+        const level = (type === 'kecamatan') ? 'kecamatan' : (type === 'rt' ? 'rt' : 'kelurahan');
+        const ambangSet = petaKuantil[level] || {};
+        let nilai, ambang;
+        if (currentMode === 'stunting')       { nilai = agg.stunting_pct;          ambang = ambangSet.stunting; }
+        else if (currentMode === 'gizi')      { nilai = agg.gizi_kurang_buruk_pct; ambang = ambangSet.gizi; }
+        else if (currentMode === 'bbtn')      { nilai = agg.bb_tidak_naik_pct;     ambang = ambangSet.bbtn; }
+        else if (currentMode === 'prioritas') { nilai = agg.anak_prioritas;        ambang = ambangSet.prioritas; }
+        else return '#e5e7eb';
+        return KUANTIL_WARNA[kelasKuantil(nilai, ambang)];
+    }
+
     // Style functions
     function getStyle(name, type, feature = null) {
         let stats, zScore, imunisasiStats, count = 0;
@@ -663,10 +709,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         let color;
-        if (currentMode === 'stunting' && zScore) {
-            color = getColorByStunting(zScore);
-        } else if (currentMode === 'gizi' && zScore) {
-            color = getColorByGizi(zScore);
+        if (['stunting', 'gizi', 'bbtn', 'prioritas'].includes(currentMode)) {
+            color = warnaKuantilMode(type, agregatWilayah(type, name, feature));
         } else if (currentMode === 'imunisasi') {
             color = getColorByImunisasi(imunisasiStats);
         } else {
@@ -740,15 +784,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const persen = imunisasiStats.total_anak > 0 ? ((count / imunisasiStats.total_anak) * 100).toFixed(0) : 0;
                 content += '<div class="popup-stat"><span>' + label + ':</span><strong>' + count + '/' + imunisasiStats.total_anak + ' (' + persen + '%)</strong></div>';
             }
-        } else if (zScore) {
-            content += '<div class="popup-stat"><span>Normal:</span><strong style="color:#047857">' + zScore.normal + '</strong></div>';
-            content += '<div class="popup-stat"><span>Stunting:</span><strong style="color:#be123c">' + zScore.stunting + '</strong></div>';
-            content += '<div class="popup-stat"><span>Gizi Kurang:</span><strong style="color:#d97706">' + (zScore.gizi_kurang || 0) + '</strong></div>';
-            content += '<div class="popup-stat"><span>Gizi Buruk:</span><strong style="color:#be123c">' + (zScore.gizi_buruk || 0) + '</strong></div>';
-            content += '<div class="popup-stat"><span>Overweight:</span><strong style="color:#0891b2">' + zScore.overweight + '</strong></div>';
-            if (zScore.total > 0) {
-                const stuntingRate = ((zScore.stunting / zScore.total) * 100).toFixed(1);
-                content += '<div class="popup-stat"><span>Prevalensi Stunting:</span><strong>' + stuntingRate + '%</strong></div>';
+        } else {
+            const agg = agregatWilayah(type, name, feature);
+            if (agg) {
+                content += '<hr style="margin:0.3rem 0">';
+                content += '<div class="popup-stat"><span>Anak terukur:</span><strong>' + agg.total + '</strong></div>';
+                content += '<div class="popup-stat"><span>Stunting:</span><strong style="color:#be123c">' + agg.stunting + ' (' + agg.stunting_pct + '%)</strong></div>';
+                content += '<div class="popup-stat"><span>Gizi Buruk:</span><strong style="color:#be123c">' + agg.gizi_buruk + '</strong></div>';
+                content += '<div class="popup-stat"><span>Gizi Kurang:</span><strong style="color:#d97706">' + agg.gizi_kurang + '</strong></div>';
+                content += '<div class="popup-stat"><span>Gizi Buruk/Kurang:</span><strong>' + agg.gizi_kurang_buruk_pct + '%</strong></div>';
+                content += '<div class="popup-stat"><span>BB Tidak Naik:</span><strong style="color:#ea580c">' + agg.bb_tidak_naik + ' (' + agg.bb_tidak_naik_pct + '%)</strong></div>';
+                content += '<div class="popup-stat"><span>Anak Prioritas:</span><strong>' + agg.anak_prioritas + '</strong></div>';
             }
         }
 
@@ -880,22 +926,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update legend
     function updateLegend() {
         const legendContent = document.getElementById('legendContent');
-        if (currentMode === 'stunting') {
+        if (['stunting', 'gizi', 'bbtn', 'prioritas'].includes(currentMode)) {
+            const judul = {
+                stunting: 'Prevalensi stunting',
+                gizi: 'Prevalensi gizi buruk/kurang',
+                bbtn: 'Prevalensi BB tidak naik',
+                prioritas: 'Jumlah anak prioritas'
+            }[currentMode];
             legendContent.innerHTML = `
-                <div class="legend-item"><div class="legend-color" style="background: #be123c;"></div><span>Stunting >30%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #e11d48;"></div><span>Stunting 20-30%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div><span>Stunting 10-20%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #fbbf24;"></div><span>Stunting <10%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Tidak ada stunting</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #e5e7eb;"></div><span>Tidak ada data</span></div>
-            `;
-        } else if (currentMode === 'gizi') {
-            legendContent.innerHTML = `
-                <div class="legend-item"><div class="legend-color" style="background: #be123c;"></div><span>Gizi kurang/buruk >20%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #e11d48;"></div><span>10-20%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div><span>5-10%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #fbbf24;"></div><span><5%</span></div>
-                <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Tidak ada</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #be123c;"></div><span>${judul}: tinggi (Q3, merah)</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #f59e0b;"></div><span>Sedang (M, kuning)</span></div>
+                <div class="legend-item"><div class="legend-color" style="background: #047857;"></div><span>Rendah (Q1, hijau)</span></div>
                 <div class="legend-item"><div class="legend-color" style="background: #e5e7eb;"></div><span>Tidak ada data</span></div>
             `;
         } else if (currentMode === 'imunisasi') {
@@ -980,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showMode = function(mode) {
         currentMode = mode;
 
-        ['btnCount', 'btnStunting', 'btnGizi', 'btnImunisasi'].forEach(id => {
+        ['btnCount', 'btnStunting', 'btnGizi', 'btnImunisasi', 'btnBbtn', 'btnPrioritas'].forEach(id => {
             const btn = document.getElementById(id);
             if (btn) btn.classList.remove('active');
         });
