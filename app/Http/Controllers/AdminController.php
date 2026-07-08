@@ -1872,6 +1872,7 @@ All Admin Controller
                 'jk' => $child->jk == 1 ? 'Laki-laki' : 'Perempuan',
                 'kecamatan' => $kecamatanName,
                 'kelurahan' => $kelurahanName,
+                'id_kel' => $kelurahan?->id,
                 'posyandu' => $posyanduName,
                 'alerts' => [],
                 'risk_score' => 0,

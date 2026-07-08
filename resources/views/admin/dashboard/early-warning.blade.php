@@ -821,6 +821,75 @@ Proyeksi
     <span id="scoreInfoHelp" class="sr-only">Membuka penjelasan perhitungan skor prioritas</span>
 </div>
 
+{{-- Subsection Prioritas Berjenjang (P1–P3) dari snapshot prioritas_gizi --}}
+@php
+    $tierMeta = [
+        1 => ['label' => 'Prioritas 1 — Gizi Buruk', 'cls' => 'high'],
+        2 => ['label' => 'Prioritas 2 — Stunting', 'cls' => 'medium'],
+        3 => ['label' => 'Prioritas 3 — BB Tidak Naik 2 Bulan', 'cls' => 'low'],
+    ];
+@endphp
+<div class="mb-4">
+    @foreach($tierMeta as $tier => $meta)
+    @php $rows = $prioritasTiers[$tier] ?? []; @endphp
+    <div class="alert-card">
+        <button type="button"
+                class="alert-card-header {{ $meta['cls'] }} w-100 text-left border-0"
+                style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+                aria-expanded="false" aria-controls="tierBody{{ $tier }}"
+                onclick="toggleTier({{ $tier }}, this)">
+            <span><i class="fa fa-layer-group mr-2"></i>{{ $meta['label'] }}</span>
+            <span class="badge badge-light">{{ count($rows) }} anak</span>
+        </button>
+        <div class="alert-card-body" id="tierBody{{ $tier }}" style="display:none;">
+            @if(count($rows))
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>No</th><th>Nama</th><th>NIK</th><th>Usia (bln)</th>
+                            <th>Posyandu</th><th>Puskesmas</th><th>Kelurahan</th><th>RT</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($rows as $i => $r)
+                        <tr>
+                            <td>{{ $i + 1 }}</td>
+                            <td><strong>{{ $r['nama'] }}</strong></td>
+                            <td>{{ $r['nik'] }}</td>
+                            <td>{{ $r['usia_bln'] ?? '-' }}</td>
+                            <td>{{ $r['posyandu'] }}</td>
+                            <td>{{ $r['puskesmas'] }}</td>
+                            <td>{{ $r['kelurahan'] }}</td>
+                            <td>{{ $r['rt'] }}</td>
+                            <td>
+                                @if($r['hashid'])
+                                <a href="{{ route('admin.showAnak', $r['hashid']) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @else
+            <p class="text-muted mb-0">Tidak ada anak pada tingkat ini.</p>
+            @endif
+        </div>
+    </div>
+    @endforeach
+
+    {{-- P4 nonaktif (butuh data keluarga miskin) --}}
+    <div class="alert-card">
+        <div class="alert-card-header" style="background:#9ca3af;display:flex;justify-content:space-between;align-items:center;">
+            <span><i class="fa fa-lock mr-2"></i>Prioritas 4 — Keluarga Miskin Berisiko</span>
+            <span class="badge badge-light" title="Butuh data keluarga miskin (DTKS/P3KE) — belum tersedia">Belum tersedia</span>
+        </div>
+    </div>
+</div>
+
 <div id="childrenList">
     @forelse($paginatedList as $index => $child)
     @php $globalIndex = ($pagination['current_page'] - 1) * $pagination['per_page'] + $index + 1; @endphp
@@ -856,6 +925,10 @@ Proyeksi
                 <div class="child-info-item">
                     <strong>Kecamatan</strong>
                     <span>{{ $child['kecamatan'] }}</span>
+                </div>
+                <div class="child-info-item">
+                    <strong>Puskesmas</strong>
+                    <span>{{ \App\Support\WilkerPuskesmas::wilkerForKelurahanId($child['id_kel'] ?? null) ?: '-' }}</span>
                 </div>
                 <div class="child-info-item">
                     <strong>Kunjungan Terakhir</strong>
@@ -1066,6 +1139,14 @@ Proyeksi
 @section('scripts')
 @parent
 <script>
+function toggleTier(tier, btn) {
+    var body = document.getElementById('tierBody' + tier);
+    if (!body) return;
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+}
+
 // Tab switching for vaccine projection
 function showProjectionTab(tabName, buttonEl) {
     // Update button states
