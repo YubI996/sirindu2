@@ -84,4 +84,25 @@ class ImportOperasiTimbangCommandTest extends TestCase
         $this->assertEquals(1, DataAnak::where('id_anak', $a2->id)->count());
         $this->assertEquals(0, DataAnak::where('id_anak', $a1->id)->count());
     }
+
+    public function test_buat_tak_cocok_membuat_anak_dummy_dan_ekspor_csv_dibuat(): void
+    {
+        Storage::fake('local');
+        Anak::create(['nik' => '1111111111111111', 'nama' => 'MUHAMMAD ABIZAR', 'jk' => 1, 'tgl_lahir' => '2024-02-02', 'nama_ibu' => 'AGIL ANASTASYA F', 'nama_ayah' => 'X', 'no' => 'R1', 'status' => 1]);
+
+        $this->artisan('import:operasi-timbang', ['file' => $this->buatFile(), '--commit' => true, '--user' => 1, '--buat-tak-cocok' => true])
+            ->expectsOutputToContain('DIBUAT')
+            ->assertExitCode(0);
+
+        // Baris 'ANAK TIDAK ADA' kini jadi anak baru ber-NIK dummy + measurement
+        $baru = Anak::where('nama', 'ANAK TIDAK ADA')->first();
+        $this->assertNotNull($baru);
+        $this->assertEquals('9', substr($baru->nik, 12, 1));
+        $this->assertEquals(1, DataAnak::where('id_anak', $baru->id)->count());
+
+        // CSV audit ditulis, CSV takcocok tidak (tidak ada yang tersisa tak-cocok)
+        $files = Storage::disk('local')->allFiles('timbang');
+        $this->assertNotEmpty(array_filter($files, fn ($f) => str_contains($f, 'dibuat')));
+        $this->assertEmpty(array_filter($files, fn ($f) => str_contains($f, 'takcocok')));
+    }
 }
