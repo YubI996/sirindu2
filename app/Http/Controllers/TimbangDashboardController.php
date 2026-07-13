@@ -104,7 +104,11 @@ class TimbangDashboardController extends Controller
         ];
 
         foreach ($measurements as $m) {
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
+                'bb_u'  => $m->zscore_bb_u,
+                'tb_u'  => $m->zscore_pb_u,
+                'bb_tb' => $m->zscore_bb_pb,
+            ]);
             if ($g['enum']['bb_tb'] !== null) $results['bb_tb'][$bbTbMap[$g['enum']['bb_tb']]]++;
             if ($g['enum']['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
             if ($g['enum']['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
@@ -353,7 +357,7 @@ class TimbangDashboardController extends Controller
             ->where('da.bln', '<=', 60)
             ->where('da.bb', '>', 0)
             ->where('da.tb', '>', 0)
-            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')
+            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'da.zscore_bb_u', 'da.zscore_pb_u', 'da.zscore_bb_pb', 'a.jk')
             ->get();
     }
 
@@ -447,7 +451,7 @@ class TimbangDashboardController extends Controller
         $measurements = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->whereIn('da.id', $this->latestVisitQuery($f))
-            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'da.tgl_kunjungan', 'a.jk')
+            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'da.tgl_kunjungan', 'da.zscore_bb_u', 'da.zscore_pb_u', 'da.zscore_bb_pb', 'a.jk')
             ->get();
 
         $matchIds = [];
@@ -459,7 +463,11 @@ class TimbangDashboardController extends Controller
                 continue;
             }
             if ($m->bln > 60 || $m->bb <= 0 || $m->tb <= 0) continue;
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
+                'bb_u'  => $m->zscore_bb_u,
+                'tb_u'  => $m->zscore_pb_u,
+                'bb_tb' => $m->zscore_bb_pb,
+            ]);
             $hit = match ($kategori) {
                 'stunting'    => in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true),
                 'gizi_kurang' => $g['enum']['bb_tb'] === 'wasted',
