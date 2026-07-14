@@ -10,74 +10,117 @@
 /* ================================================================
    Dashboard Gizi & Timbang — scoped to .tb-page
    ================================================================ */
-.tb-page { font-family:'Barlow',sans-serif; color:oklch(0.18 0.012 145); }
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap');
+
+.tb-page{
+    --green:oklch(0.60 0.15 145); --green-d:oklch(0.48 0.14 145); --green-dk:oklch(0.38 0.13 145);
+    --ink:oklch(0.24 0.02 145); --muted:oklch(0.50 0.015 145); --faint:oklch(0.62 0.012 145);
+    --line:oklch(0.90 0.012 145); --line-soft:oklch(0.94 0.010 145);
+    --bg:oklch(0.98 0.012 145); --card:#fff; --thead:oklch(0.96 0.016 145);
+    --shadow:0 1px 3px oklch(0.30 0.03 145 / .06);
+    --shadow-lg:0 10px 30px oklch(0.42 0.06 145 / .14);
+    --danger:oklch(0.52 0.19 25); --danger-bg:oklch(0.95 0.045 25); --danger-ln:oklch(0.88 0.06 25);
+    --warn:oklch(0.52 0.13 62);   --warn-bg:oklch(0.95 0.055 72);  --warn-ln:oklch(0.88 0.07 72);
+    --info:oklch(0.52 0.10 235);  --info-bg:oklch(0.95 0.04 235);
+    font-family:'Barlow',system-ui,sans-serif; color:var(--ink);
+}
+.tb-page *{ box-sizing:border-box; }
+.tb-num{ font-family:'Barlow Condensed','Barlow',sans-serif; font-variant-numeric:tabular-nums; letter-spacing:.005em; }
 
 /* Filter bar */
 .tb-filter {
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    background:#fff; border-radius:12px; padding:14px 20px;
-    border:1px solid oklch(0.87 0.012 145);
-    box-shadow:0 1px 4px oklch(0 0 0 / 0.04); margin-bottom:22px;
+    display:flex; align-items:center; gap:.65rem; flex-wrap:wrap;
+    background:var(--card); border-radius:14px; padding:.9rem 1.15rem;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow); margin-bottom:1.5rem;
 }
-.tb-filter label { font-size:.8125rem; font-weight:700; color:oklch(0.36 0.010 145); }
+.tb-filter label { font-size:.7rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
 .tb-filter select {
-    padding:6px 12px; border-radius:8px; font-size:.8125rem;
-    border:1px solid oklch(0.82 0.012 145); background:#fafafa;
-    font-family:'Barlow',sans-serif; min-width:160px;
+    height:36px; padding:0 .7rem; border-radius:9px; font-size:.85rem;
+    border:1px solid oklch(0.84 0.012 145); background:var(--bg);
+    font-family:inherit; color:var(--ink); min-width:150px;
+    transition:border-color .14s, box-shadow .14s;
 }
+.tb-filter select:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .16); }
 .tb-filter-btn {
-    display:inline-flex; align-items:center; gap:6px;
-    padding:0 16px; height:36px; border-radius:8px;
-    background:oklch(0.48 0.14 145); color:#fff;
-    font-family:'Barlow',sans-serif; font-size:.8125rem; font-weight:700;
-    border:none; cursor:pointer;
-    transition:background .14s;
+    display:inline-flex; align-items:center; gap:.4rem;
+    padding:0 1rem; height:36px; border-radius:9px;
+    background:var(--green-d); color:#fff;
+    font-family:inherit; font-size:.83rem; font-weight:700;
+    border:1px solid transparent; cursor:pointer; text-decoration:none;
+    transition:background .14s, border-color .14s, color .14s;
 }
-.tb-filter-btn:hover { background:oklch(0.40 0.13 145); }
+.tb-filter-btn:hover { background:var(--green-dk); color:#fff; }
 .tb-filter-btn .material-symbols-outlined { font-size:16px; }
+.tb-filter-btn--ghost { background:transparent; border-color:var(--line); color:var(--muted); }
+.tb-filter-btn--ghost:hover { background:transparent; border-color:var(--faint); color:var(--ink); }
 
 /* Section label */
 .tb-section {
-    font-size:.6875rem; font-weight:800; letter-spacing:.10em;
-    text-transform:uppercase; color:oklch(0.48 0.14 145);
-    margin:0 0 12px; display:flex; align-items:center; gap:8px;
+    font-size:.7rem; font-weight:800; letter-spacing:.11em;
+    text-transform:uppercase; color:var(--green-d);
+    margin:0 0 .9rem; display:flex; align-items:center; gap:.5rem;
 }
-.tb-section::after { content:''; flex:1; height:1px; background:oklch(0.90 0.025 145); }
+.tb-section .material-symbols-outlined { font-size:16px; }
+.tb-section::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--line),transparent); }
+.tb-section small { font-weight:600; text-transform:none; letter-spacing:0; color:var(--faint); }
 
 /* KPI cards */
 .tb-kpi-grid {
-    display:grid; grid-template-columns:repeat(4,1fr); gap:14px;
-    margin-bottom:28px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem;
+    margin-bottom:1.75rem;
 }
-@media(max-width:900px){ .tb-kpi-grid{ grid-template-columns:repeat(2,1fr); } }
-@media(max-width:480px){ .tb-kpi-grid{ grid-template-columns:1fr; } }
+.tb-kpi-grid--6 { grid-template-columns:repeat(3,1fr); }
+@media(max-width:900px){ .tb-kpi-grid,.tb-kpi-grid--6{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:480px){ .tb-kpi-grid,.tb-kpi-grid--6{ grid-template-columns:1fr; } }
 
 .tb-kpi {
-    background:#fff; border-radius:12px; padding:20px;
-    border:1px solid oklch(0.87 0.012 145);
-    box-shadow:0 1px 4px oklch(0 0 0 / 0.04);
-    display:flex; align-items:center; gap:16px;
-    transition:transform .18s, box-shadow .18s;
+    position:relative; background:var(--card); border-radius:14px; padding:1.1rem 1.15rem;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
+    display:flex; align-items:center; gap:.9rem;
+    transition:transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s, border-color .2s;
 }
-.tb-kpi:hover { transform:translateY(-3px); box-shadow:0 6px 18px oklch(0.48 0.14 145 / 0.12); }
+.tb-kpi--click { cursor:pointer; }
+.tb-kpi--click:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); border-color:oklch(0.84 0.03 145); }
+.tb-kpi--click:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
 .tb-kpi__icon {
-    width:52px; height:52px; border-radius:12px; flex-shrink:0;
+    width:44px; height:44px; border-radius:12px; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
-    font-size:24px;
 }
-.tb-kpi__icon--green  { background:oklch(0.48 0.14 145); color:#fff; }
-.tb-kpi__icon--amber  { background:#d97706; color:#fff; }
-.tb-kpi__icon--red    { background:#dc2626; color:#fff; }
-.tb-kpi__icon--blue   { background:#0891b2; color:#fff; }
-.tb-kpi__icon--violet { background:#7c3aed; color:#fff; }
-.tb-kpi__icon--teal   { background:#0d9488; color:#fff; }
-.tb-kpi__icon--orange { background:#ea580c; color:#fff; }
-.tb-kpi__val { font-size:1.75rem; font-weight:800; color:oklch(0.18 0.012 145); line-height:1.1; }
-.tb-kpi__lbl { font-size:.8rem; color:oklch(0.44 0.010 145); margin-top:2px; }
-.tb-kpi__sub { font-size:.7rem; color:oklch(0.56 0.008 145); margin-top:1px; }
+.tb-kpi__icon .material-symbols-outlined { font-size:22px; }
+.tb-kpi__icon--green  { background:oklch(0.95 0.05 145); color:var(--green-d); }
+.tb-kpi__icon--amber  { background:var(--warn-bg); color:var(--warn); }
+.tb-kpi__icon--red    { background:var(--danger-bg); color:var(--danger); }
+.tb-kpi__icon--blue   { background:var(--info-bg); color:var(--info); }
+.tb-kpi__icon--violet { background:oklch(0.94 0.05 300); color:oklch(0.50 0.16 300); }
+.tb-kpi__icon--teal   { background:oklch(0.94 0.05 190); color:oklch(0.48 0.10 190); }
+.tb-kpi__icon--orange { background:oklch(0.94 0.065 55); color:oklch(0.52 0.15 52); }
+.tb-kpi__val { font-size:2rem; font-weight:700; color:var(--ink); line-height:1.02; }
+.tb-kpi__lbl { font-size:.82rem; font-weight:600; color:var(--muted); margin-top:.15rem; }
+.tb-kpi__sub { font-size:.7rem; color:var(--faint); margin-top:.05rem; }
+.tb-kpi__go {
+    position:absolute; top:.7rem; right:.75rem; font-size:18px; color:var(--faint);
+    opacity:0; transform:translateX(-4px); transition:opacity .18s, transform .18s;
+}
+.tb-kpi--click:hover .tb-kpi__go { opacity:1; transform:none; }
+
+/* Entrance */
+@keyframes tb-rise { from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+.tb-kpi-grid--6 .tb-kpi,
+.tb-stunting-row .tb-highlight { opacity:0; animation:tb-rise .5s cubic-bezier(.22,1,.36,1) forwards; }
+.tb-kpi-grid--6 .tb-kpi:nth-child(1){ animation-delay:.02s; }
+.tb-kpi-grid--6 .tb-kpi:nth-child(2){ animation-delay:.06s; }
+.tb-kpi-grid--6 .tb-kpi:nth-child(3){ animation-delay:.10s; }
+.tb-kpi-grid--6 .tb-kpi:nth-child(4){ animation-delay:.14s; }
+.tb-kpi-grid--6 .tb-kpi:nth-child(5){ animation-delay:.18s; }
+.tb-kpi-grid--6 .tb-kpi:nth-child(6){ animation-delay:.22s; }
+.tb-stunting-row .tb-highlight:nth-child(1){ animation-delay:.06s; }
+.tb-stunting-row .tb-highlight:nth-child(2){ animation-delay:.12s; }
+.tb-stunting-row .tb-highlight:nth-child(3){ animation-delay:.18s; }
 
 /* Chart cards */
-.tb-chart-grid { display:grid; gap:16px; margin-bottom:24px; }
+.tb-chart-grid { display:grid; gap:1rem; margin-bottom:1.5rem; }
 .tb-chart-grid--3 { grid-template-columns:repeat(3,1fr); }
 .tb-chart-grid--2 { grid-template-columns:repeat(2,1fr); }
 .tb-chart-grid--1-2 { grid-template-columns:1fr 2fr; }
@@ -86,101 +129,107 @@
 }
 
 .tb-card {
-    background:#fff; border-radius:12px; padding:20px 22px;
-    border:1px solid oklch(0.87 0.012 145);
-    box-shadow:0 1px 4px oklch(0 0 0 / 0.04);
+    background:var(--card); border-radius:14px; padding:1.25rem 1.35rem;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
 }
 .tb-card__title {
-    font-size:.9375rem; font-weight:800; color:oklch(0.18 0.012 145);
-    margin:0 0 4px; display:flex; align-items:center; gap:8px;
+    font-size:.95rem; font-weight:700; color:var(--ink);
+    margin:0 0 .15rem; display:flex; align-items:center; gap:.5rem;
 }
-.tb-card__title .material-symbols-outlined { font-size:18px; color:oklch(0.48 0.14 145); }
-.tb-card__sub { font-size:.8rem; color:oklch(0.48 0.008 145); margin:0 0 16px; }
+.tb-card__title .material-symbols-outlined { font-size:18px; color:var(--green-d); }
+.tb-card__sub { font-size:.8rem; color:var(--faint); margin:0 0 1rem; }
 .tb-card canvas { max-width:100%; }
 
 /* Stunting highlight */
-.tb-stunting-row { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.tb-stunting-row { display:flex; gap:.8rem; margin-bottom:1.25rem; flex-wrap:wrap; }
 .tb-highlight {
-    flex:1; min-width:140px; border-radius:10px; padding:14px 16px;
-    display:flex; align-items:center; gap:12px;
+    flex:1; min-width:150px; border-radius:12px; padding:1rem 1.1rem;
+    display:flex; align-items:center; gap:.75rem; border:1px solid transparent;
 }
-.tb-highlight--danger  { background:oklch(0.96 0.06 25 / 0.25); border:1px solid oklch(0.88 0.08 25 / 0.4); }
-.tb-highlight--warning { background:oklch(0.96 0.08 75 / 0.25); border:1px solid oklch(0.88 0.10 75 / 0.4); }
-.tb-highlight--green   { background:oklch(0.95 0.06 145 / 0.3); border:1px solid oklch(0.83 0.08 145 / 0.4); }
-.tb-highlight__pct { font-size:2rem; font-weight:900; }
-.tb-highlight--danger  .tb-highlight__pct { color:oklch(0.42 0.17 25); }
-.tb-highlight--warning .tb-highlight__pct { color:oklch(0.42 0.14 70); }
-.tb-highlight--green   .tb-highlight__pct { color:oklch(0.38 0.13 145); }
-.tb-highlight__lbl { font-size:.8125rem; font-weight:700; line-height:1.3; }
-.tb-highlight--danger  .tb-highlight__lbl { color:oklch(0.36 0.14 25); }
-.tb-highlight--warning .tb-highlight__lbl { color:oklch(0.40 0.12 70); }
-.tb-highlight--green   .tb-highlight__lbl { color:oklch(0.32 0.12 145); }
+.tb-highlight--danger  { background:var(--danger-bg); border-color:var(--danger-ln); }
+.tb-highlight--warning { background:var(--warn-bg);   border-color:var(--warn-ln); }
+.tb-highlight--green   { background:oklch(0.95 0.05 145); border-color:oklch(0.86 0.06 145); }
+.tb-highlight__pct { font-size:2.1rem; font-weight:700; line-height:.95; }
+.tb-highlight--danger  .tb-highlight__pct { color:var(--danger); }
+.tb-highlight--warning .tb-highlight__pct { color:oklch(0.48 0.13 62); }
+.tb-highlight--green   .tb-highlight__pct { color:var(--green-dk); }
+.tb-highlight__lbl { font-size:.82rem; font-weight:700; line-height:1.25; }
+.tb-highlight--danger  .tb-highlight__lbl { color:oklch(0.42 0.13 25); }
+.tb-highlight--warning .tb-highlight__lbl { color:oklch(0.42 0.10 62); }
+.tb-highlight--green   .tb-highlight__lbl { color:var(--green-dk); }
+.tb-highlight__lbl small { font-weight:500; opacity:.85; }
 
 /* Coverage table */
-.tb-cov-table { width:100%; border-collapse:collapse; font-size:.8125rem; }
+.tb-cov-table { width:100%; border-collapse:collapse; font-size:.83rem; }
 .tb-cov-table thead th {
-    background:oklch(0.95 0.016 145); padding:9px 12px;
-    font-size:.6875rem; font-weight:800; letter-spacing:.06em;
-    text-transform:uppercase; color:oklch(0.44 0.010 145);
+    background:var(--thead); padding:.6rem .8rem; text-align:left;
+    font-size:.66rem; font-weight:800; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted);
     white-space:nowrap;
 }
-.tb-cov-table tbody td { padding:10px 12px; border-top:1px solid oklch(0.93 0.012 145); vertical-align:middle; }
-.tb-cov-table tbody tr:hover { background:oklch(0.97 0.012 145); }
-.tb-bar-wrap { width:100px; background:oklch(0.91 0.04 145 / 0.4); border-radius:4px; height:8px; display:inline-block; vertical-align:middle; }
-.tb-bar { height:100%; border-radius:4px; background:oklch(0.48 0.14 145); transition:width .4s; }
-.tb-bar--amber { background:#d97706; }
+.tb-cov-table tbody td { padding:.65rem .8rem; border-top:1px solid var(--line-soft); vertical-align:middle; font-variant-numeric:tabular-nums; }
+.tb-cov-table tbody tr:hover { background:var(--bg); }
+.tb-bar-wrap { width:96px; background:oklch(0.92 0.03 145); border-radius:5px; height:8px; display:inline-block; vertical-align:middle; overflow:hidden; }
+.tb-bar { height:100%; border-radius:5px; background:var(--green-d); transition:width .5s cubic-bezier(.22,1,.36,1); }
+.tb-bar--amber { background:oklch(0.62 0.12 62); }
 
 /* ASI bulan chart bar */
-.tb-asi-bar { display:flex; flex-direction:column; gap:8px; }
-.tb-asi-row { display:flex; align-items:center; gap:10px; font-size:.8rem; }
-.tb-asi-row .tb-asi-lbl { width:70px; color:oklch(0.36 0.010 145); font-weight:700; flex-shrink:0; }
-.tb-asi-row .tb-asi-track { flex:1; background:oklch(0.91 0.04 145 / 0.4); border-radius:4px; height:14px; }
-.tb-asi-row .tb-asi-fill { height:100%; border-radius:4px; background:oklch(0.48 0.14 145); }
-.tb-asi-row .tb-asi-pct { width:44px; text-align:right; font-weight:700; color:oklch(0.36 0.012 145); }
+.tb-asi-bar { display:flex; flex-direction:column; gap:.5rem; }
+.tb-asi-row { display:flex; align-items:center; gap:.65rem; font-size:.8rem; }
+.tb-asi-row .tb-asi-lbl { width:66px; color:var(--muted); font-weight:700; flex-shrink:0; }
+.tb-asi-row .tb-asi-track { flex:1; background:oklch(0.92 0.03 145); border-radius:5px; height:12px; overflow:hidden; }
+.tb-asi-row .tb-asi-fill { height:100%; border-radius:5px; background:var(--green-d); transition:width .5s cubic-bezier(.22,1,.36,1); }
+.tb-asi-row .tb-asi-pct { width:42px; text-align:right; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
 
 /* Pitting edema */
-.tb-pe-list { display:flex; flex-direction:column; gap:8px; }
-.tb-pe-row { display:flex; align-items:center; gap:10px; font-size:.8rem; }
+.tb-pe-list { display:flex; flex-direction:column; gap:.5rem; }
+.tb-pe-row { display:flex; align-items:center; gap:.6rem; font-size:.82rem; }
 .tb-pe-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-.tb-pe-row .tb-pe-lbl { flex:1; color:oklch(0.36 0.010 145); }
-.tb-pe-row .tb-pe-cnt { font-weight:700; color:oklch(0.24 0.012 145); }
+.tb-pe-row .tb-pe-lbl { flex:1; color:var(--muted); }
+.tb-pe-row .tb-pe-cnt { font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
 
 /* Loading overlay */
-.tb-loading { text-align:center; padding:32px; color:oklch(0.52 0.008 145); }
-.tb-spin { animation:tb-spin .8s linear infinite; display:inline-block; font-size:28px; color:oklch(0.48 0.14 145 / 0.6); }
+.tb-loading { text-align:center; padding:2rem; color:var(--faint); }
+.tb-spin { animation:tb-spin .8s linear infinite; display:inline-block; font-size:26px; color:oklch(0.60 0.15 145 / .6); }
 @keyframes tb-spin{ to{ transform:rotate(360deg); } }
-
-/* 6-card grid + clickable */
-.tb-kpi-grid--6 { grid-template-columns:repeat(3,1fr); }
-@media(max-width:900px){ .tb-kpi-grid--6{ grid-template-columns:repeat(2,1fr); } }
-@media(max-width:480px){ .tb-kpi-grid--6{ grid-template-columns:1fr; } }
-.tb-kpi--click { cursor:pointer; }
-.tb-kpi--click:focus-visible { outline:2px solid oklch(0.48 0.14 145); outline-offset:2px; }
 
 /* Daftar modal */
 .tb-modal-back {
     display:none; position:fixed; inset:0; z-index:1080;
-    background:oklch(0 0 0 / 0.45); padding:4vh 16px; overflow:auto;
+    background:oklch(0.20 0.02 145 / .5); padding:4vh 16px; overflow:auto;
 }
-.tb-modal-back.open { display:block; }
+.tb-modal-back.open { display:block; animation:tb-fade .18s ease-out; }
 .tb-modal {
-    background:#fff; border-radius:14px; max-width:980px; margin:0 auto;
-    box-shadow:0 20px 60px oklch(0 0 0 / 0.3); overflow:hidden;
+    background:var(--card); border-radius:16px; max-width:980px; margin:0 auto;
+    box-shadow:0 24px 60px oklch(0.15 0.02 145 / .34); overflow:hidden;
+    animation:tb-pop .22s cubic-bezier(.22,1,.36,1);
 }
 .tb-modal__head {
-    display:flex; align-items:center; gap:12px; padding:18px 22px;
-    border-bottom:1px solid oklch(0.90 0.012 145);
+    display:flex; align-items:center; gap:.75rem; padding:1.1rem 1.35rem;
+    border-bottom:1px solid var(--line);
 }
-.tb-modal__head h3 { font-size:1.05rem; font-weight:800; margin:0; color:oklch(0.20 0.012 145); }
-.tb-modal__count { font-size:.8rem; color:oklch(0.50 0.008 145); }
-.tb-modal__close { margin-left:auto; background:none; border:none; cursor:pointer; font-size:24px; line-height:1; color:oklch(0.46 0.01 145); }
-.tb-modal__body { padding:16px 22px; max-height:62vh; overflow:auto; }
-.tb-modal__tools { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
-.tb-modal__search { flex:1; min-width:160px; padding:7px 12px; border:1px solid oklch(0.82 0.012 145); border-radius:8px; font-size:.8125rem; font-family:'Barlow',sans-serif; }
-.tb-dt { width:100%; border-collapse:collapse; font-size:.8125rem; }
-.tb-dt thead th { background:oklch(0.95 0.016 145); padding:8px 10px; text-align:left; font-size:.6875rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:oklch(0.44 0.010 145); white-space:nowrap; position:sticky; top:0; }
-.tb-dt tbody td { padding:8px 10px; border-top:1px solid oklch(0.93 0.012 145); }
-.tb-dt tbody tr:hover { background:oklch(0.97 0.012 145); }
+.tb-modal__head h3 { font-family:'Barlow Condensed','Barlow',sans-serif; font-size:1.25rem; font-weight:700; margin:0; color:var(--ink); }
+.tb-modal__count { font-size:.8rem; color:var(--muted); }
+.tb-modal__close { margin-left:auto; background:none; border:none; cursor:pointer; font-size:24px; line-height:1; color:var(--faint); border-radius:8px; width:32px; height:32px; transition:background .14s,color .14s; }
+.tb-modal__close:hover { background:var(--bg); color:var(--ink); }
+.tb-modal__body { padding:1rem 1.35rem 1.35rem; max-height:62vh; overflow:auto; }
+.tb-modal__tools { display:flex; gap:.6rem; margin-bottom:.85rem; flex-wrap:wrap; align-items:center; }
+.tb-modal__search { flex:1; min-width:180px; padding:.5rem .75rem; border:1px solid oklch(0.84 0.012 145); border-radius:9px; font-size:.85rem; font-family:inherit; background:var(--bg); color:var(--ink); }
+.tb-modal__search:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .16); }
+.tb-dt { width:100%; border-collapse:collapse; font-size:.82rem; }
+.tb-dt thead th { background:var(--thead); padding:.55rem .7rem; text-align:left; font-size:.66rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); white-space:nowrap; position:sticky; top:0; }
+.tb-dt tbody td { padding:.55rem .7rem; border-top:1px solid var(--line-soft); }
+.tb-dt tbody tr:hover { background:var(--bg); }
+@keyframes tb-fade { from{ opacity:0; } }
+@keyframes tb-pop { from{ opacity:0; transform:translateY(10px) scale(.99); } }
+
+@media(prefers-reduced-motion:reduce){
+    .tb-kpi-grid--6 .tb-kpi,
+    .tb-stunting-row .tb-highlight,
+    .tb-modal-back.open,
+    .tb-modal { animation:none !important; opacity:1 !important; }
+}
 </style>
 
 {{-- ── Filter bar ────────────────────────────────────────────── --}}
@@ -224,40 +273,46 @@
     <button class="tb-filter-btn" id="btn-apply">
         <span class="material-symbols-outlined">search</span>Terapkan
     </button>
-    <button class="tb-filter-btn" id="btn-reset" style="background:oklch(0.56 0.010 145 / 0.6);">
+    <button class="tb-filter-btn tb-filter-btn--ghost" id="btn-reset">
         <span class="material-symbols-outlined">restart_alt</span>Reset
     </button>
-    <a class="tb-filter-btn" id="btn-peta" style="background:#0891b2;text-decoration:none;" href="{{ route('admin.map') }}">
+    <a class="tb-filter-btn tb-filter-btn--ghost" id="btn-peta" href="{{ route('admin.map') }}">
         <span class="material-symbols-outlined">map</span>Peta Sebaran
     </a>
 </div>
 
 {{-- ── KPI Cards (6 kartu clickable) ─────────────────────────── --}}
-<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">monitoring</span>Ringkasan Operasi Timbang <small style="font-weight:600;text-transform:none;letter-spacing:0;color:oklch(0.56 0.008 145);">— klik kartu untuk daftar nama</small></p>
+<p class="tb-section"><span class="material-symbols-outlined">monitoring</span>Ringkasan Operasi Timbang <small>klik kartu untuk melihat daftar nama</small></p>
 <div class="tb-kpi-grid tb-kpi-grid--6" id="kpi-grid">
-    <div class="tb-kpi tb-kpi--click" data-kategori="sasaran" role="button" tabindex="0">
+    <div class="tb-kpi tb-kpi--click" data-kategori="sasaran" role="button" tabindex="0" aria-label="Balita sasaran — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--green"><span class="material-symbols-outlined">groups</span></div>
-        <div><div class="tb-kpi__val" id="kpi-sasaran">—</div><div class="tb-kpi__lbl">Balita Sasaran</div><div class="tb-kpi__sub">total terdaftar (filter)</div></div>
+        <div><div class="tb-kpi__val tb-num" id="kpi-sasaran">—</div><div class="tb-kpi__lbl">Balita Sasaran</div><div class="tb-kpi__sub">total terdaftar (filter)</div></div>
+        <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
-    <div class="tb-kpi tb-kpi--click" data-kategori="hadir" role="button" tabindex="0">
+    <div class="tb-kpi tb-kpi--click" data-kategori="hadir" role="button" tabindex="0" aria-label="Hadir ditimbang — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--blue"><span class="material-symbols-outlined">event_available</span></div>
-        <div><div class="tb-kpi__val" id="kpi-hadir">—</div><div class="tb-kpi__lbl">Hadir (Ditimbang)</div><div class="tb-kpi__sub" id="kpi-coverage">coverage —</div></div>
+        <div><div class="tb-kpi__val tb-num" id="kpi-hadir">—</div><div class="tb-kpi__lbl">Hadir (Ditimbang)</div><div class="tb-kpi__sub" id="kpi-coverage">coverage —</div></div>
+        <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
-    <div class="tb-kpi tb-kpi--click" data-kategori="stunting" role="button" tabindex="0">
+    <div class="tb-kpi tb-kpi--click" data-kategori="stunting" role="button" tabindex="0" aria-label="Stunting — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">height</span></div>
-        <div><div class="tb-kpi__val" id="kpi-stunting">—</div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
+        <div><div class="tb-kpi__val tb-num" id="kpi-stunting">—</div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
+        <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
-    <div class="tb-kpi tb-kpi--click" data-kategori="gizi_kurang" role="button" tabindex="0">
+    <div class="tb-kpi tb-kpi--click" data-kategori="gizi_kurang" role="button" tabindex="0" aria-label="Gizi kurang — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">monitor_weight</span></div>
-        <div><div class="tb-kpi__val" id="kpi-gizi-kurang">—</div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
+        <div><div class="tb-kpi__val tb-num" id="kpi-gizi-kurang">—</div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
+        <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
-    <div class="tb-kpi tb-kpi--click" data-kategori="gizi_buruk" role="button" tabindex="0">
+    <div class="tb-kpi tb-kpi--click" data-kategori="gizi_buruk" role="button" tabindex="0" aria-label="Gizi buruk — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">emergency</span></div>
-        <div><div class="tb-kpi__val" id="kpi-gizi-buruk">—</div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
+        <div><div class="tb-kpi__val tb-num" id="kpi-gizi-buruk">—</div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
+        <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
-    <div class="tb-kpi tb-kpi--click" data-kategori="bb_tidak_naik" role="button" tabindex="0">
+    <div class="tb-kpi tb-kpi--click" data-kategori="bb_tidak_naik" role="button" tabindex="0" aria-label="BB tidak naik — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--orange"><span class="material-symbols-outlined">trending_down</span></div>
-        <div><div class="tb-kpi__val" id="kpi-bbtn">—</div><div class="tb-kpi__lbl">BB Tidak Naik</div><div class="tb-kpi__sub">2 kunjungan / NTOB</div></div>
+        <div><div class="tb-kpi__val tb-num" id="kpi-bbtn">—</div><div class="tb-kpi__lbl">BB Tidak Naik</div><div class="tb-kpi__sub">2 kunjungan / NTOB</div></div>
+        <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
 </div>
 
@@ -266,13 +321,13 @@
 
 <div class="tb-stunting-row" id="stunting-row">
     <div class="tb-highlight tb-highlight--danger">
-        <div><div class="tb-highlight__pct" id="hl-stunting">—%</div><div class="tb-highlight__lbl">Stunting<br><small style="font-weight:400;">(TB/U &lt; -2SD)</small></div></div>
+        <div><div class="tb-highlight__pct tb-num" id="hl-stunting">—%</div><div class="tb-highlight__lbl">Stunting<br><small>TB/U &lt; -2SD</small></div></div>
     </div>
     <div class="tb-highlight tb-highlight--warning">
-        <div><div class="tb-highlight__pct" id="hl-underweight">—%</div><div class="tb-highlight__lbl">Berat Kurang<br><small style="font-weight:400;">(BB/U &lt; -2SD)</small></div></div>
+        <div><div class="tb-highlight__pct tb-num" id="hl-underweight">—%</div><div class="tb-highlight__lbl">Berat Kurang<br><small>BB/U &lt; -2SD</small></div></div>
     </div>
     <div class="tb-highlight tb-highlight--green">
-        <div><div class="tb-highlight__pct" id="hl-normal">—%</div><div class="tb-highlight__lbl">Status Gizi Normal<br><small style="font-weight:400;">(BB/U)</small></div></div>
+        <div><div class="tb-highlight__pct tb-num" id="hl-normal">—%</div><div class="tb-highlight__lbl">Status Gizi Normal<br><small>BB/U</small></div></div>
     </div>
 </div>
 
@@ -380,7 +435,7 @@
 
 @section('scripts')
 @parent
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
 (function(){
 'use strict';
@@ -485,8 +540,8 @@ function spinCard(canvasId){
 }
 
 // ── Chart.js defaults ─────────────────────────────────────────
-var GREEN     = 'oklch(0.48 0.14 145)';
-var GREEN_A   = 'oklch(0.48 0.14 145 / 0.75)';
+var GREEN     = 'rgb(0,133,64)';          // Kemenkes green (border/line) — rgb: Chart.js can't parse oklch
+var GREEN_A   = 'rgba(0,166,81,0.72)';    // Kemenkes green (fill)
 var RED       = '#dc2626';
 var AMBER     = '#d97706';
 var BLUE      = '#0891b2';
@@ -647,7 +702,7 @@ function loadCoverage(){
         });
         html += '</tbody></table>';
         document.getElementById('cov-table-wrap').innerHTML = rows.length ? html
-            : '<div style="text-align:center;padding:24px;color:#94a3b8;">Belum ada data</div>';
+            : '<div style="text-align:center;padding:24px;color:var(--faint);">Belum ada data</div>';
     }).fail(function(xhr){ showError('cov-table-wrap', 'coverage'); fail('coverage')(xhr); });
 }
 
@@ -667,7 +722,7 @@ function loadProgram(){
                 +'<div class="tb-asi-pct">'+(row.pct !== null ? row.pct+'%' : '—')+'</div>'
                 +'</div>';
         });
-        document.getElementById('asi-bar').innerHTML = asiHtml || '<div style="color:#94a3b8;font-size:.8rem;">Belum ada data ASI</div>';
+        document.getElementById('asi-bar').innerHTML = asiHtml || '<div style="color:var(--faint);font-size:.8rem;">Belum ada data ASI</div>';
 
         // Pitting edema
         var peHtml = '';
@@ -683,7 +738,7 @@ function loadProgram(){
                 +'<div class="tb-pe-cnt">'+num(r.total)+'</div>'
                 +'</div>';
         });
-        document.getElementById('pe-list').innerHTML = peHtml || '<div style="color:#94a3b8;font-size:.8rem;">—</div>';
+        document.getElementById('pe-list').innerHTML = peHtml || '<div style="color:var(--faint);font-size:.8rem;">—</div>';
 
         // Cara ukur donut
         destroyChart('chart-cara');
@@ -724,7 +779,7 @@ function renderDaftar(filterText){
     }
     if(!rows.length){
         document.getElementById('daftar-table-wrap').innerHTML =
-            '<div style="text-align:center;padding:28px;color:#94a3b8;">Tidak ada data</div>';
+            '<div style="text-align:center;padding:28px;color:var(--faint);">Tidak ada data</div>';
         return;
     }
     var h = '<table class="tb-dt"><thead><tr>'

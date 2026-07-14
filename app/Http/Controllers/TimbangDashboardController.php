@@ -212,8 +212,10 @@ class TimbangDashboardController extends Controller
     {
         $f = $this->parseFilters($request);
 
-        $latestIds = $this->latestVisitQuery($f)->pluck('max_id');
-        $base = DB::table('data_anak')->whereIn('id', $latestIds);
+        // Basis = pengukuran kunjungan terakhir per anak. joinSub (bukan pluck+whereIn
+        // dgn ribuan id) supaya query cepat — lihat catatan performa ASI di bawah.
+        $base = DB::table('data_anak')
+            ->joinSub($this->latestVisitQuery($f), 'lv', 'data_anak.id', '=', 'lv.max_id');
 
         $pittingEdema = (clone $base)
             ->selectRaw('COALESCE(pitting_edema, 0) as level, COUNT(*) as total')
@@ -221,12 +223,20 @@ class TimbangDashboardController extends Controller
             ->orderBy(DB::raw('COALESCE(pitting_edema, 0)'))
             ->get();
 
+        // ASI eksklusif bulan 0–6 dalam SATU query agregat. Sebelumnya 7 query
+        // terpisah (tiap bulan) meng-scan ulang basis → ~15 dtk; kini ~0,3 dtk.
+        $asiParts = [];
+        for ($i = 0; $i <= 6; $i++) {
+            $asiParts[] = "SUM(CASE WHEN asi_bulan_{$i}=1 THEN 1 ELSE 0 END) as ya_{$i}";
+            $asiParts[] = "SUM(CASE WHEN asi_bulan_{$i} IS NOT NULL THEN 1 ELSE 0 END) as tot_{$i}";
+        }
+        $asiRow = (clone $base)->selectRaw(implode(', ', $asiParts))->first();
         $asiCols = [];
         for ($i = 0; $i <= 6; $i++) {
-            $col = "asi_bulan_{$i}";
-            $row = (clone $base)->whereNotNull($col)->selectRaw("SUM(CASE WHEN {$col}=1 THEN 1 ELSE 0 END) as ya, COUNT(*) as total")->first();
-            $pct = ($row && $row->total > 0) ? round($row->ya / $row->total * 100, 1) : null;
-            $asiCols[] = ['bulan' => $i, 'pct' => $pct, 'ya' => $row->ya ?? 0, 'total' => $row->total ?? 0];
+            $ya    = (int) ($asiRow->{"ya_{$i}"} ?? 0);
+            $total = (int) ($asiRow->{"tot_{$i}"} ?? 0);
+            $pct   = $total > 0 ? round($ya / $total * 100, 1) : null;
+            $asiCols[] = ['bulan' => $i, 'pct' => $pct, 'ya' => $ya, 'total' => $total];
         }
 
         $caraUkur = (clone $base)
