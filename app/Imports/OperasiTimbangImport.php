@@ -4,8 +4,10 @@ namespace App\Imports;
 
 use App\Models\Anak;
 use App\Models\DataAnak;
+use App\Services\NikDummyService;
 use App\Services\OperasiTimbangMatcher;
 use App\Traits\ResolvesAnakByTwoOfThree;
+use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -21,20 +23,26 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  * NIK e-PPGBM disensor → diabaikan. Pencocokan via OperasiTimbangMatcher
  * (tgl_lahir + jk + fuzzy nama + tie-break Nama Ortu). Baris tak cocok/ambigu
  * TIDAK membuat anak baru — hanya dilaporkan. Data dasar anak tidak ditimpa.
+ * Kecuali: dengan $buatTakCocok, baris TAK_COCOK dibuatkan Anak baru ber-NIK
+ * dummy (NikDummyService) + measurement-nya (specs/013-publikasi-ot-prod).
  */
 class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReading, WithMultipleSheets
 {
-    use ResolvesAnakByTwoOfThree;
+    use ResolvesAnakByTwoOfThree, ResolvesWilayah;
 
     protected OperasiTimbangMatcher $matcher;
+    protected NikDummyService $nikService;
 
     protected int $matched = 0;
     protected int $skipped = 0;
     protected int $resolved = 0;       // baris ambigu diselesaikan via keputusan → ditulis
     protected int $resolvedSkip = 0;   // baris ambigu di-skip via keputusan
+    protected int $dibuat = 0;         // baris TAK_COCOK → anak baru NIK dummy (--buat-tak-cocok)
+    protected array $dibuatList = [];
     protected array $ambiguous = [];
     protected array $unmatched = [];
     protected array $keputusanError = [];
+    protected array $failures = [];    // diisi ResolvesWilayah::flagUnresolvedWilayah
 
     protected ?array $columnMap = null;
     protected int $headerRowIdx = 0;
@@ -43,6 +51,8 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
     /**
      * @param array<int,string>|null $keputusan Peta baris(rowNum)→keputusan_id ('skip' atau id anak)
      *                                           untuk menyelesaikan baris ambigu secara manual.
+     * @param bool $buatTakCocok Baris TAK_COCOK dibuatkan Anak baru ber-NIK dummy + measurement
+     *                           (untuk publikasi hasil OT; lihat specs/013-publikasi-ot-prod).
      */
     public function __construct(
         protected int $userId,
@@ -50,8 +60,13 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
         protected int $minNama = 88,
         protected int|string $sheet = 0,
         protected ?array $keputusan = null,
+        protected bool $buatTakCocok = false,
     ) {
         $this->matcher = new OperasiTimbangMatcher($minNama);
+        if ($this->buatTakCocok) {
+            $this->nikService = new NikDummyService();
+            $this->initWilayahCache();
+        }
     }
 
     public function sheets(): array { return [$this->sheet => $this]; }
@@ -125,7 +140,11 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
                     }
                     $this->ambiguous[] = $catatan;
                 } else {
-                    $this->unmatched[] = $catatan;
+                    if ($this->buatTakCocok) {
+                        $this->buatDanTulis($row, $map, $rowNum, $nama, $tglLahir, $jk, $namaOrtu ? (string) $namaOrtu : null, $tglUkur);
+                    } else {
+                        $this->unmatched[] = $catatan;
+                    }
                 }
             } catch (\Throwable $e) {
                 $this->unmatched[] = ['baris' => $rowNum, 'nama' => $nama, 'tgl_lahir' => $tglLahir, 'alasan' => mb_substr($e->getMessage(), 0, 120), 'kandidat' => ''];
@@ -166,6 +185,72 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
         }
 
         return false;
+    }
+
+    /**
+     * Buat Anak baru ber-NIK dummy untuk baris TAK_COCOK, lalu tulis measurement-nya.
+     * Dry-run: hanya menghitung, tidak menulis apa pun.
+     */
+    protected function buatDanTulis($row, array $map, int $rowNum, string $nama, ?string $tglLahir, string $jk, ?string $namaOrtu, string $tglUkur): void
+    {
+        $this->dibuat++;
+
+        if (!$this->commit) {
+            $this->dibuatList[] = ['baris' => $rowNum, 'nama' => $nama, 'tgl_lahir' => $tglLahir, 'nik' => '(dry-run)'];
+            return;
+        }
+
+        $jkInt  = strtoupper(trim($jk)) === 'L' ? 1 : 2;
+        $jkChar = $jkInt === 1 ? 'L' : 'P';
+        $tgl    = $tglLahir ?? date('Y-m-d');
+
+        [$namaAyah, $namaIbu] = $this->pecahNamaOrtu($namaOrtu);
+
+        $kecNama = trim((string) ($this->colVal($row, $map, 'kec') ?? ''));
+        $kelNama = trim((string) ($this->colVal($row, $map, 'desa/kel') ?? ''));
+        $rtNama  = trim((string) ($this->colVal($row, $map, 'rt') ?? ''));
+
+        $idKec = $kecNama !== '' ? $this->resolveKecamatan($kecNama) : null;
+        $idKel = $kelNama !== '' ? $this->resolveKelurahan($kelNama, $idKec) : null;
+        $idRt  = $rtNama  !== '' ? $this->resolveRt($rtNama, $idKel) : null;
+
+        // findExisting dulu → run ulang tidak menggandakan anak dummy (idempoten).
+        $nik = $this->nikService->findExisting($nama, $tgl, $jkChar)
+            ?? $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tgl, $jkChar);
+
+        $anak = Anak::updateOrCreate(['nik' => $nik], [
+            'nama'      => $nama,
+            'jk'        => $jkInt,
+            'tgl_lahir' => $tglLahir,
+            'nama_ayah' => $namaAyah,
+            'nama_ibu'  => $namaIbu,
+            'alamat'    => $this->trimOrNull($this->colVal($row, $map, 'alamat')),
+            'id_kec'    => $idKec,
+            'id_kel'    => $idKel,
+            'id_rt'     => $idRt,
+            'no'        => 'OT-' . str_pad((string) $rowNum, 5, '0', STR_PAD_LEFT),
+            'status'    => 1,
+        ]);
+
+        $this->dibuatList[] = ['baris' => $rowNum, 'nama' => $nama, 'tgl_lahir' => $tglLahir, 'nik' => $anak->nik];
+        $this->tulis($anak, $row, $map, $tglUkur);
+    }
+
+    /**
+     * Pecah "Nama Ortu" e-PPGBM (format "AYAH / IBU") → [ayah, ibu].
+     * Satu nama tanpa '/' dianggap ibu (konsisten dgn tie-break matcher yang memakai nama_ibu).
+     */
+    protected function pecahNamaOrtu(?string $namaOrtu): array
+    {
+        $v = trim((string) $namaOrtu);
+        if ($v === '') {
+            return [null, null];
+        }
+        $parts = array_values(array_filter(array_map('trim', explode('/', $v)), fn ($p) => $p !== ''));
+        if (count($parts) >= 2) {
+            return [$parts[0], $parts[1]];
+        }
+        return [null, $parts[0] ?? null];
     }
 
     protected function tulis($anak, $row, array $map, string $tglUkur): void
@@ -240,7 +325,10 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
             'skipped'         => $this->skipped,
             'resolved'        => $this->resolved,
             'resolved_skip'   => $this->resolvedSkip,
+            'dibuat'          => $this->dibuat,
+            'dibuat_list'     => $this->dibuatList,
             'keputusan_error' => $this->keputusanError,
+            'failures'        => $this->failures,
         ];
     }
 }

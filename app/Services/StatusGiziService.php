@@ -37,7 +37,14 @@ class StatusGiziService
      *   tersedia:bool
      * }
      */
-    public function klasifikasi($bb, $tb, $bln, $posisi, $jk): array
+    /**
+     * @param array{bb_u?:float|null,tb_u?:float|null,bb_tb?:float|null}|null $zscore
+     *        Z-score e-PPGBM tersimpan. Bila nilai suatu indikator diberikan (non-null),
+     *        klasifikasi indikator itu memakai z-score (selaras ekspor resmi Sigizi),
+     *        menggantikan recompute WHO lokal. Indikator yang null → tetap recompute.
+     *        IMT/U tak punya z-score tersimpan → selalu recompute.
+     */
+    public function klasifikasi($bb, $tb, $bln, $posisi, $jk, ?array $zscore = null): array
     {
         $bln = (int) $bln;
         $bb = (float) $bb;
@@ -59,6 +66,14 @@ class StatusGiziService
         $bbEnum  = $bbRef ? $this->klasifikasiBb($bb, $bbRef) : null;
         $tbEnum  = $tbRef ? $this->klasifikasiTb($tinggi, $tbRef) : null;
         $btEnum  = $btRef ? $this->klasifikasiBbTb($bb, $btRef) : null;
+
+        // Z-score e-PPGBM tersimpan menggantikan recompute per-indikator (bila ada).
+        // IMT/U tak punya z-score tersimpan → tak pernah dioverride.
+        if ($zscore !== null) {
+            if (($z = $zscore['bb_u'] ?? null) !== null)  $bbEnum = $this->enumBbDariZ((float) $z);
+            if (($z = $zscore['tb_u'] ?? null) !== null)  $tbEnum = $this->enumTbDariZ((float) $z);
+            if (($z = $zscore['bb_tb'] ?? null) !== null) $btEnum = $this->enumBbTbDariZ((float) $z);
+        }
 
         $tidakAda = 'Data Z-Score tidak tersedia';
 
@@ -143,6 +158,39 @@ class StatusGiziService
         if ($bb <= $r->{'1sd'})      return 'normal';
         if ($bb <= $r->{'2sd'})      return 'risiko_lebih';
         if ($bb <= $r->{'3sd'})      return 'overweight';
+        return 'obese';
+    }
+
+    // --- Klasifikasi dari z-score e-PPGBM tersimpan -----------------------------
+    // Ambang WHO: severe pada z < -3, moderat pada z < -2 (batas -2,00 tepat = normal,
+    // selaras hitungan ekspor Sigizi). Pita atas mengikuti klasifikasi berbasis nilai.
+
+    /** BB/U z → severely_underweight|underweight|normal|lebih */
+    private function enumBbDariZ(float $z): string
+    {
+        if ($z < -3)  return 'severely_underweight';
+        if ($z < -2)  return 'underweight';
+        if ($z <= 1)  return 'normal';
+        return 'lebih';
+    }
+
+    /** TB/U z → severely_stunted|stunted|normal|tinggi */
+    private function enumTbDariZ(float $z): string
+    {
+        if ($z < -3)  return 'severely_stunted';
+        if ($z < -2)  return 'stunted';
+        if ($z <= 3)  return 'normal';
+        return 'tinggi';
+    }
+
+    /** BB/TB z → severely_wasted|wasted|normal|risiko_lebih|overweight|obese */
+    private function enumBbTbDariZ(float $z): string
+    {
+        if ($z < -3)  return 'severely_wasted';
+        if ($z < -2)  return 'wasted';
+        if ($z <= 1)  return 'normal';
+        if ($z <= 2)  return 'risiko_lebih';
+        if ($z <= 3)  return 'overweight';
         return 'obese';
     }
 

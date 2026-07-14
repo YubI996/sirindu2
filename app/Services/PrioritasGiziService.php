@@ -53,7 +53,11 @@ class PrioritasGiziService
 
         if ($latest) {
             $usiaBln = (int) $latest->bln;
-            $g = $this->statusGizi->klasifikasi($latest->bb, $latest->tb, $latest->bln, $latest->posisi, $anak->jk);
+            $g = $this->statusGizi->klasifikasi($latest->bb, $latest->tb, $latest->bln, $latest->posisi, $anak->jk, [
+                'bb_u' => $latest->zscore_bb_u,
+                'tb_u' => $latest->zscore_pb_u,
+                'bb_tb' => $latest->zscore_bb_pb,
+            ]);
             $giziBuruk = $g['enum']['bb_tb'] === 'severely_wasted';
             $giziKurang = $g['enum']['bb_tb'] === 'wasted';
             $stunting = in_array($g['enum']['tb_u'], ['stunted', 'severely_stunted'], true);

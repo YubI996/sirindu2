@@ -104,7 +104,11 @@ class TimbangDashboardController extends Controller
         ];
 
         foreach ($measurements as $m) {
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
+                'bb_u'  => $m->zscore_bb_u,
+                'tb_u'  => $m->zscore_pb_u,
+                'bb_tb' => $m->zscore_bb_pb,
+            ]);
             if ($g['enum']['bb_tb'] !== null) $results['bb_tb'][$bbTbMap[$g['enum']['bb_tb']]]++;
             if ($g['enum']['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
             if ($g['enum']['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
@@ -208,8 +212,10 @@ class TimbangDashboardController extends Controller
     {
         $f = $this->parseFilters($request);
 
-        $latestIds = $this->latestVisitQuery($f)->pluck('max_id');
-        $base = DB::table('data_anak')->whereIn('id', $latestIds);
+        // Basis = pengukuran kunjungan terakhir per anak. joinSub (bukan pluck+whereIn
+        // dgn ribuan id) supaya query cepat — lihat catatan performa ASI di bawah.
+        $base = DB::table('data_anak')
+            ->joinSub($this->latestVisitQuery($f), 'lv', 'data_anak.id', '=', 'lv.max_id');
 
         $pittingEdema = (clone $base)
             ->selectRaw('COALESCE(pitting_edema, 0) as level, COUNT(*) as total')
@@ -217,12 +223,20 @@ class TimbangDashboardController extends Controller
             ->orderBy(DB::raw('COALESCE(pitting_edema, 0)'))
             ->get();
 
+        // ASI eksklusif bulan 0–6 dalam SATU query agregat. Sebelumnya 7 query
+        // terpisah (tiap bulan) meng-scan ulang basis → ~15 dtk; kini ~0,3 dtk.
+        $asiParts = [];
+        for ($i = 0; $i <= 6; $i++) {
+            $asiParts[] = "SUM(CASE WHEN asi_bulan_{$i}=1 THEN 1 ELSE 0 END) as ya_{$i}";
+            $asiParts[] = "SUM(CASE WHEN asi_bulan_{$i} IS NOT NULL THEN 1 ELSE 0 END) as tot_{$i}";
+        }
+        $asiRow = (clone $base)->selectRaw(implode(', ', $asiParts))->first();
         $asiCols = [];
         for ($i = 0; $i <= 6; $i++) {
-            $col = "asi_bulan_{$i}";
-            $row = (clone $base)->whereNotNull($col)->selectRaw("SUM(CASE WHEN {$col}=1 THEN 1 ELSE 0 END) as ya, COUNT(*) as total")->first();
-            $pct = ($row && $row->total > 0) ? round($row->ya / $row->total * 100, 1) : null;
-            $asiCols[] = ['bulan' => $i, 'pct' => $pct, 'ya' => $row->ya ?? 0, 'total' => $row->total ?? 0];
+            $ya    = (int) ($asiRow->{"ya_{$i}"} ?? 0);
+            $total = (int) ($asiRow->{"tot_{$i}"} ?? 0);
+            $pct   = $total > 0 ? round($ya / $total * 100, 1) : null;
+            $asiCols[] = ['bulan' => $i, 'pct' => $pct, 'ya' => $ya, 'total' => $total];
         }
 
         $caraUkur = (clone $base)
@@ -353,7 +367,7 @@ class TimbangDashboardController extends Controller
             ->where('da.bln', '<=', 60)
             ->where('da.bb', '>', 0)
             ->where('da.tb', '>', 0)
-            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk')
+            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'da.zscore_bb_u', 'da.zscore_pb_u', 'da.zscore_bb_pb', 'a.jk')
             ->get();
     }
 
@@ -447,7 +461,7 @@ class TimbangDashboardController extends Controller
         $measurements = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->whereIn('da.id', $this->latestVisitQuery($f))
-            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'da.tgl_kunjungan', 'a.jk')
+            ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'da.tgl_kunjungan', 'da.zscore_bb_u', 'da.zscore_pb_u', 'da.zscore_bb_pb', 'a.jk')
             ->get();
 
         $matchIds = [];
@@ -459,7 +473,11 @@ class TimbangDashboardController extends Controller
                 continue;
             }
             if ($m->bln > 60 || $m->bb <= 0 || $m->tb <= 0) continue;
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk);
+            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
+                'bb_u'  => $m->zscore_bb_u,
+                'tb_u'  => $m->zscore_pb_u,
+                'bb_tb' => $m->zscore_bb_pb,
+            ]);
             $hit = match ($kategori) {
                 'stunting'    => in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true),
                 'gizi_kurang' => $g['enum']['bb_tb'] === 'wasted',

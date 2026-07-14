@@ -71,4 +71,42 @@ class TimbangGiziBbTbTest extends TestCase
         $this->assertSame(1, $data['bb_tb']['buruk']);
         $this->assertSame(0, $data['bb_tb']['normal']);
     }
+
+    /**
+     * Dashboard harus memakai z-score e-PPGBM tersimpan (selaras ekspor resmi
+     * Dinkes), bukan recompute WHO lokal, bila z-score tersedia.
+     */
+    public function test_gizi_dashboard_memakai_zscore_tersimpan_bukan_recompute(): void
+    {
+        $superAdmin = User::factory()->create(['type' => 0]);
+
+        // Recompute (via refs setUp) untuk tb=90,bb=12:
+        //   - tb_u: 90 >= m2sd 83 → normal
+        //   - bb_tb: 12 < m3sd 15 → severely_wasted (buruk)
+        // Z-score tersimpan sengaja BEDA:
+        //   - zscore_pb_u=-2.5 → stunted (pendek)
+        //   - zscore_bb_pb=0.0 → normal
+        $anak = Anak::create([
+            'nama' => 'Balita ZScore', 'nik' => '3201000000009002', 'jk' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+        ]);
+        DataAnak::create([
+            'id_anak' => $anak->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'zscore_bb_u' => -1.0, 'zscore_pb_u' => -2.5, 'zscore_bb_pb' => 0.0,
+        ]);
+
+        $data = $this->actingAs($superAdmin)
+            ->getJson(route('admin.timbang.gizi'))
+            ->assertStatus(200)
+            ->json();
+
+        // tb_u ikut z-score → pendek (bukan normal hasil recompute).
+        $this->assertSame(1, $data['tb_u']['pendek']);
+        $this->assertSame(0, $data['tb_u']['normal']);
+        $this->assertSame(1, $data['stunting']);
+        // bb_tb ikut z-score → normal (bukan buruk hasil recompute).
+        $this->assertSame(0, $data['gizi_buruk']);
+        $this->assertSame(1, $data['bb_tb']['normal']);
+    }
 }

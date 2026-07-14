@@ -23,7 +23,8 @@ class ImportOperasiTimbang extends Command
         {--commit : Tulis ke DB (tanpa flag ini hanya dry-run)}
         {--user=1 : id_user pemilik record data_anak}
         {--min-nama=88 : Ambang kemiripan nama (persen)}
-        {--keputusan= : Path CSV keputusan ambigu (kolom: baris, keputusan_id)}';
+        {--keputusan= : Path CSV keputusan ambigu (kolom: baris, keputusan_id)}
+        {--buat-tak-cocok : Baris TAK_COCOK dibuatkan anak baru ber-NIK dummy + measurement}';
 
     protected $description = 'Cocokkan & impor hasil operasi timbang e-PPGBM ke data_anak (default dry-run).';
 
@@ -61,7 +62,9 @@ class ImportOperasiTimbang extends Command
             $this->warn($warn);
         }
 
-        $import = new OperasiTimbangImport($userId, $commit, $minNama, $target, $keputusan);
+        $buatTakCocok = (bool) $this->option('buat-tak-cocok');
+
+        $import = new OperasiTimbangImport($userId, $commit, $minNama, $target, $keputusan, $buatTakCocok);
 
         app(PrioritasGiziService::class)->duringMutedImport(function () use ($commit, $import, $file) {
             if ($commit) {
@@ -83,6 +86,9 @@ class ImportOperasiTimbang extends Command
             $this->info("RESOLVED   : {$r['resolved']}" . ($commit ? ' (ditulis via keputusan)' : ' (akan ditulis via keputusan)'));
             $this->line("RES-SKIP   : {$r['resolved_skip']} (di-skip via keputusan)");
         }
+        if ($buatTakCocok) {
+            $this->info("DIBUAT     : {$r['dibuat']}" . ($commit ? ' (anak baru NIK dummy)' : ' (akan dibuat, NIK dummy)'));
+        }
         $this->line("AMBIGU     : " . count($r['ambiguous']) . ($keputusan !== null ? ' (belum diputus)' : ''));
         $this->line("TAK_COCOK  : " . count($r['unmatched']));
         $this->line("DILEWATI   : {$r['skipped']}");
@@ -93,11 +99,19 @@ class ImportOperasiTimbang extends Command
                 $this->line("    baris {$e['baris']} {$e['nama']}: {$e['alasan']}");
             }
         }
+        if (!empty($r['failures'])) {
+            $this->newLine();
+            $this->warn('⚠ Peringatan wilayah: ' . count($r['failures']));
+            foreach (array_slice($r['failures'], 0, 15) as $f) {
+                $this->line("    {$f}");
+            }
+        }
         $this->newLine();
 
         $base = pathinfo($file, PATHINFO_FILENAME);
-        $this->tulisCsv("timbang/{$base}-ambigu.csv", $r['ambiguous']);
-        $this->tulisCsv("timbang/{$base}-takcocok.csv", $r['unmatched']);
+        $this->tulisCsv("timbang/{$base}-ambigu.csv", $r['ambiguous'], ['baris', 'nama', 'tgl_lahir', 'alasan', 'kandidat']);
+        $this->tulisCsv("timbang/{$base}-takcocok.csv", $r['unmatched'], ['baris', 'nama', 'tgl_lahir', 'alasan', 'kandidat']);
+        $this->tulisCsv("timbang/{$base}-dibuat.csv", $r['dibuat_list'], ['baris', 'nama', 'tgl_lahir', 'nik']);
 
         if (!$commit) {
             $this->warn('[DRY-RUN] Tidak ada yang ditulis. Jalankan ulang dengan --commit untuk menyimpan.');
@@ -140,16 +154,15 @@ class ImportOperasiTimbang extends Command
         return $map;
     }
 
-    private function tulisCsv(string $path, array $rows): void
+    private function tulisCsv(string $path, array $rows, array $header): void
     {
         if (empty($rows)) return;
 
-        $header = ['baris', 'nama', 'tgl_lahir', 'alasan', 'kandidat'];
-        $lines  = [implode(',', $header)];
+        $lines = [implode(',', $header)];
         foreach ($rows as $r) {
             $lines[] = implode(',', array_map(
-                fn ($v) => '"' . str_replace('"', '""', (string) ($v ?? '')) . '"',
-                [$r['baris'], $r['nama'], $r['tgl_lahir'], $r['alasan'], $r['kandidat']]
+                fn ($k) => '"' . str_replace('"', '""', (string) ($r[$k] ?? '')) . '"',
+                $header
             ));
         }
         Storage::disk('local')->put($path, implode("\n", $lines));

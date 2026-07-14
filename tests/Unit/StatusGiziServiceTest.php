@@ -118,4 +118,57 @@ class StatusGiziServiceTest extends TestCase
         $this->assertSame('Data Z-Score tidak tersedia', $g['bt']);
         $this->assertNotNull($g['enum']['tb_u']); // TB/U tetap dihitung
     }
+
+    // --- Override z-score e-PPGBM tersimpan (selaras ekspor resmi Sigizi) --------
+
+    public function test_zscore_tersimpan_menggantikan_recompute_tb_u(): void
+    {
+        // Raw: tinggi 90 @24bln → recompute tb_u = normal.
+        // Z-score e-PPGBM menggantikannya sesuai pita SD.
+        $this->assertSame('stunted', $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['tb_u' => -2.5])['enum']['tb_u']);
+        $this->assertSame('severely_stunted', $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['tb_u' => -3.5])['enum']['tb_u']);
+        $this->assertSame('normal', $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['tb_u' => 0.0])['enum']['tb_u']);
+        $this->assertSame('tinggi', $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['tb_u' => 3.5])['enum']['tb_u']);
+    }
+
+    public function test_zscore_batas_minus_2_tepat_bukan_stunting(): void
+    {
+        // WHO: stunting = z < -2. Tepat -2.00 → normal (selaras hitungan Excel).
+        $this->assertSame('normal', $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['tb_u' => -2.0])['enum']['tb_u']);
+    }
+
+    public function test_zscore_bb_u_dan_bb_tb_dari_zscore(): void
+    {
+        $g = $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['bb_u' => -3.2, 'bb_tb' => 1.5]);
+        $this->assertSame('severely_underweight', $g['enum']['bb_u']);
+        $this->assertSame('risiko_lebih', $g['enum']['bb_tb']); // 1 < 1.5 <= 2
+    }
+
+    public function test_zscore_null_per_indikator_fallback_recompute(): void
+    {
+        // tb_u null → recompute (normal); bb_tb dari z-score → wasted.
+        $g = $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['tb_u' => null, 'bb_tb' => -2.5]);
+        $this->assertSame('normal', $g['enum']['tb_u']);   // recompute
+        $this->assertSame('wasted', $g['enum']['bb_tb']);  // dari z-score
+    }
+
+    public function test_imt_u_tidak_terpengaruh_zscore_tersimpan(): void
+    {
+        // IMT/U tak punya z-score tersimpan → tetap recompute apa pun z lain.
+        $bbFor = fn($bmi) => round($bmi * 8100 / 10000, 3);
+        $g = $this->svc->klasifikasi($bbFor(15), 90, 24, 'X', 1, ['tb_u' => -2.5]);
+        $this->assertSame('normal', $g['enum']['imt_u']);
+    }
+
+    public function test_label_ikut_zscore_tersimpan(): void
+    {
+        $g = $this->svc->klasifikasi(12, 90, 24, 'X', 1, ['tb_u' => -2.5]);
+        $this->assertSame('Pendek (stunted)', $g['tb']);
+    }
+
+    public function test_tanpa_argumen_zscore_perilaku_lama(): void
+    {
+        // Pemanggil lama (tanpa arg z-score) → recompute persis seperti dulu.
+        $this->assertSame('normal', $this->svc->klasifikasi(12, 90, 24, 'X', 1)['enum']['tb_u']);
+    }
 }
