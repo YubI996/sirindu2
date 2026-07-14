@@ -20,7 +20,10 @@
 
     /* Top bar */
     .lp-topbar{ display:flex; align-items:center; justify-content:space-between; padding:18px 0; gap:16px; }
-    .lp-brand img{ height:34px; width:auto; display:block; }
+    .lp-brand{ display:flex; align-items:center; gap:10px; }
+    .lp-brand .lp-logo{ height:30px; width:auto; display:block; }
+    .lp-wordmark{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700;
+        font-size:1.45rem; letter-spacing:.01em; line-height:1; color:oklch(0.30 0.05 145); }
     .lp-btn-masuk{ display:inline-flex; align-items:center; gap:8px; height:42px; padding:0 20px;
         border-radius:10px; background:oklch(0.48 0.14 145); color:#fff; text-decoration:none;
         font-family:'Barlow',sans-serif; font-weight:700; font-size:.9rem;
@@ -28,19 +31,60 @@
     .lp-btn-masuk:hover{ background:oklch(0.40 0.13 145); transform:translateY(-1px); }
     .lp-btn-masuk .material-symbols-outlined{ font-size:18px; }
 
-    /* Hero editorial — rata kiri, bukan template kartu metrik */
-    .lp-hero{ padding:clamp(28px,6vw,72px) 0 clamp(24px,4vw,44px); max-width:44ch; }
+    /* Hero — dua kolom: teks kiri, ilustrasi kanan */
+    .lp-hero{ display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(24px,5vw,64px);
+        align-items:center; padding:clamp(20px,4vw,56px) 0 clamp(28px,4vw,48px); }
+    .lp-hero__text{ max-width:47ch; }
     .lp-hero h1{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700;
-        font-size:clamp(2.6rem,7vw,4.6rem); line-height:.98; letter-spacing:-.01em;
+        font-size:clamp(2.4rem,5vw,4rem); line-height:.98; letter-spacing:-.01em;
         margin:0 0 18px; color:oklch(0.24 0.03 145); }
     .lp-hero h1 em{ font-style:normal; color:oklch(0.48 0.14 145); }
-    .lp-hero p{ font-family:'Barlow',sans-serif; font-size:clamp(1rem,2.4vw,1.18rem);
-        line-height:1.55; color:oklch(0.42 0.012 145); margin:0 0 26px; }
+    .lp-hero p{ font-family:'Barlow',sans-serif; font-size:clamp(1rem,1.6vw,1.15rem);
+        line-height:1.55; color:oklch(0.42 0.012 145); margin:0 0 18px; }
+    .lp-tags{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 24px; }
+    .lp-tag{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
+        background:#fff; border:1px solid oklch(0.88 0.03 145); font-family:'Barlow',sans-serif;
+        font-size:.8rem; font-weight:600; color:oklch(0.34 0.05 145); }
+    .lp-tag .material-symbols-outlined{ font-size:16px; color:oklch(0.50 0.13 145); }
     .lp-hero-cta{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
     .lp-hero-cta .lp-btn-masuk{ height:48px; padding:0 26px; font-size:.98rem; }
     .lp-scrolllink{ font-family:'Barlow',sans-serif; font-weight:600; font-size:.9rem;
         color:oklch(0.46 0.06 145); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
     .lp-scrolllink:hover{ color:oklch(0.40 0.13 145); }
+
+    /* Ilustrasi hero — blob hijau organik + mark ibu-anak (motif logo), tanpa aset eksternal */
+    .lp-hero__art{ display:flex; justify-content:center; }
+    .lp-art{ position:relative; width:100%; max-width:440px; aspect-ratio:1/1;
+        border-radius:32px; background:oklch(0.965 0.03 145);
+        display:grid; place-items:center; overflow:hidden;
+        box-shadow:0 24px 60px oklch(0.45 0.08 145 / .16); }
+    .lp-art__blob{ position:absolute; width:74%; height:74%; background:oklch(0.60 0.15 145);
+        border-radius:46% 54% 52% 48% / 50% 46% 54% 50%; transform:rotate(-8deg);
+        animation:lp-drift 15s ease-in-out infinite alternate; }
+    .lp-art__blob2{ position:absolute; width:64%; height:64%; left:13%; top:17%;
+        background:oklch(0.84 0.09 145); border-radius:52% 48% 46% 54% / 48% 56% 44% 52%; opacity:.7;
+        animation:lp-drift2 12s ease-in-out infinite alternate; }
+    .lp-art__mark{ position:relative; width:38%; height:auto;
+        filter:brightness(0) invert(1) drop-shadow(0 6px 14px oklch(0.30 0.10 145 / .35));
+        animation:lp-bob 4.5s ease-in-out infinite alternate; }
+    .lp-art__dot{ position:absolute; border-radius:50%; }
+    .lp-art__dot--1{ width:18px; height:18px; background:oklch(0.72 0.13 145); top:15%; right:17%;
+        animation:lp-float 5s ease-in-out infinite alternate; }
+    .lp-art__dot--2{ width:10px; height:10px; background:#fff; bottom:22%; left:19%; opacity:.85;
+        animation:lp-float 6.5s ease-in-out infinite alternate .4s; }
+    .lp-art__dot--3{ width:26px; height:26px; border:3px solid oklch(0.72 0.13 145 / .7); bottom:15%; right:21%;
+        animation:lp-pulse 3.6s ease-in-out infinite alternate; }
+
+    @keyframes lp-drift{ from{ transform:rotate(-11deg) scale(1); } to{ transform:rotate(-3deg) scale(1.04); } }
+    @keyframes lp-drift2{ from{ transform:translate(0,0) rotate(4deg); } to{ transform:translate(-3%,2%) rotate(-4deg); } }
+    @keyframes lp-bob{ from{ transform:translateY(-6px); } to{ transform:translateY(6px); } }
+    @keyframes lp-float{ from{ transform:translateY(0); } to{ transform:translateY(-12px); } }
+    @keyframes lp-pulse{ from{ transform:scale(1); opacity:.7; } to{ transform:scale(1.25); opacity:.25; } }
+
+    @media(max-width:860px){
+        .lp-hero{ grid-template-columns:1fr; }
+        .lp-art{ max-width:320px; }
+    }
 
     /* Pita data + footer */
     .lp-data-intro{ font-family:'Barlow',sans-serif; font-size:.9rem; color:oklch(0.50 0.01 145);
@@ -52,10 +96,15 @@
 
     /* Entrance halus sekali saat load */
     @keyframes lp-rise{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
-    .lp-hero>*{ animation:lp-rise .5s cubic-bezier(.22,1,.36,1) both; }
-    .lp-hero>*:nth-child(2){ animation-delay:.06s; }
-    .lp-hero>*:nth-child(3){ animation-delay:.12s; }
-    @media(prefers-reduced-motion:reduce){ .lp-hero>*{ animation:none; } }
+    @keyframes lp-pop{ from{ opacity:0; transform:scale(.94); } to{ opacity:1; transform:none; } }
+    .lp-hero__text>*{ animation:lp-rise .5s cubic-bezier(.22,1,.36,1) both; }
+    .lp-hero__text>*:nth-child(2){ animation-delay:.06s; }
+    .lp-hero__text>*:nth-child(3){ animation-delay:.12s; }
+    .lp-hero__text>*:nth-child(4){ animation-delay:.18s; }
+    .lp-art{ animation:lp-pop .6s cubic-bezier(.22,1,.36,1) .1s both; }
+    @media(prefers-reduced-motion:reduce){
+        .lp-hero__text>*, .lp-art, .lp-art__blob, .lp-art__blob2, .lp-art__mark, .lp-art__dot{ animation:none !important; }
+    }
     </style>
 
     <style>
@@ -244,7 +293,8 @@
     <div class="lp-shell">
         <header class="lp-topbar">
             <div class="lp-brand">
-                <img src="{{ asset('logo/Sirindu-black.png') }}" alt="SIRINDU">
+                <img class="lp-logo" src="{{ asset('logo/icon-sirindu.png') }}" alt="">
+                <span class="lp-wordmark">SIRINDU</span>
             </div>
             <a class="lp-btn-masuk" href="{{ route('login') }}">
                 <span class="material-symbols-outlined">login</span>Masuk
@@ -252,15 +302,33 @@
         </header>
 
         <section class="lp-hero">
-            <h1>Pantau Gizi &amp; Tumbuh&nbsp;Kembang Balita di <em>SIRINDU</em>.</h1>
-            <p>Sistem Informasi Anak Rindu menyatukan pemantauan gizi, pertumbuhan, dan imunisasi balita dalam satu tempat kerja untuk petugas Posyandu &amp; Puskesmas.</p>
-            <div class="lp-hero-cta">
-                <a class="lp-btn-masuk" href="{{ route('login') }}">
-                    <span class="material-symbols-outlined">login</span>Masuk sebagai Petugas
-                </a>
-                <a class="lp-scrolllink" href="#data">
-                    Lihat ringkasan data<span class="material-symbols-outlined" style="font-size:18px;">arrow_downward</span>
-                </a>
+            <div class="lp-hero__text">
+                <h1>Kesehatan Anak, Terpantau Menyeluruh di <em>SIRINDU</em>.</h1>
+                <p>Sistem Informasi Anak Rindu menyatukan gizi &amp; Operasi Timbang, imunisasi, pemantauan tumbuh kembang, dan surveilans penyakit balita — satu tempat kerja untuk Posyandu, Puskesmas, dan Dinas Kesehatan.</p>
+                <div class="lp-tags">
+                    <span class="lp-tag"><span class="material-symbols-outlined">monitor_weight</span>Gizi &amp; Timbang</span>
+                    <span class="lp-tag"><span class="material-symbols-outlined">vaccines</span>Imunisasi</span>
+                    <span class="lp-tag"><span class="material-symbols-outlined">monitoring</span>Tumbuh Kembang</span>
+                    <span class="lp-tag"><span class="material-symbols-outlined">health_and_safety</span>Surveilans PD3I</span>
+                </div>
+                <div class="lp-hero-cta">
+                    <a class="lp-btn-masuk" href="{{ route('login') }}">
+                        <span class="material-symbols-outlined">login</span>Masuk sebagai Petugas
+                    </a>
+                    <a class="lp-scrolllink" href="#data">
+                        Lihat ringkasan data<span class="material-symbols-outlined" style="font-size:18px;">arrow_downward</span>
+                    </a>
+                </div>
+            </div>
+            <div class="lp-hero__art" aria-hidden="true">
+                <div class="lp-art">
+                    <span class="lp-art__blob"></span>
+                    <span class="lp-art__blob2"></span>
+                    <img class="lp-art__mark" src="{{ asset('logo/icon-sirindu.png') }}" alt="">
+                    <span class="lp-art__dot lp-art__dot--1"></span>
+                    <span class="lp-art__dot lp-art__dot--2"></span>
+                    <span class="lp-art__dot lp-art__dot--3"></span>
+                </div>
             </div>
         </section>
 
@@ -590,7 +658,7 @@
                 data:{
                     labels: kj.map(function(r){ return r.bulan; }),
                     datasets:[{ label:'Kunjungan', data:kj.map(function(r){ return r.total; }),
-                        backgroundColor:GREEN_A, borderColor:GREEN, borderWidth:1.5, borderRadius:5 }]
+                        backgroundColor:GREEN_A, borderColor:GREEN, borderWidth:1.5, borderRadius:5, maxBarThickness:56 }]
                 },
                 options:{ plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true } } }
             });
@@ -668,16 +736,23 @@
 
     function loadProgram(){
         $.getJSON(API_PROGRAM+getParams(), function(d){
-            var asiHtml = '';
-            (d.asi_per_bulan||[]).forEach(function(row){
-                var p = row.pct !== null ? row.pct : 0;
-                asiHtml += '<div class="tb-asi-row">'
-                    +'<div class="tb-asi-lbl">Bulan '+row.bulan+'</div>'
-                    +'<div class="tb-asi-track"><div class="tb-asi-fill" style="width:'+p+'%"></div></div>'
-                    +'<div class="tb-asi-pct">'+(row.pct !== null ? row.pct+'%' : '—')+'</div>'
-                    +'</div>';
-            });
-            document.getElementById('asi-bar').innerHTML = asiHtml || '<div style="color:var(--faint);font-size:.8rem;">Belum ada data ASI</div>';
+            var asiRows = d.asi_per_bulan || [];
+            var asiAda = asiRows.some(function(row){ return row.pct !== null; });
+            if(!asiAda){
+                document.getElementById('asi-bar').innerHTML =
+                    '<div style="padding:1.4rem 0;text-align:center;color:var(--faint);font-size:.85rem;">Data ASI eksklusif belum tercatat pada periode ini.</div>';
+            } else {
+                var asiHtml = '';
+                asiRows.forEach(function(row){
+                    var p = row.pct !== null ? row.pct : 0;
+                    asiHtml += '<div class="tb-asi-row">'
+                        +'<div class="tb-asi-lbl">Bulan '+row.bulan+'</div>'
+                        +'<div class="tb-asi-track"><div class="tb-asi-fill" style="width:'+p+'%"></div></div>'
+                        +'<div class="tb-asi-pct">'+(row.pct !== null ? row.pct+'%' : '—')+'</div>'
+                        +'</div>';
+                });
+                document.getElementById('asi-bar').innerHTML = asiHtml;
+            }
 
             var peHtml = '';
             var peTotal = 0;
