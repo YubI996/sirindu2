@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Route;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
-Route::get('/',[App\Http\Controllers\Auth\LoginController::class,'showLoginForm']);
+// Landing publik — wajah aplikasi SIRINDU (menggantikan login sebagai halaman muka)
+Route::get('/', [App\Http\Controllers\TimbangDashboardController::class, 'landing'])->name('landing');
 
 Auth::routes();
 

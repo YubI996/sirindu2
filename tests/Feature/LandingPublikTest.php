@@ -38,4 +38,39 @@ class LandingPublikTest extends TestCase
     {
         $this->get('/admin/timbang-dashboard')->assertRedirect(route('login'));
     }
+
+    /** @test */
+    public function root_menampilkan_landing_untuk_tamu(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('SIRINDU');
+    }
+
+    /** @test */
+    public function login_tetap_bisa_diakses(): void
+    {
+        $this->get('/login')->assertOk();
+    }
+
+    /** @test */
+    public function landing_tidak_membocorkan_fitur_daftar_nama(): void
+    {
+        $res = $this->get('/');
+        $res->assertOk();
+        $res->assertDontSee('daftar-modal');
+        $res->assertDontSee('Export Excel');
+        $res->assertDontSee('admin.timbang.daftar');
+        $res->assertDontSee('timbang-publik/api/daftar');
+    }
+
+    /** @test */
+    public function landing_memuat_section_dashboard(): void
+    {
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Status Gizi Balita')
+            ->assertSee('Ketercapaian per Wilayah')
+            ->assertSee('timbang-publik/api/ringkasan'); // route publik dirender di JS var
+    }
 }
