@@ -17,7 +17,11 @@ class TimbangDashboardController extends Controller
 {
     public function __construct(private StatusGiziService $statusGizi)
     {
-        $this->middleware('auth');
+        // Endpoint agregat + landing publik boleh diakses tamu (tanpa login).
+        // daftar/daftarExport TIDAK dikecualikan → tetap auth-only (privasi nama/NIK).
+        $this->middleware('auth')->except([
+            'landing', 'ringkasan', 'gizi', 'tren', 'coverage', 'program',
+        ]);
     }
 
     public function index(): View
@@ -37,6 +41,22 @@ class TimbangDashboardController extends Controller
             ->pluck('tahun');
 
         return view('admin.dashboard.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList'));
+    }
+
+    /** Landing publik — wajah aplikasi SIRINDU (tanpa login). */
+    public function landing(): View
+    {
+        $kecamatanList = Kecamatan::orderBy('name')->get();
+        $kelurahanList = Kelurahan::orderBy('name')->get();
+
+        $tahunList = DB::table('data_anak')
+            ->selectRaw('YEAR(tgl_kunjungan) as tahun')
+            ->whereNotNull('tgl_kunjungan')
+            ->distinct()
+            ->orderByDesc('tahun')
+            ->pluck('tahun');
+
+        return view('public.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList'));
     }
 
     // ==================== API ====================
@@ -289,7 +309,7 @@ class TimbangDashboardController extends Controller
         $user  = auth()->user();
         $tahun = $request->query('tahun') ? (int) $request->query('tahun') : null;
 
-        if (!$user->isSuperAdmin()) {
+        if ($user && !$user->isSuperAdmin()) {
             abort_if(!$user->id_kel, 403);
             return [
                 'tahun'    => $tahun,

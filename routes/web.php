@@ -17,9 +17,19 @@ use Illuminate\Support\Facades\Route;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
-Route::get('/',[App\Http\Controllers\Auth\LoginController::class,'showLoginForm']);
+// Landing publik — wajah aplikasi SIRINDU (menggantikan login sebagai halaman muka)
+Route::get('/', [App\Http\Controllers\TimbangDashboardController::class, 'landing'])->name('landing');
 
 Auth::routes();
+
+// API agregat publik untuk landing (tanpa auth). Hanya agregat; daftar/export tetap auth-only.
+Route::prefix('timbang-publik')->name('public.timbang.')->group(function () {
+    Route::get('api/ringkasan', [App\Http\Controllers\TimbangDashboardController::class, 'ringkasan'])->name('ringkasan');
+    Route::get('api/gizi',      [App\Http\Controllers\TimbangDashboardController::class, 'gizi'])->name('gizi');
+    Route::get('api/tren',      [App\Http\Controllers\TimbangDashboardController::class, 'tren'])->name('tren');
+    Route::get('api/coverage',  [App\Http\Controllers\TimbangDashboardController::class, 'coverage'])->name('coverage');
+    Route::get('api/program',   [App\Http\Controllers\TimbangDashboardController::class, 'program'])->name('program');
+});
 
 // Route /home dihapus — semua user diarahkan ke /admin/home setelah login
 
