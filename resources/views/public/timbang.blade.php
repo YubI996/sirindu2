@@ -303,8 +303,8 @@
 
         <section class="lp-hero">
             <div class="lp-hero__text">
-                <h1>Kesehatan Anak, Terpantau Menyeluruh di <em>SIRINDU</em>.</h1>
-                <p>Sistem Informasi Anak Rindu menyatukan gizi &amp; Operasi Timbang, imunisasi, pemantauan tumbuh kembang, dan surveilans penyakit balita — satu tempat kerja untuk Posyandu, Puskesmas, dan Dinas Kesehatan.</p>
+                <h1><em>SIRINDU</em>.</h1>
+                {{-- <p>Sistem Informasi Anak Rindu menyatukan gizi &amp; Operasi Timbang, imunisasi, pemantauan tumbuh kembang, dan surveilans penyakit balita — satu tempat kerja untuk Posyandu, Puskesmas, dan Dinas Kesehatan.</p> --}}
                 <div class="lp-tags">
                     <span class="lp-tag"><span class="material-symbols-outlined">monitor_weight</span>Gizi &amp; Timbang</span>
                     <span class="lp-tag"><span class="material-symbols-outlined">vaccines</span>Imunisasi</span>
