@@ -116,42 +116,50 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             $data['faskes_type'] = Auth::user()->faskes_type;
             $data['id_faskes'] = Auth::user()->getFaskesId();
 
-            // Auto-generate nomor epidemiologi
-            $data['no_registrasi'] = $this->generateNoRegistrasi($data['id_jenis_kasus']);
+            // Nomor epidemiologi: petugas (Dinkes maupun faskes) boleh menetapkan
+            // sendiri lewat field "No. Epid" (Bagian A) — mis. menomori kasus sesuai
+            // register resmi. Dikosongkan → di-generate otomatis.
+            // Sebelumnya nilai yang diketik selalu ditimpa diam-diam.
+            // Nomor yang sudah terdaftar dicegat lebih dulu di
+            // EpidemiologiController::store() (petugas diarahkan memperbarui data).
+            $noRegManual = trim((string) ($data['no_registrasi'] ?? ''));
+            $data['no_registrasi'] = $noRegManual !== ''
+                ? $noRegManual
+                : $this->generateNoRegistrasi($data['id_jenis_kasus']);
 
             return SurveillanceCase::create($data);
         });
     }
 
     /**
+     * Prefix nomor epidemiologi per penyakit. AFP/Polio tidak berprefix ('').
+     */
+    private const PREFIX_PENYAKIT = [
+        'CAMPAK_RUBELLA' => 'C',
+        'DIFTERI_OBS'    => 'D',
+        'PERTUSIS'       => 'P',
+        'TETANUS_NEO'    => 'TN',
+    ];
+
+    /**
      * Generate nomor registrasi epidemiologi.
-     * Format: [prefix]-1710[YY][NNN] or 1710[YY][NNN] for AFP/Polio.
+     * Format: [prefix]-1710[YY][NNN] atau 1710[YY][NNN] untuk AFP/Polio.
+     *
+     * Deret NNN berjalan per prefix per tahun (lihat EpidCounter) — tiap penyakit
+     * punya urutan sendiri, sesuai penomoran nyata di lapangan.
      */
     private function generateNoRegistrasi(int $idJenisKasus): string
     {
         $jenisKasus = JenisKasusEpidemiologi::findOrFail($idJenisKasus);
-        $kodePenyakit = $jenisKasus->kode_penyakit;
-
-        $prefixMap = [
-            'CAMPAK_RUBELLA' => 'C',
-            'DIFTERI_OBS' => 'D',
-            'PERTUSIS' => 'P',
-            'TETANUS_NEO' => 'TN',
-            // AFP has no prefix
-        ];
+        $prefix     = self::PREFIX_PENYAKIT[$jenisKasus->kode_penyakit] ?? '';
 
         $tahun = now()->year;
-        $yy = substr((string) $tahun, -2);
-        $sequence = EpidCounter::getNextSequence($tahun);
-        $nnn = str_pad($sequence, 3, '0', STR_PAD_LEFT);
+        $yy    = substr((string) $tahun, -2);
+        $nnn   = str_pad((string) EpidCounter::getNextSequence($tahun, $prefix), 3, '0', STR_PAD_LEFT);
 
         $baseNumber = "1710{$yy}{$nnn}";
 
-        if (!isset($prefixMap[$kodePenyakit])) {
-            return $baseNumber;
-        }
-
-        return $prefixMap[$kodePenyakit] . '-' . $baseNumber;
+        return $prefix === '' ? $baseNumber : "{$prefix}-{$baseNumber}";
     }
 
     /**

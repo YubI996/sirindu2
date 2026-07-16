@@ -191,9 +191,11 @@ class EpidemiologiControllerTest extends TestCase
 
     public function test_store_auto_generates_no_registrasi()
     {
-        // no_registrasi tidak lagi diinput/di-suggest di form — dibangkitkan server
-        // saat store (format 1710YYNNN, opsional prefix penyakit). Lihat generateNoRegistrasi.
+        // no_registrasi boleh diisi petugas, tapi bila DIKOSONGKAN server yang
+        // membangkitkan (format 1710YYNNN, opsional prefix penyakit).
+        // Lihat generateNoRegistrasi + StoreNoRegistrasiTest untuk aturan lengkapnya.
         $data = $this->validCaseData();
+        unset($data['no_registrasi']);
 
         $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
 

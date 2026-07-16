@@ -3,16 +3,21 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>No. Epid</label>
-            @if(Auth::user()->isSuperAdmin())
-                <input type="text" name="no_registrasi" class="form-control"
+            {{-- Boleh diisi saat menambah kasus (Dinkes maupun faskes) — mis. menomori
+                 sesuai register resmi. Pada kasus yang sudah bernomor, hanya Super Admin
+                 yang boleh mengubahnya. --}}
+            @php($bolehIsiNoEpid = !isset($case) || !$case->no_registrasi || Auth::user()->isSuperAdmin())
+            @if($bolehIsiNoEpid)
+                <input type="text" name="no_registrasi"
+                       class="form-control @error('no_registrasi') is-invalid @enderror"
                        value="{{ old('no_registrasi', $case->no_registrasi ?? '') }}"
-                       placeholder="Otomatis di-generate saat simpan">
-                <small class="form-text text-muted">Dapat diedit oleh Super Admin</small>
-            @elseif(isset($case) && $case->no_registrasi)
-                <input type="text" class="form-control" value="{{ $case->no_registrasi }}" readonly>
-                <small class="form-text text-muted">Nomor epidemiologi otomatis</small>
+                       placeholder="Kosongkan untuk generate otomatis">
+                @error('no_registrasi')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+                <small class="form-text text-muted">Kosongkan untuk generate otomatis</small>
             @else
-                <input type="text" class="form-control" value="" readonly placeholder="Otomatis di-generate saat simpan">
+                <input type="text" class="form-control" value="{{ $case->no_registrasi }}" readonly>
                 <small class="form-text text-muted">Nomor epidemiologi otomatis</small>
             @endif
         </div>

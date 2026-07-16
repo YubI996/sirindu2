@@ -376,7 +376,8 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 
                 // Kolom terakhir file impor (Google Form export)
                 $klasifikasi      = self::resolveKlasifikasi($row[194] ?? null);  // Klasifikasi Akhir
-                $caseExists       = SurveillanceCase::where('no_registrasi', $noReg)->exists();
+                $caseLama         = SurveillanceCase::where('no_registrasi', $noReg)->first(['nama_lengkap']);
+                $caseExists       = $caseLama !== null;
                 $denganKomplikasi = match (strtolower(trim((string) ($row[196] ?? '')))) {  // Dengan Komplikasi
                     'ya', 'y', 'yes', '1'  => true,
                     'tidak', 'no', 'n', '0' => false,
@@ -609,6 +610,16 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                     $attrs['penyakit_terkonfirmasi'] = null;
                 }
 
+                // Deteksi tabrakan No. Epid: nomor sama tapi pasien BERBEDA.
+                // updateOrCreate di bawah sengaja idempoten agar re-import file yang
+                // sama aman; konsekuensinya, bila nomor epid ternyata milik pasien lain
+                // data lama tertimpa tanpa jejak. Laporkan agar petugas bisa memeriksa.
+                if ($caseLama && $this->namaPasienBerbeda($caseLama->nama_lengkap, $attrs['nama_lengkap'])) {
+                    $this->failures[] = "[PERINGATAN] Baris {$rowNum}: No. Epid {$noReg} sudah dipakai pasien lain "
+                        . "(\"{$caseLama->nama_lengkap}\") — data lama DITIMPA oleh \"{$attrs['nama_lengkap']}\". "
+                        . "Periksa nomor epid di file sumber.";
+                }
+
                 // Atribusi faskes RS — tanpa ini kasus hasil import punya
                 // faskes_type/id_faskes NULL sehingga TIDAK PERNAH terlihat oleh user
                 // surveilans_rs (lihat SurveillanceCase::scopeVisibleTo, yang menyaring
@@ -638,6 +649,21 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 
         // Naikkan offset agar chunk berikutnya melaporkan nomor baris yang benar
         $this->rowOffset += $chunkSize;
+    }
+
+    /**
+     * Apakah dua nama pasien berbeda? Dinormalisasi dulu (kapital + spasi ganda)
+     * agar variasi penulisan yang sama tidak dianggap tabrakan. Nama kosong di
+     * salah satu sisi → dianggap tidak berbeda (tak ada dasar untuk menuduh).
+     */
+    protected function namaPasienBerbeda(?string $lama, ?string $baru): bool
+    {
+        $normalisasi = fn(?string $n) => preg_replace('/\s+/', ' ', strtoupper(trim((string) $n)));
+
+        $l = $normalisasi($lama);
+        $b = $normalisasi($baru);
+
+        return $l !== '' && $b !== '' && $l !== $b;
     }
 
     /**

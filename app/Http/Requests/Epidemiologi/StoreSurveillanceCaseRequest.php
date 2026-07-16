@@ -25,7 +25,14 @@ class StoreSurveillanceCaseRequest extends FormRequest
     {
         return [
             // Category A: Patient Identity (Required fields)
-            // no_registrasi is auto-generated in SurveillanceRepository::storeCase()
+            // no_registrasi opsional & boleh diisi petugas (Dinkes maupun faskes) —
+            // mis. menomori sesuai register resmi. Dikosongkan → di-generate di
+            // SurveillanceRepository::storeCase().
+            //
+            // Sengaja TANPA rule `unique`: nomor yang sudah terdaftar ditangani di
+            // EpidemiologiController::store() agar petugas bisa diarahkan memperbarui
+            // data yang ada (rule unique hanya bisa menolak dengan pesan datar).
+            'no_registrasi' => 'nullable|string|max:50',
             'nik' => 'required|string|size:16',
             'nama_lengkap' => 'required|string|max:255',
             'tanggal_lahir' => 'required|date|before:today',

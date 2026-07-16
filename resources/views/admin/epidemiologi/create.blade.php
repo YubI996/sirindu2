@@ -29,6 +29,28 @@
         </a>
     </header>
 
+    {{-- No. Epid sudah terdaftar: kasusnya memang sudah ada — arahkan petugas
+         memperbarui data itu, bukan memaksanya mengarang nomor baru. --}}
+    @if (session('epid_duplikat'))
+    @php($dup = session('epid_duplikat'))
+    <div class="alert alert-warning" role="alert">
+        <h5 class="alert-heading">
+            <i class="fa fa-info-circle" aria-hidden="true"></i> Kasus dengan No. Epid ini sudah ada
+        </h5>
+        <p class="mb-2">
+            No. Epid <strong>{{ $dup['no_registrasi'] }}</strong> sudah terdaftar atas nama
+            <strong>{{ $dup['nama_lengkap'] }}</strong>. Kasus baru tidak dibuat agar data tidak tertimpa.
+            Bila yang Anda maksud adalah kasus tersebut, perbarui datanya.
+        </p>
+        <a href="{{ $dup['url_edit'] }}" class="btn btn-sm btn-warning">
+            <i class="fa fa-pencil" aria-hidden="true"></i> Perbarui data yang ada
+        </a>
+        <a href="{{ route('admin.epidemiologi.show', $dup['id']) }}" class="btn btn-sm btn-outline-secondary">
+            Lihat detail
+        </a>
+    </div>
+    @endif
+
     @if ($errors->any())
     <div class="alert alert-danger" role="alert">
         <h5 class="alert-heading">

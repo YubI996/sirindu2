@@ -402,6 +402,12 @@ class EpidemiologiController extends Controller
     public function store(StoreSurveillanceCaseRequest $request)
     {
         try {
+            // No. Epid yang sudah terdaftar bukan sekadar kesalahan input — biasanya
+            // kasusnya memang sudah ada dan yang dimaksud petugas adalah memperbarui.
+            if ($redirect = $this->cegatNoEpidTerdaftar($request)) {
+                return $redirect;
+            }
+
             // Override wilker_puskesmas berdasarkan kelurahan yang dipilih
             if ($request->filled('id_kel')) {
                 $request->merge(['wilker_puskesmas' => $this->resolveWilker((int) $request->id_kel)]);
@@ -427,10 +433,59 @@ class EpidemiologiController extends Controller
 
             Alert::success('Berhasil', 'Kasus surveillance berhasil ditambahkan');
             return redirect()->route('admin.epidemiologi.index');
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Jaring pengaman balapan: nomor lolos pengecekan di atas tapi keburu
+            // dipakai permintaan lain sebelum commit. Kolom no_registrasi UNIQUE,
+            // jadi DB menolak — sampaikan dengan bahasa yang bisa ditindaklanjuti.
+            Alert::error('Gagal', 'No. Epid tersebut baru saja terdaftar oleh petugas lain. '
+                . 'Muat ulang halaman, lalu perbarui data yang sudah ada.');
+            return back()->withInput();
         } catch (\Exception $e) {
             Alert::error('Gagal', 'Terjadi kesalahan: ' . $e->getMessage());
             return back()->withInput();
         }
+    }
+
+    /**
+     * Cegat No. Epid yang sudah terdaftar sebelum kasus baru dibuat.
+     *
+     * Nomor epidemiologi bersifat unik per kasus. Bila petugas mengetik nomor yang
+     * sudah ada, hampir selalu maksudnya memperbarui kasus tersebut — jadi arahkan
+     * ke sana, jangan cuma menolak.
+     *
+     * BATAS PRIVASI: arahan hanya diberikan bila kasusnya boleh dilihat petugas ybs.
+     * Untuk kasus milik faskes lain, jangan bocorkan id/nama pasien — cukup beri tahu
+     * nomornya terpakai dan arahkan ke Dinkes.
+     *
+     * @return \Illuminate\Http\RedirectResponse|null null bila nomor aman dipakai
+     */
+    private function cegatNoEpidTerdaftar(StoreSurveillanceCaseRequest $request)
+    {
+        $noReg = trim((string) $request->input('no_registrasi', ''));
+
+        if ($noReg === '') {
+            return null; // akan di-generate otomatis
+        }
+
+        $existing = SurveillanceCase::where('no_registrasi', $noReg)->first();
+
+        if (!$existing) {
+            return null;
+        }
+
+        if (!$existing->isVisibleTo(auth()->user())) {
+            return back()->withInput()->withErrors([
+                'no_registrasi' => "No. Epid {$noReg} sudah terdaftar pada faskes lain. "
+                    . 'Hubungi Dinas Kesehatan untuk memperbarui data tersebut.',
+            ]);
+        }
+
+        return back()->withInput()->with('epid_duplikat', [
+            'id'            => $existing->id,
+            'no_registrasi' => $existing->no_registrasi,
+            'nama_lengkap'  => $existing->nama_lengkap,
+            'url_edit'      => route('admin.epidemiologi.edit', $existing->id),
+        ]);
     }
 
     /**
