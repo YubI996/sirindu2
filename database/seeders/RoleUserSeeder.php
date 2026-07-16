@@ -131,8 +131,8 @@ class RoleUserSeeder extends Seeder
                 'kecamatan' => 'Bontang Utara',
             ],
             [
-                'email'     => 'rs.siloam@sirindu.go.id',
-                'name'      => 'Petugas RS Siloam Bontang',
+                'email'     => 'rs.amalia@sirindu.go.id',
+                'name'      => 'Petugas RS Amalia Bontang',
                 'kode_rs'   => 'RS-003',
                 'kecamatan' => 'Bontang Utara',
             ],
@@ -143,8 +143,8 @@ class RoleUserSeeder extends Seeder
                 'kecamatan' => 'Bontang Barat',
             ],
             [
-                'email'     => 'rs.pertamina@sirindu.go.id',
-                'name'      => 'Petugas RS Pertamina Bontang',
+                'email'     => 'rs.badaklng@sirindu.go.id',
+                'name'      => 'Petugas RS Badak LNG',
                 'kode_rs'   => 'RS-005',
                 'kecamatan' => 'Bontang Utara',
             ],

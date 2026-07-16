@@ -6,6 +6,7 @@ use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
 use App\Services\NikDummyService;
 use App\Traits\ResolvesWilayah;
+use App\Traits\ResolvesRumahSakit;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithStartRow;
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  */
 class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 {
-    use ResolvesWilayah;
+    use ResolvesWilayah, ResolvesRumahSakit;
 
     protected int $userId;
     protected int $successCount = 0;
@@ -45,6 +46,9 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 
         // Pra-muat cache wilayah (via trait ResolvesWilayah)
         $this->initWilayahCache();
+
+        // Pra-muat cache master RS (via trait ResolvesRumahSakit) untuk atribusi faskes
+        $this->initRumahSakitCache();
 
         $this->jenisKasusCache = JenisKasusEpidemiologi::pluck('id', 'nama_penyakit')->mapWithKeys(function ($id, $nama) {
             return [strtoupper($nama) => $id];
@@ -603,6 +607,18 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
                 } elseif (!$caseExists) {
                     $attrs['status_kasus']           = 'suspected';
                     $attrs['penyakit_terkonfirmasi'] = null;
+                }
+
+                // Atribusi faskes RS — tanpa ini kasus hasil import punya
+                // faskes_type/id_faskes NULL sehingga TIDAK PERNAH terlihat oleh user
+                // surveilans_rs (lihat SurveillanceCase::scopeVisibleTo, yang menyaring
+                // RS murni via faskes_type='rs' + id_faskes, tanpa fallback wilayah).
+                // Hanya di-set bila instansi_pelapor cocok master RS; bila tidak (mis.
+                // pelapor puskesmas) biarkan null — puskesmas tetap melihatnya via id_kel.
+                $idRs = $this->resolveRumahSakit(isset($row[4]) ? (string) $row[4] : null);
+                if ($idRs !== null) {
+                    $attrs['faskes_type'] = 'rs';
+                    $attrs['id_faskes']   = $idRs;
                 }
 
                 SurveillanceCase::updateOrCreate(['no_registrasi' => $noReg], $attrs);
