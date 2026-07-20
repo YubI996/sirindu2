@@ -97,6 +97,7 @@
 .tb-kpi__icon--teal   { background:oklch(0.94 0.05 190); color:oklch(0.48 0.10 190); }
 .tb-kpi__icon--orange { background:oklch(0.94 0.065 55); color:oklch(0.52 0.15 52); }
 .tb-kpi__val { font-size:2rem; font-weight:700; color:var(--ink); line-height:1.02; }
+.tb-kpi__pct { font-size:1.05rem; font-weight:600; color:var(--muted); margin-left:.35rem; }
 .tb-kpi__lbl { font-size:.82rem; font-weight:600; color:var(--muted); margin-top:.15rem; }
 .tb-kpi__sub { font-size:.7rem; color:var(--faint); margin-top:.05rem; }
 .tb-kpi__go {
@@ -217,6 +218,8 @@
 .tb-modal__tools { display:flex; gap:.6rem; margin-bottom:.85rem; flex-wrap:wrap; align-items:center; }
 .tb-modal__search { flex:1; min-width:180px; padding:.5rem .75rem; border:1px solid oklch(0.84 0.012 145); border-radius:9px; font-size:.85rem; font-family:inherit; background:var(--bg); color:var(--ink); }
 .tb-modal__search:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .16); }
+.tb-modal__filter { height:38px; padding:0 .6rem; border:1px solid oklch(0.84 0.012 145); border-radius:9px; font-size:.82rem; font-family:inherit; background:var(--bg); color:var(--ink); min-width:130px; }
+.tb-modal__filter:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .16); }
 .tb-dt { width:100%; border-collapse:collapse; font-size:.82rem; }
 .tb-dt thead th { background:var(--thead); padding:.55rem .7rem; text-align:left; font-size:.66rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); white-space:nowrap; position:sticky; top:0; }
 .tb-dt tbody td { padding:.55rem .7rem; border-top:1px solid var(--line-soft); }
@@ -296,40 +299,28 @@
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="stunting" role="button" tabindex="0" aria-label="Stunting — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">height</span></div>
-        <div><div class="tb-kpi__val tb-num" id="kpi-stunting">—</div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
+        <div><div class="tb-kpi__val tb-num"><span id="kpi-stunting">—</span><span class="tb-kpi__pct tb-num" id="pct-stunting"></span></div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="gizi_kurang" role="button" tabindex="0" aria-label="Gizi kurang — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">monitor_weight</span></div>
-        <div><div class="tb-kpi__val tb-num" id="kpi-gizi-kurang">—</div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
+        <div><div class="tb-kpi__val tb-num"><span id="kpi-gizi-kurang">—</span><span class="tb-kpi__pct tb-num" id="pct-gizi-kurang"></span></div><div class="tb-kpi__lbl">Wasting</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="gizi_buruk" role="button" tabindex="0" aria-label="Gizi buruk — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">emergency</span></div>
-        <div><div class="tb-kpi__val tb-num" id="kpi-gizi-buruk">—</div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
+        <div><div class="tb-kpi__val tb-num"><span id="kpi-gizi-buruk">—</span><span class="tb-kpi__pct tb-num" id="pct-gizi-buruk"></span></div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="bb_tidak_naik" role="button" tabindex="0" aria-label="BB tidak naik — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--orange"><span class="material-symbols-outlined">trending_down</span></div>
-        <div><div class="tb-kpi__val tb-num" id="kpi-bbtn">—</div><div class="tb-kpi__lbl">BB Tidak Naik</div><div class="tb-kpi__sub">2 kunjungan / NTOB</div></div>
+        <div><div class="tb-kpi__val tb-num" id="kpi-bbtn">—</div><div class="tb-kpi__lbl">Underweight</div><div class="tb-kpi__sub">2 kunjungan / NTOB</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
 </div>
 
 {{-- ── STATUS GIZI ───────────────────────────────────────────── --}}
 <p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">emergency</span>Status Gizi Balita</p>
-
-<div class="tb-stunting-row" id="stunting-row">
-    <div class="tb-highlight tb-highlight--danger">
-        <div><div class="tb-highlight__pct tb-num" id="hl-stunting">—%</div><div class="tb-highlight__lbl">Stunting<br><small>TB/U &lt; -2SD</small></div></div>
-    </div>
-    <div class="tb-highlight tb-highlight--warning">
-        <div><div class="tb-highlight__pct tb-num" id="hl-underweight">—%</div><div class="tb-highlight__lbl">Berat Kurang<br><small>BB/U &lt; -2SD</small></div></div>
-    </div>
-    <div class="tb-highlight tb-highlight--green">
-        <div><div class="tb-highlight__pct tb-num" id="hl-normal">—%</div><div class="tb-highlight__lbl">Status Gizi Normal<br><small>BB/U</small></div></div>
-    </div>
-</div>
 
 <div class="tb-chart-grid tb-chart-grid--3" style="margin-bottom:28px;">
     <div class="tb-card">
@@ -420,6 +411,9 @@
         <div class="tb-modal__body">
             <div class="tb-modal__tools">
                 <input type="text" class="tb-modal__search" id="daftar-search" placeholder="Cari nama / NIK / wilayah…">
+                <select class="tb-modal__filter" id="daftar-f-kec"><option value="">Semua Kecamatan</option></select>
+                <select class="tb-modal__filter" id="daftar-f-kel"><option value="">Semua Kelurahan</option></select>
+                <select class="tb-modal__filter" id="daftar-f-rt"><option value="">Semua RT</option></select>
                 <a class="tb-filter-btn" id="daftar-export" style="background:oklch(0.48 0.14 145);text-decoration:none;" href="#">
                     <span class="material-symbols-outlined">download</span>Export Excel
                 </a>
@@ -563,11 +557,11 @@ function loadRingkasan(){
 // ── GIZI ──────────────────────────────────────────────────────
 function loadGizi(){
     $.getJSON(API_GIZI+getParams(), function(d){
-        // Highlights
-        document.getElementById('hl-stunting').textContent    = pct(d.stunting_pct);
-        document.getElementById('hl-underweight').textContent = pct(d.underweight_pct);
-        var normalPct = d.total > 0 ? Math.round(d.bb_u.normal / d.total * 100) : 0;
-        document.getElementById('hl-normal').textContent = normalPct+'%';
+        // Persen dilebur ke kartu KPI (jumlah · persen)
+        function setPct(id, v){ var el=document.getElementById(id); if(el) el.textContent = (v!==null && v!==undefined) ? '· '+v+'%' : ''; }
+        setPct('pct-stunting', d.stunting_pct);
+        setPct('pct-gizi-kurang', d.total>0 ? Math.round(d.gizi_kurang/d.total*1000)/10 : null);
+        setPct('pct-gizi-buruk',  d.total>0 ? Math.round(d.gizi_buruk/d.total*1000)/10 : null);
 
         // KPI cards gizi
         document.getElementById('kpi-stunting').textContent    = num(d.stunting);
@@ -768,8 +762,41 @@ var KAT_LABEL = {
 };
 var daftarRows = [];
 
+function uniqSorted(vals){
+    return Array.from(new Set(vals)).filter(function(v){ return v && v !== '-'; })
+        .sort(function(a,b){ return String(a).localeCompare(String(b),'id',{numeric:true}); });
+}
+function fillDaftarSelect(id, values, placeholder){
+    var sel = document.getElementById(id);
+    if(!sel) return;
+    sel.innerHTML = '<option value="">'+placeholder+'</option>';
+    values.forEach(function(v){ sel.appendChild(new Option(v, v)); });
+}
+function refreshDaftarRt(){
+    var kec = val('daftar-f-kec'), kel = val('daftar-f-kel');
+    var rts = daftarRows.filter(function(r){ return (!kec||r.kecamatan===kec) && (!kel||r.kelurahan===kel); })
+        .map(function(r){ return r.rt; });
+    fillDaftarSelect('daftar-f-rt', uniqSorted(rts), 'Semua RT');
+}
+function refreshDaftarKel(){
+    var kec = val('daftar-f-kec');
+    var kels = daftarRows.filter(function(r){ return !kec || r.kecamatan===kec; })
+        .map(function(r){ return r.kelurahan; });
+    fillDaftarSelect('daftar-f-kel', uniqSorted(kels), 'Semua Kelurahan');
+    refreshDaftarRt();
+}
+function initDaftarFilters(){
+    fillDaftarSelect('daftar-f-kec', uniqSorted(daftarRows.map(function(r){ return r.kecamatan; })), 'Semua Kecamatan');
+    refreshDaftarKel();
+}
+function applyDaftarFilter(){ renderDaftar(val('daftar-search')); }
+
 function renderDaftar(filterText){
     var rows = daftarRows;
+    var fk = val('daftar-f-kec'), fl = val('daftar-f-kel'), fr = val('daftar-f-rt');
+    if(fk) rows = rows.filter(function(r){ return r.kecamatan === fk; });
+    if(fl) rows = rows.filter(function(r){ return r.kelurahan === fl; });
+    if(fr) rows = rows.filter(function(r){ return r.rt === fr; });
     if(filterText){
         var q = filterText.toLowerCase();
         rows = rows.filter(function(r){
@@ -814,6 +841,7 @@ function openDaftar(kategori){
     $.getJSON(API_DAFTAR+params+sep+'kategori='+kategori, function(d){
         daftarRows = d.rows || [];
         document.getElementById('daftar-count').textContent = daftarRows.length+' anak';
+        initDaftarFilters();
         renderDaftar('');
     }).fail(function(){
         document.getElementById('daftar-count').textContent = '';
@@ -833,6 +861,9 @@ document.querySelectorAll('.tb-kpi--click').forEach(function(card){
 document.getElementById('daftar-close').addEventListener('click', closeDaftar);
 document.getElementById('daftar-modal').addEventListener('click', function(e){ if(e.target === this) closeDaftar(); });
 document.getElementById('daftar-search').addEventListener('input', function(){ renderDaftar(this.value); });
+document.getElementById('daftar-f-kec').addEventListener('change', function(){ refreshDaftarKel(); applyDaftarFilter(); });
+document.getElementById('daftar-f-kel').addEventListener('change', function(){ refreshDaftarRt(); applyDaftarFilter(); });
+document.getElementById('daftar-f-rt').addEventListener('change', applyDaftarFilter);
 
 function loadAll(){
     loadRingkasan();

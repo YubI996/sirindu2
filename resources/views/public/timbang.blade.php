@@ -192,6 +192,7 @@
     .tb-kpi__icon--blue   { background:var(--info-bg); color:var(--info); }
     .tb-kpi__icon--orange { background:oklch(0.94 0.065 55); color:oklch(0.52 0.15 52); }
     .tb-kpi__val { font-size:2rem; font-weight:700; color:var(--ink); line-height:1.02; }
+    .tb-kpi__pct { font-size:1.05rem; font-weight:600; color:var(--muted); margin-left:.35rem; }
     .tb-kpi__lbl { font-size:.82rem; font-weight:600; color:var(--muted); margin-top:.15rem; }
     .tb-kpi__sub { font-size:.7rem; color:var(--faint); margin-top:.05rem; }
 
@@ -380,15 +381,15 @@
                 </div>
                 <div class="tb-kpi">
                     <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">height</span></div>
-                    <div><div class="tb-kpi__val tb-num" id="kpi-stunting">—</div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
+                    <div><div class="tb-kpi__val tb-num"><span id="kpi-stunting">—</span><span class="tb-kpi__pct tb-num" id="pct-stunting"></span></div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
                 </div>
                 <div class="tb-kpi">
                     <div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">monitor_weight</span></div>
-                    <div><div class="tb-kpi__val tb-num" id="kpi-gizi-kurang">—</div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
+                    <div><div class="tb-kpi__val tb-num"><span id="kpi-gizi-kurang">—</span><span class="tb-kpi__pct tb-num" id="pct-gizi-kurang"></span></div><div class="tb-kpi__lbl">Gizi Kurang</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
                 </div>
                 <div class="tb-kpi">
                     <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">emergency</span></div>
-                    <div><div class="tb-kpi__val tb-num" id="kpi-gizi-buruk">—</div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
+                    <div><div class="tb-kpi__val tb-num"><span id="kpi-gizi-buruk">—</span><span class="tb-kpi__pct tb-num" id="pct-gizi-buruk"></span></div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
                 </div>
                 <div class="tb-kpi">
                     <div class="tb-kpi__icon tb-kpi__icon--orange"><span class="material-symbols-outlined">trending_down</span></div>
@@ -398,18 +399,6 @@
 
             {{-- ── STATUS GIZI ────────────────────────────────────────── --}}
             <p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">emergency</span>Status Gizi Balita</p>
-
-            <div class="tb-stunting-row" id="stunting-row">
-                <div class="tb-highlight tb-highlight--danger">
-                    <div><div class="tb-highlight__pct tb-num" id="hl-stunting">—%</div><div class="tb-highlight__lbl">Stunting<br><small>TB/U &lt; -2SD</small></div></div>
-                </div>
-                <div class="tb-highlight tb-highlight--warning">
-                    <div><div class="tb-highlight__pct tb-num" id="hl-underweight">—%</div><div class="tb-highlight__lbl">Berat Kurang<br><small>BB/U &lt; -2SD</small></div></div>
-                </div>
-                <div class="tb-highlight tb-highlight--green">
-                    <div><div class="tb-highlight__pct tb-num" id="hl-normal">—%</div><div class="tb-highlight__lbl">Status Gizi Normal<br><small>BB/U</small></div></div>
-                </div>
-            </div>
 
             <div class="tb-chart-grid tb-chart-grid--3" style="margin-bottom:28px;">
                 <div class="tb-card">
@@ -596,10 +585,10 @@
     // ── GIZI ──────────────────────────────────────────────────────
     function loadGizi(){
         $.getJSON(API_GIZI+getParams(), function(d){
-            document.getElementById('hl-stunting').textContent    = pct(d.stunting_pct);
-            document.getElementById('hl-underweight').textContent = pct(d.underweight_pct);
-            var normalPct = d.total > 0 ? Math.round(d.bb_u.normal / d.total * 100) : 0;
-            document.getElementById('hl-normal').textContent = normalPct+'%';
+            function setPct(id, v){ var el=document.getElementById(id); if(el) el.textContent = (v!==null && v!==undefined) ? '· '+v+'%' : ''; }
+            setPct('pct-stunting', d.stunting_pct);
+            setPct('pct-gizi-kurang', d.total>0 ? Math.round(d.gizi_kurang/d.total*1000)/10 : null);
+            setPct('pct-gizi-buruk',  d.total>0 ? Math.round(d.gizi_buruk/d.total*1000)/10 : null);
 
             document.getElementById('kpi-stunting').textContent    = num(d.stunting);
             document.getElementById('kpi-gizi-kurang').textContent = num(d.gizi_kurang);
