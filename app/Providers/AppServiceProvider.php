@@ -32,7 +32,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->loadViewsFrom(__DIR__.'/../views', 'admin');
+        // Namespace view "admin" (mis. admin::layouts.app) berada di
+        // resources/views/vendor/admin. Path lama __DIR__.'/../views' (app/views)
+        // tidak pernah ada → membuat `php artisan view:cache` gagal karena
+        // memindai direktori yang tak ada.
+        $this->loadViewsFrom(resource_path('views/vendor/admin'), 'admin');
 
         // Force HTTPS URL generation in production
         if (config('app.env') === 'production') {
