@@ -259,6 +259,28 @@ class EpidemiologiControllerTest extends TestCase
         $this->assertFalse($case->gejala_diare);
     }
 
+    public function test_store_keeps_unchecked_checkboxes_false()
+    {
+        // Form mengirim hidden value="0" untuk tiap checkbox yang tak dicentang
+        // (lihat form-section-d/e), jadi field-nya SELALU ada di request.
+        $data = $this->validCaseData([
+            'gejala_demam'         => '1',
+            'gejala_batuk'         => '0',
+            'gejala_diare'         => '0',
+            'komplikasi_pneumonia' => '0',
+            'riwayat_kontak_kasus' => '0',
+        ]);
+
+        $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
+
+        $case = SurveillanceCase::where('nik', $data['nik'])->first();
+        $this->assertTrue($case->gejala_demam);
+        $this->assertFalse($case->gejala_batuk);
+        $this->assertFalse($case->gejala_diare);
+        $this->assertFalse($case->komplikasi_pneumonia);
+        $this->assertFalse($case->riwayat_kontak_kasus);
+    }
+
     // ==================== STORE VALIDATION TESTS ====================
 
     public function test_store_fails_without_required_fields()

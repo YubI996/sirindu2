@@ -92,6 +92,25 @@ Validation is handled in `app/Http/Requests/Admin/`:
 - `Anak/updateAnakRequest.php` - Update child validation
 - `User/storeUserRequest.php` - Create user validation
 
+### Checkbox Boolean: baca nilainya, bukan keberadaannya
+
+Form di aplikasi ini (mis. `form-section-d`, `form-section-e`) memakai pola hidden+checkbox:
+
+```html
+<input type="hidden"   name="gejala_demam" value="0">
+<input type="checkbox" name="gejala_demam" value="1">
+```
+
+Konsekuensinya field itu **selalu** ada di request. Maka:
+
+- **Pakai `$request->boolean($field)`.** JANGAN `$request->has($field)` / `filled()` / `isset()` — semuanya bernilai true walau checkbox tidak dicentang, sehingga seluruh field tersimpan `1`.
+- Berlaku untuk `BOOLEAN_FIELDS` di `SurveillanceRepository` (23 gejala + 8 komplikasi + `riwayat_kontak_kasus`).
+- `$request->has()` tetap sah untuk parameter filter/query (pola `has($x) && $x != ''`), bukan untuk checkbox.
+
+Test checkbox **wajib mengirim payload seperti form aslinya** — string `'0'` untuk yang tak dicentang, bukan menghilangkan field-nya. Test yang menghilangkan field hanya memverifikasi skenario yang tak pernah terjadi dan akan lolos walau kodenya salah. Lihat `EpidemiologiControllerTest::test_store_keeps_unchecked_checkboxes_false`.
+
+Latar: bug 2026-03-06 — backend menulis `has()` (benar saat itu, form belum punya hidden input), lalu redesign form 2 menit kemudian menambahkan hidden input dan diam-diam membatalkan asumsinya. Dua perubahan yang masing-masing benar, digabung jadi salah. Ditemukan client 2026-07-21.
+
 ### Frontend
 - Bootstrap 5 with Vite
 - DataTables (Yajra) for table rendering

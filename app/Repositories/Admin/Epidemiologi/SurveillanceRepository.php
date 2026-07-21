@@ -48,9 +48,11 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         // Remove file fields — handled at controller level, not stored as UploadedFile
         unset($data['foto_dokumentasi'], $data['hapus_foto_dokumentasi'], $data['foto_dokumentasi_2'], $data['hapus_foto_dokumentasi_2']);
 
-        // Handle boolean checkbox fields: unchecked checkboxes are absent from request
+        // Handle boolean checkbox fields. Form mengirim hidden value="0" mendampingi
+        // tiap checkbox, jadi field selalu ada di request — nilainya yang menentukan,
+        // bukan keberadaannya (has() bikin semua ikut tercentang).
         foreach (self::BOOLEAN_FIELDS as $field) {
-            $data[$field] = $request->has($field) ? 1 : 0;
+            $data[$field] = $request->boolean($field) ? 1 : 0;
         }
 
         // Auto-calculate kategori_umur from tanggal_lahir
