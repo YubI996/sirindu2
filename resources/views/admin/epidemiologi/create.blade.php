@@ -377,9 +377,7 @@ $(document).ready(function() {
     @endif
 
     // Form submission confirmation
-    $('#surveillanceForm').on('submit', function(e) {
-        return true;
-    });
 });
 </script>
+@include('admin.epidemiologi.components.form-accordion-validation')
 @endsection

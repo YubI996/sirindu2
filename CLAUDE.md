@@ -111,6 +111,23 @@ Test checkbox **wajib mengirim payload seperti form aslinya** — string `'0'` u
 
 Latar: bug 2026-03-06 — backend menulis `has()` (benar saat itu, form belum punya hidden input), lalu redesign form 2 menit kemudian menambahkan hidden input dan diam-diam membatalkan asumsinya. Dua perubahan yang masing-masing benar, digabung jadi salah. Ditemukan client 2026-07-21.
 
+### `required` HTML5 + Accordion = Submit Mati Senyap
+
+Form surveilans (`create`/`edit`) adalah accordion single-open (`data-parent`), hanya
+section A terbuka default. Panel tertutup ber-`display:none`, dan **browser tidak bisa
+mem-fokus kontrol tersembunyi** — bila ada field `required` kosong di panel tertutup,
+submit dibatalkan tanpa pesan apa pun. Gejalanya: klik "Simpan", tidak terjadi apa-apa.
+Terverifikasi di Chrome: `An invalid form control with name='id_jenis_kasus' is not focusable.`
+
+Penanganannya di `components/form-accordion-validation.blade.php` (di-include kedua form):
+`novalidate` + handler submit sendiri yang membuka panel → tunggu `shown.bs.collapse` →
+scroll → fokus → `reportValidity()`. **Jangan lepas partial ini** selama masih ada
+`required` di panel yang bisa tertutup, dan jangan fokus ke elemen sebelum panelnya terbuka.
+
+Kalau menambah field `required` baru, pastikan ia berada di form yang meng-include partial
+tersebut. Test PHPUnit hanya mengunci keberadaan `novalidate` — perilaku fokus/scroll cuma
+bisa diuji di browser.
+
 ### Frontend
 - Bootstrap 5 with Vite
 - DataTables (Yajra) for table rendering

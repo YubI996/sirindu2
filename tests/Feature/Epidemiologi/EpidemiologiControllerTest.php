@@ -259,6 +259,31 @@ class EpidemiologiControllerTest extends TestCase
         $this->assertFalse($case->gejala_diare);
     }
 
+    /**
+     * Panel accordion tertutup ber-display:none dan browser tak bisa mem-fokus kontrol
+     * tersembunyi — field `required` kosong di panel tertutup membuat submit dibatalkan
+     * TANPA pesan. Formulir karena itu wajib `novalidate` + partial penanganan sendiri.
+     *
+     * Batas test ini: hanya mengunci markup-nya, bukan perilaku browser. Perilaku
+     * fokus/scroll harus diuji manual di browser.
+     */
+    public function test_create_form_disables_native_validation_bubbles()
+    {
+        $response = $this->actingAs($this->admin)->get(route('admin.epidemiologi.create'));
+
+        $response->assertSee('surveillanceForm', false);
+        $response->assertSee("form.setAttribute('novalidate', 'novalidate')", false);
+    }
+
+    public function test_edit_form_disables_native_validation_bubbles()
+    {
+        $case = SurveillanceCase::factory()->create();
+
+        $response = $this->actingAs($this->admin)->get(route('admin.epidemiologi.edit', $case->id));
+
+        $response->assertSee("form.setAttribute('novalidate', 'novalidate')", false);
+    }
+
     public function test_store_keeps_unchecked_checkboxes_false()
     {
         // Form mengirim hidden value="0" untuk tiap checkbox yang tak dicentang

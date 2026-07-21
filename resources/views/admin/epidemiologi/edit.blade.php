@@ -402,4 +402,5 @@ $(document).ready(function() {
     @endif
 });
 </script>
+@include('admin.epidemiologi.components.form-accordion-validation')
 @endsection
