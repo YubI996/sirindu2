@@ -630,10 +630,10 @@
                 <div class="col-md-5">
                     <div class="info-card h-100">
                         <div class="card-header"><i class="fa fa-syringe mr-1"></i> Status Imunisasi</div>
-                        <div class="card-body d-flex align-items-center justify-content-center">
-                            <div style="height:220px; width:220px; position:relative;">
+                        <div class="card-body">
+                            <div style="height:260px; position:relative;">
                                 <canvas id="chart-status-vaksinasi"></canvas>
-                                <div id="skel-vaksinasi" class="skeleton" style="position:absolute;inset:0;border-radius:50%;"></div>
+                                <div id="skel-vaksinasi" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
                             </div>
                         </div>
                     </div>
@@ -850,6 +850,7 @@
 @section('scripts')
 @parent
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -1176,9 +1177,11 @@
 
         // Status Vaksinasi — pie
         const sv = data.status_vaksinasi || {};
+        const svPlugins = window.ChartDataLabels ? [window.ChartDataLabels] : [];
         destroyChart('statusVaksinasi');
         charts.statusVaksinasi = new Chart(document.getElementById('chart-status-vaksinasi'), {
             type: 'pie',
+            plugins: svPlugins,
             data: {
                 labels: ['Tidak Ada', 'Tidak Lengkap', 'Lengkap', 'Tidak Tahu'],
                 datasets: [{
@@ -1188,7 +1191,28 @@
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'right' } },
+                layout: { padding: 8 },
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const total = ctx.dataset.data.reduce((a, b) => a + (b || 0), 0);
+                                const pct = total ? Math.round((ctx.parsed / total) * 100) : 0;
+                                return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                            },
+                        },
+                    },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 11 },
+                        formatter: (value, ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + (b || 0), 0);
+                            if (!total || !value) return '';
+                            return Math.round((value / total) * 100) + '%';
+                        },
+                    },
+                },
             },
         });
 
