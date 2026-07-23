@@ -55,4 +55,24 @@ class ImportOtFinalCommandTest extends TestCase
         $this->assertIsArray(config('database.connections.staging'));
         $this->assertSame('mysql', config('database.connections.staging.driver'));
     }
+
+    public function test_dry_run_tidak_menulis_apa_pun(): void
+    {
+        $this->artisan('import:ot-final', ['file' => $this->berkasContoh()])
+            ->assertExitCode(0);
+
+        $this->assertSame(0, \App\Models\Anak::count());
+        $this->assertSame(0, \App\Models\DataAnak::count());
+    }
+
+    public function test_koneksi_tak_dikenal_ditolak(): void
+    {
+        $this->artisan('import:ot-final', [
+            'file'         => $this->berkasContoh(),
+            '--commit'     => true,
+            '--connection' => 'ngawur',
+        ])
+            ->expectsOutputToContain('tidak terdaftar')
+            ->assertExitCode(1);
+    }
 }
