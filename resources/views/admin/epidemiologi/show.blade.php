@@ -268,10 +268,6 @@
                                 <dd class="col-sm-8">
                                     <strong><time datetime="{{ $case->tanggal_onset->format('Y-m-d') }}">{{ $case->tanggal_onset->format('d/m/Y') }}</time></strong>
                                 </dd>
-                                <dt class="col-sm-4 text-accessible-muted">Tanggal Konsultasi</dt>
-                                <dd class="col-sm-8">
-                                    <time datetime="{{ $case->tanggal_konsultasi->format('Y-m-d') }}">{{ $case->tanggal_konsultasi->format('d/m/Y') }}</time>
-                                </dd>
                             </dl>
                         </div>
                         <div class="col-md-6">

@@ -12,6 +12,12 @@
                 <option value="positif"             {{ old('status_lab', $case->status_lab ?? '') == 'positif'             ? 'selected' : '' }}>Positif</option>
                 <option value="negatif"             {{ old('status_lab', $case->status_lab ?? '') == 'negatif'             ? 'selected' : '' }}>Negatif</option>
             </select>
+            {{-- Peringatan saja, tidak menghalangi submit (lihat catatan di bawah). --}}
+            <div id="labIncompleteWarning" class="alert alert-warning mt-2 mb-0 py-2 px-3" style="display:none;">
+                <i class="fa fa-exclamation-triangle"></i>
+                Hasil lab sudah final. Sebaiknya lengkapi juga baris <strong>Spesimen</strong> di bawah
+                beserta tanggal pengambilannya. Data tetap bisa disimpan tanpa itu.
+            </div>
         </div>
     </div>
 </div>
@@ -195,8 +201,28 @@ $(document).ready(function() {
     });
 
     $(document).on('click', '.remove-spesimen-row', function() {
-    });
         $(this).closest('.spesimen-row').remove();
+        toggleLabWarning();
+    });
+
+    // Peringatan non-blocking: status lab final tapi belum ada spesimen bertanggal.
+    // JANGAN diubah menjadi 'required' — field lab yang wajib pernah membuat submit
+    // gagal senyap karena field acuannya sudah tidak ada di form (2026-07-23).
+    function toggleLabWarning() {
+        var status = $('#status_lab').val();
+        var final  = (status === 'positif' || status === 'negatif');
+        var adaTanggal = false;
+
+        $('#spesimenList input[name$="[tanggal_ambil_spesimen]"]').each(function() {
+            if ($(this).val()) { adaTanggal = true; }
+        });
+
+        $('#labIncompleteWarning').toggle(final && !adaTanggal);
+    }
+
+    $('#status_lab').on('change', toggleLabWarning);
+    $(document).on('change', '#spesimenList input[name$="[tanggal_ambil_spesimen]"]', toggleLabWarning);
+    toggleLabWarning();
 });
 </script>
 @endpush

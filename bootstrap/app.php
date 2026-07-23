@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'user-access' => \App\Http\Middleware\UserAccess::class,
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
             'module.role' => \App\Http\Middleware\CheckModuleRole::class,
+            'timbang.publik' => \App\Http\Middleware\TimbangPublikAktif::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

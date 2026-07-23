@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\TimbangDaftarExport;
 use App\Models\Anak;
+use App\Models\AppSetting;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Services\StatusGiziService;
@@ -24,6 +25,28 @@ class TimbangDashboardController extends Controller
         ]);
     }
 
+    /**
+     * Nyalakan/matikan publikasi ringkasan Operasi Timbang di landing publik.
+     *
+     * Hanya Dinkes (superadmin) — di aplikasi ini seluruh helper isDinkes*
+     * memang mengembalikan isSuperAdmin().
+     */
+    public function setPublikasi(Request $request): JsonResponse
+    {
+        abort_unless(auth()->user()->isSuperAdmin(), 403, 'Hanya Dinkes yang dapat mengubah publikasi.');
+
+        $aktif = $request->boolean('aktif');
+        AppSetting::setBool(AppSetting::KEY_TIMBANG_PUBLIK, $aktif);
+
+        return response()->json([
+            'success' => true,
+            'aktif'   => $aktif,
+            'message' => $aktif
+                ? 'Ringkasan Operasi Timbang kini tampil di halaman publik.'
+                : 'Ringkasan Operasi Timbang disembunyikan dari halaman publik.',
+        ]);
+    }
+
     public function index(): View
     {
         $user = auth()->user();
@@ -40,7 +63,9 @@ class TimbangDashboardController extends Controller
             ->orderByDesc('tahun')
             ->pluck('tahun');
 
-        return view('admin.dashboard.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList'));
+        $publikasiAktif = AppSetting::timbangPublikAktif();
+
+        return view('admin.dashboard.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList', 'publikasiAktif'));
     }
 
     /** Landing publik — wajah aplikasi SIRINDU (tanpa login). */
@@ -56,7 +81,9 @@ class TimbangDashboardController extends Controller
             ->orderByDesc('tahun')
             ->pluck('tahun');
 
-        return view('public.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList'));
+        $publikasiAktif = AppSetting::timbangPublikAktif();
+
+        return view('public.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList', 'publikasiAktif'));
     }
 
     // ==================== API ====================

@@ -33,6 +33,11 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class EpidemiologiController extends Controller
 {
+    /** Peringatan pasca-simpan; tidak pernah menghalangi penyimpanan. */
+    private const PESAN_LAB_BELUM_LENGKAP = 'Kasus berhasil disimpan. '
+        . 'Status lab sudah positif/negatif, namun belum ada spesimen dengan tanggal pengambilan. '
+        . 'Lengkapi detail laboratorium bila datanya sudah tersedia.';
+
     protected $surveillanceRepository;
 
     public function __construct(SurveillanceRepository $surveillanceRepository)
@@ -431,7 +436,11 @@ class EpidemiologiController extends Controller
 
             $this->clearEpiCache();
 
-            Alert::success('Berhasil', 'Kasus surveillance berhasil ditambahkan');
+            if ($this->labBelumLengkap($request)) {
+                Alert::warning('Tersimpan', self::PESAN_LAB_BELUM_LENGKAP);
+            } else {
+                Alert::success('Berhasil', 'Kasus surveillance berhasil ditambahkan');
+            }
             return redirect()->route('admin.epidemiologi.index');
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
             // Jaring pengaman balapan: nomor lolos pengecekan di atas tapi keburu
@@ -566,7 +575,11 @@ class EpidemiologiController extends Controller
 
             $this->clearEpiCache();
 
-            Alert::success('Berhasil', 'Kasus surveillance berhasil diperbarui');
+            if ($this->labBelumLengkap($request)) {
+                Alert::warning('Tersimpan', self::PESAN_LAB_BELUM_LENGKAP);
+            } else {
+                Alert::success('Berhasil', 'Kasus surveillance berhasil diperbarui');
+            }
             return redirect()->route('admin.epidemiologi.index');
         } catch (\Exception $e) {
             Alert::error('Gagal', 'Terjadi kesalahan: ' . $e->getMessage());
@@ -997,6 +1010,29 @@ class EpidemiologiController extends Controller
             'text' => $lokasi->nama,
             'message' => 'Lokasi penularan berhasil ditambahkan',
         ]);
+    }
+
+    /**
+     * Kasus dengan hasil lab positif/negatif tapi tanpa satu pun spesimen bertanggal.
+     *
+     * Sejak 2026-07-23 kondisi ini TIDAK lagi menghalangi penyimpanan (dulu lewat
+     * required_if pada tanggal_hasil_lab, yang menunjuk field yang sudah tidak ada
+     * di form sehingga submit gagal tanpa pesan yang bisa dilihat petugas).
+     * Sekarang cukup jadi peringatan setelah data tersimpan.
+     */
+    private function labBelumLengkap(Request $request): bool
+    {
+        if (! in_array($request->input('status_lab'), ['positif', 'negatif'], true)) {
+            return false;
+        }
+
+        foreach ((array) $request->input('spesimen', []) as $spesimen) {
+            if (! empty($spesimen['tanggal_ambil_spesimen'])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

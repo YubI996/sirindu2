@@ -316,9 +316,11 @@
                     <a class="lp-btn-masuk" href="{{ route('login') }}">
                         <span class="material-symbols-outlined">login</span>Masuk sebagai Petugas
                     </a>
+                    @if($publikasiAktif)
                     <a class="lp-scrolllink" href="#data">
                         Lihat ringkasan data<span class="material-symbols-outlined" style="font-size:18px;">arrow_downward</span>
                     </a>
+                    @endif
                 </div>
             </div>
             <div class="lp-hero__art" aria-hidden="true">
@@ -333,6 +335,9 @@
             </div>
         </section>
 
+        {{-- Publikasi ringkasan OT dikendalikan Dinkes lewat toggle di dashboard admin.
+             Saat mati: blok data hilang dan endpoint agregat publik ikut ditolak (403). --}}
+        @if($publikasiAktif)
         <div id="data" class="tb-page">
             <p class="lp-data-intro">Ringkasan agregat hasil Operasi Timbang balita. Angka dapat disaring per tahun dan wilayah. Data rinci per anak hanya untuk petugas.</p>
 
@@ -476,6 +481,7 @@
                 </div>
             </div>
         </div>{{-- /tb-page --}}
+        @endif
 
         <footer class="lp-footer">
             <span>© {{ date('Y') }} SIRINDU — Dinas Kesehatan.</span>
@@ -483,6 +489,7 @@
         </footer>
     </div>
 
+    @if($publikasiAktif)
     <script src="{{ asset('admin/vendors/scripts/core.js') }}"></script>{{-- jQuery 3.2.1 --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script>
@@ -786,5 +793,6 @@
 
     })();
     </script>
+    @endif
 </body>
 </html>

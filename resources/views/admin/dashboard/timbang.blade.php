@@ -27,6 +27,31 @@
 .tb-page *{ box-sizing:border-box; }
 .tb-num{ font-family:'Barlow Condensed','Barlow',sans-serif; font-variant-numeric:tabular-nums; letter-spacing:.005em; }
 
+/* Kartu publikasi publik (khusus Dinkes) */
+.tb-publikasi{
+    display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:.85rem 1.15rem; box-shadow:var(--shadow); margin-bottom:1rem;
+}
+.tb-publikasi__text{ display:flex; align-items:flex-start; gap:.6rem; font-size:.88rem; }
+.tb-publikasi__icon{ font-size:20px; color:var(--green-d); }
+.tb-publikasi__hint{ font-size:.78rem; color:var(--muted); margin-top:.15rem; }
+.tb-switch{ display:inline-flex; align-items:center; gap:.6rem; cursor:pointer; margin:0; }
+.tb-switch input{ position:absolute; opacity:0; width:0; height:0; }
+.tb-switch__track{
+    width:46px; height:26px; border-radius:999px; background:oklch(0.86 0.012 145);
+    position:relative; transition:background .18s; flex:none;
+}
+.tb-switch__thumb{
+    position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%;
+    background:#fff; box-shadow:0 1px 3px oklch(0.30 0.03 145 / .35); transition:transform .18s;
+}
+.tb-switch input:checked + .tb-switch__track{ background:var(--green); }
+.tb-switch input:checked + .tb-switch__track .tb-switch__thumb{ transform:translateX(20px); }
+.tb-switch input:focus-visible + .tb-switch__track{ outline:2px solid var(--green-dk); outline-offset:2px; }
+.tb-switch input:disabled + .tb-switch__track{ opacity:.55; }
+.tb-switch__label{ font-size:.8rem; font-weight:700; color:var(--muted); }
+
 /* Filter bar */
 .tb-filter {
     display:flex; align-items:center; gap:.65rem; flex-wrap:wrap;
@@ -235,8 +260,31 @@
 }
 </style>
 
-{{-- ── Filter bar ────────────────────────────────────────────── --}}
 @php($isSuper = Auth::user()->isSuperAdmin())
+
+@if($isSuper)
+{{-- ── Publikasi publik (khusus Dinkes) ───────────────────────── --}}
+<div class="tb-publikasi" id="tb-publikasi" data-aktif="{{ $publikasiAktif ? '1' : '0' }}">
+    <div class="tb-publikasi__text">
+        <span class="material-symbols-outlined tb-publikasi__icon">public</span>
+        <div>
+            <strong>Publikasi ringkasan di halaman publik</strong>
+            <div class="tb-publikasi__hint" id="tb-publikasi-hint">
+                {{ $publikasiAktif
+                    ? 'Aktif — pengunjung tanpa login dapat melihat ringkasan Operasi Timbang.'
+                    : 'Nonaktif — halaman publik hanya menampilkan profil aplikasi dan tombol masuk.' }}
+            </div>
+        </div>
+    </div>
+    <label class="tb-switch" for="tb-publikasi-toggle">
+        <input type="checkbox" id="tb-publikasi-toggle" {{ $publikasiAktif ? 'checked' : '' }}>
+        <span class="tb-switch__track"><span class="tb-switch__thumb"></span></span>
+        <span class="tb-switch__label" id="tb-publikasi-label">{{ $publikasiAktif ? 'Dipublikasikan' : 'Tidak dipublikasikan' }}</span>
+    </label>
+</div>
+@endif
+
+{{-- ── Filter bar ────────────────────────────────────────────── --}}
 <div class="tb-filter">
     <span class="material-symbols-outlined" style="font-size:20px;color:oklch(0.48 0.14 145);">filter_alt</span>
     <label for="f-tahun">Tahun</label>
@@ -447,6 +495,66 @@ var URL_POS_BY_KEL = '{{ url("admin/get-posyandu-by-kel-anak") }}';
 var IS_SUPER = {{ Auth::user()->isSuperAdmin() ? 'true' : 'false' }};
 
 var charts = {};
+
+// ── Toggle publikasi halaman publik (khusus Dinkes) ──────────
+(function(){
+    var toggle = document.getElementById('tb-publikasi-toggle');
+    if (!toggle) { return; }   // bukan superadmin → kartunya tidak dirender
+
+    var URL_PUBLIKASI = '{{ route("admin.timbang.publikasi") }}';
+    var CSRF = '{{ csrf_token() }}';
+    var label = document.getElementById('tb-publikasi-label');
+    var hint  = document.getElementById('tb-publikasi-hint');
+
+    function render(aktif){
+        toggle.checked = aktif;
+        label.textContent = aktif ? 'Dipublikasikan' : 'Tidak dipublikasikan';
+        hint.textContent  = aktif
+            ? 'Aktif — pengunjung tanpa login dapat melihat ringkasan Operasi Timbang.'
+            : 'Nonaktif — halaman publik hanya menampilkan profil aplikasi dan tombol masuk.';
+    }
+
+    function simpan(aktif){
+        toggle.disabled = true;
+        fetch(URL_PUBLIKASI, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ aktif: aktif ? 1 : 0 })
+        })
+        .then(function(r){ if(!r.ok){ throw new Error('HTTP ' + r.status); } return r.json(); })
+        .then(function(d){
+            render(!!d.aktif);
+            Swal.fire({ icon:'success', title:'Tersimpan', text:d.message, timer:2200, showConfirmButton:false });
+        })
+        .catch(function(){
+            render(!aktif);   // kembalikan ke keadaan sebelumnya
+            Swal.fire({ icon:'error', title:'Gagal', text:'Pengaturan publikasi tidak tersimpan. Coba lagi.' });
+        })
+        .finally(function(){ toggle.disabled = false; });
+    }
+
+    toggle.addEventListener('change', function(){
+        var aktif = toggle.checked;
+
+        // Mematikan publikasi berdampak ke halaman publik — minta konfirmasi dulu.
+        if (!aktif) {
+            toggle.checked = true;   // tahan sampai dikonfirmasi
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sembunyikan dari publik?',
+                text: 'Ringkasan Operasi Timbang tidak akan tampil di halaman depan bagi pengunjung umum.',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, sembunyikan',
+                cancelButtonText: 'Batal'
+            }).then(function(res){
+                if (res.isConfirmed) { simpan(false); }
+            });
+            return;
+        }
+
+        simpan(true);
+    });
+})();
 
 // ── Filters ──────────────────────────────────────────────────
 function val(id){ var el = document.getElementById(id); return el ? el.value : ''; }
