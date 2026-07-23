@@ -298,12 +298,8 @@
                 </div>
                 <div class="col-6">
                     <div class="field">
-                        <div class="field-label">Tanggal Konsultasi</div>
-                        <div class="field-value">{{ $case->tanggal_konsultasi->format('d/m/Y') }}</div>
-                    </div>
-                    <div class="field">
                         <div class="field-label">Tanggal Lapor</div>
-                        <div class="field-value">{{ $case->tanggal_lapor->format('d/m/Y') }}</div>
+                        <div class="field-value">{{ $case->tanggal_lapor?->format('d/m/Y') ?? '-' }}</div>
                     </div>
                     <div class="field">
                         <div class="field-label">Sumber Penularan</div>

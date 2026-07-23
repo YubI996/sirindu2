@@ -41,7 +41,7 @@
 </div>
 
 <div class="row">
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="form-group">
             <label>Tanggal Demam</label>
             <input type="date" name="tanggal_demam" class="form-control"
@@ -49,7 +49,7 @@
                    max="{{ date('Y-m-d') }}">
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="form-group">
             <label>Tanggal Onset <span class="text-danger">*</span></label>
             <input type="date" name="tanggal_onset" id="tanggal_onset" class="form-control"
@@ -58,15 +58,7 @@
             <small class="form-text text-muted">Ruam/Sakit Tenggorok/Lumpuh/Batuk terus-menerus</small>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="form-group">
-            <label>Tanggal Konsultasi <span class="text-danger">*</span></label>
-            <input type="date" name="tanggal_konsultasi" class="form-control"
-                   value="{{ old('tanggal_konsultasi', isset($case) ? $case->tanggal_konsultasi->format('Y-m-d') : '') }}"
-                   max="{{ date('Y-m-d') }}" required>
-        </div>
-    </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="form-group">
             <label>Tanggal Lapor</label>
             <input type="date" name="tanggal_lapor" class="form-control"
@@ -104,7 +96,7 @@ $(document).ready(function() {
     // Date validations
     $('#tanggal_onset').on('change', function() {
         var onsetDate = $(this).val();
-        $('input[name="tanggal_konsultasi"]').attr('min', onsetDate);
+        $('input[name="tanggal_lapor"]').attr('min', onsetDate);
     });
 
     // Disease-conditional show/hide sections & fields

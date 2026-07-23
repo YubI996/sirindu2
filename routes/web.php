@@ -23,7 +23,8 @@ Route::get('/', [App\Http\Controllers\TimbangDashboardController::class, 'landin
 Auth::routes();
 
 // API agregat publik untuk landing (tanpa auth). Hanya agregat; daftar/export tetap auth-only.
-Route::prefix('timbang-publik')->name('public.timbang.')->group(function () {
+// Middleware 'timbang.publik' menutup grup ini (403) saat Dinkes mematikan publikasi.
+Route::prefix('timbang-publik')->name('public.timbang.')->middleware('timbang.publik')->group(function () {
     Route::get('api/ringkasan', [App\Http\Controllers\TimbangDashboardController::class, 'ringkasan'])->name('ringkasan');
     Route::get('api/gizi',      [App\Http\Controllers\TimbangDashboardController::class, 'gizi'])->name('gizi');
     Route::get('api/tren',      [App\Http\Controllers\TimbangDashboardController::class, 'tren'])->name('tren');
@@ -118,6 +119,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         Route::get('api/program',  [App\Http\Controllers\TimbangDashboardController::class, 'program'])  ->name('admin.timbang.program');
         Route::get('api/daftar',   [App\Http\Controllers\TimbangDashboardController::class, 'daftar'])   ->name('admin.timbang.daftar');
         Route::get('api/daftar/export', [App\Http\Controllers\TimbangDashboardController::class, 'daftarExport'])->name('admin.timbang.daftar.export');
+        // Toggle publikasi landing publik — hanya superadmin (Dinkes), dicek di controller.
+        Route::post('publikasi', [App\Http\Controllers\TimbangDashboardController::class, 'setPublikasi'])->name('admin.timbang.publikasi');
     });
 
     Route::get('edit-data-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'editAnak'])->name('admin.editAnak');

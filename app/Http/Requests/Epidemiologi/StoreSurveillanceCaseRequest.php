@@ -65,8 +65,9 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'id_jenis_kasus' => 'required|exists:jenis_kasus_epidemiologi,id',
             'kode_icd10' => 'nullable|string|max:10',
             'tanggal_onset' => 'required|date|after_or_equal:tanggal_lahir|before_or_equal:today',
-            'tanggal_konsultasi' => 'required|date|after_or_equal:tanggal_onset|before_or_equal:today',
-            'tanggal_lapor' => 'nullable|date|after_or_equal:tanggal_konsultasi|before_or_equal:today',
+            // 'tanggal_konsultasi' dihapus dari form atas permintaan client (2026-07-23).
+            // Kolom DB tetap ada (nullable) untuk data historis & importer.
+            'tanggal_lapor' => 'nullable|date|after_or_equal:tanggal_onset|before_or_equal:today',
             'sumber_penularan' => 'nullable|in:lokal,import,unknown',
             'lokasi_penularan' => 'nullable|string',
 
@@ -201,7 +202,8 @@ class StoreSurveillanceCaseRequest extends FormRequest
                 'date',
                 'after_or_equal:tanggal_pengambilan_spesimen',
                 'before_or_equal:today',
-                'required_if:status_lab,positif,negatif'
+                // Tidak lagi 'required_if:status_lab,positif,negatif' — status lab
+                // positif/negatif hanya memunculkan peringatan, tidak menghalangi submit.
             ],
             // Lab — Google Form additional specimens
             'jenis_spesimen_2' => 'nullable|string|max:100',
@@ -318,11 +320,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'id_jenis_kasus.required' => 'Jenis kasus wajib dipilih',
             'tanggal_onset.required' => 'Tanggal onset wajib diisi',
             'tanggal_onset.after_or_equal' => 'Tanggal onset harus setelah tanggal lahir',
-            'tanggal_konsultasi.required' => 'Tanggal konsultasi wajib diisi',
-            'tanggal_konsultasi.after_or_equal' => 'Tanggal konsultasi harus setelah atau sama dengan tanggal onset',
-            'tanggal_lapor.after_or_equal' => 'Tanggal lapor harus setelah atau sama dengan tanggal konsultasi',
-
-            'tanggal_hasil_lab.required_if' => 'Tanggal hasil lab wajib diisi jika status lab positif atau negatif',
+            'tanggal_lapor.after_or_equal' => 'Tanggal lapor harus setelah atau sama dengan tanggal onset',
 
             'penyebab_kematian.required_if' => 'Penyebab kematian wajib diisi jika kondisi akhir meninggal',
         ];
