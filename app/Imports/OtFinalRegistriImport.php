@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Anak;
 use App\Services\NikDummyService;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use App\Traits\ResolvesWilayah;
@@ -119,10 +120,191 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
         $this->rowOffset += $originalSize;
     }
 
-    /** Diisi pada Task 3–6. */
     protected function prosesBaris(Collection $rows, bool $isFirstChunk): void
     {
-        // sengaja kosong pada tahap ini
+        $map = $this->columnMap ?? [];
+        $baseOffset = $isFirstChunk ? ($this->headerRowIdx + 1) : 0;
+
+        foreach ($rows as $index => $row) {
+            $rowNum = $this->rowOffset + $index + 1 + ($isFirstChunk ? $baseOffset : 0);
+
+            $nama = trim((string) ($this->colVal($row, $map, 'nama anak') ?? ''));
+            if ($nama === '') {
+                continue; // baris kosong di ekor berkas
+            }
+
+            try {
+                $tglLahir = $this->parseDate($this->colVal($row, $map, 'tanggal lahir'));
+                if (!$tglLahir) {
+                    $this->dilewati++;
+                    $this->peringatan[] = "baris {$rowNum} ({$nama}): Tanggal Lahir kosong/tidak valid.";
+                    continue;
+                }
+
+                // --- Penghitungan: berbasis kunci, identik di dry-run & commit. ---
+                // Baris ber-NIK kosong dihitung sebagai anak unik PER BARIS (spec §6).
+                $nikBerkas = trim((string) ($this->colVal($row, $map, 'nik') ?? ''));
+                $kunciAnak = $nikBerkas !== '' ? 'NIK:' . $nikBerkas : 'BARIS:' . $rowNum;
+
+                if (!isset($this->kunciAnak[$kunciAnak])) {
+                    $this->kunciAnak[$kunciAnak] = true;
+                    $this->anakDibuat++;
+                    if ($nikBerkas === '') {
+                        $this->dummy++;
+                    }
+                }
+
+                $tglUkur = $this->parseDate($this->colVal($row, $map, 'tanggal pengukuran'));
+                if (!$tglUkur) {
+                    $this->dilewati++;
+                    $this->peringatan[] = "baris {$rowNum} ({$nama}): Tanggal Pengukuran kosong/tidak valid.";
+                    continue;
+                }
+
+                $kunciUkur = $kunciAnak . '|' . $tglUkur;
+                if (isset($this->kunciUkur[$kunciUkur])) {
+                    $this->lebur++;
+                } else {
+                    $this->kunciUkur[$kunciUkur] = true;
+                    $this->ukurDitulis++;
+                }
+
+                // --- Penulisan: hanya saat commit. ---
+                if (!$this->commit) {
+                    continue;
+                }
+
+                $this->upsertAnak($row, $map, $rowNum, $nama, $tglLahir, $nikBerkas);
+                // Penulisan pengukuran ditambahkan pada Task 6.
+            } catch (\Throwable $e) {
+                $this->dilewati++;
+                $this->peringatan[] = "baris {$rowNum} ({$nama}): " . mb_substr($e->getMessage(), 0, 120);
+            }
+        }
+    }
+
+    /**
+     * Buat/perbarui Anak dari satu baris. Hanya dipanggil saat commit;
+     * penghitungan sudah dilakukan di prosesBaris().
+     */
+    protected function upsertAnak($row, array $map, int $rowNum, string $nama, string $tglLahir, string $nikBerkas): Anak
+    {
+        $jkRaw = strtoupper(trim((string) ($this->colVal($row, $map, 'jenis kelamin') ?? '')));
+        $jkInt = $jkRaw === 'L' ? 1 : 2;
+
+        $nik = $this->tentukanNik($nikBerkas, $tglLahir, $jkRaw === 'L' ? 'L' : 'P');
+
+        [$namaAyah, $namaIbu] = $this->pecahNamaOrtu($this->colVal($row, $map, 'nama orang tua (ibu/ayah)'));
+
+        $anak = Anak::updateOrCreate(['nik' => $nik], [
+            'nama'                 => $nama,
+            'jk'                   => $jkInt,
+            'tgl_lahir'            => $tglLahir,
+            'no_kk'                => $this->trimOrNull($this->colVal($row, $map, 'nomor kk')),
+            'anak'                 => $this->parseIntOrNull($this->colVal($row, $map, 'anak ke')),
+            'nama_ayah'            => $namaAyah,
+            'nama_ibu'             => $namaIbu,
+            'nik_ortu'             => $this->trimOrNull($this->colVal($row, $map, 'nik orang tua')),
+            'no_hp'                => $this->trimOrNull($this->colVal($row, $map, 'no hp orang tua')),
+            'alamat'               => $this->trimOrNull($this->colVal($row, $map, 'alamat')),
+            'usia_kehamilan_lahir' => $this->parseIntOrNull($this->colVal($row, $map, 'usia kehamilan (minggu)')),
+            'bbl'                  => $this->parseDecimal($this->colVal($row, $map, 'berat lahir - sasaran (kg)')),
+            'pbl'                  => $this->parseDecimal($this->colVal($row, $map, 'panjang lahir - sasaran (cm)')),
+            'lk_lahir'             => $this->parseDecimal($this->colVal($row, $map, 'lingkar kepala lahir (cm)')),
+            'imd'                  => $this->parseBoolean($this->colVal($row, $map, 'imd')),
+            'no'                   => 'OT-' . str_pad((string) $rowNum, 5, '0', STR_PAD_LEFT),
+            'status'               => 1,
+        ]);
+
+        return $anak;
+    }
+
+    /** NIK berkas bila ada; kosong → NIK dummy baru. */
+    protected function tentukanNik(string $nikBerkas, string $tglLahir, string $jkChar): string
+    {
+        if ($nikBerkas !== '') {
+            return $nikBerkas;
+        }
+
+        return $this->nikService->generate(
+            NikDummyService::DEFAULT_KODE_WILAYAH,
+            $tglLahir,
+            $jkChar
+        );
+    }
+
+    /**
+     * Pecah "Nama Ortu" e-PPGBM (format "AYAH / IBU") → [ayah, ibu].
+     * Satu nama tanpa '/' dianggap ibu.
+     */
+    protected function pecahNamaOrtu($namaOrtu): array
+    {
+        $v = trim((string) $namaOrtu);
+        if ($v === '') {
+            return [null, null];
+        }
+        $parts = array_values(array_filter(array_map('trim', explode('/', $v)), fn ($p) => $p !== ''));
+        if (count($parts) >= 2) {
+            return [$parts[0], $parts[1]];
+        }
+
+        return [null, $parts[0] ?? null];
+    }
+
+    protected function parseDate($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            try {
+                return Carbon::instance(Date::excelToDateTimeObject((float) $value))->format('Y-m-d');
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+        try {
+            return Carbon::parse((string) $value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    protected function parseDecimal($value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    protected function parseIntOrNull($value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    protected function parseBoolean($value): ?bool
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['ya', 'y', 'yes', 'true', '1'], true);
+    }
+
+    protected function trimOrNull($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $v = trim((string) $value);
+
+        return $v === '' ? null : $v;
     }
 
     public function getResults(): array
