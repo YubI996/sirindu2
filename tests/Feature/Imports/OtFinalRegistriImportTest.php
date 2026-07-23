@@ -154,4 +154,56 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(0, \App\Models\Kelurahan::where('name', 'Negeri Dongeng')->count());
         $this->assertNotEmpty($import->getResults()['peringatan']);
     }
+
+    public function test_pengukuran_ditulis_dengan_field_benar(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $d = \App\Models\DataAnak::where('id_anak', $anak->id)->first();
+
+        $this->assertNotNull($d);
+        $this->assertSame(7.02, (float) $d->bb);
+        $this->assertSame(68.0, (float) $d->tb);
+        $this->assertSame(13.5, (float) $d->lla);
+        $this->assertSame(-1.20, (float) $d->zscore_bb_u);
+        $this->assertSame(-1.80, (float) $d->zscore_pb_u);
+        $this->assertSame(-0.40, (float) $d->zscore_bb_pb);
+        $this->assertSame(1, (int) $d->id_user);
+        $this->assertSame(1, $import->getResults()['ukur_ditulis']);
+    }
+
+    public function test_nik_sama_beda_tanggal_menghasilkan_dua_pengukuran(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris(['tgl_ukur' => '2026-06-13', 'berat' => '13.5']),
+            $this->baris(['tgl_ukur' => '2026-06-10', 'berat' => '13.4']),
+        ]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $this->assertSame(2, \App\Models\DataAnak::where('id_anak', $anak->id)->count());
+        $this->assertSame(2, $import->getResults()['ukur_ditulis']);
+        $this->assertSame(0, $import->getResults()['lebur']);
+    }
+
+    public function test_nik_sama_tanggal_sama_melebur_jadi_satu_dan_dihitung(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris(['tgl_ukur' => '2026-06-11', 'berat' => '7.02']),
+            $this->baris(['tgl_ukur' => '2026-06-11', 'berat' => '7.0']),
+        ]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $rows = \App\Models\DataAnak::where('id_anak', $anak->id)->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(7.0, (float) $rows->first()->bb); // baris terakhir menang
+        $this->assertSame(1, $import->getResults()['ukur_ditulis']);
+        $this->assertSame(1, $import->getResults()['lebur']);
+    }
 }

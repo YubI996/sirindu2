@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Anak;
+use App\Models\DataAnak;
 use App\Models\Posyandu;
 use App\Models\Puskesmas;
 use App\Services\NikDummyService;
@@ -180,8 +181,8 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
                     continue;
                 }
 
-                $this->upsertAnak($row, $map, $rowNum, $nama, $tglLahir, $nikBerkas);
-                // Penulisan pengukuran ditambahkan pada Task 6.
+                $anak = $this->upsertAnak($row, $map, $rowNum, $nama, $tglLahir, $nikBerkas);
+                $this->tulisUkur($anak, $row, $map, $tglUkur);
             } catch (\Throwable $e) {
                 $this->dilewati++;
                 $this->peringatan[] = "baris {$rowNum} ({$nama}): " . mb_substr($e->getMessage(), 0, 120);
@@ -242,6 +243,34 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
         ]);
 
         return $anak;
+    }
+
+    /**
+     * Tulis satu pengukuran. Kunci (id_anak, tgl_kunjungan) membuat dua baris
+     * ber-NIK sama dan bertanggal ukur sama MELEBUR jadi satu — nilai baris
+     * terakhir menang. Peleburan dihitung di prosesBaris() agar terlihat.
+     */
+    protected function tulisUkur(Anak $anak, $row, array $map, string $tglUkur): void
+    {
+        DataAnak::updateOrCreate(
+            ['id_anak' => $anak->id, 'tgl_kunjungan' => $tglUkur],
+            [
+                'bln'              => usia_bulan($anak->tgl_lahir, $tglUkur) ?? 0,
+                'posisi'           => normalisasi_posisi($this->colVal($row, $map, 'cara ukur')),
+                'bb'               => $this->parseDecimal($this->colVal($row, $map, 'berat (kg)')) ?? 0,
+                'tb'               => $this->parseDecimal($this->colVal($row, $map, 'tinggi (cm)')) ?? 0,
+                'lla'              => $this->parseDecimal($this->colVal($row, $map, 'lila (cm)')) ?? 0,
+                'lk'               => 0,
+                'zscore_bb_u'      => $this->parseDecimal($this->colVal($row, $map, 'zs bb/u')),
+                'zscore_pb_u'      => $this->parseDecimal($this->colVal($row, $map, 'zs tb/u')),
+                'zscore_bb_pb'     => $this->parseDecimal($this->colVal($row, $map, 'zs bb/tb')),
+                'ntob'             => $this->trimOrNull($this->colVal($row, $map, 'naik berat badan')),
+                'vit_a'            => $this->parseIntOrNull($this->colVal($row, $map, 'jml vit a')),
+                'kelas_ibu_balita' => $this->parseBoolean($this->colVal($row, $map, 'kelas ibu balita')),
+                'mbg'              => $this->parseBoolean($this->colVal($row, $map, 'mbg')),
+                'id_user'          => $this->userId,
+            ]
+        );
     }
 
     protected function initFaskesCache(): void
