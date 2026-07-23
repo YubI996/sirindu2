@@ -93,7 +93,33 @@ class ImportOtFinal extends Command
             return self::FAILURE;
         }
 
+        // Verifikasi integritas: penghitung importer menghitung NIAT (sebelum
+        // menulis). Bila sebagian baris gagal tersimpan, angka laporan akan
+        // menyimpang dari isi database. Bandingkan agar penulisan sebagian
+        // tidak pernah lolos diam-diam.
         if ($commit) {
+            $anakAktual = Anak::count();
+            $ukurAktual = DataAnak::count();
+
+            if ($anakAktual !== $r['anak_dibuat'] || $ukurAktual !== $r['ukur_ditulis']) {
+                $this->newLine();
+                $this->error('Verifikasi GAGAL — sebagian baris tidak tersimpan.');
+                $this->line("  dilaporkan : {$r['anak_dibuat']} anak / {$r['ukur_ditulis']} pengukuran");
+                $this->line("  di database: {$anakAktual} anak / {$ukurAktual} pengukuran");
+                $this->line('  JANGAN dump dataset ini. Periksa daftar peringatan di bawah.');
+
+                if (!empty($r['peringatan'])) {
+                    $this->newLine();
+                    foreach (array_slice($r['peringatan'], 0, 30) as $p) {
+                        $this->line('    ' . $p);
+                    }
+                }
+
+                return self::FAILURE;
+            }
+
+            $this->info("Verifikasi OK: {$anakAktual} anak / {$ukurAktual} pengukuran tersimpan.");
+
             app(PrioritasGiziService::class)->refreshAll();
         }
 
@@ -104,9 +130,23 @@ class ImportOtFinal extends Command
         $this->line("LEBUR        : {$r['lebur']} (NIK sama, tanggal ukur sama)");
         $this->line("DILEWATI     : {$r['dilewati']}");
 
+        if (!empty($r['abaikan'])) {
+            $this->newLine();
+            $this->warn('⚠ Sel diabaikan karena di luar rentang wajar (nilainya disimpan NULL):');
+            foreach ($r['abaikan'] as $label => $info) {
+                $this->line(sprintf(
+                    '    %-24s %6d sel  (wajar %s; contoh: %s)',
+                    $label,
+                    $info['jumlah'],
+                    $info['rentang'],
+                    implode(', ', $info['contoh'])
+                ));
+            }
+        }
+
         if (!empty($r['peringatan'])) {
             $this->newLine();
-            $this->warn('⚠ Peringatan: ' . count($r['peringatan']));
+            $this->warn('⚠ Peringatan baris: ' . count($r['peringatan']));
             foreach (array_slice($r['peringatan'], 0, 20) as $p) {
                 $this->line('    ' . $p);
             }

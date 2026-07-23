@@ -47,6 +47,9 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
     protected int $lebur = 0;
     protected int $dilewati = 0;
     protected array $peringatan = [];
+
+    /** Ringkasan sel yang diabaikan, dikelompokkan per kolom (bukan per baris). */
+    protected array $ringkasanAbaikan = [];
     protected array $error = [];
     protected array $failures = []; // diisi ResolvesWilayah::flagUnresolvedWilayah
 
@@ -226,12 +229,12 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
             'nama_ayah'            => $namaAyah,
             'nama_ibu'             => $namaIbu,
             'nik_ortu'             => $this->trimOrNull($this->colVal($row, $map, 'nik orang tua')),
-            'no_hp'                => $this->trimOrNull($this->colVal($row, $map, 'no hp orang tua')),
+            'no_hp'                => $this->bersihkanNoHp($this->colVal($row, $map, 'no hp orang tua')),
             'alamat'               => $this->trimOrNull($this->colVal($row, $map, 'alamat')),
-            'usia_kehamilan_lahir' => $this->parseIntOrNull($this->colVal($row, $map, 'usia kehamilan (minggu)')),
-            'bbl'                  => $this->parseDecimal($this->colVal($row, $map, 'berat lahir - sasaran (kg)')),
-            'pbl'                  => $this->parseDecimal($this->colVal($row, $map, 'panjang lahir - sasaran (cm)')),
-            'lk_lahir'             => $this->parseDecimal($this->colVal($row, $map, 'lingkar kepala lahir (cm)')),
+            'usia_kehamilan_lahir' => $this->angkaWajar($this->colVal($row, $map, 'usia kehamilan (minggu)'), 20, 45, 'usia kehamilan', $rowNum, $nama),
+            'bbl'                  => $this->angkaWajar($this->colVal($row, $map, 'berat lahir - sasaran (kg)'), 0.3, 8, 'berat lahir', $rowNum, $nama),
+            'pbl'                  => $this->angkaWajar($this->colVal($row, $map, 'panjang lahir - sasaran (cm)'), 20, 70, 'panjang lahir', $rowNum, $nama),
+            'lk_lahir'             => $this->angkaWajar($this->colVal($row, $map, 'lingkar kepala lahir (cm)'), 20, 60, 'lingkar kepala lahir', $rowNum, $nama),
             'imd'                  => $this->parseBoolean($this->colVal($row, $map, 'imd')),
             'id_kec'               => $idKec,
             'id_kel'               => $idKel,
@@ -339,6 +342,65 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
         return [null, $parts[0] ?? null];
     }
 
+    /**
+     * Bersihkan "No HP Orang Tua". Sel sering berisi DUA nomor ("081.. / 082..")
+     * atau berekor non-breaking space, sehingga melebihi varchar(20) dan membuat
+     * seluruh baris gagal tersimpan. Ambil nomor pertama, potong aman.
+     *
+     * Seorang anak tidak boleh hilang gara-gara nomor telepon rusak.
+     */
+    protected function bersihkanNoHp($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        // Buang non-breaking space (U+00A0) & karakter kendali, lalu trim.
+        $v = trim(preg_replace('/[\x{00A0}\x{200B}\s]+/u', ' ', (string) $value) ?? '');
+        if ($v === '') {
+            return null;
+        }
+
+        // Sel berisi lebih dari satu nomor → ambil yang pertama.
+        $pertama = trim(preg_split('#[/,;]#', $v)[0] ?? '');
+        if ($pertama === '') {
+            $pertama = $v;
+        }
+
+        return mb_substr($pertama, 0, 20);
+    }
+
+    /**
+     * Terima angka hanya bila berada dalam rentang yang masuk akal secara
+     * fisiologis; di luar itu nilainya sampah (serial tanggal Excel, nomor HP
+     * nyasar, sentinel 8888) → NULL, anaknya tetap dipertahankan.
+     *
+     * Nilai 0 berarti "tidak dicatat", bukan rusak → NULL tanpa dicatat.
+     * Yang di luar rentang diringkas per kolom (bukan per baris) agar laporan
+     * tetap terbaca: kolom Berat Lahir saja punya ribuan sel rusak.
+     */
+    protected function angkaWajar($value, float $min, float $max, string $label, int $rowNum, string $nama): ?float
+    {
+        $angka = $this->parseDecimal($value);
+        if ($angka === null || $angka == 0.0) {
+            return null;
+        }
+
+        if ($angka < $min || $angka > $max) {
+            if (!isset($this->ringkasanAbaikan[$label])) {
+                $this->ringkasanAbaikan[$label] = ['jumlah' => 0, 'rentang' => "{$min}–{$max}", 'contoh' => []];
+            }
+            $this->ringkasanAbaikan[$label]['jumlah']++;
+            if (count($this->ringkasanAbaikan[$label]['contoh']) < 3) {
+                $this->ringkasanAbaikan[$label]['contoh'][] = "baris {$rowNum} '{$angka}'";
+            }
+
+            return null;
+        }
+
+        return $angka;
+    }
+
     protected function parseDate($value): ?string
     {
         if ($value === null || $value === '') {
@@ -404,6 +466,7 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
             'lebur' => $this->lebur,
             'dilewati' => $this->dilewati,
             'peringatan' => array_merge($this->peringatan, $this->failures),
+            'abaikan' => $this->ringkasanAbaikan,
             'error' => $this->error,
         ];
     }

@@ -206,4 +206,78 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(1, $import->getResults()['ukur_ditulis']);
         $this->assertSame(1, $import->getResults()['lebur']);
     }
+
+    public function test_no_hp_ganda_diambil_nomor_pertama_dan_dipotong(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris(['no_hp' => '081254693567 / 08125304445']),
+        ]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $this->assertNotNull($anak, 'Anak harus tetap dibuat meski no_hp bermasalah.');
+        $this->assertSame('081254693567', $anak->no_hp);
+        $this->assertSame(0, $import->getResults()['dilewati']);
+    }
+
+    /**
+     * Nilai di luar rentang fisiologis adalah sampah (serial tanggal Excel,
+     * nomor HP nyasar, sentinel 8888) — disimpan NULL, anaknya dipertahankan.
+     *
+     * @dataProvider nilaiSampahProvider
+     */
+    public function test_nilai_di_luar_rentang_jadi_null_dan_anak_tetap_dibuat(string $kolom, string $field, string $nilai): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris([$kolom => $nilai]),
+        ]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $this->assertNotNull($anak, "Anak harus tetap dibuat meski {$field} bermasalah.");
+        $this->assertNull($anak->{$field}, "{$field} bernilai sampah harus jadi NULL.");
+        $this->assertSame(0, $import->getResults()['dilewati']);
+        $this->assertNotEmpty($import->getResults()['abaikan'], 'Nilai sampah harus tercatat di ringkasan abaikan.');
+    }
+
+    public function test_nilai_nol_dianggap_tak_dicatat_bukan_sampah(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris(['lk_lahir' => '0', 'usia_kehamilan' => '0']),
+        ]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $this->assertNull($anak->lk_lahir);
+        $this->assertNull($anak->usia_kehamilan_lahir);
+        // 0 berarti "tidak dicatat", bukan nilai rusak → jangan bising.
+        $this->assertSame([], $import->getResults()['abaikan']);
+    }
+
+    public static function nilaiSampahProvider(): array
+    {
+        return [
+            'usia kehamilan sentinel'  => ['usia_kehamilan', 'usia_kehamilan_lahir', '8888'],
+            'usia kehamilan NIK'       => ['usia_kehamilan', 'usia_kehamilan_lahir', '6408090000000000'],
+            'panjang lahir serial tgl' => ['pbl', 'pbl', '46238'],
+            'lingkar kepala serial tgl' => ['lk_lahir', 'lk_lahir', '46173'],
+            'lingkar kepala nomor HP'  => ['lk_lahir', 'lk_lahir', '85245175103'],
+            'berat lahir tak masuk akal' => ['bbl', 'bbl', '46200'],
+        ];
+    }
+
+    public function test_nilai_wajar_tetap_tersimpan(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $this->assertSame(38, (int) $anak->usia_kehamilan_lahir);
+        $this->assertSame(3.1, (float) $anak->bbl);
+        $this->assertSame(49.0, (float) $anak->pbl);
+        $this->assertSame(34.0, (float) $anak->lk_lahir);
+    }
 }

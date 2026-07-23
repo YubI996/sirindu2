@@ -75,4 +75,22 @@ class ImportOtFinalCommandTest extends TestCase
             ->expectsOutputToContain('tidak terdaftar')
             ->assertExitCode(1);
     }
+
+    /**
+     * Koneksi 'mysql' pada env testing menunjuk sirindu_testing (phpunit.xml),
+     * jadi commit di sini aman dan tidak menyentuh staging.
+     */
+    public function test_commit_menulis_dan_lolos_verifikasi(): void
+    {
+        $this->artisan('import:ot-final', [
+            'file'         => $this->berkasContoh(),
+            '--commit'     => true,
+            '--connection' => 'mysql',
+        ])
+            ->expectsOutputToContain('Verifikasi OK')
+            ->assertExitCode(0);
+
+        $this->assertSame(1, \App\Models\Anak::count());
+        $this->assertSame(1, \App\Models\DataAnak::count());
+    }
 }
