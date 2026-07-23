@@ -94,4 +94,31 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(1, \App\Models\Anak::where('nik', '6474025209250001')->count());
         $this->assertSame(1, $import->getResults()['anak_dibuat']);
     }
+
+    public function test_nik_kosong_mendapat_nik_dummy(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([$this->header(), $this->baris(['nik' => ''])]));
+
+        $anak = \App\Models\Anak::where('nama', 'FARAH NUR SEPTIANA PUTRI')->first();
+        $this->assertNotNull($anak);
+        $this->assertTrue(\App\Services\NikDummyService::isDummy($anak->nik));
+        $this->assertSame(1, $import->getResults()['dummy']);
+    }
+
+    public function test_dua_baris_nik_kosong_identik_tetap_jadi_dua_anak(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris(['nik' => '']),
+            $this->baris(['nik' => '', 'tgl_ukur' => '2026-06-26']),
+        ]));
+
+        // Nama + tgl lahir + jk identik, tetapi keduanya anak berbeda:
+        // findExisting SENGAJA tidak dipakai (lihat spec §6).
+        $this->assertSame(2, \App\Models\Anak::where('nama', 'FARAH NUR SEPTIANA PUTRI')->count());
+        $this->assertSame(2, $import->getResults()['dummy']);
+        $this->assertSame(2, $import->getResults()['anak_dibuat']);
+    }
 }

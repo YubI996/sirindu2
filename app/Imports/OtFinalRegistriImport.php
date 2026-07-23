@@ -226,6 +226,10 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
             return $nikBerkas;
         }
 
+        // SENGAJA tidak memakai findExisting(): di berkas ini setiap baris ber-NIK
+        // kosong adalah anak yang berbeda. Mencocokkan by (nama, tgl lahir, jk)
+        // berisiko melebur dua anak berbeda yang kebetulan seragam. Idempotensi
+        // lintas-run dijamin oleh TRUNCATE sebelum build, bukan oleh findExisting.
         return $this->nikService->generate(
             NikDummyService::DEFAULT_KODE_WILAYAH,
             $tglLahir,
