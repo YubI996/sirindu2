@@ -3,6 +3,8 @@
 namespace App\Imports;
 
 use App\Models\Anak;
+use App\Models\Posyandu;
+use App\Models\Puskesmas;
 use App\Services\NikDummyService;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use App\Traits\ResolvesWilayah;
@@ -51,6 +53,10 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
     protected int $headerRowIdx = 0;
     protected int $rowOffset = 0;
     protected bool $headerRusak = false;
+
+    protected array $posyanduCache = [];
+    protected array $puskesmasCache = [];
+    protected bool $faskesCacheSiap = false;
 
     /** Kunci anak yang sudah ditemui pada run ini ("NIK:xxx" / "BARIS:n"). */
     protected array $kunciAnak = [];
@@ -196,6 +202,20 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
 
         [$namaAyah, $namaIbu] = $this->pecahNamaOrtu($this->colVal($row, $map, 'nama orang tua (ibu/ayah)'));
 
+        $this->initFaskesCache();
+
+        $kecNama = trim((string) ($this->colVal($row, $map, 'kecamatan') ?? ''));
+        $kelNama = trim((string) ($this->colVal($row, $map, 'kelurahan') ?? ''));
+        $rtNama  = trim((string) ($this->colVal($row, $map, 'rt') ?? ''));
+        $pusNama = trim((string) ($this->colVal($row, $map, 'puskesmas') ?? ''));
+        $posNama = trim((string) ($this->colVal($row, $map, 'posyandu') ?? ''));
+
+        $idKec = $kecNama !== '' ? $this->resolveKecamatan($kecNama) : null;
+        $idKel = $kelNama !== '' ? $this->resolveKelurahan($kelNama, $idKec) : null;
+        $idRt  = $rtNama  !== '' ? $this->resolveRt($rtNama, $idKel) : null;
+        $idPus = $pusNama !== '' ? $this->resolveFaskes($this->puskesmasCache, $pusNama, Puskesmas::class) : null;
+        $idPos = $posNama !== '' ? $this->resolveFaskes($this->posyanduCache, $posNama, Posyandu::class) : null;
+
         $anak = Anak::updateOrCreate(['nik' => $nik], [
             'nama'                 => $nama,
             'jk'                   => $jkInt,
@@ -212,11 +232,46 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
             'pbl'                  => $this->parseDecimal($this->colVal($row, $map, 'panjang lahir - sasaran (cm)')),
             'lk_lahir'             => $this->parseDecimal($this->colVal($row, $map, 'lingkar kepala lahir (cm)')),
             'imd'                  => $this->parseBoolean($this->colVal($row, $map, 'imd')),
+            'id_kec'               => $idKec,
+            'id_kel'               => $idKel,
+            'id_rt'                => $idRt,
+            'id_puskesmas'         => $idPus,
+            'id_posyandu'          => $idPos,
             'no'                   => 'OT-' . str_pad((string) $rowNum, 5, '0', STR_PAD_LEFT),
             'status'               => 1,
         ]);
 
         return $anak;
+    }
+
+    protected function initFaskesCache(): void
+    {
+        if ($this->faskesCacheSiap) {
+            return;
+        }
+
+        $this->posyanduCache = Posyandu::pluck('id', 'name')
+            ->mapWithKeys(fn ($id, $name) => [strtoupper(trim($name)) => $id])->toArray();
+        $this->puskesmasCache = Puskesmas::pluck('id', 'name')
+            ->mapWithKeys(fn ($id, $name) => [strtoupper(trim($name)) => $id])->toArray();
+
+        $this->faskesCacheSiap = true;
+    }
+
+    /** Cari id faskes by nama. TIDAK pernah membuat master baru. */
+    protected function resolveFaskes(array &$cache, string $name, string $modelClass): ?int
+    {
+        $key = strtoupper(trim($name));
+        if ($key === '') {
+            return null;
+        }
+
+        if (!array_key_exists($key, $cache)) {
+            $record = $modelClass::where('name', 'like', '%' . trim($name) . '%')->first();
+            $cache[$key] = $record?->id;
+        }
+
+        return $cache[$key];
     }
 
     /** NIK berkas bila ada; kosong → NIK dummy baru. */

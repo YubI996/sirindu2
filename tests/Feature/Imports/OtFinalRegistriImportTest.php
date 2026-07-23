@@ -121,4 +121,37 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(2, $import->getResults()['dummy']);
         $this->assertSame(2, $import->getResults()['anak_dibuat']);
     }
+
+    public function test_wilayah_dan_faskes_diresolusi_ke_id(): void
+    {
+        $kec = \App\Models\Kecamatan::create(['name' => 'Bontang Barat']);
+        $kel = \App\Models\Kelurahan::create(['name' => 'Gunung Telihan', 'id_kecamatan' => $kec->id]);
+        $pus = \App\Models\Puskesmas::create(['name' => 'Bontang Barat', 'id_kecamatan' => $kec->id]);
+        $pos = \App\Models\Posyandu::create(['name' => 'Melati 1', 'id_puskesmas' => $pus->id]);
+
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([$this->header(), $this->baris()]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $this->assertSame($kec->id, (int) $anak->id_kec);
+        $this->assertSame($kel->id, (int) $anak->id_kel);
+        $this->assertSame($pus->id, (int) $anak->id_puskesmas);
+        $this->assertSame($pos->id, (int) $anak->id_posyandu);
+    }
+
+    public function test_wilayah_tak_dikenal_jadi_null_dan_tidak_membuat_master_baru(): void
+    {
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris(['kecamatan' => 'Antah Berantah', 'kelurahan' => 'Negeri Dongeng']),
+        ]));
+
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
+        $this->assertNull($anak->id_kec);
+        $this->assertNull($anak->id_kel);
+        $this->assertSame(0, \App\Models\Kecamatan::where('name', 'Antah Berantah')->count());
+        $this->assertSame(0, \App\Models\Kelurahan::where('name', 'Negeri Dongeng')->count());
+        $this->assertNotEmpty($import->getResults()['peringatan']);
+    }
 }
