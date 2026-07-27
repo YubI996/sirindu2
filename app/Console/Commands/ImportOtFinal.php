@@ -24,7 +24,8 @@ class ImportOtFinal extends Command
         {file : Path berkas .xlsx OT final}
         {--commit : Tulis ke DB (tanpa flag ini hanya dry-run)}
         {--user=1 : id_user pemilik record data_anak}
-        {--connection= : Nama koneksi DB target (wajib saat --commit)}';
+        {--connection= : Nama koneksi DB target (wajib saat --commit)}
+        {--selisih-json= : Path berkas Selisih_* (kosongkan NIK baris sekunder)}';
 
     protected $description = 'Bangun registri OT (anak + data_anak) dari berkas final e-PPGBM.';
 
@@ -76,7 +77,17 @@ class ImportOtFinal extends Command
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
 
-        $import = new OtFinalRegistriImport((int) $this->option('user'), $commit, $target);
+        $blankSekunder = [];
+        if ($selisih = (string) ($this->option('selisih-json') ?? '')) {
+            $blankSekunder = $this->parseSelisihSekunder($selisih);
+            if ($blankSekunder === null) {
+                return self::FAILURE;
+            }
+            $this->info('Baris sekunder (NIK dikosongkan): ' . count($blankSekunder)
+                . ' dari ' . basename($selisih));
+        }
+
+        $import = new OtFinalRegistriImport((int) $this->option('user'), $commit, $target, $blankSekunder);
 
         app(PrioritasGiziService::class)->duringMutedImport(function () use ($import, $file) {
             Excel::import($import, $file);
@@ -158,5 +169,41 @@ class ImportOtFinal extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Ambil kunci "<NIK>|<POSYANDU UPPER>" tiap baris berstatus "sekunder" dari
+     * berkas Selisih_* (anak diukur 2x sebulan). Kunci ini dipakai importer untuk
+     * mengosongkan NIK baris tsb tanpa menyentuh berkas .xlsx aslinya.
+     *
+     * @return array<string,bool>|null null bila berkas tak terbaca (sinyal gagal).
+     */
+    protected function parseSelisihSekunder(string $path): ?array
+    {
+        if (!is_file($path)) {
+            $this->error("Berkas selisih tidak ditemukan: {$path}");
+
+            return null;
+        }
+
+        $data = json_decode((string) file_get_contents($path), true);
+        if (!is_array($data) || empty($data['kasus_duplikasi'])) {
+            $this->error("Berkas selisih tidak valid / tanpa 'kasus_duplikasi': {$path}");
+
+            return null;
+        }
+
+        $keys = [];
+        foreach ($data['kasus_duplikasi'] as $kasus) {
+            $nik = trim((string) ($kasus['nik'] ?? ''));
+            foreach ($kasus['baris'] ?? [] as $baris) {
+                if (str_starts_with((string) ($baris['status'] ?? ''), 'sekunder') && $nik !== '') {
+                    $pos = strtoupper(trim((string) ($baris['posyandu'] ?? '')));
+                    $keys[$nik . '|' . $pos] = true;
+                }
+            }
+        }
+
+        return $keys;
     }
 }
