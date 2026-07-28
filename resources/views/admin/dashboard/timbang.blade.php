@@ -350,9 +350,9 @@
         <div><div class="tb-kpi__val tb-num"><span id="kpi-stunting">—</span><span class="tb-kpi__pct tb-num" id="pct-stunting"></span></div><div class="tb-kpi__lbl">Stunting</div><div class="tb-kpi__sub">TB/U &lt; -2SD</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
-    <div class="tb-kpi tb-kpi--click" data-kategori="gizi_kurang" role="button" tabindex="0" aria-label="Gizi kurang — buka daftar">
+    <div class="tb-kpi tb-kpi--click" data-kategori="wasting" role="button" tabindex="0" aria-label="Wasting — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">monitor_weight</span></div>
-        <div><div class="tb-kpi__val tb-num"><span id="kpi-gizi-kurang">—</span><span class="tb-kpi__pct tb-num" id="pct-gizi-kurang"></span></div><div class="tb-kpi__lbl">Wasting</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
+        <div><div class="tb-kpi__val tb-num"><span id="kpi-wasting">—</span><span class="tb-kpi__pct tb-num" id="pct-wasting"></span></div><div class="tb-kpi__lbl">Wasting</div><div class="tb-kpi__sub">BB/TB &lt;= -2SD</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
     <div class="tb-kpi tb-kpi--click" data-kategori="gizi_buruk" role="button" tabindex="0" aria-label="Gizi buruk — buka daftar">
@@ -623,7 +623,7 @@ function showError(id, label){
     }
 }
 function kpiFail(){
-    ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-gizi-kurang','kpi-gizi-buruk','kpi-underweight'].forEach(function(id){
+    ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-wasting','kpi-gizi-buruk','kpi-underweight'].forEach(function(id){
         var el = document.getElementById(id);
         if(el) el.textContent = '!';
     });
@@ -666,15 +666,14 @@ function loadGizi(){
     $.getJSON(API_GIZI+getParams(), function(d){
         // Persen dilebur ke kartu KPI (jumlah · persen)
         function setPct(id, v){ var el=document.getElementById(id); if(el) el.textContent = (v!==null && v!==undefined) ? '· '+v+'%' : ''; }
-        setPct('pct-stunting', d.stunting_pct);
-        setPct('pct-gizi-kurang', d.total>0 ? Math.round(d.gizi_kurang/d.total*1000)/10 : null);
+        setPct('pct-stunting',    d.stunting_pct);
+        setPct('pct-wasting',     d.wasting_pct);
         setPct('pct-gizi-buruk',  d.total>0 ? Math.round(d.gizi_buruk/d.total*1000)/10 : null);
-
         setPct('pct-underweight', d.underweight_pct);
 
         // KPI cards gizi
         document.getElementById('kpi-stunting').textContent     = num(d.stunting);
-        document.getElementById('kpi-gizi-kurang').textContent  = num(d.gizi_kurang);
+        document.getElementById('kpi-wasting').textContent      = num(d.wasting);
         document.getElementById('kpi-gizi-buruk').textContent   = num(d.gizi_buruk);
         document.getElementById('kpi-underweight').textContent  = num(d.underweight);
 
@@ -868,7 +867,7 @@ function escHtml(s){
 // ── DAFTAR MODAL (actionable list) ────────────────────────────
 var KAT_LABEL = {
     sasaran:'Balita Sasaran', hadir:'Hadir (Ditimbang)', stunting:'Stunting',
-    underweight:'Underweight', gizi_kurang:'Gizi Kurang', gizi_buruk:'Gizi Buruk', bb_tidak_naik:'BB Tidak Naik'
+    underweight:'Underweight', wasting:'Wasting', gizi_kurang:'Gizi Kurang', gizi_buruk:'Gizi Buruk', bb_tidak_naik:'BB Tidak Naik'
 };
 var daftarRows = [];
 

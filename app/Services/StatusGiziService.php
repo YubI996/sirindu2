@@ -194,6 +194,57 @@ class StatusGiziService
         return 'obese';
     }
 
+    // --- Klasifikasi PERSIS rumus e-PPGBM/Dinkes --------------------------------
+    //
+    // Dashboard Operasi Timbang harus mereproduksi COUNTIFS ekspor Dinkes, MURNI
+    // dari z-score tersimpan (TANPA recompute WHO lokal). Ambang mengikuti rumus
+    // resmi (batas "<= -2.01"/"<= -3.01" setara "< -2"/"< -3" untuk data 2 desimal):
+    //   - TB/U stunting     : -6.01 < z <= -2.01   (ADA batas bawah plausibilitas)
+    //   - BB/U underweight   :         z <= -2.01   (tanpa batas bawah)
+    //   - BB/TB wasting      :         z <= -2.01   (tanpa batas bawah)
+    // z null → null: sel z-score kosong tidak dihitung (persis COUNTIFS).
+
+    /**
+     * @return array{bb_u:?string,tb_u:?string,bb_tb:?string}
+     */
+    public function enumEppgbm(?float $zBbU, ?float $zTbU, ?float $zBbTb): array
+    {
+        return [
+            'bb_u'  => $this->eppgbmBb($zBbU),
+            'tb_u'  => $this->eppgbmTb($zTbU),
+            'bb_tb' => $this->eppgbmBbTb($zBbTb),
+        ];
+    }
+
+    private function eppgbmTb(?float $z): ?string
+    {
+        if ($z === null || $z <= -6.01) return null; // kosong / outlier implausibel
+        if ($z <= -3.01) return 'severely_stunted';
+        if ($z <= -2.01) return 'stunted';
+        if ($z <= 3.00)  return 'normal';
+        return 'tinggi';
+    }
+
+    private function eppgbmBb(?float $z): ?string
+    {
+        if ($z === null) return null;
+        if ($z <= -3.01) return 'severely_underweight';
+        if ($z <= -2.01) return 'underweight';
+        if ($z <= 1.00)  return 'normal';
+        return 'lebih';
+    }
+
+    private function eppgbmBbTb(?float $z): ?string
+    {
+        if ($z === null) return null;
+        if ($z <= -3.01) return 'severely_wasted';
+        if ($z <= -2.01) return 'wasted';
+        if ($z <= 1.00)  return 'normal';
+        if ($z <= 2.00)  return 'risiko_lebih';
+        if ($z <= 3.00)  return 'overweight';
+        return 'obese';
+    }
+
     // --- Label manusiawi (selaras tampilan show anak) ---------------------------
 
     public static function labelImt(?string $enum, int $bln): string

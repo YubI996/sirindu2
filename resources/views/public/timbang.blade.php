@@ -390,7 +390,7 @@
                 </div>
                 <div class="tb-kpi">
                     <div class="tb-kpi__icon tb-kpi__icon--amber"><span class="material-symbols-outlined">monitor_weight</span></div>
-                    <div><div class="tb-kpi__val tb-num"><span id="kpi-gizi-kurang">—</span><span class="tb-kpi__pct tb-num" id="pct-gizi-kurang"></span></div><div class="tb-kpi__lbl">Wasting</div><div class="tb-kpi__sub">BB/TB -2,01 s.d. -3,00 SD</div></div>
+                    <div><div class="tb-kpi__val tb-num"><span id="kpi-wasting">—</span><span class="tb-kpi__pct tb-num" id="pct-wasting"></span></div><div class="tb-kpi__lbl">Wasting</div><div class="tb-kpi__sub">BB/TB &lt;= -2SD</div></div>
                 </div>
                 <div class="tb-kpi">
                     <div class="tb-kpi__icon tb-kpi__icon--red"><span class="material-symbols-outlined">emergency</span></div>
@@ -556,7 +556,7 @@
         }
     }
     function kpiFail(){
-        ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-gizi-kurang','kpi-gizi-buruk','kpi-underweight'].forEach(function(id){
+        ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-wasting','kpi-gizi-buruk','kpi-underweight'].forEach(function(id){
             var el = document.getElementById(id);
             if(el) el.textContent = '!';
         });
@@ -593,13 +593,12 @@
         $.getJSON(API_GIZI+getParams(), function(d){
             function setPct(id, v){ var el=document.getElementById(id); if(el) el.textContent = (v!==null && v!==undefined) ? '· '+v+'%' : ''; }
             setPct('pct-stunting', d.stunting_pct);
-            setPct('pct-gizi-kurang', d.total>0 ? Math.round(d.gizi_kurang/d.total*1000)/10 : null);
+            setPct('pct-wasting',     d.wasting_pct);
             setPct('pct-gizi-buruk',  d.total>0 ? Math.round(d.gizi_buruk/d.total*1000)/10 : null);
-
             setPct('pct-underweight', d.underweight_pct);
 
             document.getElementById('kpi-stunting').textContent     = num(d.stunting);
-            document.getElementById('kpi-gizi-kurang').textContent  = num(d.gizi_kurang);
+            document.getElementById('kpi-wasting').textContent      = num(d.wasting);
             document.getElementById('kpi-gizi-buruk').textContent   = num(d.gizi_buruk);
             document.getElementById('kpi-underweight').textContent  = num(d.underweight);
 

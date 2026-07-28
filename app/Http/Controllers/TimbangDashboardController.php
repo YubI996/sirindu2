@@ -151,19 +151,22 @@ class TimbangDashboardController extends Controller
         ];
 
         foreach ($measurements as $m) {
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
-                'bb_u'  => $m->zscore_bb_u,
-                'tb_u'  => $m->zscore_pb_u,
-                'bb_tb' => $m->zscore_bb_pb,
-            ]);
-            if ($g['enum']['bb_tb'] !== null) $results['bb_tb'][$bbTbMap[$g['enum']['bb_tb']]]++;
-            if ($g['enum']['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
-            if ($g['enum']['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
+            // Klasifikasi PERSIS rumus Dinkes, murni dari z-score tersimpan.
+            $g = $this->statusGizi->enumEppgbm(
+                $this->zval($m->zscore_bb_u),
+                $this->zval($m->zscore_pb_u),
+                $this->zval($m->zscore_bb_pb),
+            );
+            if ($g['bb_tb'] !== null) $results['bb_tb'][$bbTbMap[$g['bb_tb']]]++;
+            if ($g['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['bb_u']]]++;
+            if ($g['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['tb_u']]]++;
         }
 
         $total = count($measurements);
         $stunting = $results['tb_u']['sangat_pendek'] + $results['tb_u']['pendek'];
         $underweight = $results['bb_u']['kurang'] + $results['bb_u']['sangat_kurang'];
+        // Wasting Dinkes = SELURUH BB/TB <= -2SD (moderat + buruk).
+        $wasting = $results['bb_tb']['kurang'] + $results['bb_tb']['buruk'];
 
         return response()->json([
             'total'           => $total,
@@ -174,6 +177,8 @@ class TimbangDashboardController extends Controller
             'stunting_pct'    => $total > 0 ? round($stunting / $total * 100, 1) : 0,
             'underweight'     => $underweight,
             'underweight_pct' => $total > 0 ? round($underweight / $total * 100, 1) : 0,
+            'wasting'         => $wasting,
+            'wasting_pct'     => $total > 0 ? round($wasting / $total * 100, 1) : 0,
             'gizi_kurang'     => $results['bb_tb']['kurang'],
             'gizi_buruk'      => $results['bb_tb']['buruk'],
         ]);
@@ -520,24 +525,26 @@ class TimbangDashboardController extends Controller
                 continue;
             }
             if ($m->bln > 60 || $m->bb <= 0 || $m->tb <= 0) continue;
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
-                'bb_u'  => $m->zscore_bb_u,
-                'tb_u'  => $m->zscore_pb_u,
-                'bb_tb' => $m->zscore_bb_pb,
-            ]);
+            // Klasifikasi PERSIS rumus Dinkes, murni dari z-score tersimpan.
+            $g = $this->statusGizi->enumEppgbm(
+                $this->zval($m->zscore_bb_u),
+                $this->zval($m->zscore_pb_u),
+                $this->zval($m->zscore_bb_pb),
+            );
             $hit = match ($kategori) {
-                'stunting'    => in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true),
-                'underweight' => in_array($g['enum']['bb_u'], ['severely_underweight', 'underweight'], true),
-                'gizi_kurang' => $g['enum']['bb_tb'] === 'wasted',
-                'gizi_buruk'  => $g['enum']['bb_tb'] === 'severely_wasted',
+                'stunting'    => in_array($g['tb_u'], ['severely_stunted', 'stunted'], true),
+                'underweight' => in_array($g['bb_u'], ['severely_underweight', 'underweight'], true),
+                'wasting'     => in_array($g['bb_tb'], ['wasted', 'severely_wasted'], true),
+                'gizi_kurang' => $g['bb_tb'] === 'wasted',
+                'gizi_buruk'  => $g['bb_tb'] === 'severely_wasted',
                 default       => false,
             };
             if ($hit) {
                 $matchIds[] = $m->id_anak;
                 $label = match ($kategori) {
-                    'stunting'    => $g['tb'],
-                    'underweight' => $g['bb'],
-                    default       => $g['bt'],
+                    'stunting'    => StatusGiziService::labelTb($g['tb_u']),
+                    'underweight' => StatusGiziService::labelBb($g['bb_u']),
+                    default       => StatusGiziService::labelBbTb($g['bb_tb']),
                 };
                 $detail[$m->id_anak] = ['indikator' => $label, 'tgl' => $m->tgl_kunjungan];
             }
@@ -597,9 +604,16 @@ class TimbangDashboardController extends Controller
             'hadir'         => 'Hadir (Ditimbang)',
             'stunting'      => 'Stunting',
             'underweight'   => 'Underweight',
+            'wasting'       => 'Wasting',
             'gizi_kurang'   => 'Gizi Kurang',
             'gizi_buruk'    => 'Gizi Buruk',
             'bb_tidak_naik' => 'BB Tidak Naik',
         ][$kategori] ?? ucfirst($kategori);
+    }
+
+    /** Nilai z-score DB → ?float (kolom bisa null / string desimal). */
+    private function zval($v): ?float
+    {
+        return ($v === null || $v === '') ? null : (float) $v;
     }
 }
