@@ -304,7 +304,7 @@ class TimbangDashboardController extends Controller
 
     /**
      * Daftar nama anak yang dapat ditindak untuk satu kategori kartu.
-     * kategori: sasaran|hadir|stunting|gizi_kurang|gizi_buruk|bb_tidak_naik
+     * kategori: sasaran|hadir|stunting|underweight|gizi_kurang|gizi_buruk|bb_tidak_naik
      */
     public function daftar(Request $request): JsonResponse
     {
@@ -527,6 +527,7 @@ class TimbangDashboardController extends Controller
             ]);
             $hit = match ($kategori) {
                 'stunting'    => in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true),
+                'underweight' => in_array($g['enum']['bb_u'], ['severely_underweight', 'underweight'], true),
                 'gizi_kurang' => $g['enum']['bb_tb'] === 'wasted',
                 'gizi_buruk'  => $g['enum']['bb_tb'] === 'severely_wasted',
                 default       => false,
@@ -535,6 +536,7 @@ class TimbangDashboardController extends Controller
                 $matchIds[] = $m->id_anak;
                 $label = match ($kategori) {
                     'stunting'    => $g['tb'],
+                    'underweight' => $g['bb'],
                     default       => $g['bt'],
                 };
                 $detail[$m->id_anak] = ['indikator' => $label, 'tgl' => $m->tgl_kunjungan];
@@ -594,6 +596,7 @@ class TimbangDashboardController extends Controller
             'sasaran'       => 'Balita Sasaran',
             'hadir'         => 'Hadir (Ditimbang)',
             'stunting'      => 'Stunting',
+            'underweight'   => 'Underweight',
             'gizi_kurang'   => 'Gizi Kurang',
             'gizi_buruk'    => 'Gizi Buruk',
             'bb_tidak_naik' => 'BB Tidak Naik',

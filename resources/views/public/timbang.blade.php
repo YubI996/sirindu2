@@ -398,7 +398,7 @@
                 </div>
                 <div class="tb-kpi">
                     <div class="tb-kpi__icon tb-kpi__icon--orange"><span class="material-symbols-outlined">trending_down</span></div>
-                    <div><div class="tb-kpi__val tb-num" id="kpi-bbtn">—</div><div class="tb-kpi__lbl">Underweight</div><div class="tb-kpi__sub">2 kunjungan / NTOB</div></div>
+                    <div><div class="tb-kpi__val tb-num"><span id="kpi-underweight">—</span><span class="tb-kpi__pct tb-num" id="pct-underweight"></span></div><div class="tb-kpi__lbl">Underweight</div><div class="tb-kpi__sub">BB/U &lt; -2SD</div></div>
                 </div>
             </div>
 
@@ -556,7 +556,7 @@
         }
     }
     function kpiFail(){
-        ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-gizi-kurang','kpi-gizi-buruk','kpi-bbtn'].forEach(function(id){
+        ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-gizi-kurang','kpi-gizi-buruk','kpi-underweight'].forEach(function(id){
             var el = document.getElementById(id);
             if(el) el.textContent = '!';
         });
@@ -585,7 +585,6 @@
             document.getElementById('kpi-sasaran').textContent = num(d.total_anak);
             document.getElementById('kpi-hadir').textContent   = num(d.total_ditimbang);
             document.getElementById('kpi-coverage').innerHTML  = 'coverage <strong style="color:oklch(0.38 0.13 145)">'+pct(d.coverage)+'</strong>';
-            document.getElementById('kpi-bbtn').textContent    = num(d.bb_tidak_naik);
         }).fail(function(xhr){ kpiFail(); fail('ringkasan')(xhr); });
     }
 
@@ -597,9 +596,12 @@
             setPct('pct-gizi-kurang', d.total>0 ? Math.round(d.gizi_kurang/d.total*1000)/10 : null);
             setPct('pct-gizi-buruk',  d.total>0 ? Math.round(d.gizi_buruk/d.total*1000)/10 : null);
 
-            document.getElementById('kpi-stunting').textContent    = num(d.stunting);
-            document.getElementById('kpi-gizi-kurang').textContent = num(d.gizi_kurang);
-            document.getElementById('kpi-gizi-buruk').textContent  = num(d.gizi_buruk);
+            setPct('pct-underweight', d.underweight_pct);
+
+            document.getElementById('kpi-stunting').textContent     = num(d.stunting);
+            document.getElementById('kpi-gizi-kurang').textContent  = num(d.gizi_kurang);
+            document.getElementById('kpi-gizi-buruk').textContent   = num(d.gizi_buruk);
+            document.getElementById('kpi-underweight').textContent  = num(d.underweight);
 
             destroyChart('chart-tbu');
             var tbu = d.tb_u;

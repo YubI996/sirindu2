@@ -360,9 +360,9 @@
         <div><div class="tb-kpi__val tb-num"><span id="kpi-gizi-buruk">—</span><span class="tb-kpi__pct tb-num" id="pct-gizi-buruk"></span></div><div class="tb-kpi__lbl">Gizi Buruk</div><div class="tb-kpi__sub">BB/TB &lt; -3SD</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
-    <div class="tb-kpi tb-kpi--click" data-kategori="bb_tidak_naik" role="button" tabindex="0" aria-label="BB tidak naik — buka daftar">
+    <div class="tb-kpi tb-kpi--click" data-kategori="underweight" role="button" tabindex="0" aria-label="Underweight — buka daftar">
         <div class="tb-kpi__icon tb-kpi__icon--orange"><span class="material-symbols-outlined">trending_down</span></div>
-        <div><div class="tb-kpi__val tb-num" id="kpi-bbtn">—</div><div class="tb-kpi__lbl">Underweight</div><div class="tb-kpi__sub">2 kunjungan / NTOB</div></div>
+        <div><div class="tb-kpi__val tb-num"><span id="kpi-underweight">—</span><span class="tb-kpi__pct tb-num" id="pct-underweight"></span></div><div class="tb-kpi__lbl">Underweight</div><div class="tb-kpi__sub">BB/U &lt; -2SD</div></div>
         <span class="tb-kpi__go material-symbols-outlined" aria-hidden="true">arrow_forward</span>
     </div>
 </div>
@@ -623,7 +623,7 @@ function showError(id, label){
     }
 }
 function kpiFail(){
-    ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-gizi-kurang','kpi-gizi-buruk','kpi-bbtn'].forEach(function(id){
+    ['kpi-sasaran','kpi-hadir','kpi-stunting','kpi-gizi-kurang','kpi-gizi-buruk','kpi-underweight'].forEach(function(id){
         var el = document.getElementById(id);
         if(el) el.textContent = '!';
     });
@@ -658,7 +658,6 @@ function loadRingkasan(){
         document.getElementById('kpi-sasaran').textContent = num(d.total_anak);
         document.getElementById('kpi-hadir').textContent   = num(d.total_ditimbang);
         document.getElementById('kpi-coverage').innerHTML  = 'coverage <strong style="color:oklch(0.38 0.13 145)">'+pct(d.coverage)+'</strong>';
-        document.getElementById('kpi-bbtn').textContent    = num(d.bb_tidak_naik);
     }).fail(function(xhr){ kpiFail(); fail('ringkasan')(xhr); });
 }
 
@@ -671,10 +670,13 @@ function loadGizi(){
         setPct('pct-gizi-kurang', d.total>0 ? Math.round(d.gizi_kurang/d.total*1000)/10 : null);
         setPct('pct-gizi-buruk',  d.total>0 ? Math.round(d.gizi_buruk/d.total*1000)/10 : null);
 
+        setPct('pct-underweight', d.underweight_pct);
+
         // KPI cards gizi
-        document.getElementById('kpi-stunting').textContent    = num(d.stunting);
-        document.getElementById('kpi-gizi-kurang').textContent = num(d.gizi_kurang);
-        document.getElementById('kpi-gizi-buruk').textContent  = num(d.gizi_buruk);
+        document.getElementById('kpi-stunting').textContent     = num(d.stunting);
+        document.getElementById('kpi-gizi-kurang').textContent  = num(d.gizi_kurang);
+        document.getElementById('kpi-gizi-buruk').textContent   = num(d.gizi_buruk);
+        document.getElementById('kpi-underweight').textContent  = num(d.underweight);
 
         // TB/U donut
         destroyChart('chart-tbu');
@@ -866,7 +868,7 @@ function escHtml(s){
 // ── DAFTAR MODAL (actionable list) ────────────────────────────
 var KAT_LABEL = {
     sasaran:'Balita Sasaran', hadir:'Hadir (Ditimbang)', stunting:'Stunting',
-    gizi_kurang:'Gizi Kurang', gizi_buruk:'Gizi Buruk', bb_tidak_naik:'BB Tidak Naik'
+    underweight:'Underweight', gizi_kurang:'Gizi Kurang', gizi_buruk:'Gizi Buruk', bb_tidak_naik:'BB Tidak Naik'
 };
 var daftarRows = [];
 

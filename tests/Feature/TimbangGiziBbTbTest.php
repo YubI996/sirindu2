@@ -109,4 +109,44 @@ class TimbangGiziBbTbTest extends TestCase
         $this->assertSame(0, $data['gizi_buruk']);
         $this->assertSame(1, $data['bb_tb']['normal']);
     }
+
+    /**
+     * Kartu "Underweight" (BB/U < -2SD) — daftar modalnya harus memuat HANYA
+     * anak dgn z-score BB/U di bawah -2, memakai z-score tersimpan.
+     */
+    public function test_daftar_underweight_hanya_memuat_anak_bb_u_di_bawah_min2sd(): void
+    {
+        $superAdmin = User::factory()->create(['type' => 0]);
+
+        // Underweight: zscore_bb_u = -2.5 (< -2).
+        $uw = Anak::create([
+            'nama' => 'Balita Underweight', 'nik' => '3201000000009101', 'jk' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+        ]);
+        DataAnak::create([
+            'id_anak' => $uw->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'zscore_bb_u' => -2.5, 'zscore_pb_u' => 0.0, 'zscore_bb_pb' => 0.0,
+        ]);
+
+        // BB/U normal: zscore_bb_u = -1.0 → tak boleh muncul.
+        $ok = Anak::create([
+            'nama' => 'Balita Normal', 'nik' => '3201000000009102', 'jk' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+        ]);
+        DataAnak::create([
+            'id_anak' => $ok->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'zscore_bb_u' => -1.0, 'zscore_pb_u' => 0.0, 'zscore_bb_pb' => 0.0,
+        ]);
+
+        $data = $this->actingAs($superAdmin)
+            ->getJson(route('admin.timbang.daftar', ['kategori' => 'underweight']))
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertSame('underweight', $data['kategori']);
+        $this->assertCount(1, $data['rows']);
+        $this->assertSame('3201000000009101', $data['rows'][0]['nik']);
+    }
 }
