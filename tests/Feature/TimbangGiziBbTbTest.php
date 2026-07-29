@@ -210,6 +210,60 @@ class TimbangGiziBbTbTest extends TestCase
         $this->assertSame(1, $data['gizi_buruk']);   // -3.5
     }
 
+    /**
+     * Anak SD (>60 bln) TIDAK ikut dihitung di dashboard OT (hybrid):
+     *  - sasaran/ringkasan pakai umur SAAT INI dari tgl_lahir,
+     *  - kunjungan/gizi pakai umur saat ditimbang (da.bln).
+     */
+    public function test_anak_sd_di_atas_60_bulan_dikeluarkan_dari_dashboard(): void
+    {
+        $superAdmin = User::factory()->create(['type' => 0]);
+
+        // Balita: umur skrg ~24 bln, ditimbang pada bln=24.
+        $balita = Anak::create([
+            'nama' => 'Balita Aktif', 'nik' => '3201000000009501', 'jk' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(24)->toDateString(), 'status' => 1,
+        ]);
+        DataAnak::create([
+            'id_anak' => $balita->id, 'tgl_kunjungan' => now()->toDateString(), 'bln' => 24,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'zscore_bb_u' => -2.5, 'zscore_pb_u' => -2.5, 'zscore_bb_pb' => -2.5,
+        ]);
+
+        // Anak SD: umur skrg ~90 bln, ditimbang pada bln=90. z-score sengaja
+        // ekstrem — kalau bocor ikut dihitung, angka kartu pasti berubah.
+        $sd = Anak::create([
+            'nama' => 'Anak SD', 'nik' => '3201000000009502', 'jk' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(90)->toDateString(), 'status' => 1,
+        ]);
+        DataAnak::create([
+            'id_anak' => $sd->id, 'tgl_kunjungan' => now()->toDateString(), 'bln' => 90,
+            'posisi' => 'berdiri', 'tb' => 110, 'bb' => 15, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'zscore_bb_u' => -3.0, 'zscore_pb_u' => -3.0, 'zscore_bb_pb' => -3.0,
+        ]);
+
+        // Kartu gizi: hanya balita yg dihitung.
+        $gizi = $this->actingAs($superAdmin)
+            ->getJson(route('admin.timbang.gizi'))->assertStatus(200)->json();
+        $this->assertSame(1, $gizi['total']);
+        $this->assertSame(1, $gizi['stunting']);
+        $this->assertSame(1, $gizi['underweight']);
+        $this->assertSame(1, $gizi['wasting']);
+
+        // Ringkasan: sasaran & kunjungan hanya balita.
+        $ring = $this->actingAs($superAdmin)
+            ->getJson(route('admin.timbang.ringkasan'))->assertStatus(200)->json();
+        $this->assertSame(1, $ring['total_anak']);
+        $this->assertSame(1, $ring['total_ditimbang']);
+        $this->assertSame(1, $ring['total_kunjungan']);
+
+        // Daftar sasaran: anak SD tak muncul.
+        $daftar = $this->actingAs($superAdmin)
+            ->getJson(route('admin.timbang.daftar', ['kategori' => 'sasaran']))->assertStatus(200)->json();
+        $this->assertCount(1, $daftar['rows']);
+        $this->assertSame('3201000000009501', $daftar['rows'][0]['nik']);
+    }
+
     /** Baris tanpa z-score tersimpan TIDAK dihitung (persis COUNTIFS Dinkes). */
     public function test_baris_zscore_kosong_tidak_dihitung(): void
     {

@@ -191,7 +191,8 @@ class TimbangDashboardController extends Controller
         $kunjunganQ = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->selectRaw("DATE_FORMAT(da.tgl_kunjungan, '%Y-%m') as bulan, COUNT(*) as total")
-            ->whereNotNull('da.tgl_kunjungan');
+            ->whereNotNull('da.tgl_kunjungan')
+            ->where('da.bln', '<=', 60); // hanya kunjungan balita
         if ($f['tahun']) {
             $kunjunganQ->whereYear('da.tgl_kunjungan', $f['tahun']);
         } else {
@@ -223,12 +224,14 @@ class TimbangDashboardController extends Controller
         $totalQ = DB::table('anak as a')
             ->join('kelurahan', 'a.id_kel', '=', 'kelurahan.id')
             ->selectRaw('kelurahan.id, kelurahan.name as nama, COUNT(DISTINCT a.id) as total');
+        $this->applyBalita($totalQ, 'a'); // denominator = balita saja
         $this->applyWilayah($totalQ, $f);
         $totalPerKel = $totalQ->groupBy('kelurahan.id', 'kelurahan.name')->get()->keyBy('id');
 
         $timbangQ = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->join('kelurahan as k', 'a.id_kel', '=', 'k.id')
+            ->where('da.bln', '<=', 60) // hanya kunjungan balita
             ->selectRaw('k.id, k.name as nama, COUNT(DISTINCT da.id_anak) as ditimbang');
         if ($f['tahun']) $timbangQ->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($timbangQ, $f);
@@ -370,9 +373,28 @@ class TimbangDashboardController extends Controller
         if ($f['posyandu']) $q->where("$a.id_posyandu", $f['posyandu']);
     }
 
+    /**
+     * Batasi ke balita ≤60 bln memakai umur SAAT INI dari tgl_lahir — untuk
+     * hitungan yang bersumber tabel anak (sasaran/cakupan), yang tak punya
+     * kolom umur-saat-ditimbang. Mengeluarkan anak SD (>60 bln).
+     *
+     * Anak tanpa tgl_lahir tetap disertakan: umurnya tak bisa dibuktikan >60
+     * bln, jadi jangan sampai keliru membuang balita yg tgl lahirnya kosong.
+     * Untuk kartu gizi & pengukuran, batas 60 bln memakai da.bln (umur saat
+     * ditimbang) supaya tetap persis cocok ekspor Dinkes — lihat latestVisitQuery.
+     */
+    private function applyBalita($q, string $a = 'a'): void
+    {
+        $q->where(function ($w) use ($a) {
+            $w->whereNull("$a.tgl_lahir")
+              ->orWhereRaw("TIMESTAMPDIFF(MONTH, $a.tgl_lahir, CURDATE()) <= 60");
+        });
+    }
+
     private function baseQuery(array $f)
     {
-        $q = DB::table('data_anak as da')->join('anak as a', 'da.id_anak', '=', 'a.id');
+        $q = DB::table('data_anak as da')->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->where('da.bln', '<=', 60); // hanya kunjungan balita; kunjungan anak SD dikecualikan
         if ($f['tahun']) $q->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($q, $f);
         return $q;
@@ -381,6 +403,7 @@ class TimbangDashboardController extends Controller
     private function totalAnakQuery(array $f): int
     {
         $q = Anak::query();
+        $this->applyBalita($q, 'anak'); // sasaran balita saja (≤60 bln), tanpa anak SD
         if ($f['kec'])      $q->where('id_kec', $f['kec']);
         if ($f['kel'])      $q->where('id_kel', $f['kel']);
         if ($f['rt'])       $q->where('id_rt', $f['rt']);
@@ -393,10 +416,14 @@ class TimbangDashboardController extends Controller
      */
     private function latestVisitQuery(array $f)
     {
+        // Kunjungan TERAKHIR dihitung di antara kunjungan balita saja (da.bln<=60):
+        // bila kelak anak yg dulu balita punya kunjungan usia SD, dashboard tetap
+        // memakai kunjungan balita terakhirnya — kartu gizi tak diam-diam bergeser.
         $maxTgl = DB::table('data_anak as dm')
             ->join('anak as am', 'dm.id_anak', '=', 'am.id')
             ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
-            ->whereNotNull('dm.tgl_kunjungan');
+            ->whereNotNull('dm.tgl_kunjungan')
+            ->where('dm.bln', '<=', 60);
         if ($f['tahun']) $maxTgl->whereYear('dm.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($maxTgl, $f, 'am');
         $maxTgl->groupBy('dm.id_anak');
@@ -406,6 +433,7 @@ class TimbangDashboardController extends Controller
                 $join->on('m.id_anak', '=', 'da.id_anak')
                      ->on('m.max_tgl', '=', 'da.tgl_kunjungan');
             })
+            ->where('da.bln', '<=', 60)
             ->selectRaw('MAX(da.id) as max_id')
             ->groupBy('da.id_anak');
     }
@@ -435,7 +463,8 @@ class TimbangDashboardController extends Controller
         $q = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->whereNotNull('da.tgl_kunjungan')
-            ->where('da.bb', '>', 0);
+            ->where('da.bb', '>', 0)
+            ->where('da.bln', '<=', 60); // hanya kunjungan balita
         if ($f['tahun']) $q->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($q, $f);
 
@@ -499,6 +528,7 @@ class TimbangDashboardController extends Controller
         if ($kategori === 'sasaran') {
             $ids = (function () use ($f) {
                 $q = Anak::query();
+                $this->applyBalita($q, 'anak'); // sasaran balita saja (≤60 bln)
                 if ($f['kec'])      $q->where('id_kec', $f['kec']);
                 if ($f['kel'])      $q->where('id_kel', $f['kel']);
                 if ($f['rt'])       $q->where('id_rt', $f['rt']);
