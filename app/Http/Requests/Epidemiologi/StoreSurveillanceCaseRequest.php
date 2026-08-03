@@ -193,7 +193,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'alasan_imunisasi_tidak_lengkap' => 'nullable|string',
 
             // Category F: Laboratory
-            'status_lab' => 'nullable|in:belum_diperiksa,proses,positif,negatif,diperiksa_lab,tidak_diperiksa_lab',
+            'status_lab' => 'nullable|in:diperiksa,tidak',
             'tanggal_pengambilan_spesimen' => 'nullable|date|after_or_equal:tanggal_onset|before_or_equal:today',
             'jenis_spesimen' => 'nullable|string|max:100',
             'hasil_lab' => 'nullable|string',

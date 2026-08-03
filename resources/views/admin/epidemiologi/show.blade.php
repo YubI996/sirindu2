@@ -130,7 +130,7 @@
         <div class="col-md-3 mb-3">
             @php
                 $labStatus = match($case->status_lab) {
-                    'positif' => 'danger', 'negatif' => 'success', default => 'info'
+                    'diperiksa' => 'success', default => 'secondary'
                 };
             @endphp
             <div class="card stat-card status-{{ $labStatus }} h-100">
@@ -402,10 +402,8 @@
                         <dd class="col-sm-9">
                             @php
                                 $labBadge = match($case->status_lab) {
-                                    'positif'          => 'badge-accessible-danger',
-                                    'negatif'          => 'badge-accessible-success',
-                                    'belum_diperiksa'  => 'badge-accessible-secondary',
-                                    default            => 'badge-accessible-info',
+                                    'diperiksa' => 'badge-accessible-success',
+                                    default     => 'badge-accessible-secondary',
                                 };
                             @endphp
                             <span class="badge badge-status {{ $labBadge }}">{{ ucfirst(str_replace('_', ' ', $case->status_lab)) }}</span>

@@ -2,15 +2,11 @@
 <div class="row">
     <div class="col-md-4">
         <div class="form-group">
-            <label>Status Pemeriksaan Lab</label>
+            <label>Status PL (Pemeriksaan Lab)</label>
             <select name="status_lab" id="status_lab" class="form-control">
                 <option value="">-- Pilih --</option>
-                <option value="diperiksa_lab"       {{ old('status_lab', $case->status_lab ?? '') == 'diperiksa_lab'       ? 'selected' : '' }}>Diperiksa Lab</option>
-                <option value="tidak_diperiksa_lab" {{ old('status_lab', $case->status_lab ?? '') == 'tidak_diperiksa_lab' ? 'selected' : '' }}>Tidak Diperiksa Lab</option>
-                <option value="belum_diperiksa"     {{ old('status_lab', $case->status_lab ?? '') == 'belum_diperiksa'     ? 'selected' : '' }}>Belum Diperiksa</option>
-                <option value="proses"              {{ old('status_lab', $case->status_lab ?? '') == 'proses'              ? 'selected' : '' }}>Dalam Proses</option>
-                <option value="positif"             {{ old('status_lab', $case->status_lab ?? '') == 'positif'             ? 'selected' : '' }}>Positif</option>
-                <option value="negatif"             {{ old('status_lab', $case->status_lab ?? '') == 'negatif'             ? 'selected' : '' }}>Negatif</option>
+                <option value="diperiksa" {{ old('status_lab', $case->status_lab ?? '') == 'diperiksa' ? 'selected' : '' }}>Diperiksa</option>
+                <option value="tidak"     {{ old('status_lab', $case->status_lab ?? '') == 'tidak'     ? 'selected' : '' }}>Tidak</option>
             </select>
             {{-- Peringatan saja, tidak menghalangi submit (lihat catatan di bawah). --}}
             <div id="labIncompleteWarning" class="alert alert-warning mt-2 mb-0 py-2 px-3" style="display:none;">
@@ -210,7 +206,7 @@ $(document).ready(function() {
     // gagal senyap karena field acuannya sudah tidak ada di form (2026-07-23).
     function toggleLabWarning() {
         var status = $('#status_lab').val();
-        var final  = (status === 'positif' || status === 'negatif');
+        var final  = (status === 'diperiksa');
         var adaTanggal = false;
 
         $('#spesimenList input[name$="[tanggal_ambil_spesimen]"]').each(function() {

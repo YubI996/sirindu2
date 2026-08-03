@@ -373,7 +373,7 @@
                 <div class="col-6">
                     <div class="field">
                         <div class="field-label">Status Lab</div>
-                        <div class="field-value"><span class="badge badge-{{ $case->status_lab == 'positif' ? 'danger' : ($case->status_lab == 'negatif' ? 'success' : 'secondary') }}">{{ ucfirst(str_replace('_', ' ', $case->status_lab)) }}</span></div>
+                        <div class="field-value"><span class="badge badge-{{ $case->status_lab == 'diperiksa' ? 'success' : 'secondary' }}">{{ ucfirst(str_replace('_', ' ', $case->status_lab)) }}</span></div>
                     </div>
                     <div class="field">
                         <div class="field-label">Tanggal Pengambilan Spesimen</div>
