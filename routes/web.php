@@ -285,7 +285,9 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         /*------------------------------------------
         PD3I Dashboard (super-admin / Dinas Kesehatan)
         --------------------------------------------*/
-        Route::prefix('pd3i-dashboard/')->middleware('module.role:superadmin')->group(function () {
+        // Dasbor PD3I dibuka untuk semua pengguna modul (admin + faskes) — data
+        // tetap city-wide untuk semua peran (menggantikan submenu Peta Sebaran).
+        Route::prefix('pd3i-dashboard/')->group(function () {
             Route::get('/', [App\Http\Controllers\Pd3iDashboardController::class, 'index'])
                  ->name('admin.pd3i.dashboard');
             Route::get('api/kinerja', [App\Http\Controllers\Pd3iDashboardController::class, 'kinerja'])
