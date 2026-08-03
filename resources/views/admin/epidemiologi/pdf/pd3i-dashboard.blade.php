@@ -256,7 +256,7 @@ tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
                     <tr>
                         <td>{{ $afp['total'] ?? 0 }}</td>
                         <td>{{ $afp['confirmed'] ?? 0 }}</td>
-                        <td class="text-center text-muted">–</td>
+                        <td class="text-center">{{ isset($afp['npafp_rate']) && $afp['npafp_rate'] !== null ? number_format($afp['npafp_rate'], 2, ',', '.') : '–' }}</td>
                     </tr>
                 </tbody>
             </table>

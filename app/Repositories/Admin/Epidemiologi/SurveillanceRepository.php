@@ -616,11 +616,13 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         // ===== AFP/Polio (id=3) =====
         $afp = (clone $base)->where('id_jenis_kasus', 3);
         $afpTotal = (clone $afp)->count();
+        // Non-Polio AFP rate: pembilang = kasus AFP yang diselidiki lalu discarded (bukan polio).
+        $afpDiscarded = (clone $afp)->where('status_kasus', 'discarded')->count();
         $afpData = [
             'total'      => $afpTotal,
             'confirmed'  => (clone $afp)->where('status_kasus', 'confirmed')->count(),
             'npafp_rate' => $pendudukBawah15 > 0
-                            ? round($afpTotal / $pendudukBawah15 * 100000, 2)
+                            ? round($afpDiscarded / $pendudukBawah15 * 100000, 2)
                             : null,
         ];
 
