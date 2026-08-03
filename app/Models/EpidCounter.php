@@ -85,4 +85,37 @@ class EpidCounter extends Model
 
         return (int) ($row->maks ?? 0);
     }
+
+    /**
+     * Uraikan no_registrasi resmi menjadi tahun + prefix.
+     * Format: `[PREFIX]-1710[YY][NNN]` atau `1710[YY][NNN]` (AFP/Polio tanpa prefix).
+     * Kembalikan null untuk nomor legacy/non-format (mis. "KTM9").
+     *
+     * @return array{tahun:int, prefix:string}|null
+     */
+    public static function parseNoRegistrasi(string $noReg): ?array
+    {
+        if (preg_match('/^([A-Z]{1,3})-1710(\d{2})\d{3}$/', $noReg, $m)) {
+            return ['tahun' => 2000 + (int) $m[2], 'prefix' => $m[1]];
+        }
+        if (preg_match('/^1710(\d{2})\d{3}$/', $noReg, $m)) {
+            return ['tahun' => 2000 + (int) $m[1], 'prefix' => ''];
+        }
+        return null;
+    }
+
+    /**
+     * Selaraskan counter ke nomor tertinggi yang MASIH terpakai untuk prefix+tahun.
+     *
+     * Dipanggil setelah penghapusan kasus: bila yang dihapus adalah nomor terakhir,
+     * counter turun sehingga nomor itu bisa dipakai lagi (tak melompat). TIDAK pernah
+     * mengisi gap di tengah — nomor bisa milik register resmi/import.
+     */
+    public static function syncToUsed(int $tahun, string $prefix): void
+    {
+        static::updateOrCreate(
+            ['tahun' => $tahun, 'prefix' => $prefix],
+            ['last_sequence' => static::maxSequenceTerpakai($tahun, $prefix)]
+        );
+    }
 }

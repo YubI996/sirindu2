@@ -207,7 +207,18 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     public function deleteCase($id)
     {
         $case = SurveillanceCase::findOrFail($id);
-        return $case->delete();
+        $noReg = (string) $case->no_registrasi;
+
+        $result = $case->delete();
+
+        // Setelah hapus: turunkan counter ke nomor tertinggi yang masih ada, agar
+        // menghapus kasus terakhir membebaskan nomornya (tak melompat). Gap tengah
+        // tidak diisi otomatis — nomornya bisa milik register resmi/import.
+        if ($parsed = EpidCounter::parseNoRegistrasi($noReg)) {
+            EpidCounter::syncToUsed($parsed['tahun'], $parsed['prefix']);
+        }
+
+        return $result;
     }
 
     /**

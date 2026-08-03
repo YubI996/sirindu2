@@ -127,4 +127,33 @@ class EpidCounterTest extends TestCase
         $this->assertSame(2, EpidCounter::getNextSequence(2026, 'P'));
         $this->assertSame(3, EpidCounter::getNextSequence(2026, 'P'));
     }
+
+    public function test_hapus_kasus_terakhir_membebaskan_nomornya(): void
+    {
+        // Tahun bersih: 001,002,003 diinput lewat generator.
+        $this->assertSame(1, EpidCounter::getNextSequence(2026, 'C'));
+        $this->buatKasus('C-171026001');
+        $this->assertSame(2, EpidCounter::getNextSequence(2026, 'C'));
+        $this->buatKasus('C-171026002');
+        $this->assertSame(3, EpidCounter::getNextSequence(2026, 'C'));
+        $kasus3 = $this->buatKasus('C-171026003');
+
+        // Hapus yang terakhir → nomor 003 harus bebas lagi (tak melompat ke 004).
+        app(\App\Repositories\Admin\Epidemiologi\SurveillanceRepository::class)->deleteCase($kasus3->id);
+
+        $this->assertSame(3, EpidCounter::getNextSequence(2026, 'C'));
+    }
+
+    public function test_hapus_menurunkan_counter_ke_nomor_tertinggi_yang_tersisa(): void
+    {
+        // 001 & 003 ada; counter sempat sampai 3.
+        $this->buatKasus('C-171026001');
+        $kasus3 = $this->buatKasus('C-171026003');
+        EpidCounter::updateOrCreate(['tahun' => 2026, 'prefix' => 'C'], ['last_sequence' => 3]);
+
+        // Hapus 003 (tertinggi) → counter turun ke 1 (maks tersisa), berikutnya 002.
+        app(\App\Repositories\Admin\Epidemiologi\SurveillanceRepository::class)->deleteCase($kasus3->id);
+
+        $this->assertSame(2, EpidCounter::getNextSequence(2026, 'C'));
+    }
 }
