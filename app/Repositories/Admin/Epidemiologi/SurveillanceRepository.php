@@ -604,10 +604,10 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         $crMeninggal = (clone $cr)->where('kondisi_akhir', 'meninggal')->count();
         $crAktif     = (clone $cr)->where('kondisi_akhir', 'dalam_perawatan')->count();
 
-        // Spesimen diambil = status_lab bukan 'belum_diperiksa' (positif/negatif/proses).
-        // Hasil lab final keluar = status_lab positif/negatif.
-        $crSampel     = (clone $cr)->whereIn('status_lab', ['positif', 'negatif', 'proses'])->count();
-        $crLabSelesai = (clone $cr)->whereIn('status_lab', ['positif', 'negatif'])->count();
+        // Spesimen diambil = status_lab 'diperiksa' (skema biner baru).
+        $crSampel   = (clone $cr)->where('status_lab', 'diperiksa')->count();
+        // Hasil lab diterima = kasus yang sudah terklasifikasi final (confirmed/discarded).
+        $crResolved = $crConfirmed + $crDiscarded;
 
         $campakRubella = [
             'suspek'           => $crTotal,
@@ -620,8 +620,8 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             'kematian'         => $crMeninggal,
             'kasus_aktif'      => $crAktif,
             'pct_sampel'       => $crTotal > 0 ? round($crSampel / $crTotal * 100, 1) : 0,
-            'pct_lab_diterima' => $crSampel > 0 ? round($crLabSelesai / $crSampel * 100, 1) : 0,
-            'positivity_rate'  => $crLabSelesai > 0 ? round($crConfirmed / $crLabSelesai * 100, 1) : 0,
+            'pct_lab_diterima' => $crTotal > 0 ? round($crResolved / $crTotal * 100, 1) : 0,
+            'positivity_rate'  => $crResolved > 0 ? round($crConfirmed / $crResolved * 100, 1) : 0,
         ];
 
         // ===== AFP/Polio (id=3) =====

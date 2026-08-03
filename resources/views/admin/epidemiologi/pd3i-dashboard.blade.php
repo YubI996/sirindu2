@@ -471,7 +471,7 @@
                         </div>
                         <div class="col-6 col-md-3">
                             <div class="kinerja-card">
-                                <div class="k-label">Discarded / Negatif</div>
+                                <div class="k-label">Discarded</div>
                                 <div class="k-value" id="cr-discarded"><div class="skeleton skel-value"></div></div>
                                 <div id="cr-discarded-note" style="font-size:0.65rem; color:var(--text-secondary); margin-top:2px;"></div>
                             </div>
