@@ -6,6 +6,7 @@ use App\Models\JenisKasusEpidemiologi;
 use App\Models\SurveillanceCase;
 use App\Models\SurveillanceCaseSpesimen;
 use App\Services\NikDummyService;
+use App\Support\LabStatus;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -167,7 +168,7 @@ class HasilLabImport implements ToCollection, WithStartRow, WithChunkReading
 
                     if ($hasilLabText !== null) {
                         $updateData['hasil_lab']       = $hasilLabText;
-                        $updateData['status_lab']      = $statusLab;
+                        $updateData['status_lab']      = LabStatus::toBinary($statusLab);
                         $updateData['tanggal_hasil_lab'] = $tglHasil;
                     }
 
@@ -227,7 +228,7 @@ class HasilLabImport implements ToCollection, WithStartRow, WithChunkReading
                         'status_kasus'          => $statusKasus ?? 'suspected',
                         'status_rawat'          => 'rawat_jalan',
                         'nama_faskes_rawat'     => $faskes,
-                        'status_lab'            => $statusLab,
+                        'status_lab'            => LabStatus::toBinary($statusLab),
                         'hasil_lab'             => $hasilLabText,
                         'tanggal_hasil_lab'     => $tglHasil,
                         'id_petugas_input'      => $this->userId,
