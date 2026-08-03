@@ -149,9 +149,11 @@ class EpidemiologiController extends Controller
     {
         $query = SurveillanceCase::with(['jenisKasus', 'kecamatan', 'kelurahan', 'rt']);
 
-        // Data scoping: faskes hanya lihat data wilayahnya di peta (Dinkes = semua)
+        // Data scoping: faskes hanya lihat data wilayahnya di peta (Dinkes = semua).
+        // Peta di dasbor PD3I bersifat city-wide untuk semua peran → kirim city_wide=1.
         $user = auth()->user();
-        $query->visibleTo($user->isSuperAdmin() ? null : $user);
+        $cityWide = $request->boolean('city_wide');
+        $query->visibleTo(($cityWide || $user->isSuperAdmin()) ? null : $user);
 
         // Apply filters
         if ($request->has('disease_id') && $request->disease_id != '') {
