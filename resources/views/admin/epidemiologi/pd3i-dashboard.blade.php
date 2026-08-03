@@ -818,13 +818,19 @@
             <div class="info-card">
                 <div class="card-header peta-toolbar d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
                     <span><i class="fa fa-map mr-1"></i> Peta Kepadatan Kasus per Wilayah</span>
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Pilih tingkat wilayah peta">
-                        <button type="button" class="btn btn-outline-primary" id="peta-btn-kecamatan" data-peta-layer="kecamatan">
-                            <i class="fa fa-city mr-1"></i> Kecamatan
-                        </button>
-                        <button type="button" class="btn btn-primary" id="peta-btn-kelurahan" data-peta-layer="kelurahan">
-                            <i class="fa fa-map mr-1"></i> Kelurahan
-                        </button>
+                    <div class="d-flex align-items-center flex-wrap" style="gap:.5rem;">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Pilih tingkat wilayah peta">
+                            <button type="button" class="btn btn-outline-primary" id="peta-btn-kecamatan" data-peta-layer="kecamatan">
+                                <i class="fa fa-city mr-1"></i> Kecamatan
+                            </button>
+                            <button type="button" class="btn btn-primary" id="peta-btn-kelurahan" data-peta-layer="kelurahan">
+                                <i class="fa fa-map mr-1"></i> Kelurahan
+                            </button>
+                        </div>
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="peta-toggle-outline">
+                            <label class="custom-control-label" for="peta-toggle-outline" style="font-size:.8rem;">Batas wilayah (outline)</label>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body p-0" style="position:relative; isolation:isolate;">
@@ -873,6 +879,7 @@
     let petaWilayahData= null;   // last wilayah payload from API (per_kecamatan / per_kelurahan)
     let petaLayerType  = 'kelurahan';
     let petaMapping    = null;   // mapping.json (name normalisation)
+    let petaBoundaryOnly = false; // true = tampilkan batas wilayah (outline) tanpa isian
     const petaGeoCache = { kecamatan: null, kelurahan: null };
     const PETA_GEOJSON = {
         kecamatan: '/geojson/Kota Bontang-KECAMATAN.geojson',
@@ -1564,6 +1571,16 @@
     }
 
     function petaStyle(feature) {
+        // Mode outline: hanya batas wilayah, tanpa isian kepadatan.
+        if (petaBoundaryOnly) {
+            return {
+                fillColor: '#000000',
+                fillOpacity: 0,
+                weight: petaLayerType === 'kecamatan' ? 3 : 2,
+                color: '#374151',
+                opacity: 1,
+            };
+        }
         const row = petaLookup(petaFeatureName(feature));
         return {
             fillColor: petaColor(petaCountOf(row)),
@@ -1624,7 +1641,13 @@
             onEachFeature: function (feature, layer) {
                 layer.bindPopup(petaPopup(feature));
                 layer.on({
-                    mouseover: e => { e.target.setStyle({ weight: 4, color: '#3d3d3d', fillOpacity: 0.88 }); e.target.bringToFront(); },
+                    mouseover: e => {
+                        // Di mode outline jangan isi warna saat hover — cukup tebalkan garis.
+                        e.target.setStyle(petaBoundaryOnly
+                            ? { weight: 4, color: '#111827' }
+                            : { weight: 4, color: '#3d3d3d', fillOpacity: 0.88 });
+                        e.target.bringToFront();
+                    },
                     mouseout:  e => { if (petaGeoLayer) petaGeoLayer.resetStyle(e.target); },
                 });
             },
@@ -1633,7 +1656,8 @@
         try { leafletMap.fitBounds(petaGeoLayer.getBounds(), { padding: [12, 12] }); } catch (e) {}
 
         if (overlay) overlay.style.display = 'none';
-        if (legend)  legend.style.display = 'block';
+        // Legenda kepadatan tak relevan di mode outline.
+        if (legend)  legend.style.display = petaBoundaryOnly ? 'none' : 'block';
     }
 
     function petaSwitchLayer(type) {
@@ -1646,6 +1670,12 @@
         });
         petaRenderLayer();
     }
+
+    // Toggle isian kepadatan ⇄ batas wilayah (outline).
+    document.getElementById('peta-toggle-outline')?.addEventListener('change', function () {
+        petaBoundaryOnly = this.checked;
+        if (leafletMap) petaRenderLayer();
+    });
 
     // ======= FILTER LISTENERS =======
     // Multiselect dropdowns (kab_kota / wilker / kelurahan) trigger fetch via their own change handlers.
