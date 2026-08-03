@@ -68,12 +68,22 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
     /** Kunci "<kunciAnak>|tgl" yang sudah ditemui — untuk menghitung peleburan. */
     protected array $kunciUkur = [];
 
+    /**
+     * Kunci "<NIK>|<POSYANDU UPPER>" untuk baris sekunder yang NIK-nya WAJIB
+     * dikosongkan saat impor (anak diukur 2x sebulan — lihat berkas Selisih_*).
+     * Mengosongkan di sini, bukan di berkas .xlsx, mencegah round-trip
+     * PhpSpreadsheet merusak sel lain (mis. '&' → '&amp;').
+     */
+    protected array $blankSekunder;
+
     public function __construct(
         protected int $userId,
         protected bool $commit = false,
         protected int|string $sheet = 0,
+        array $blankSekunder = [],
     ) {
         $this->nikService = new NikDummyService();
+        $this->blankSekunder = $blankSekunder;
         $this->initWilayahCache();
     }
 
@@ -154,6 +164,16 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
                 // --- Penghitungan: berbasis kunci, identik di dry-run & commit. ---
                 // Baris ber-NIK kosong dihitung sebagai anak unik PER BARIS (spec §6).
                 $nikBerkas = trim((string) ($this->colVal($row, $map, 'nik') ?? ''));
+
+                // Baris sekunder (anak diukur 2x sebulan): kosongkan NIK-nya di
+                // sini agar jadi anak dummy tersendiri — 1 baris = 1 pengukuran.
+                if ($nikBerkas !== '' && !empty($this->blankSekunder)) {
+                    $posNama = strtoupper(trim((string) ($this->colVal($row, $map, 'posyandu') ?? '')));
+                    if (isset($this->blankSekunder[$nikBerkas . '|' . $posNama])) {
+                        $nikBerkas = '';
+                    }
+                }
+
                 $kunciAnak = $nikBerkas !== '' ? 'NIK:' . $nikBerkas : 'BARIS:' . $rowNum;
 
                 if (!isset($this->kunciAnak[$kunciAnak])) {

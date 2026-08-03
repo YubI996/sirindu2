@@ -122,6 +122,29 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(2, $import->getResults()['anak_dibuat']);
     }
 
+    public function test_baris_sekunder_dikosongkan_nik_jadi_anak_dummy_terpisah(): void
+    {
+        // Dua baris NIK sama, beda posyandu. Baris "Semoga Jaya" ditandai sekunder
+        // (anak diukur 2x sebulan) → NIK-nya dikosongkan → jadi anak dummy sendiri.
+        $blank = ['6474025209250001|SEMOGA JAYA' => true];
+
+        $import = new OtFinalRegistriImport(userId: 1, commit: true, blankSekunder: $blank);
+        $import->collection(collect([
+            $this->header(),
+            $this->baris(['posyandu' => 'Kasih Ibu 3']),                        // primer: NIK dipakai
+            $this->baris(['posyandu' => 'Semoga Jaya', 'tgl_ukur' => '2026-06-11']), // sekunder: NIK dikosongkan
+        ]));
+
+        // Satu anak ber-NIK asli + satu anak dummy = dua anak.
+        $this->assertSame(1, \App\Models\Anak::where('nik', '6474025209250001')->count());
+        $this->assertSame(2, \App\Models\Anak::where('nama', 'FARAH NUR SEPTIANA PUTRI')->count());
+
+        $r = $import->getResults();
+        $this->assertSame(2, $r['anak_dibuat']);
+        $this->assertSame(1, $r['dummy']);
+        $this->assertSame(0, $r['lebur']); // tidak melebur karena NIK sudah beda
+    }
+
     public function test_wilayah_dan_faskes_diresolusi_ke_id(): void
     {
         $kec = \App\Models\Kecamatan::create(['name' => 'Bontang Barat']);
