@@ -1110,6 +1110,7 @@
         destroyChart('gender');
         charts.gender = new Chart(document.getElementById('chart-gender'), {
             type: 'pie',
+            plugins: window.ChartDataLabels ? [window.ChartDataLabels] : [],
             data: {
                 labels: ['Laki-laki', 'Perempuan'],
                 datasets: [{
@@ -1119,7 +1120,18 @@
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 11 },
+                        formatter: (value, ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + (b || 0), 0);
+                            if (!total || !value) return '';
+                            return Math.round((value / total) * 100) + '%';
+                        },
+                    },
+                },
             },
         });
 
@@ -1161,16 +1173,26 @@
         const sortedLabels = gejalaIdx.map(i => gejalaLabels[i]);
         const sortedValues = gejalaIdx.map(i => gejalaValues[i]);
 
+        // Denominator label persen bar = total kasus (pakai jumlah berjenis kelamin diketahui).
+        const totalKasusDemografi = (jk.L || 0) + (jk.P || 0);
         destroyChart('gejala');
         charts.gejala = new Chart(document.getElementById('chart-gejala'), {
             type: 'bar',
+            plugins: window.ChartDataLabels ? [window.ChartDataLabels] : [],
             data: {
                 labels: sortedLabels,
                 datasets: [{ label: 'Jumlah Kasus', data: sortedValues, backgroundColor: 'rgba(198,130,0,0.75)' }],
             },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end', align: 'end', clamp: true,
+                        color: '#374151', font: { size: 10 },
+                        formatter: (value) => (!value || !totalKasusDemografi) ? '' : Math.round((value / totalKasusDemografi) * 100) + '%',
+                    },
+                },
                 scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
             },
         });
@@ -1232,13 +1254,21 @@
         destroyChart('komplikasi');
         charts.komplikasi = new Chart(document.getElementById('chart-komplikasi'), {
             type: 'bar',
+            plugins: window.ChartDataLabels ? [window.ChartDataLabels] : [],
             data: {
                 labels: kompLabels,
                 datasets: [{ label: 'Kasus', data: kompData, backgroundColor: 'rgba(185,28,28,0.72)' }],
             },
             options: {
                 indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end', align: 'end', clamp: true,
+                        color: '#374151', font: { size: 10 },
+                        formatter: (value) => (!value || !totalKasusDemografi) ? '' : Math.round((value / totalKasusDemografi) * 100) + '%',
+                    },
+                },
                 scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
             },
         });
