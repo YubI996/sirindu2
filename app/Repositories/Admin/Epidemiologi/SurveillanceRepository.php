@@ -107,7 +107,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             $data['tanggal_lapor'] = $data['tanggal_lapor'] ?? now()->toDateString();
             $data['sumber_penularan'] = $data['sumber_penularan'] ?? 'unknown';
             // riwayat_imunisasi nullable — null berarti belum diisi, bukan 'tidak_tahu'
-            $data['status_lab'] = $data['status_lab'] ?? 'belum_diperiksa';
+            $data['status_lab'] = $data['status_lab'] ?? 'tidak';
             $data['kondisi_akhir'] = $data['kondisi_akhir'] ?? 'dalam_perawatan';
             $data['status_kasus'] = $data['status_kasus'] ?? 'suspected';
 

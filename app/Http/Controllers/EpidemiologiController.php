@@ -1013,7 +1013,7 @@ class EpidemiologiController extends Controller
     }
 
     /**
-     * Kasus dengan hasil lab positif/negatif tapi tanpa satu pun spesimen bertanggal.
+     * Kasus dengan status lab 'diperiksa' tapi tanpa satu pun spesimen bertanggal.
      *
      * Sejak 2026-07-23 kondisi ini TIDAK lagi menghalangi penyimpanan (dulu lewat
      * required_if pada tanggal_hasil_lab, yang menunjuk field yang sudah tidak ada
@@ -1022,7 +1022,7 @@ class EpidemiologiController extends Controller
      */
     private function labBelumLengkap(Request $request): bool
     {
-        if (! in_array($request->input('status_lab'), ['positif', 'negatif'], true)) {
+        if ($request->input('status_lab') !== 'diperiksa') {
             return false;
         }
 

@@ -69,7 +69,7 @@ class SurveillanceCaseFactory extends Factory
             'riwayat_imunisasi' => 'tidak_tahu',
             'tanggal_imunisasi_terakhir' => null,
 
-            'status_lab' => 'belum_diperiksa',
+            'status_lab' => 'tidak',
             'tanggal_pengambilan_spesimen' => null,
             'jenis_spesimen' => null,
             'hasil_lab' => null,

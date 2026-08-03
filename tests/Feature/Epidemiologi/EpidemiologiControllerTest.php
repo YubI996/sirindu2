@@ -73,7 +73,7 @@ class EpidemiologiControllerTest extends TestCase
             'nama_faskes_rawat' => 'Puskesmas Cikutra',
             'status_kasus' => 'suspected',
             'kondisi_akhir' => 'dalam_perawatan',
-            'status_lab' => 'belum_diperiksa',
+            'status_lab' => 'tidak',
             'riwayat_imunisasi' => 'tidak_tahu',
             'sumber_penularan' => 'unknown',
         ];
@@ -367,15 +367,15 @@ class EpidemiologiControllerTest extends TestCase
     }
 
     /**
-     * Status lab positif/negatif TIDAK boleh menghalangi penyimpanan meski tanggal
+     * Status lab (diperiksa/tidak) TIDAK boleh menghalangi penyimpanan meski tanggal
      * hasil lab kosong. Dulu diblokir required_if pada field yang sudah tidak ada
      * di form, sehingga submit gagal tanpa pesan yang terlihat petugas.
      */
-    public function test_store_succeeds_when_status_lab_positif_without_tanggal_hasil_lab()
+    public function test_store_succeeds_when_status_lab_diperiksa_without_tanggal_hasil_lab()
     {
         $data = $this->validCaseData([
             'no_registrasi'    => 'EPI-2026-0009',
-            'status_lab'       => 'positif',
+            'status_lab'       => 'diperiksa',
             'tanggal_hasil_lab' => '',
         ]);
 
@@ -385,15 +385,15 @@ class EpidemiologiControllerTest extends TestCase
         $response->assertRedirect(route('admin.epidemiologi.index'));
         $this->assertDatabaseHas('surveillance_cases', [
             'no_registrasi' => 'EPI-2026-0009',
-            'status_lab'    => 'positif',
+            'status_lab'    => 'diperiksa',
         ]);
     }
 
-    public function test_store_succeeds_when_status_lab_negatif_without_tanggal_hasil_lab()
+    public function test_store_succeeds_when_status_lab_tidak_without_tanggal_hasil_lab()
     {
         $data = $this->validCaseData([
             'no_registrasi' => 'EPI-2026-0010',
-            'status_lab'    => 'negatif',
+            'status_lab'    => 'tidak',
         ]);
 
         $response = $this->actingAs($this->admin)->post(route('admin.epidemiologi.store'), $data);
@@ -401,7 +401,7 @@ class EpidemiologiControllerTest extends TestCase
         $response->assertSessionHasNoErrors();
         $this->assertDatabaseHas('surveillance_cases', [
             'no_registrasi' => 'EPI-2026-0010',
-            'status_lab'    => 'negatif',
+            'status_lab'    => 'tidak',
         ]);
     }
 
@@ -425,15 +425,15 @@ class EpidemiologiControllerTest extends TestCase
     }
 
     /**
-     * Kebalikan dari perilaku lama (sengaja): status lab positif TIDAK lagi mewajibkan
+     * Kebalikan dari perilaku lama (sengaja): status lab diperiksa TIDAK lagi mewajibkan
      * tanggal hasil lab. Aturan required_if dulu menunjuk field yang sudah tidak ada
      * di form, sehingga petugas melihat submit gagal tanpa pesan apa pun.
      */
-    public function test_store_tidak_mewajibkan_tanggal_hasil_lab_saat_status_lab_positif()
+    public function test_store_tidak_mewajibkan_tanggal_hasil_lab_saat_status_lab_diperiksa()
     {
         $data = $this->validCaseData([
             'no_registrasi' => 'EPI-2026-0011',
-            'status_lab' => 'positif',
+            'status_lab' => 'diperiksa',
             'tanggal_pengambilan_spesimen' => Carbon::now()->subDays(3)->format('Y-m-d'),
             'tanggal_hasil_lab' => null,
         ]);
@@ -443,7 +443,7 @@ class EpidemiologiControllerTest extends TestCase
         $response->assertSessionHasNoErrors();
         $this->assertDatabaseHas('surveillance_cases', [
             'no_registrasi' => 'EPI-2026-0011',
-            'status_lab'    => 'positif',
+            'status_lab'    => 'diperiksa',
         ]);
     }
 
