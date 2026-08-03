@@ -151,19 +151,22 @@ class TimbangDashboardController extends Controller
         ];
 
         foreach ($measurements as $m) {
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
-                'bb_u'  => $m->zscore_bb_u,
-                'tb_u'  => $m->zscore_pb_u,
-                'bb_tb' => $m->zscore_bb_pb,
-            ]);
-            if ($g['enum']['bb_tb'] !== null) $results['bb_tb'][$bbTbMap[$g['enum']['bb_tb']]]++;
-            if ($g['enum']['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['enum']['bb_u']]]++;
-            if ($g['enum']['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['enum']['tb_u']]]++;
+            // Klasifikasi PERSIS rumus Dinkes, murni dari z-score tersimpan.
+            $g = $this->statusGizi->enumEppgbm(
+                $this->zval($m->zscore_bb_u),
+                $this->zval($m->zscore_pb_u),
+                $this->zval($m->zscore_bb_pb),
+            );
+            if ($g['bb_tb'] !== null) $results['bb_tb'][$bbTbMap[$g['bb_tb']]]++;
+            if ($g['bb_u'] !== null)  $results['bb_u'][$bbMap[$g['bb_u']]]++;
+            if ($g['tb_u'] !== null)  $results['tb_u'][$tbMap[$g['tb_u']]]++;
         }
 
         $total = count($measurements);
         $stunting = $results['tb_u']['sangat_pendek'] + $results['tb_u']['pendek'];
         $underweight = $results['bb_u']['kurang'] + $results['bb_u']['sangat_kurang'];
+        // Wasting Dinkes = SELURUH BB/TB <= -2SD (moderat + buruk).
+        $wasting = $results['bb_tb']['kurang'] + $results['bb_tb']['buruk'];
 
         return response()->json([
             'total'           => $total,
@@ -174,6 +177,8 @@ class TimbangDashboardController extends Controller
             'stunting_pct'    => $total > 0 ? round($stunting / $total * 100, 1) : 0,
             'underweight'     => $underweight,
             'underweight_pct' => $total > 0 ? round($underweight / $total * 100, 1) : 0,
+            'wasting'         => $wasting,
+            'wasting_pct'     => $total > 0 ? round($wasting / $total * 100, 1) : 0,
             'gizi_kurang'     => $results['bb_tb']['kurang'],
             'gizi_buruk'      => $results['bb_tb']['buruk'],
         ]);
@@ -186,7 +191,8 @@ class TimbangDashboardController extends Controller
         $kunjunganQ = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->selectRaw("DATE_FORMAT(da.tgl_kunjungan, '%Y-%m') as bulan, COUNT(*) as total")
-            ->whereNotNull('da.tgl_kunjungan');
+            ->whereNotNull('da.tgl_kunjungan')
+            ->where('da.bln', '<=', 60); // hanya kunjungan balita
         if ($f['tahun']) {
             $kunjunganQ->whereYear('da.tgl_kunjungan', $f['tahun']);
         } else {
@@ -218,12 +224,14 @@ class TimbangDashboardController extends Controller
         $totalQ = DB::table('anak as a')
             ->join('kelurahan', 'a.id_kel', '=', 'kelurahan.id')
             ->selectRaw('kelurahan.id, kelurahan.name as nama, COUNT(DISTINCT a.id) as total');
+        $this->applyBalita($totalQ, 'a'); // denominator = balita saja
         $this->applyWilayah($totalQ, $f);
         $totalPerKel = $totalQ->groupBy('kelurahan.id', 'kelurahan.name')->get()->keyBy('id');
 
         $timbangQ = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->join('kelurahan as k', 'a.id_kel', '=', 'k.id')
+            ->where('da.bln', '<=', 60) // hanya kunjungan balita
             ->selectRaw('k.id, k.name as nama, COUNT(DISTINCT da.id_anak) as ditimbang');
         if ($f['tahun']) $timbangQ->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($timbangQ, $f);
@@ -304,7 +312,7 @@ class TimbangDashboardController extends Controller
 
     /**
      * Daftar nama anak yang dapat ditindak untuk satu kategori kartu.
-     * kategori: sasaran|hadir|stunting|gizi_kurang|gizi_buruk|bb_tidak_naik
+     * kategori: sasaran|hadir|stunting|underweight|gizi_kurang|gizi_buruk|bb_tidak_naik
      */
     public function daftar(Request $request): JsonResponse
     {
@@ -365,9 +373,28 @@ class TimbangDashboardController extends Controller
         if ($f['posyandu']) $q->where("$a.id_posyandu", $f['posyandu']);
     }
 
+    /**
+     * Batasi ke balita ≤60 bln memakai umur SAAT INI dari tgl_lahir — untuk
+     * hitungan yang bersumber tabel anak (sasaran/cakupan), yang tak punya
+     * kolom umur-saat-ditimbang. Mengeluarkan anak SD (>60 bln).
+     *
+     * Anak tanpa tgl_lahir tetap disertakan: umurnya tak bisa dibuktikan >60
+     * bln, jadi jangan sampai keliru membuang balita yg tgl lahirnya kosong.
+     * Untuk kartu gizi & pengukuran, batas 60 bln memakai da.bln (umur saat
+     * ditimbang) supaya tetap persis cocok ekspor Dinkes — lihat latestVisitQuery.
+     */
+    private function applyBalita($q, string $a = 'a'): void
+    {
+        $q->where(function ($w) use ($a) {
+            $w->whereNull("$a.tgl_lahir")
+              ->orWhereRaw("TIMESTAMPDIFF(MONTH, $a.tgl_lahir, CURDATE()) <= 60");
+        });
+    }
+
     private function baseQuery(array $f)
     {
-        $q = DB::table('data_anak as da')->join('anak as a', 'da.id_anak', '=', 'a.id');
+        $q = DB::table('data_anak as da')->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->where('da.bln', '<=', 60); // hanya kunjungan balita; kunjungan anak SD dikecualikan
         if ($f['tahun']) $q->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($q, $f);
         return $q;
@@ -376,6 +403,7 @@ class TimbangDashboardController extends Controller
     private function totalAnakQuery(array $f): int
     {
         $q = Anak::query();
+        $this->applyBalita($q, 'anak'); // sasaran balita saja (≤60 bln), tanpa anak SD
         if ($f['kec'])      $q->where('id_kec', $f['kec']);
         if ($f['kel'])      $q->where('id_kel', $f['kel']);
         if ($f['rt'])       $q->where('id_rt', $f['rt']);
@@ -388,10 +416,14 @@ class TimbangDashboardController extends Controller
      */
     private function latestVisitQuery(array $f)
     {
+        // Kunjungan TERAKHIR dihitung di antara kunjungan balita saja (da.bln<=60):
+        // bila kelak anak yg dulu balita punya kunjungan usia SD, dashboard tetap
+        // memakai kunjungan balita terakhirnya — kartu gizi tak diam-diam bergeser.
         $maxTgl = DB::table('data_anak as dm')
             ->join('anak as am', 'dm.id_anak', '=', 'am.id')
             ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
-            ->whereNotNull('dm.tgl_kunjungan');
+            ->whereNotNull('dm.tgl_kunjungan')
+            ->where('dm.bln', '<=', 60);
         if ($f['tahun']) $maxTgl->whereYear('dm.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($maxTgl, $f, 'am');
         $maxTgl->groupBy('dm.id_anak');
@@ -401,6 +433,7 @@ class TimbangDashboardController extends Controller
                 $join->on('m.id_anak', '=', 'da.id_anak')
                      ->on('m.max_tgl', '=', 'da.tgl_kunjungan');
             })
+            ->where('da.bln', '<=', 60)
             ->selectRaw('MAX(da.id) as max_id')
             ->groupBy('da.id_anak');
     }
@@ -430,7 +463,8 @@ class TimbangDashboardController extends Controller
         $q = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->whereNotNull('da.tgl_kunjungan')
-            ->where('da.bb', '>', 0);
+            ->where('da.bb', '>', 0)
+            ->where('da.bln', '<=', 60); // hanya kunjungan balita
         if ($f['tahun']) $q->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($q, $f);
 
@@ -494,6 +528,7 @@ class TimbangDashboardController extends Controller
         if ($kategori === 'sasaran') {
             $ids = (function () use ($f) {
                 $q = Anak::query();
+                $this->applyBalita($q, 'anak'); // sasaran balita saja (≤60 bln)
                 if ($f['kec'])      $q->where('id_kec', $f['kec']);
                 if ($f['kel'])      $q->where('id_kel', $f['kel']);
                 if ($f['rt'])       $q->where('id_rt', $f['rt']);
@@ -520,22 +555,26 @@ class TimbangDashboardController extends Controller
                 continue;
             }
             if ($m->bln > 60 || $m->bb <= 0 || $m->tb <= 0) continue;
-            $g = $this->statusGizi->klasifikasi($m->bb, $m->tb, $m->bln, $m->posisi, $m->jk, [
-                'bb_u'  => $m->zscore_bb_u,
-                'tb_u'  => $m->zscore_pb_u,
-                'bb_tb' => $m->zscore_bb_pb,
-            ]);
+            // Klasifikasi PERSIS rumus Dinkes, murni dari z-score tersimpan.
+            $g = $this->statusGizi->enumEppgbm(
+                $this->zval($m->zscore_bb_u),
+                $this->zval($m->zscore_pb_u),
+                $this->zval($m->zscore_bb_pb),
+            );
             $hit = match ($kategori) {
-                'stunting'    => in_array($g['enum']['tb_u'], ['severely_stunted', 'stunted'], true),
-                'gizi_kurang' => $g['enum']['bb_tb'] === 'wasted',
-                'gizi_buruk'  => $g['enum']['bb_tb'] === 'severely_wasted',
+                'stunting'    => in_array($g['tb_u'], ['severely_stunted', 'stunted'], true),
+                'underweight' => in_array($g['bb_u'], ['severely_underweight', 'underweight'], true),
+                'wasting'     => in_array($g['bb_tb'], ['wasted', 'severely_wasted'], true),
+                'gizi_kurang' => $g['bb_tb'] === 'wasted',
+                'gizi_buruk'  => $g['bb_tb'] === 'severely_wasted',
                 default       => false,
             };
             if ($hit) {
                 $matchIds[] = $m->id_anak;
                 $label = match ($kategori) {
-                    'stunting'    => $g['tb'],
-                    default       => $g['bt'],
+                    'stunting'    => StatusGiziService::labelTb($g['tb_u']),
+                    'underweight' => StatusGiziService::labelBb($g['bb_u']),
+                    default       => StatusGiziService::labelBbTb($g['bb_tb']),
                 };
                 $detail[$m->id_anak] = ['indikator' => $label, 'tgl' => $m->tgl_kunjungan];
             }
@@ -594,9 +633,17 @@ class TimbangDashboardController extends Controller
             'sasaran'       => 'Balita Sasaran',
             'hadir'         => 'Hadir (Ditimbang)',
             'stunting'      => 'Stunting',
+            'underweight'   => 'Underweight',
+            'wasting'       => 'Wasting',
             'gizi_kurang'   => 'Gizi Kurang',
             'gizi_buruk'    => 'Gizi Buruk',
             'bb_tidak_naik' => 'BB Tidak Naik',
         ][$kategori] ?? ucfirst($kategori);
+    }
+
+    /** Nilai z-score DB → ?float (kolom bisa null / string desimal). */
+    private function zval($v): ?float
+    {
+        return ($v === null || $v === '') ? null : (float) $v;
     }
 }
