@@ -119,25 +119,21 @@
             <td class="lbl">No. rekam medik</td><td>{{ $case->no_rekam_medik ?? '' }}</td>
         </tr>
         <tr>
-            <td class="lbl" colspan="3">Apakah kelemahan/kelumpuhan sifatnya akut (1-14 hari)?</td>
+            <td class="lbl" colspan="2">Apakah kelemahan/kelumpuhan sifatnya akut (1-14 hari)?</td>
+            <td style="width:20%">{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+            <td rowspan="2" style="width:22%; background:#000; color:#fff; font-weight:bold; text-align:center; vertical-align:middle;">Stop investigasi</td>
+        </tr>
+        <tr>
+            <td class="lbl" colspan="2">Apakah kelemahan/kelumpuhan sifatnya layuh (flaccid)?</td>
             <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
         </tr>
         <tr>
-            <td class="lbl" colspan="3">Apakah kelemahan/kelumpuhan sifatnya layuh (flaccid)?</td>
+            <td class="lbl" colspan="2">Apakah kelemahan/kelumpuhan disebabkan rudapaksa?</td>
             <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+            <td></td>
         </tr>
-        <tr>
-            <td class="lbl" colspan="3">Apakah kelemahan/kelumpuhan disebabkan rudapaksa?</td>
-            <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
-        </tr>
-        <tr><td colspan="4" style="padding:0;">
-            <div style="background:#000; color:#fff; font-weight:bold; text-align:center; padding:2px 4px;">
-                STOP INVESTIGASI &mdash; bila kelumpuhan TIDAK akut, TIDAK layuh, atau DISEBABKAN rudapaksa
-            </div>
-            <div style="padding:3px 5px;">
-                Bila kelemahan/kelumpuhan <strong>akut, layuh, dan tidak disebabkan rudapaksa</strong>,
-                lanjutkan penyelidikan epidemiologi dan beri nomor EPID.
-            </div>
+        <tr><td colspan="4">
+            Bila kelemahan/kelumpuhan akut, layuh, tidak disebabkan rudapaksa, lanjutkan penyelidikan epidemiologi, beri nomor EPID.
         </td></tr>
     </table>
 
