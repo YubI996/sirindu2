@@ -922,10 +922,25 @@ class EpidemiologiController extends Controller
 
         $disease = $case->jenisKasus;
 
-        $pdf = Pdf::loadView('admin.epidemiologi.pdf.formulir-mr01', compact('case', 'disease'))
+        // Pilih formulir *1 sesuai penyakit. Penyakit yang belum punya formulir
+        // khusus memakai MR-01 sebagai fallback.
+        [$view, $prefix] = match ($disease->kode_penyakit ?? '') {
+            'AFP'            => ['formulir-fp1',   'FP1'],
+            'DIFTERI_OBS'    => ['formulir-dif1',  'DIF1'],
+            'PERTUSIS'       => ['formulir-pert01', 'PERT01'],
+            'TETANUS_NEO'    => ['formulir-tn01',  'TN01'],
+            default          => ['formulir-mr01',  'MR01'],
+        };
+
+        // Formulir yang belum dibuat: jatuh ke MR-01 agar tombol tetap berfungsi.
+        if (!view()->exists("admin.epidemiologi.pdf.$view")) {
+            [$view, $prefix] = ['formulir-mr01', 'MR01'];
+        }
+
+        $pdf = Pdf::loadView("admin.epidemiologi.pdf.$view", compact('case', 'disease'))
             ->setPaper('a4', 'portrait');
 
-        $filename = 'MR01_' . ($case->no_registrasi ?? $case->id) . '.pdf';
+        $filename = $prefix . '_' . ($case->no_registrasi ?? $case->id) . '.pdf';
 
         return $pdf->download($filename);
     }
