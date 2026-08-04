@@ -118,10 +118,26 @@
             <td class="lbl">Diagnosis</td><td>{{ $case->diagnosis ?? '' }}</td>
             <td class="lbl">No. rekam medik</td><td>{{ $case->no_rekam_medik ?? '' }}</td>
         </tr>
-        <tr><td colspan="4">
-            Kelemahan/kelumpuhan akut (1-14 hari)? {!! $cb(false) !!} Ya {!! $cb(false) !!} Tidak &nbsp;|&nbsp;
-            Layuh (flaccid)? {!! $cb(false) !!} Ya {!! $cb(false) !!} Tidak &nbsp;|&nbsp;
-            Disebabkan rudapaksa? {!! $cb(false) !!} Ya {!! $cb(false) !!} Tidak
+        <tr>
+            <td class="lbl" colspan="3">Apakah kelemahan/kelumpuhan sifatnya akut (1-14 hari)?</td>
+            <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+        </tr>
+        <tr>
+            <td class="lbl" colspan="3">Apakah kelemahan/kelumpuhan sifatnya layuh (flaccid)?</td>
+            <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+        </tr>
+        <tr>
+            <td class="lbl" colspan="3">Apakah kelemahan/kelumpuhan disebabkan rudapaksa?</td>
+            <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+        </tr>
+        <tr><td colspan="4" style="padding:0;">
+            <div style="background:#000; color:#fff; font-weight:bold; text-align:center; padding:2px 4px;">
+                STOP INVESTIGASI &mdash; bila kelumpuhan TIDAK akut, TIDAK layuh, atau DISEBABKAN rudapaksa
+            </div>
+            <div style="padding:3px 5px;">
+                Bila kelemahan/kelumpuhan <strong>akut, layuh, dan tidak disebabkan rudapaksa</strong>,
+                lanjutkan penyelidikan epidemiologi dan beri nomor EPID.
+            </div>
         </td></tr>
     </table>
 
@@ -172,7 +188,12 @@
     <table class="data-table">
         <tr><td colspan="2" class="section-header">V. Sanitasi Dasar: Jamban dan Pembuangan Tinja</td></tr>
         <tr><td class="lbl" style="width:55%">Memiliki jamban sendiri di rumah?</td><td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td></tr>
-        <tr><td class="lbl">Jenis jamban</td><td>{!! $cb(false) !!} Leher angsa + septic tank &nbsp; {!! $cb(false) !!} Cemplung &nbsp; {!! $cb(false) !!} Sungai/kebun/kolam &nbsp; {!! $cb(false) !!} Lainnya</td></tr>
+        <tr><td class="lbl">Jenis jamban yang digunakan?</td><td>
+            {!! $cb(false) !!} Jamban leher angsa dengan septic tank<br>
+            {!! $cb(false) !!} Jamban cemplung (tanpa septic tank)<br>
+            {!! $cb(false) !!} Jamban di sungai/kebun/kolam (tidak sehat)<br>
+            {!! $cb(false) !!} Lainnya, ..............................
+        </td></tr>
         <tr><td class="lbl">Selalu menggunakan jamban untuk BAB?</td><td>{!! $cb(false) !!} Ya, selalu &nbsp; {!! $cb(false) !!} Kadang &nbsp; {!! $cb(false) !!} Tidak</td></tr>
         <tr><td class="lbl">Jamban dilengkapi saluran pembuangan kedap & aman?</td><td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td></tr>
         <tr><td class="lbl">Pembuangan diapers (jika masih pakai)</td><td>{!! $cb(false) !!} Sampah tertutup &nbsp; {!! $cb(false) !!} Sungai/kebun &nbsp; {!! $cb(false) !!} Dibakar &nbsp; {!! $cb(false) !!} Lainnya</td></tr>
@@ -223,16 +244,34 @@
         <tr>
             <td class="lbl" style="width:16%">Petugas investigasi</td>
             <td style="width:34%">{{ $case->petugasInput->name ?? ($case->nama_pelapor ?? '') }}</td>
-            <td class="lbl" style="width:16%">Hasil pemeriksaan / Diagnosis</td>
+            <td class="lbl" style="width:18%">Hasil pemeriksaan / Diagnosis*</td>
             <td>{{ $case->hasil_lab ?? '' }}</td>
         </tr>
         <tr>
-            <td class="lbl">Tanda tangan</td><td style="height:34px;"></td>
+            <td class="lbl">Tanda tangan</td><td style="height:32px;"></td>
             <td class="lbl">Nama dokter</td><td></td>
+        </tr>
+        <tr>
+            <td class="lbl" rowspan="2" style="vertical-align:top;"></td>
+            <td rowspan="2"></td>
+            <td class="lbl">No. Telp./HP</td><td></td>
+        </tr>
+        <tr>
+            <td class="lbl">Tanda tangan**</td><td style="height:32px;"></td>
         </tr>
     </table>
 
-    <div style="margin-top:14px; text-align:right; font-size:8pt; color:#555;">
+    {{-- Keterangan/footnote sesuai formulir asli --}}
+    <div style="font-size:7.5pt; margin-top:8px; text-align:justify; line-height:1.3;">
+        <p><strong>*</strong> Penulisan diagnosis: AFP, parese, plegi, dan febris bukan merupakan diagnosis.
+        Apabila belum dapat dipastikan diagnosisnya, silakan dikonsultasikan dengan dokter spesialis anak/dokter
+        spesialis saraf/dokter spesialis kedokteran fisik dan rehabilitasi/dokter umum/komite ahli surveilans PD3I
+        di masing-masing provinsi.</p>
+        <p style="margin-top:3px;"><strong>**</strong> Formulir FP-1 dapat ditandatangani oleh pejabat berwenang
+        jika tidak ada dokter di fasilitas kesehatan tersebut.</p>
+    </div>
+
+    <div style="margin-top:10px; text-align:right; font-size:8pt; color:#555;">
         Dicetak: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; {{ $case->nama_pelapor ?? '' }}
     </div>
 </div>
