@@ -118,18 +118,25 @@
             <td class="lbl">Diagnosis</td><td>{{ $case->diagnosis ?? '' }}</td>
             <td class="lbl">No. rekam medik</td><td>{{ $case->no_rekam_medik ?? '' }}</td>
         </tr>
+    </table>
+
+    {{-- Pertanyaan penentu — jawaban yang memicu STOP investigasi diberi latar gelap --}}
+    <table class="data-table" style="margin-top:-1px;">
         <tr>
-            <td class="lbl" colspan="2">Apakah kelemahan/kelumpuhan sifatnya akut (1-14 hari)?</td>
-            <td style="width:20%">{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
-            <td rowspan="2" style="width:22%; background:#000; color:#fff; font-weight:bold; text-align:center; vertical-align:middle;">Stop investigasi</td>
+            <td class="lbl" style="width:54%">Apakah kelemahan/kelumpuhan sifatnya akut (1-14 hari)?</td>
+            <td style="width:12%; text-align:center;">{!! $cb(false) !!} Ya</td>
+            <td style="width:12%; text-align:center; background:#808080; color:#fff;">{!! $cb(false) !!} Tidak</td>
+            <td rowspan="2" style="width:22%; background:#808080; color:#fff; font-weight:bold; text-align:center; vertical-align:middle;">Stop investigasi</td>
         </tr>
         <tr>
-            <td class="lbl" colspan="2">Apakah kelemahan/kelumpuhan sifatnya layuh (flaccid)?</td>
-            <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+            <td class="lbl">Apakah kelemahan/kelumpuhan sifatnya layuh (flaccid)?</td>
+            <td style="text-align:center;">{!! $cb(false) !!} Ya</td>
+            <td style="text-align:center; background:#808080; color:#fff;">{!! $cb(false) !!} Tidak</td>
         </tr>
         <tr>
-            <td class="lbl" colspan="2">Apakah kelemahan/kelumpuhan disebabkan rudapaksa?</td>
-            <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+            <td class="lbl">Apakah kelemahan/kelumpuhan disebabkan rudapaksa?</td>
+            <td style="text-align:center; background:#808080; color:#fff;">{!! $cb(false) !!} Ya</td>
+            <td style="text-align:center;">{!! $cb(false) !!} Tidak</td>
             <td></td>
         </tr>
     </table>
