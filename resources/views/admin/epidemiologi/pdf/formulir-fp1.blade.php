@@ -132,9 +132,6 @@
             <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
             <td></td>
         </tr>
-        <tr><td colspan="4">
-            Bila kelemahan/kelumpuhan akut, layuh, tidak disebabkan rudapaksa, lanjutkan penyelidikan epidemiologi, beri nomor EPID.
-        </td></tr>
     </table>
 
     {{-- III. Gejala/Tanda --}}
