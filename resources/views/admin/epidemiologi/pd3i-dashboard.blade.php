@@ -815,37 +815,9 @@
 
         {{-- ===== TAB 5: PETA ===== --}}
         <div class="tab-pane fade" id="tab-peta" role="tabpanel" aria-labelledby="tab-peta-link">
-            <div class="info-card">
-                <div class="card-header peta-toolbar d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">
-                    <span><i class="fa fa-map mr-1"></i> Peta Kepadatan Kasus per Wilayah</span>
-                    <div class="d-flex align-items-center flex-wrap" style="gap:.5rem;">
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Pilih tingkat wilayah peta">
-                            <button type="button" class="btn btn-outline-primary" id="peta-btn-kecamatan" data-peta-layer="kecamatan">
-                                <i class="fa fa-city mr-1"></i> Kecamatan
-                            </button>
-                            <button type="button" class="btn btn-primary" id="peta-btn-kelurahan" data-peta-layer="kelurahan">
-                                <i class="fa fa-map mr-1"></i> Kelurahan
-                            </button>
-                        </div>
-                        <div class="custom-control custom-switch">
-                            <input type="checkbox" class="custom-control-input" id="peta-toggle-outline">
-                            <label class="custom-control-label" for="peta-toggle-outline" style="font-size:.8rem;">Batas wilayah (outline)</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body p-0" style="position:relative; isolation:isolate;">
-                    <div id="map-wilayah" style="height:500px; border-radius:0 0 10px 10px;"></div>
-                    <div id="peta-legend" class="peta-legend" style="display:none;">
-                        <div class="legend-title">Jumlah Kasus (Suspek + Confirmed)</div>
-                        <div class="legend-row"><span class="legend-swatch" style="background:#7f1d1d;"></span> &gt; 50</div>
-                        <div class="legend-row"><span class="legend-swatch" style="background:#b91c1c;"></span> 21 – 50</div>
-                        <div class="legend-row"><span class="legend-swatch" style="background:#e08a00;"></span> 11 – 20</div>
-                        <div class="legend-row"><span class="legend-swatch" style="background:#00A651;"></span> 1 – 10</div>
-                        <div class="legend-row"><span class="legend-swatch" style="background:#e5e7eb;"></span> 0</div>
-                    </div>
-                    <div id="peta-overlay" class="peta-overlay">Memuat peta…</div>
-                </div>
-            </div>
+            {{-- Peta Sebaran lengkap (RT/Kel/Kec + titik kasus + filter + toggle outline).
+                 city-wide untuk semua peran di dasbor PD3I. --}}
+            @include('admin.epidemiologi.components.peta-sebaran-map', ['cityWide' => true])
         </div>{{-- /tab-peta --}}
 
     </div>{{-- /tab-content --}}
@@ -1690,9 +1662,7 @@
     $('[data-toggle="tab"]').on('shown.bs.tab', function () {
         Object.values(charts).forEach(c => { try { c.resize(); } catch(e) {} });
         if (this.dataset && this.dataset.target === '#tab-peta') {
-            petaActivate();                       // init map + render choropleth (lazy)
-        } else if (leafletMap) {
-            leafletMap.invalidateSize();
+            if (window.PetaSebaran) window.PetaSebaran.activate();  // peta sebaran lengkap (lazy)
         }
     });
 

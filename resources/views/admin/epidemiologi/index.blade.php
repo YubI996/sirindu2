@@ -496,7 +496,7 @@
                 <span class="material-symbols-outlined">analytics</span>
                 Dashboard Analytics
             </a>
-            <a href="{{ route('admin.epidemiologi.map') }}" class="st-btn st-btn-outline-green" aria-label="Buka Peta Sebaran">
+            <a href="{{ route('admin.pd3i.dashboard') }}" class="st-btn st-btn-outline-green" aria-label="Buka Peta Sebaran (Dasbor PD3I)">
                 <span class="material-symbols-outlined">map</span>
                 Peta Sebaran
             </a>

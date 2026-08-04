@@ -38,7 +38,6 @@
 						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}">Surveilans PD3I</a></li>
 						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Surveilans (legacy)</a></li>
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
-						<li><a href="{{route('admin.epidemiologi.map')}}" class="{{ request()->routeIs('admin.epidemiologi.map') ? 'active' : '' }}">Peta Sebaran</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>
 					</ul>
@@ -107,7 +106,7 @@
 				@elseif (Auth::user()->isFaskesSurveilans())
 
 				@php
-					$dashboard = request()->routeIs('admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.home');
+					$dashboard = request()->routeIs('admin.epidemiologi.dashboard', 'admin.pd3i.dashboard', 'admin.home');
 					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
 				@endphp
 
@@ -116,8 +115,8 @@
 						<span class="micon fa fa-tachometer"></span><span class="mtext">Dashboard</span>
 					</a>
 					<ul class="submenu" {!! $dashboard ? 'style="display:block;"' : '' !!}>
-						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Surveilans</a></li>
-						<li><a href="{{route('admin.epidemiologi.map')}}" class="{{ request()->routeIs('admin.epidemiologi.map') ? 'active' : '' }}">Peta Sebaran</a></li>
+						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}">Surveilans PD3I</a></li>
+						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Surveilans (legacy)</a></li>
 					</ul>
 				</li>
 

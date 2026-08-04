@@ -61,7 +61,7 @@
             Dashboard Analytics Surveillance
         </h2>
         <nav aria-label="Navigasi modul epidemiologi">
-            <a href="{{ route('admin.epidemiologi.map') }}" class="btn btn-outline-success" aria-label="Buka Peta Sebaran">
+            <a href="{{ route('admin.pd3i.dashboard') }}" class="btn btn-outline-success" aria-label="Buka Peta Sebaran (Dasbor PD3I)">
                 <i class="fa fa-map-marked-alt" aria-hidden="true"></i> Peta Sebaran
             </a>
             <a href="{{ route('admin.epidemiologi.index') }}" class="btn btn-outline-primary" aria-label="Buka Daftar Kasus">
