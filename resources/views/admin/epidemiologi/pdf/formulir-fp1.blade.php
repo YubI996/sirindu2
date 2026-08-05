@@ -92,11 +92,10 @@
     <table class="data-table" style="margin-top:-1px;">
         <tr><td colspan="4" class="section-header">II. Riwayat Sakit</td></tr>
         <tr>
-            {{-- Sistem hanya menyimpan satu tanggal onset; untuk AFP itu = tanggal
-                 mulai lumpuh. Sel "gejala awal sebelum lumpuh" tak punya data terpisah
-                 → dikosongkan untuk diisi manual. --}}
+            {{-- "Mulai sakit/gejala awal sebelum lumpuh" = tanggal demam (prodromal
+                 sebelum kelumpuhan pada AFP). "Mulai lemah/lumpuh" = tanggal_onset. --}}
             <td class="lbl" style="width:34%">Tanggal mulai sakit/gejala awal sebelum lumpuh</td>
-            <td style="width:26%"></td>
+            <td style="width:26%">{{ $fmt($case->tanggal_demam) }}</td>
             <td class="lbl" style="width:20%">Tanggal mulai lemah/lumpuh</td>
             <td>{{ $fmt($case->tanggal_onset) }}</td>
         </tr>

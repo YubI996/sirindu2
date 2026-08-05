@@ -15,6 +15,7 @@ use Tests\TestCase;
  * (tanggal_penyelidikan, tanggal_lumpuh) sehingga selalu kosong. Sekarang:
  *  - "Tanggal Penyelidikan"        ← tanggal_penyidikan
  *  - "Tanggal mulai lemah/lumpuh"  ← tanggal_onset (untuk AFP, onset = tgl lumpuh)
+ *  - "Tanggal mulai sakit sebelum lumpuh" ← tanggal_demam (prodromal AFP)
  */
 class FormulirFp1RendersTest extends TestCase
 {
@@ -31,6 +32,7 @@ class FormulirFp1RendersTest extends TestCase
             'id_kel'            => $kel->id,
             'id_rt'             => $rt->id,
             'tanggal_lahir'     => '2020-01-01',
+            'tanggal_demam'     => '2026-03-01',
             'tanggal_onset'     => '2026-03-05',
             'tanggal_penyidikan' => '2026-03-10',
             'instansi_pelapor'  => 'Bontang Utara 1',
@@ -47,6 +49,8 @@ class FormulirFp1RendersTest extends TestCase
         $this->assertStringContainsString('10-Mar-2026', $html);
         // tanggal_onset kini tampil di sel "Tanggal mulai lemah/lumpuh"
         $this->assertStringContainsString('05-Mar-2026', $html);
+        // tanggal_demam kini tampil di sel "mulai sakit sebelum lumpuh"
+        $this->assertStringContainsString('01-Mar-2026', $html);
         // instansi pelapor tampil
         $this->assertStringContainsString('Bontang Utara 1', $html);
     }
