@@ -68,6 +68,7 @@
 					</a>
 					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
+						<li><a href="{{route('admin.export.pd3i.index')}}" class="{{ request()->routeIs('admin.export.pd3i.*') ? 'active' : '' }}">Laporan Kasus PD3I</a></li>
 					</ul>
 				</li>
 
@@ -169,6 +170,7 @@
 					</a>
 					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
+						<li><a href="{{route('admin.export.pd3i.index')}}" class="{{ request()->routeIs('admin.export.pd3i.*') ? 'active' : '' }}">Laporan Kasus PD3I</a></li>
 					</ul>
 				</li>
 				@endif

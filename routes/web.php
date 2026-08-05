@@ -215,6 +215,14 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.export.imunisasi.downloadAgregat');
     });
 
+    // Laporan Kasus PD3I — List Kasus Individu per penyakit
+    Route::prefix('export-pd3i')->group(function () {
+        Route::get('/', [App\Http\Controllers\LaporanPd3iController::class, 'index'])
+             ->name('admin.export.pd3i.index');
+        Route::get('download', [App\Http\Controllers\LaporanPd3iController::class, 'download'])
+             ->name('admin.export.pd3i.download');
+    });
+
     /*------------------------------------------
     Epidemiology Surveillance Routes
     --------------------------------------------*/
