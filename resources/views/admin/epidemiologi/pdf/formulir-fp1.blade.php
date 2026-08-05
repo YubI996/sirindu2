@@ -62,7 +62,7 @@
         <tr><td class="lbl">Nama instansi pelapor</td><td colspan="5">{{ $case->instansi_pelapor ?? '' }}</td></tr>
         <tr>
             <td class="lbl">Tanggal laporan diterima</td><td colspan="2">{{ $fmt($case->tanggal_lapor) }}</td>
-            <td class="lbl">Tanggal Penyelidikan</td><td colspan="2">{{ $fmt($case->tanggal_penyelidikan ?? null) }}</td>
+            <td class="lbl">Tanggal Penyelidikan</td><td colspan="2">{{ $fmt($case->tanggal_penyidikan) }}</td>
         </tr>
     </table>
 
@@ -92,10 +92,13 @@
     <table class="data-table" style="margin-top:-1px;">
         <tr><td colspan="4" class="section-header">II. Riwayat Sakit</td></tr>
         <tr>
+            {{-- Sistem hanya menyimpan satu tanggal onset; untuk AFP itu = tanggal
+                 mulai lumpuh. Sel "gejala awal sebelum lumpuh" tak punya data terpisah
+                 → dikosongkan untuk diisi manual. --}}
             <td class="lbl" style="width:34%">Tanggal mulai sakit/gejala awal sebelum lumpuh</td>
-            <td style="width:26%">{{ $fmt($case->tanggal_onset) }}</td>
+            <td style="width:26%"></td>
             <td class="lbl" style="width:20%">Tanggal mulai lemah/lumpuh</td>
-            <td>{{ $fmt($case->tanggal_lumpuh ?? null) }}</td>
+            <td>{{ $fmt($case->tanggal_onset) }}</td>
         </tr>
         <tr>
             <td class="lbl">Tanggal meninggal (bila meninggal)</td>
