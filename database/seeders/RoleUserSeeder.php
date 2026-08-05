@@ -60,26 +60,26 @@ class RoleUserSeeder extends Seeder
         $puskesmasUsers = [
             [
                 'email'      => 'puskesmas.bontangutara1@sirindu.go.id',
-                'name'       => 'Petugas Puskesmas Bontang Utara I',
-                'puskesmas'  => 'Bontang Utara I',
+                'name'       => 'Petugas Puskesmas Bontang Utara 1',
+                'puskesmas'  => 'Bontang Utara 1',
                 'kecamatan'  => 'Bontang Utara',
             ],
             [
                 'email'      => 'puskesmas.bontangutara2@sirindu.go.id',
-                'name'       => 'Petugas Puskesmas Bontang Utara II',
-                'puskesmas'  => 'Bontang Utara II',
+                'name'       => 'Petugas Puskesmas Bontang Utara 2',
+                'puskesmas'  => 'Bontang Utara 2',
                 'kecamatan'  => 'Bontang Utara',
             ],
             [
                 'email'      => 'puskesmas.bontangselatan1@sirindu.go.id',
-                'name'       => 'Petugas Puskesmas Bontang Selatan I',
-                'puskesmas'  => 'Bontang Selatan I',
+                'name'       => 'Petugas Puskesmas Bontang Selatan 1',
+                'puskesmas'  => 'Bontang Selatan 1',
                 'kecamatan'  => 'Bontang Selatan',
             ],
             [
                 'email'      => 'puskesmas.bontangselatan2@sirindu.go.id',
-                'name'       => 'Petugas Puskesmas Bontang Selatan II',
-                'puskesmas'  => 'Bontang Selatan II',
+                'name'       => 'Petugas Puskesmas Bontang Selatan 2',
+                'puskesmas'  => 'Bontang Selatan 2',
                 'kecamatan'  => 'Bontang Selatan',
             ],
             [

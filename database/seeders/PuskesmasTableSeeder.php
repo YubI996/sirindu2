@@ -24,12 +24,12 @@ class PuskesmasTableSeeder extends Seeder
             [
                 'id' => '2',
                 'id_kecamatan' => 2,
-                'name' => 'Bontang Utara I',
+                'name' => 'Bontang Utara 1',
             ],
             [
                 'id' => '3',
                 'id_kecamatan' => 2,
-                'name' => 'Bontang Utara II',
+                'name' => 'Bontang Utara 2',
             ],
             [
                 'id' => '4',
@@ -39,12 +39,12 @@ class PuskesmasTableSeeder extends Seeder
             [
                 'id' => '5',
                 'id_kecamatan' => 3,
-                'name' => 'Bontang Selatan I',
+                'name' => 'Bontang Selatan 1',
             ],
             [
                 'id' => '6',
                 'id_kecamatan' => 3,
-                'name' => 'Bontang Selatan II',
+                'name' => 'Bontang Selatan 2',
             ],
         ];
 
