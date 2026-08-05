@@ -52,13 +52,17 @@
 .tb-switch input:disabled + .tb-switch__track{ opacity:.55; }
 .tb-switch__label{ font-size:.8rem; font-weight:700; color:var(--muted); }
 
-/* Filter bar */
+/* Filter bar — mengambang (sticky) mengikuti scroll supaya bisa mengatur
+   filter tabel peringkat di bawah tanpa scroll balik ke atas. Offset --tb-sticky-top
+   diisi JS = tinggi header fixed (lihat blok scripts). */
 .tb-filter {
     display:flex; align-items:center; gap:.65rem; flex-wrap:wrap;
     background:var(--card); border-radius:14px; padding:.9rem 1.15rem;
     border:1px solid var(--line);
     box-shadow:var(--shadow); margin-bottom:1.5rem;
+    position:sticky; top:calc(var(--tb-sticky-top, 0px) + 8px); z-index:500;
 }
+.tb-filter.is-stuck { box-shadow:var(--shadow-lg); border-color:oklch(0.84 0.03 145); }
 .tb-filter label { font-size:.7rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
 .tb-filter select {
     height:36px; padding:0 .7rem; border-radius:9px; font-size:.85rem;
@@ -199,6 +203,21 @@
 .tb-bar-wrap { width:96px; background:oklch(0.92 0.03 145); border-radius:5px; height:8px; display:inline-block; vertical-align:middle; overflow:hidden; }
 .tb-bar { height:100%; border-radius:5px; background:var(--green-d); transition:width .5s cubic-bezier(.22,1,.36,1); }
 .tb-bar--amber { background:oklch(0.62 0.12 62); }
+
+/* Peringkat wilayah */
+.tb-rank-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; }
+.tb-rank-controls { display:flex; align-items:flex-end; gap:.7rem; flex-wrap:wrap; }
+.tb-rank-controls label { display:flex; flex-direction:column; gap:.25rem; font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+.tb-rank-controls select {
+    height:34px; padding:0 .6rem; border-radius:8px; font-size:.83rem; min-width:130px;
+    border:1px solid oklch(0.84 0.012 145); background:var(--bg); font-family:inherit; color:var(--ink);
+}
+.tb-rank-controls select:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .16); }
+.tb-cov-table th.tb-sort { cursor:pointer; user-select:none; white-space:nowrap; }
+.tb-cov-table th.tb-sort:hover { color:var(--green-d); }
+.tb-cov-table th.tb-sort .tb-sort-ind { font-size:.7rem; opacity:.55; }
+.tb-rank-peringkat { font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:1rem; color:var(--green-d); }
+.tb-rank-top { background:oklch(0.96 0.03 145); }
 
 /* ASI bulan chart bar */
 .tb-asi-bar { display:flex; flex-direction:column; gap:.5rem; }
@@ -445,6 +464,36 @@
         </div>
     </div>
 </div>
+{{-- ── PERINGKAT WILAYAH ────────────────────────────────────── --}}
+<p class="tb-section"><span class="material-symbols-outlined" style="font-size:16px;">leaderboard</span>Peringkat Wilayah per Indikator Gizi</p>
+<div class="tb-card" style="overflow-x:auto;margin-bottom:28px;">
+    <div class="tb-rank-head">
+        <div>
+            <p class="tb-card__title" style="margin-bottom:2px;">
+                <span class="material-symbols-outlined">format_list_numbered</span>
+                Peringkat <span id="rank-indikator-label">Stunting</span> per <span id="rank-level-label">Kelurahan</span>
+            </p>
+        </div>
+        <div class="tb-rank-controls">
+            <label>Indikator
+                <select id="rank-indikator">
+                    <option value="stunting">Stunting</option>
+                    <option value="wasting">Wasting</option>
+                    <option value="gizi_buruk">Gizi Buruk</option>
+                    <option value="underweight">Underweight</option>
+                </select>
+            </label>
+            <label>Level
+                <select id="rank-level">
+                    <option value="kel">Kelurahan</option>
+                    <option value="rt">RT</option>
+                </select>
+            </label>
+        </div>
+    </div>
+    <div id="rank-table-wrap"><div class="tb-loading"><span class="material-symbols-outlined tb-spin">sync</span></div></div>
+</div>
+
 {{-- ── Daftar modal ─────────────────────────────────────────── --}}
 <div class="tb-modal-back" id="daftar-modal">
     <div class="tb-modal">
@@ -487,6 +536,7 @@ var API_GIZI      = '{{ route("admin.timbang.gizi") }}';
 var API_TREN      = '{{ route("admin.timbang.tren") }}';
 var API_COVERAGE  = '{{ route("admin.timbang.coverage") }}';
 var API_PROGRAM   = '{{ route("admin.timbang.program") }}';
+var API_PERINGKAT = '{{ route("admin.timbang.peringkat") }}';
 var API_DAFTAR    = '{{ route("admin.timbang.daftar") }}';
 var API_DAFTAR_EXPORT = '{{ route("admin.timbang.daftar.export") }}';
 var URL_KEL_BY_KEC = '{{ url("admin/get-kel-dasar-anak") }}';
@@ -495,6 +545,35 @@ var URL_POS_BY_KEL = '{{ url("admin/get-posyandu-by-kel-anak") }}';
 var IS_SUPER = {{ Auth::user()->isSuperAdmin() ? 'true' : 'false' }};
 
 var charts = {};
+
+// ── Filter bar mengambang (sticky) ───────────────────────────
+// Header aplikasi position:fixed di desktop → offset sticky harus = tinggi
+// header, bukan 0, agar filter tak tertutup. Dihitung dinamis (desktop/mobile,
+// sidebar pinned/tidak) dan disimpan di CSS var --tb-sticky-top.
+(function(){
+    var header = document.querySelector('.header');
+    var page   = document.querySelector('.tb-page');
+    var filter = document.querySelector('.tb-filter');
+    if(!filter || !page) return;
+
+    function headerOffset(){
+        if(!header) return 0;
+        var cs = window.getComputedStyle(header);
+        if(cs.position === 'fixed' || cs.position === 'sticky'){
+            return Math.round(header.getBoundingClientRect().height);
+        }
+        return 0;
+    }
+    function setTop(){ page.style.setProperty('--tb-sticky-top', headerOffset() + 'px'); }
+    function onScroll(){
+        var stuckAt = headerOffset() + 8;
+        filter.classList.toggle('is-stuck', filter.getBoundingClientRect().top <= stuckAt + 1);
+    }
+
+    setTop(); onScroll();
+    window.addEventListener('resize', function(){ setTop(); onScroll(); });
+    window.addEventListener('scroll', onScroll, { passive:true });
+})();
 
 // ── Toggle publikasi halaman publik (khusus Dinkes) ──────────
 (function(){
@@ -974,12 +1053,106 @@ document.getElementById('daftar-f-kec').addEventListener('change', function(){ r
 document.getElementById('daftar-f-kel').addEventListener('change', function(){ refreshDaftarRt(); applyDaftarFilter(); });
 document.getElementById('daftar-f-rt').addEventListener('change', applyDaftarFilter);
 
+// ── PERINGKAT WILAYAH ─────────────────────────────────────────
+var INDIKATOR_LABEL = { stunting:'Stunting', wasting:'Wasting', gizi_buruk:'Gizi Buruk', underweight:'Underweight' };
+var rankRows = [];
+var rankSort = { key:'peringkat', dir:1 };   // dir: 1=asc, -1=desc
+
+function rankParams(){
+    var base = getParams();
+    var sep  = base ? '&' : '?';
+    return base + sep + 'indikator=' + encodeURIComponent(val('rank-indikator'))
+         + '&level=' + encodeURIComponent(val('rank-level'));
+}
+
+function loadPeringkat(){
+    var wrap = document.getElementById('rank-table-wrap');
+    if(!wrap) return;
+    document.getElementById('rank-indikator-label').textContent = INDIKATOR_LABEL[val('rank-indikator')] || '';
+    document.getElementById('rank-level-label').textContent = (val('rank-level') === 'rt') ? 'RT' : 'Kelurahan';
+    wrap.innerHTML = '<div class="tb-loading"><span class="material-symbols-outlined tb-spin">sync</span></div>';
+
+    $.getJSON(API_PERINGKAT + rankParams(), function(d){
+        if(d.needs_kelurahan){
+            rankRows = [];
+            wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--faint);">'
+                +'<span class="material-symbols-outlined" style="vertical-align:middle;font-size:18px;">filter_alt</span> '
+                +'Pilih satu <strong>Kelurahan</strong> di filter atas untuk melihat peringkat per RT.</div>';
+            return;
+        }
+        rankRows = d.rows || [];
+        rankSort = { key:'peringkat', dir:1 };
+        renderPeringkat();
+    }).fail(function(xhr){ showError('rank-table-wrap', 'peringkat wilayah'); fail('peringkat')(xhr); });
+}
+
+function renderPeringkat(){
+    var wrap = document.getElementById('rank-table-wrap');
+    if(!rankRows.length){
+        wrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--faint);">Belum ada data</div>';
+        return;
+    }
+    var jLabel = 'Jumlah ' + (INDIKATOR_LABEL[val('rank-indikator')] || '');
+
+    var k = rankSort.key, dir = rankSort.dir;
+    var rows = rankRows.slice().sort(function(a, b){
+        if(k === 'nama'){ return String(a.nama).localeCompare(String(b.nama), 'id', {numeric:true}) * dir; }
+        var diff = (a[k] - b[k]) * dir;
+        return diff !== 0 ? diff : (a.peringkat - b.peringkat);   // seri → urut peringkat resmi
+    });
+
+    var maxPct = 0;
+    rankRows.forEach(function(r){ if(r.persentase > maxPct) maxPct = r.persentase; });
+
+    function th(key, label){
+        var arrow = (rankSort.key === key) ? (rankSort.dir === 1 ? ' ▲' : ' ▼') : '';
+        return '<th class="tb-sort" data-sort="'+key+'">'+escHtml(label)+'<span class="tb-sort-ind">'+arrow+'</span></th>';
+    }
+
+    var h = '<table class="tb-cov-table"><thead><tr>'
+        + th('peringkat', 'Peringkat')
+        + th('nama', 'Nama Wilayah')
+        + th('total_balita', 'Total Balita')
+        + th('jumlah', jLabel)
+        + th('persentase', 'Persentase (%)')
+        + '</tr></thead><tbody>';
+    rows.forEach(function(r){
+        var w = maxPct > 0 ? Math.round(r.persentase / maxPct * 100) : 0;
+        var topCls = r.peringkat <= 3 ? ' class="tb-rank-top"' : '';
+        h += '<tr'+topCls+'>'
+            +'<td><span class="tb-rank-peringkat">'+r.peringkat+'</span></td>'
+            +'<td>'+escHtml(r.nama)+'</td>'
+            +'<td>'+num(r.total_balita)+'</td>'
+            +'<td>'+num(r.jumlah)+'</td>'
+            +'<td style="white-space:nowrap;">'
+              +'<div class="tb-bar-wrap"><div class="tb-bar" style="width:'+w+'%"></div></div> '
+              +'<strong>'+r.persentase+'%</strong></td>'
+            +'</tr>';
+    });
+    h += '</tbody></table>';
+    wrap.innerHTML = h;
+
+    wrap.querySelectorAll('th.tb-sort').forEach(function(thEl){
+        thEl.addEventListener('click', function(){
+            var key = thEl.getAttribute('data-sort');
+            if(rankSort.key === key){ rankSort.dir *= -1; }
+            else { rankSort.key = key; rankSort.dir = (key === 'peringkat' || key === 'nama') ? 1 : -1; }
+            renderPeringkat();
+        });
+    });
+}
+
+// Ganti indikator/level → data server berbeda, muat ulang.
+document.getElementById('rank-indikator').addEventListener('change', loadPeringkat);
+document.getElementById('rank-level').addEventListener('change', loadPeringkat);
+
 function loadAll(){
     loadRingkasan();
     loadGizi();
     loadTren();
     loadCoverage();
     loadProgram();
+    loadPeringkat();
 }
 
 // Faskes terkunci ke kelurahannya → muat opsi RT/Posyandu-nya saat awal.

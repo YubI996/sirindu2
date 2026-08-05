@@ -311,6 +311,111 @@ class TimbangDashboardController extends Controller
     }
 
     /**
+     * Peringkat wilayah (Kelurahan/RT) untuk satu indikator gizi.
+     *
+     * Kolom hasil: nama | total_balita | jumlah | persentase (+peringkat).
+     *  - total_balita = balita ≤60 bln TERDAFTAR di wilayah (tabel anak), penyebut
+     *    yang dipilih Dinkes. Konsekuensinya % di sini < % kartu KPI (yang memakai
+     *    balita diukur sebagai penyebut) — ini prevalensi terhadap sasaran.
+     *  - jumlah = balita yang pengukuran TERAKHIRnya masuk indikator (classifier
+     *    enumEppgbm yang sama dipakai kartu & modal daftar).
+     *
+     * Level RT hanya diproses bila satu Kelurahan sudah dipilih di filter atas;
+     * tanpa itu daftar RT sekota terlalu banyak → kembalikan needs_kelurahan.
+     */
+    public function peringkat(Request $request): JsonResponse
+    {
+        $f = $this->parseFilters($request);
+
+        $indikator = $request->query('indikator', 'stunting');
+        if (!in_array($indikator, ['stunting', 'underweight', 'wasting', 'gizi_buruk'], true)) {
+            $indikator = 'stunting';
+        }
+        $level = $request->query('level') === 'rt' ? 'rt' : 'kel';
+
+        if ($level === 'rt' && !$f['kel']) {
+            return response()->json([
+                'indikator'       => $indikator,
+                'level'           => $level,
+                'needs_kelurahan' => true,
+                'rows'            => [],
+            ]);
+        }
+
+        // Penyebut: balita terdaftar per wilayah.
+        $denomQ = DB::table('anak as a');
+        $this->applyBalita($denomQ, 'a');
+        $this->applyWilayah($denomQ, $f);
+        if ($level === 'rt') {
+            $denomQ->join('rt', 'a.id_rt', '=', 'rt.id')
+                ->whereNotNull('a.id_rt')
+                ->selectRaw('a.id_rt as wid, rt.name as nama, COUNT(*) as total')
+                ->groupBy('a.id_rt', 'rt.name');
+        } else {
+            $denomQ->join('kelurahan as k', 'a.id_kel', '=', 'k.id')
+                ->whereNotNull('a.id_kel')
+                ->selectRaw('a.id_kel as wid, k.name as nama, COUNT(*) as total')
+                ->groupBy('a.id_kel', 'k.name');
+        }
+        $denom = $denomQ->get()->keyBy('wid');
+
+        // Pembilang: klasifikasi pengukuran terakhir per anak, ditally per wilayah.
+        $measurements = DB::table('data_anak as da')
+            ->join('anak as a', 'da.id_anak', '=', 'a.id')
+            ->whereIn('da.id', $this->latestVisitQuery($f))
+            ->where('da.bln', '<=', 60)
+            ->where('da.bb', '>', 0)
+            ->where('da.tb', '>', 0)
+            ->select('a.id_kel', 'a.id_rt', 'da.zscore_bb_u', 'da.zscore_pb_u', 'da.zscore_bb_pb')
+            ->get();
+
+        $tally = [];
+        foreach ($measurements as $m) {
+            $g = $this->statusGizi->enumEppgbm(
+                $this->zval($m->zscore_bb_u),
+                $this->zval($m->zscore_pb_u),
+                $this->zval($m->zscore_bb_pb),
+            );
+            $hit = match ($indikator) {
+                'stunting'    => in_array($g['tb_u'], ['severely_stunted', 'stunted'], true),
+                'underweight' => in_array($g['bb_u'], ['severely_underweight', 'underweight'], true),
+                'wasting'     => in_array($g['bb_tb'], ['wasted', 'severely_wasted'], true),
+                'gizi_buruk'  => $g['bb_tb'] === 'severely_wasted',
+                default       => false,
+            };
+            if (!$hit) continue;
+            $wid = $level === 'rt' ? $m->id_rt : $m->id_kel;
+            if ($wid === null) continue;
+            $tally[$wid] = ($tally[$wid] ?? 0) + 1;
+        }
+
+        $rows = [];
+        foreach ($denom as $wid => $d) {
+            $total  = (int) $d->total;
+            $jumlah = $tally[$wid] ?? 0;
+            $rows[] = [
+                'nama'         => $d->nama,
+                'total_balita' => $total,
+                'jumlah'       => $jumlah,
+                'persentase'   => $total > 0 ? round($jumlah / $total * 100, 1) : 0,
+            ];
+        }
+
+        // Peringkat: persentase tertinggi dulu, seri dipecah oleh jumlah.
+        usort($rows, fn($a, $b) => [$b['persentase'], $b['jumlah']] <=> [$a['persentase'], $a['jumlah']]);
+        foreach ($rows as $i => &$r) {
+            $r['peringkat'] = $i + 1;
+        }
+        unset($r);
+
+        return response()->json([
+            'indikator' => $indikator,
+            'level'     => $level,
+            'rows'      => $rows,
+        ]);
+    }
+
+    /**
      * Daftar nama anak yang dapat ditindak untuk satu kategori kartu.
      * kategori: sasaran|hadir|stunting|underweight|gizi_kurang|gizi_buruk|bb_tidak_naik
      */

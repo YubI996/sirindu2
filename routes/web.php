@@ -117,6 +117,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         Route::get('api/tren',     [App\Http\Controllers\TimbangDashboardController::class, 'tren'])     ->name('admin.timbang.tren');
         Route::get('api/coverage', [App\Http\Controllers\TimbangDashboardController::class, 'coverage']) ->name('admin.timbang.coverage');
         Route::get('api/program',  [App\Http\Controllers\TimbangDashboardController::class, 'program'])  ->name('admin.timbang.program');
+        Route::get('api/peringkat',[App\Http\Controllers\TimbangDashboardController::class, 'peringkat'])->name('admin.timbang.peringkat');
         Route::get('api/daftar',   [App\Http\Controllers\TimbangDashboardController::class, 'daftar'])   ->name('admin.timbang.daftar');
         Route::get('api/daftar/export', [App\Http\Controllers\TimbangDashboardController::class, 'daftarExport'])->name('admin.timbang.daftar.export');
         // Toggle publikasi landing publik — hanya superadmin (Dinkes), dicek di controller.
