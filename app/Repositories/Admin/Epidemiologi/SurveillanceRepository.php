@@ -39,9 +39,12 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     ];
 
     /**
-     * Prepare validated data with boolean handling and auto-computed fields
+     * Prepare validated data with boolean handling and auto-computed fields.
+     *
+     * @param bool $isCreate  true saat store (isi identitas pelapor dari user),
+     *                        false saat update (identitas pelapor DIKUNCI — tak berubah).
      */
-    private function prepareData($request)
+    private function prepareData($request, bool $isCreate = true)
     {
         $data = $request->validated();
 
@@ -61,11 +64,26 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             $data['kategori_umur'] = $this->getKategoriUmur($tanggalLahir->diffInYears(now()));
         }
 
-        // Auto-populate reporter from authenticated user
-        $user = Auth::user();
-        $data['nama_pelapor'] = $user->name;
-        $data['instansi_pelapor'] = optional($user->puskesmas)->name ?? optional($user->rs)->name ?? $data['instansi_pelapor'] ?? null;
-        $data['telepon_pelapor'] = $data['telepon_pelapor'] ?? null;
+        // Identitas pelapor (siapa yang MELAPORKAN kasus) ditetapkan SEKALI saat
+        // kasus dibuat, dari user yang menginput. Saat update, identitas ini dikunci:
+        // pengubah kasus (pengupdate) hanya dicatat di updated_by, bukan pelapor —
+        // dan pengupdate tak diperhitungkan untuk dasbor/laporan/form/scoping.
+        // (bug 2026-08-05: edit oleh Dinkes diam-diam menimpa pelapor & instansi.)
+        if ($isCreate) {
+            $user = Auth::user();
+            $data['nama_pelapor'] = $user->name;
+            $data['instansi_pelapor'] = optional($user->puskesmas)->name ?? optional($user->rs)->name ?? $data['instansi_pelapor'] ?? null;
+            $data['telepon_pelapor'] = $data['telepon_pelapor'] ?? null;
+        } else {
+            // Buang nilai identitas pelapor apa pun dari request agar nilai tersimpan
+            // (pelapor asli) tak tersentuh oleh proses update.
+            unset(
+                $data['nama_pelapor'],
+                $data['jabatan_pelapor'],
+                $data['instansi_pelapor'],
+                $data['telepon_pelapor']
+            );
+        }
 
         // Auto-derive legacy management fields from faskes_berobat MoD rows.
         // These fields are no longer submitted via form — always overwritten here.
@@ -172,7 +190,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         return DB::transaction(function () use ($request, $id, $fotoPath, $deleteFoto, $fotoPath2, $deleteFoto2) {
             $case = SurveillanceCase::findOrFail($id);
 
-            $data = $this->prepareData($request);
+            $data = $this->prepareData($request, false);
             $data['updated_by'] = Auth::id();
 
             if ($fotoPath !== null) {

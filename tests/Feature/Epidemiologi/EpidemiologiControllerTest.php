@@ -532,6 +532,52 @@ class EpidemiologiControllerTest extends TestCase
         $this->assertEquals('bayi', $case->kategori_umur);
     }
 
+    /**
+     * Identitas pelapor & instansi pelapor ditetapkan SEKALI saat kasus dibuat.
+     * Saat kasus diedit (mis. oleh Dinkes), identitas itu HARUS tetap — pengubah
+     * hanya tercatat di updated_by, bukan menggeser siapa pelapornya. Dasbor/laporan
+     * memakai instansi_pelapor, jadi menimpanya akan merusak atribusi faskes.
+     *
+     * Bug 2026-08-05: prepareData() menimpa nama_pelapor & instansi_pelapor dari user
+     * yang sedang login pada SETIAP simpan (termasuk update).
+     */
+    public function test_update_tidak_mengubah_identitas_pelapor()
+    {
+        $pelapor = User::factory()->create(['type' => 1]);
+        $case = $this->createCase([
+            'created_by'       => $pelapor->id,
+            'updated_by'       => $pelapor->id,
+            'id_petugas_input' => $pelapor->id,
+            'nama_pelapor'     => 'Dr. Pelapor Asli',
+            'instansi_pelapor' => 'RS Islam Bontang',
+            'telepon_pelapor'  => '0548-111111',
+        ]);
+
+        // Diedit oleh user LAIN ($this->admin), dengan payload yang membawa nilai
+        // pelapor berbeda — nilai itu harus diabaikan.
+        $data = $this->validCaseData([
+            'no_registrasi'    => $case->no_registrasi,
+            'nik'              => $case->nik,
+            'nama_lengkap'     => 'Nama Pasien Diperbarui',
+            'nama_pelapor'     => 'Dr. Pengedit',
+            'instansi_pelapor' => 'Dinkes Kota',
+            'telepon_pelapor'  => '0548-999999',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.epidemiologi.update', $case->id), $data);
+
+        $case->refresh();
+        // Data klinis/pasien tetap berubah…
+        $this->assertEquals('Nama Pasien Diperbarui', $case->nama_lengkap);
+        // …tapi identitas pelapor terkunci pada nilai asli.
+        $this->assertEquals('Dr. Pelapor Asli', $case->nama_pelapor);
+        $this->assertEquals('RS Islam Bontang', $case->instansi_pelapor);
+        $this->assertEquals('0548-111111', $case->telepon_pelapor);
+        // Pengubah dicatat sebagai updated_by.
+        $this->assertEquals($this->admin->id, $case->updated_by);
+    }
+
     // ==================== DELETE TESTS ====================
 
     public function test_destroy_deletes_case()
