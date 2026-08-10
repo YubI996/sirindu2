@@ -264,7 +264,10 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.epidemiologi.getKelurahan');
         Route::get('get-rt/{id}', [App\Http\Controllers\EpidemiologiController::class, 'getRt'])
              ->name('admin.epidemiologi.getRt');
+        // Throttle: lookup NIK memaparkan biodata; batasi laju agar tak dipakai
+        // enumerasi PII massal walau sudah di-scope wilayah.
         Route::get('lookup-nik/{nik}', [App\Http\Controllers\EpidemiologiController::class, 'lookupNik'])
+             ->middleware('throttle:40,1')
              ->name('admin.epidemiologi.lookupNik');
 
         // Lokasi Penularan

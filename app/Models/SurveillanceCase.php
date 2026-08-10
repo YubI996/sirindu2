@@ -240,7 +240,18 @@ class SurveillanceCase extends Model
         'created_by',
         'updated_by',
 
-        // Faskes scoping
+        // Faskes scoping.
+        //
+        // PERINGATAN: id_petugas_input, created_by, updated_by, faskes_type, dan
+        // id_faskes ini SISTEM-YANG-MENETAPKAN — jangan pernah diisi dari data
+        // request pengguna. Mereka tetap fillable HANYA agar penulis tepercaya bisa
+        // mass-assign (SurveillanceRepository set eksplisit dari Auth; Pd3iImport
+        // updateOrCreate). Aman hari ini karena store/update memakai
+        // $request->validated(), dan Store/UpdateSurveillanceCaseRequest TIDAK memuat
+        // aturan untuk kolom-kolom ini → data request tak pernah menjangkaunya.
+        // Bila menambah aturan request untuk salah satunya, sebuah faskes bisa
+        // mengklaim/menyembunyikan kasus. Invarian ini dikunci oleh
+        // EpidemiologiControllerTest::test_faskes_tak_bisa_menyuntik_field_scoping.
         'faskes_type',
         'id_faskes',
     ];

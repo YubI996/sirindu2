@@ -155,6 +155,12 @@ class EpidemiologiController extends Controller
         $cityWide = $request->boolean('city_wide');
         $query->visibleTo(($cityWide || $user->isSuperAdmin()) ? null : $user);
 
+        // PII level-record (nama pasien & No. Epid) hanya boleh menyertai kasus yang
+        // memang berhak dilihat user. Saat city_wide melebarkan cakupan melewati
+        // wilayah faskes, kembalikan AGREGAT saja (hitungan per wilayah) tanpa daftar
+        // nama — choropleth tetap tampil, tapi identitas pasien luar wilayah tak bocor.
+        $canSeeDetail = $user->isSuperAdmin() || !$cityWide;
+
         // Apply filters
         if ($request->has('disease_id') && $request->disease_id != '') {
             $query->where('id_jenis_kasus', $request->disease_id);
@@ -171,11 +177,11 @@ class EpidemiologiController extends Controller
         $cases = $query->get();
 
         // Group by kelurahan for map coloring
-        $casesByKelurahan = $cases->groupBy('id_kel')->map(function ($group) {
+        $casesByKelurahan = $cases->groupBy('id_kel')->map(function ($group) use ($canSeeDetail) {
             return [
                 'name' => $group->first()->kelurahan->name ?? 'Unknown',
                 'count' => $group->count(),
-                'cases' => $group->map(function ($case) {
+                'cases' => $canSeeDetail ? $group->map(function ($case) {
                     return [
                         'id' => $case->id,
                         'no_registrasi' => $case->no_registrasi,
@@ -184,16 +190,16 @@ class EpidemiologiController extends Controller
                         'status' => $case->status_kasus,
                         'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
                     ];
-                })->toArray()
+                })->toArray() : []
             ];
         });
 
         // Group by kecamatan
-        $casesByKecamatan = $cases->groupBy('id_kec')->map(function ($group) {
+        $casesByKecamatan = $cases->groupBy('id_kec')->map(function ($group) use ($canSeeDetail) {
             return [
                 'name' => $group->first()->kecamatan->name ?? 'Unknown',
                 'count' => $group->count(),
-                'cases' => $group->map(function ($case) {
+                'cases' => $canSeeDetail ? $group->map(function ($case) {
                     return [
                         'id' => $case->id,
                         'nama' => $case->nama_lengkap,
@@ -201,12 +207,12 @@ class EpidemiologiController extends Controller
                         'status' => $case->status_kasus,
                         'tanggal_onset' => $case->tanggal_onset->format('d/m/Y'),
                     ];
-                })->toArray()
+                })->toArray() : []
             ];
         });
 
         // Group by RT — kasus tanpa id_rt dikelompokkan sebagai 'Tidak Terdefinisi'
-        $casesByRT = $cases->groupBy('id_rt')->map(function ($group) {
+        $casesByRT = $cases->groupBy('id_rt')->map(function ($group) use ($canSeeDetail) {
             $rt = $group->first()->rt;
             $rtName = $rt?->name ?? 'Tidak Terdefinisi';
             $kelurahanName = $group->first()->kelurahan?->name ?? null;
@@ -215,7 +221,7 @@ class EpidemiologiController extends Controller
                 'kelurahan' => $kelurahanName,
                 'undefined' => $rt === null,
                 'count' => $group->count(),
-                'cases' => $group->map(function ($case) {
+                'cases' => $canSeeDetail ? $group->map(function ($case) {
                     return [
                         'id'             => $case->id,
                         'no_registrasi'  => $case->no_registrasi,
@@ -225,14 +231,15 @@ class EpidemiologiController extends Controller
                         'kelurahan'      => $case->kelurahan?->name ?? '-',
                         'tanggal_onset'  => $case->tanggal_onset->format('d/m/Y'),
                     ];
-                })->toArray()
+                })->toArray() : []
             ];
         });
 
-        // Individual case markers (only cases with coordinates)
-        $caseMarkers = $cases->filter(function ($case) {
+        // Individual case markers (only cases with coordinates) — juga PII, jadi
+        // ikut disembunyikan saat cakupan diperlebar melewati wilayah user.
+        $caseMarkers = (!$canSeeDetail ? collect() : $cases->filter(function ($case) {
             return $case->latitude && $case->longitude;
-        })->map(function ($case) {
+        }))->map(function ($case) {
             return [
                 'id' => $case->id,
                 'nama' => $case->nama_lengkap,
@@ -712,9 +719,14 @@ class EpidemiologiController extends Controller
      */
     public function lookupNik($nik)
     {
-        // 1) Kasus surveilans lama (paling relevan). Sengaja tanpa scope wilayah:
-        //    biodata ini toh akan diketik ulang oleh petugas untuk NIK yang sama.
-        $case = SurveillanceCase::where('nik', $nik)->latest('id')->first();
+        $user = auth()->user();
+        $scopeUser = $user->isSuperAdmin() ? null : $user;
+
+        // 1) Kasus surveilans lama (paling relevan) — DIBATASI ke kasus yang boleh
+        //    dilihat user. Biodata pasien kasus di luar wilayah bukan hak faskes ini;
+        //    tanpa batas ini, sembarang NIK bisa dipakai memanen PII lintas wilayah.
+        $case = SurveillanceCase::query()->visibleTo($scopeUser)
+            ->where('nik', $nik)->latest('id')->first();
         if ($case) {
             return response()->json([
                 'found'  => true,
@@ -734,8 +746,17 @@ class EpidemiologiController extends Controller
             ]);
         }
 
-        // 2) Tabel anak (master registry) sebagai fallback.
-        $anak = \App\Models\Anak::where('nik', $nik)->first();
+        // 2) Tabel anak (master registry) sebagai fallback — dibatasi ke wilayah user.
+        //    Puskesmas: hanya kelurahan catchment wilker-nya. RS tak berwilayah &
+        //    peran tak dikenal → fail closed (tak ada hasil). Superadmin tanpa batas.
+        $anakQuery = \App\Models\Anak::where('nik', $nik);
+        if (!$user->isSuperAdmin()) {
+            $kelIds = ($user->isSurveilansPuskesmas() && $user->puskesmas)
+                ? \App\Support\WilkerPuskesmas::catchmentKelurahanIds($user->puskesmas->name)
+                : [];
+            $anakQuery->whereIn('id_kel', $kelIds ?: [-1]);
+        }
+        $anak = $anakQuery->first();
         if ($anak) {
             $jenisKelamin = $anak->jk == 1 ? 'L' : ($anak->jk == 2 ? 'P' : null);
 
