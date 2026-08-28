@@ -148,12 +148,12 @@
                 </div>
             </div>
 
-            <!-- Section D2: Komplikasi (Campak/Rubella) -->
-            <div class="card disease-card" data-diseases="CAMPAK_RUBELLA" style="display:none;">
+            <!-- Section D2: Komplikasi (Campak/Rubella) + Status Gizi (Campak/Rubella & Difteri) -->
+            <div class="card disease-card" data-diseases="CAMPAK_RUBELLA,DIFTERI_OBS" style="display:none;">
                 <div class="card-header section-header-d" id="headingD2">
                     <h5 class="mb-0">
                         <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseD2" aria-expanded="false" aria-controls="collapseD2">
-                            <i class="fa fa-exclamation-triangle" aria-hidden="true"></i> D2. Komplikasi
+                            <i class="fa fa-exclamation-triangle" aria-hidden="true"></i> D2. Komplikasi &amp; Status Gizi
                         </button>
                     </h5>
                 </div>
@@ -364,6 +364,15 @@ $(document).ready(function() {
                 $(this).find('.collapse').collapse('hide');
                 $(this).hide();
             }
+        });
+
+        // Blok per-penyakit DI DALAM kartu (komplikasi & status gizi di D2,
+        // pengobatan Difteri dan pemeriksaan AFP di D3). Tanpa ini visibilitasnya
+        // hanya ikut nilai $case saat render, sehingga berganti jenis kasus di
+        // halaman edit meninggalkan blok penyakit lama tetap tampil/tersembunyi.
+        $('.disease-section, .disease-field').each(function() {
+            var diseases = ($(this).data('diseases') || '').toString().split(',');
+            $(this).toggle(!!kode && diseases.indexOf(kode) !== -1);
         });
     }
 

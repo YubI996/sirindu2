@@ -95,13 +95,55 @@
 
 {{-- Detail Imunisasi Per Antigen --}}
 @php
-    $antigenLabels = [
-        1 => 'MR1 / DPT-HB-Hib 1 / OPV1 (9 bln)',
-        2 => 'MR2 / DPT-HB-Hib Booster / OPV2 (18 bln)',
-        3 => 'MR3 / DT kelas 1 SD',
-        4 => 'MMR / TD kelas 2 dan 5',
+    // Lima slot antigen dipakai bersama oleh semua penyakit; labelnya menyesuaikan
+    // penyakit agar cocok dengan baris di formulir *1 masing-masing (FP-1 VI,
+    // DIF-1 no.4, PERT-01 RIWAYAT VAKSINASI). Urutan slot = urutan baris formulir.
+    $antigenLabelSets = [
+        'CAMPAK_RUBELLA' => [
+            1 => 'MR1 (9 bulan)',
+            2 => 'MR2 (18 bulan)',
+            3 => 'MR3 kelas 1 SD',
+            4 => 'MMR',
+            5 => 'Kampanye / ORI / SUBPIN / PIN',
+        ],
+        'DIFTERI_OBS' => [
+            1 => 'DPT-HB-Hib 1, 2 dan 3',
+            2 => 'DPT-HB-Hib Booster (18 bulan)',
+            3 => 'DT kelas 1',
+            4 => 'Td kelas 2 dan 5',
+            5 => 'Kampanye / ORI',
+        ],
+        'PERTUSIS' => [
+            1 => 'DPT-HB-Hib usia 2 bulan',
+            2 => 'DPT-HB-Hib usia 3 bulan',
+            3 => 'DPT-HB-Hib usia 4 bulan',
+            4 => 'DPT-HB-Hib usia 18 bulan (booster)',
+            5 => 'DPT-HB-Hib saat ORI',
+        ],
+        'AFP' => [
+            1 => 'Imunisasi rutin — OPV',
+            2 => 'Imunisasi rutin — IPV',
+            3 => 'Imunisasi rutin — Hexavalen',
+            4 => 'Imunisasi tambahan — OPV',
+            5 => 'Imunisasi tambahan — IPV',
+        ],
+        'TETANUS_NEO' => [
+            1 => 'Td ibu — kehamilan ini',
+            2 => 'Td ibu — kehamilan sebelumnya',
+            3 => 'Td ibu — calon pengantin',
+            4 => 'DPT-HB-Hib / DT / Td masa kecil ibu',
+            5 => 'Td saat investigasi',
+        ],
+    ];
+    $antigenDefault = [
+        1 => 'Dosis 1',
+        2 => 'Dosis 2',
+        3 => 'Dosis 3',
+        4 => 'Dosis 4 / Booster',
         5 => 'Kampanye / ORI / SUBPIN / PIN',
     ];
+    $kodePenyakitKasus = optional($case->jenisKasus ?? null)->kode_penyakit ?? '';
+    $antigenLabels = $antigenLabelSets[$kodePenyakitKasus] ?? $antigenDefault;
     $imunisasiRows = collect($case->imunisasi ?? [])->keyBy('imunisasi_ke');
     $oldImunisasi = old('imunisasi', []);
 @endphp
@@ -127,7 +169,7 @@
                     $tglImunisasi   = $rowOld['tanggal_imunisasi'] ?? (isset($rowDb->tanggal_imunisasi) ? $rowDb->tanggal_imunisasi->format('Y-m-d') : '');
                 @endphp
                 <tr>
-                    <td class="align-middle"><strong>{{ $ke }}.</strong> {{ $antigenLabels[$ke] }}</td>
+                    <td class="align-middle"><strong>{{ $ke }}.</strong> <span class="antigen-label" data-slot="{{ $ke }}">{{ $antigenLabels[$ke] }}</span></td>
                     <td>
                         <select name="imunisasi[{{ $ke }}][diberikan]" class="form-control form-control-sm">
                             <option value="tidak_tahu" {{ $diberikan === 'tidak_tahu' ? 'selected' : '' }}>Tidak Tahu</option>
@@ -155,6 +197,22 @@
 @push('js')
 <script>
 $(document).ready(function() {
+    // Label antigen mengikuti penyakit yang dipilih. Di halaman create $case belum
+    // ada, jadi label awal memakai set default sampai jenis kasus dipilih.
+    var antigenLabelSets = @json($antigenLabelSets);
+    var antigenDefault   = @json($antigenDefault);
+
+    function syncAntigenLabels() {
+        var kode = $('#id_jenis_kasus').find('option:selected').data('kode') || '';
+        var set  = antigenLabelSets[kode] || antigenDefault;
+        $('.antigen-label').each(function() {
+            var slot = $(this).data('slot');
+            if (set[slot]) $(this).text(set[slot]);
+        });
+    }
+    $('#id_jenis_kasus').on('change', syncAntigenLabels);
+    syncAntigenLabels();
+
     // Toggle riwayat bepergian detail
     $('#riwayat_bepergian').on('change', function() {
         $('#riwayat_bepergian_detail').toggle($(this).val() === 'ya');

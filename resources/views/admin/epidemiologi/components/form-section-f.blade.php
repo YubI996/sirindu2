@@ -33,6 +33,7 @@
     if (empty($spesimenRows)) {
         $spesimenRows = $spesimenExisting->map(fn($s) => [
             'jenis_spesimen'               => $s->jenis_spesimen,
+            'no_kode_spesimen'             => $s->no_kode_spesimen,
             'tanggal_ambil_spesimen'       => $s->tanggal_ambil_spesimen?->format('Y-m-d'),
             'tanggal_kirim_sampel'         => $s->tanggal_kirim_sampel?->format('Y-m-d'),
             'tanggal_terima_lab'           => $s->tanggal_terima_lab?->format('Y-m-d'),
@@ -104,6 +105,12 @@
                     <input type="text" name="spesimen[__IDX__][nama_variant_genotype]" class="form-control form-control-sm" placeholder="Opsional">
                 </div>
             </div>
+            <div class="col-md-6">
+                <div class="form-group mb-0">
+                    <label class="small mb-1">No. Kode Spesimen</label>
+                    <input type="text" name="spesimen[__IDX__][no_kode_spesimen]" class="form-control form-control-sm" placeholder="Nomor kode dari lab">
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -173,6 +180,13 @@
                     <label class="small mb-1">Nama Variant / Genotype</label>
                     <input type="text" name="spesimen[{{ $idx }}][nama_variant_genotype]" class="form-control form-control-sm"
                            value="{{ $sp['nama_variant_genotype'] ?? '' }}" placeholder="Opsional">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group mb-0">
+                    <label class="small mb-1">No. Kode Spesimen</label>
+                    <input type="text" name="spesimen[{{ $idx }}][no_kode_spesimen]" class="form-control form-control-sm"
+                           value="{{ $sp['no_kode_spesimen'] ?? '' }}" placeholder="Nomor kode dari lab">
                 </div>
             </div>
         </div>

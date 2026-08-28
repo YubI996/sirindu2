@@ -39,6 +39,38 @@
     $isRS = str_starts_with($instansiUpper, 'RS') || str_starts_with($instansiUpper, 'RUMAH SAKIT')
             || ($case->petugasInput?->faskes_type === 'rs');
     $meninggal = $case->kondisi_akhir === 'meninggal';
+
+    // Bag G: tempat berobat per jenis faskes (kestrad & RS), dengan kolom lama
+    // nama_rs / nama_pengobatan_tradisional sebagai cadangan untuk data impor.
+    $faskes = $case->faskesBerobat ?? collect();
+    $byJenis = fn(string $j) => $faskes->firstWhere('jenis_faskes', $j);
+    $fTrad = $byJenis('pengobatan_tradisional');
+    $fRs   = $byJenis('rs');
+    $namaTrad = $fTrad?->nama_faskes ?? $case->nama_pengobatan_tradisional;
+    $tglTrad  = $fTrad?->tanggal_berobat ?? $case->tanggal_kunjungan_tradisional;
+    $namaRs   = $fRs?->nama_faskes ?? $case->nama_rs ?? $case->nama_faskes_rawat;
+    $tglRs    = $fRs?->tanggal_berobat ?? $case->tanggal_kunjungan_rs ?? $case->tanggal_masuk_rawat;
+    $berobatRs = (bool) ($fRs || $case->nama_rs || ($case->nama_faskes_rawat && $case->nama_faskes_rawat !== '-'));
+
+    // Bag D3: grid anggota gerak. Kolom tanda_* berupa teks bebas — dianggap
+    // "ada kelumpuhan" bila terisi dan bukan kalimat penyangkalan.
+    $anggotaGerak = [
+        ['label' => 'Tungkai kanan', 'tanda' => $case->tanda_tungkai_kanan, 'raba' => $case->rasa_raba_tungkai_kanan],
+        ['label' => 'Tungkai kiri',  'tanda' => $case->tanda_tungkai_kiri,  'raba' => $case->rasa_raba_tungkai_kiri],
+        ['label' => 'Lengan kanan',  'tanda' => $case->tanda_lengan_kanan,  'raba' => $case->rasa_raba_lengan_kanan],
+        ['label' => 'Lengan kiri',   'tanda' => $case->tanda_lengan_kiri,   'raba' => $case->rasa_raba_lengan_kiri],
+    ];
+    $tandaNegatif = ['tidak', 'tidak ada', 'normal', '-', 'tidak lumpuh'];
+
+    // Bag E: imunisasi polio per slot antigen (lihat form-section-e).
+    $imun = collect($case->imunisasi ?? [])->keyBy('imunisasi_ke');
+
+    // Bag E: riwayat bepergian terstruktur, teks riwayat_perjalanan sebagai cadangan.
+    $pernahBepergian = $case->riwayat_bepergian === 'ya' || (bool) $case->riwayat_perjalanan;
+    $lokasiBepergian = $case->lokasi_bepergian ?: $case->riwayat_perjalanan;
+
+    // Petugas investigasi = pelapor kasus (Bag B), bukan user yang membuka export.
+    $petugas = $case->nama_pelapor ?: ($case->petugasInput->name ?? '');
 @endphp
 
 {{-- ============ HALAMAN 1 ============ --}}
@@ -104,20 +136,22 @@
             <td colspan="3">{{ $meninggal ? $fmt($case->tanggal_kondisi_akhir) : '' }}</td>
         </tr>
         <tr>
+            {{-- Bag G: baris pengobatan tradisional/kestrad. --}}
             <td class="lbl">Setelah lemah/lumpuh, menjalani pengobatan tradisional/alternatif?</td>
-            <td colspan="3">{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak
-                &nbsp;&nbsp; Nama tempat: <span class="muted">………</span> &nbsp; Tanggal: <span class="muted">………</span></td>
+            <td colspan="3">{!! $cb((bool) $namaTrad) !!} Ya &nbsp; {!! $cb(!$namaTrad) !!} Tidak
+                &nbsp;&nbsp; Nama tempat: {{ $namaTrad ?: '………' }} &nbsp; Tanggal: {{ $fmt($tglTrad) ?: '………' }}</td>
         </tr>
         <tr>
+            {{-- Bag G: baris Rumah Sakit. --}}
             <td class="lbl">Setelah lemah/lumpuh, berobat ke Rumah Sakit?</td>
             <td colspan="3">
-                {!! $cb($case->status_rawat === 'rawat_inap' || $case->nama_faskes_rawat) !!} Ya &nbsp;
-                {!! $cb(!($case->status_rawat === 'rawat_inap' || $case->nama_faskes_rawat)) !!} Tidak
-                &nbsp;&nbsp; Nama RS: {{ $case->nama_faskes_rawat ?? '' }} &nbsp; Tgl berobat: {{ $fmt($case->tanggal_masuk_rawat) }}
+                {!! $cb($berobatRs) !!} Ya &nbsp; {!! $cb(!$berobatRs) !!} Tidak
+                &nbsp;&nbsp; Nama RS: {{ $namaRs ?? '' }} &nbsp; Tgl berobat: {{ $fmt($tglRs) }}
             </td>
         </tr>
         <tr>
-            <td class="lbl">Diagnosis</td><td>{{ $case->diagnosis ?? '' }}</td>
+            {{-- Bag G2: diagnosis dokter; Bag G: no. rekam medik. --}}
+            <td class="lbl">Diagnosis</td><td>{{ $case->diagnosis_dokter ?: ($case->diagnosis ?? '') }}</td>
             <td class="lbl">No. rekam medik</td><td>{{ $case->no_rekam_medik ?? '' }}</td>
         </tr>
     </table>
@@ -126,19 +160,19 @@
     <table class="data-table" style="margin-top:-1px;">
         <tr>
             <td class="lbl" style="width:54%">Apakah kelemahan/kelumpuhan sifatnya akut (1-14 hari)?</td>
-            <td style="width:12%; text-align:center;">{!! $cb(false) !!} Ya</td>
-            <td style="width:12%; text-align:center; background:#808080; color:#fff;">{!! $cb(false) !!} Tidak</td>
+            <td style="width:12%; text-align:center;">{!! $cb($case->kelumpuhan_akut === 'ya') !!} Ya</td>
+            <td style="width:12%; text-align:center; background:#808080; color:#fff;">{!! $cb($case->kelumpuhan_akut === 'tidak') !!} Tidak</td>
             <td rowspan="2" style="width:22%; background:#808080; color:#fff; font-weight:bold; text-align:center; vertical-align:middle;">Stop investigasi</td>
         </tr>
         <tr>
             <td class="lbl">Apakah kelemahan/kelumpuhan sifatnya layuh (flaccid)?</td>
-            <td style="text-align:center;">{!! $cb(false) !!} Ya</td>
-            <td style="text-align:center; background:#808080; color:#fff;">{!! $cb(false) !!} Tidak</td>
+            <td style="text-align:center;">{!! $cb($case->kelumpuhan_flaccid === 'ya') !!} Ya</td>
+            <td style="text-align:center; background:#808080; color:#fff;">{!! $cb($case->kelumpuhan_flaccid === 'tidak') !!} Tidak</td>
         </tr>
         <tr>
             <td class="lbl">Apakah kelemahan/kelumpuhan disebabkan rudapaksa?</td>
-            <td style="text-align:center; background:#808080; color:#fff;">{!! $cb(false) !!} Ya</td>
-            <td style="text-align:center;">{!! $cb(false) !!} Tidak</td>
+            <td style="text-align:center; background:#808080; color:#fff;">{!! $cb($case->kelumpuhan_rudapaksa === 'ya') !!} Ya</td>
+            <td style="text-align:center;">{!! $cb($case->kelumpuhan_rudapaksa === 'tidak') !!} Tidak</td>
             <td></td>
         </tr>
     </table>
@@ -156,15 +190,21 @@
             <td class="lbl" style="text-align:center;">Kekuatan Otot (0-5)</td>
             <td class="lbl" style="text-align:center;">Gangguan rasa raba</td>
         </tr>
-        @foreach(['Tungkai kanan','Tungkai kiri','Lengan kanan','Lengan kiri'] as $limb)
+        @foreach($anggotaGerak as $ag)
+        @php
+            $tandaTeks = trim((string) $ag['tanda']);
+            $adaTanda  = $tandaTeks !== '' && !in_array(strtolower($tandaTeks), $tandaNegatif, true);
+            $tidakAdaTanda = $tandaTeks !== '' && !$adaTanda;
+        @endphp
         <tr>
-            <td>{{ $limb }}</td>
-            <td style="text-align:center;">{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
-            <td></td>
-            <td style="text-align:center;">{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td>
+            <td>{{ $ag['label'] }}</td>
+            <td style="text-align:center;">{!! $cb($adaTanda) !!} Ya &nbsp; {!! $cb($tidakAdaTanda) !!} Tidak
+                @if($adaTanda)<br><span style="font-size:7.5pt;">{{ $tandaTeks }}</span>@endif</td>
+            <td style="text-align:center;">{{ $adaTanda ? $case->kekuatan_otot : '' }}</td>
+            <td style="text-align:center;">{!! $cb($ag['raba'] === 'ya') !!} Ya &nbsp; {!! $cb($ag['raba'] === 'tidak') !!} Tidak</td>
         </tr>
         @endforeach
-        <tr><td colspan="4">Lain-lain (muka, leher, dll): <span class="muted">…………………………</span></td></tr>
+        <tr><td colspan="4">Lain-lain (muka, leher, dll): {{ $case->lokasi_kelemahan_lain ?: '…………………………' }}</td></tr>
     </table>
 
     {{-- IV. Riwayat Kontak --}}
@@ -172,12 +212,12 @@
         <tr><td colspan="2" class="section-header">IV. Riwayat Kontak</td></tr>
         <tr>
             <td class="lbl" style="width:50%">Dalam 35 hari terakhir, pernah bepergian ke luar kab/prov/negeri?</td>
-            <td>{!! $cb((bool) $case->riwayat_perjalanan) !!} Ya — Lokasi: {{ $case->riwayat_perjalanan ?? '' }}
-                &nbsp; {!! $cb(!$case->riwayat_perjalanan) !!} Tidak</td>
+            <td>{!! $cb($pernahBepergian) !!} Ya — Lokasi: {{ $lokasiBepergian ?? '' }}
+                &nbsp; {!! $cb(!$pernahBepergian) !!} Tidak</td>
         </tr>
         <tr>
             <td class="lbl">Dalam 75 hari terakhir, kontak dengan anak yang baru imunisasi polio oral?</td>
-            <td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak &nbsp; {!! $cb(false) !!} Tidak tahu</td>
+            <td>{!! $cb($case->kontak_polio_oral === 'ya') !!} Ya &nbsp; {!! $cb($case->kontak_polio_oral === 'tidak') !!} Tidak &nbsp; {!! $cb($case->kontak_polio_oral === 'tidak_tahu') !!} Tidak tahu</td>
         </tr>
     </table>
 </div>
@@ -186,28 +226,39 @@
 <div class="page" style="page-break-before: always;">
     <div style="text-align:right; font-weight:bold; font-size:10pt; margin-bottom:4px;">FP-1 (Hal. 2) &nbsp; No. Epid: {{ $case->no_registrasi }}</div>
 
-    {{-- V. Sanitasi (tidak tercatat di sistem) --}}
+    {{-- V. Sanitasi Dasar — seluruhnya dari Bag D3. --}}
+    @php
+        $jamban  = $case->jenis_jamban;
+        $diapers = $case->pembuangan_diapers;
+    @endphp
     <table class="data-table">
         <tr><td colspan="2" class="section-header">V. Sanitasi Dasar: Jamban dan Pembuangan Tinja</td></tr>
-        <tr><td class="lbl" style="width:55%">Memiliki jamban sendiri di rumah?</td><td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td></tr>
+        <tr><td class="lbl" style="width:55%">Memiliki jamban sendiri di rumah?</td><td>{!! $cb($case->jamban_sendiri === 'ya') !!} Ya &nbsp; {!! $cb($case->jamban_sendiri === 'tidak') !!} Tidak</td></tr>
         <tr><td class="lbl">Jenis jamban yang digunakan?</td><td>
-            {!! $cb(false) !!} Jamban leher angsa dengan septic tank<br>
-            {!! $cb(false) !!} Jamban cemplung (tanpa septic tank)<br>
-            {!! $cb(false) !!} Jamban di sungai/kebun/kolam (tidak sehat)<br>
-            {!! $cb(false) !!} Lainnya, ..............................
+            {!! $cb($jamban === 'leher_angsa_septic') !!} Jamban leher angsa dengan septic tank<br>
+            {!! $cb($jamban === 'cemplung') !!} Jamban cemplung (tanpa septic tank)<br>
+            {!! $cb($jamban === 'sungai_kebun_kolam') !!} Jamban di sungai/kebun/kolam (tidak sehat)<br>
+            {!! $cb($jamban === 'lainnya') !!} Lainnya, ..............................
         </td></tr>
-        <tr><td class="lbl">Selalu menggunakan jamban untuk BAB?</td><td>{!! $cb(false) !!} Ya, selalu &nbsp; {!! $cb(false) !!} Kadang &nbsp; {!! $cb(false) !!} Tidak</td></tr>
-        <tr><td class="lbl">Jamban dilengkapi saluran pembuangan kedap & aman?</td><td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak</td></tr>
-        <tr><td class="lbl">Pembuangan diapers (jika masih pakai)</td><td>{!! $cb(false) !!} Sampah tertutup &nbsp; {!! $cb(false) !!} Sungai/kebun &nbsp; {!! $cb(false) !!} Dibakar &nbsp; {!! $cb(false) !!} Lainnya</td></tr>
+        <tr><td class="lbl">Selalu menggunakan jamban untuk BAB?</td><td>{!! $cb($case->selalu_gunakan_jamban === 'ya') !!} Ya, selalu &nbsp; {!! $cb($case->selalu_gunakan_jamban === 'kadang_kadang') !!} Kadang &nbsp; {!! $cb($case->selalu_gunakan_jamban === 'tidak') !!} Tidak</td></tr>
+        <tr><td class="lbl">Jamban dilengkapi saluran pembuangan kedap & aman?</td><td>{!! $cb($case->jamban_saluran_kedap === 'ya') !!} Ya &nbsp; {!! $cb($case->jamban_saluran_kedap === 'tidak') !!} Tidak</td></tr>
+        <tr><td class="lbl">Pembuangan diapers (jika masih pakai)</td><td>{!! $cb($diapers === 'sampah_tertutup') !!} Sampah tertutup &nbsp; {!! $cb($diapers === 'sungai_kebun') !!} Sungai/kebun &nbsp; {!! $cb($diapers === 'dibakar') !!} Dibakar &nbsp; {!! $cb($diapers === 'lainnya') !!} Lainnya</td></tr>
     </table>
 
     {{-- VI. Status Imunisasi Polio --}}
     <table class="data-table" style="margin-top:-1px;">
         <tr><td colspan="3" class="section-header">VI. Status Imunisasi Polio</td></tr>
-        @foreach(['Imunisasi rutin — OPV','Imunisasi rutin — IPV','Imunisasi rutin — Hexavalen','Imunisasi tambahan — OPV','Imunisasi tambahan — IPV'] as $im)
+        {{-- Bag E: slot antigen 1–5 = OPV/IPV/Hexavalen rutin, lalu OPV/IPV tambahan.
+             Aplikasi menyimpan status "diberikan" (ya/tidak/tidak tahu) + tanggal,
+             bukan jumlah dosis, jadi kotak 1x–4x tetap diisi manual. --}}
+        @foreach([1 => 'Imunisasi rutin — OPV', 2 => 'Imunisasi rutin — IPV', 3 => 'Imunisasi rutin — Hexavalen', 4 => 'Imunisasi tambahan — OPV', 5 => 'Imunisasi tambahan — IPV'] as $ke => $im)
+        @php $row = $imun->get($ke); @endphp
         <tr>
             <td class="lbl" style="width:28%">{{ $im }}</td>
-            <td colspan="2">{!! $cb(false) !!} 1x {!! $cb(false) !!} 2x {!! $cb(false) !!} 3x {!! $cb(false) !!} 4x {!! $cb(false) !!} Belum pernah {!! $cb(false) !!} Tidak tahu</td>
+            <td>{!! $cb(false) !!} 1x {!! $cb(false) !!} 2x {!! $cb(false) !!} 3x {!! $cb(false) !!} 4x
+                {!! $cb(optional($row)->diberikan === 'tidak') !!} Belum pernah
+                {!! $cb($row === null || optional($row)->diberikan === 'tidak_tahu') !!} Tidak tahu</td>
+            <td style="width:26%">{{ collect([$fmt(optional($row)->tanggal_imunisasi), optional($row)->sumber_informasi])->filter()->implode(' — ') }}</td>
         </tr>
         @endforeach
         <tr>
@@ -238,25 +289,27 @@
             <td>{{ $fmt($sp2?->tanggal_kirim_sampel) }}</td>
             <td>{{ $fmt($sp2?->tanggal_terima_lab) }}</td>
         </tr>
-        <tr><td class="lbl">Alasan tidak diambil spesimen</td><td colspan="3">{{ $case->alasan_spesimen ?? '' }}</td></tr>
+        {{-- Belum ada kolomnya di aplikasi; sengaja dibiarkan kosong untuk diisi manual. --}}
+        <tr><td class="lbl">Alasan tidak diambil spesimen</td><td colspan="3"></td></tr>
     </table>
 
     {{-- Petugas & Hasil --}}
     <table class="data-table" style="margin-top:-1px;">
         <tr>
             <td class="lbl" style="width:16%">Petugas investigasi</td>
-            <td style="width:34%">{{ $case->petugasInput->name ?? ($case->nama_pelapor ?? '') }}</td>
+            <td style="width:34%">{{ $petugas }}</td>
+            {{-- Bag G2: diagnosis & identitas dokter pemeriksa. --}}
             <td class="lbl" style="width:18%">Hasil pemeriksaan / Diagnosis*</td>
-            <td>{{ $case->hasil_lab ?? '' }}</td>
+            <td>{{ $case->diagnosis_dokter ?: ($case->hasil_lab ?? '') }}</td>
         </tr>
         <tr>
             <td class="lbl">Tanda tangan</td><td style="height:32px;"></td>
-            <td class="lbl">Nama dokter</td><td></td>
+            <td class="lbl">Nama dokter</td><td>{{ $case->nama_dokter ?? '' }}</td>
         </tr>
         <tr>
             <td class="lbl" rowspan="2" style="vertical-align:top;"></td>
             <td rowspan="2"></td>
-            <td class="lbl">No. Telp./HP</td><td></td>
+            <td class="lbl">No. Telp./HP</td><td>{{ $case->no_telp_dokter ?? '' }}</td>
         </tr>
         <tr>
             <td class="lbl">Tanda tangan**</td><td style="height:32px;"></td>
@@ -274,7 +327,7 @@
     </div>
 
     <div style="margin-top:10px; text-align:right; font-size:8pt; color:#555;">
-        Dicetak: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; {{ $case->nama_pelapor ?? '' }}
+        Dicetak: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; {{ $petugas }}
     </div>
 </div>
 </body>

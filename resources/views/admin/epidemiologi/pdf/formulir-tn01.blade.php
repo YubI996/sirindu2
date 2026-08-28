@@ -36,8 +36,25 @@
     $meninggal = $case->kondisi_akhir === 'meninggal';
     $sembuh = $case->kondisi_akhir === 'sembuh';
     $sumber = (str_starts_with(strtoupper($case->instansi_pelapor ?? ''), 'RS') || $case->petugasInput?->faskes_type === 'rs') ? 'RS' : 'Puskesmas';
-    $umurMeninggalHari = ($meninggal && $case->tanggal_lahir && $case->tanggal_kondisi_akhir)
-        ? (int) \Illuminate\Support\Carbon::parse($case->tanggal_lahir)->diffInDays($case->tanggal_kondisi_akhir) : null;
+    // Nilai tersimpan lebih dipercaya daripada hitungan tanggal.
+    $umurMeninggalHari = $case->umur_bayi_meninggal_hari
+        ?? (($meninggal && $case->tanggal_lahir && $case->tanggal_kondisi_akhir)
+            ? (int) \Illuminate\Support\Carbon::parse($case->tanggal_lahir)->diffInDays($case->tanggal_kondisi_akhir)
+            : null);
+
+    // Beberapa isian Bagian TN dulu berupa teks bebas sebelum diubah jadi pilihan,
+    // jadi pencocokan radio dilakukan per kata kunci — data lama tetap terbaca.
+    $cocok = function (?string $nilai, array $kunci): bool {
+        if (!$nilai) return false;
+        $n = strtolower($nilai);
+        foreach ($kunci as $k) {
+            if (str_contains($n, $k)) return true;
+        }
+        return false;
+    };
+
+    // Petugas pelaksana = pelapor kasus (Bag B), bukan user yang membuka export.
+    $petugas = $case->nama_pelapor ?: ($case->petugasInput->name ?? '');
 @endphp
 
 {{-- ============ HALAMAN 1 ============ --}}
@@ -59,7 +76,8 @@
             <td class="lbl">Tanggal Terima Laporan</td><td>{{ $fmt($case->tanggal_lapor) }}</td>
         </tr>
         <tr>
-            <td class="lbl">Tanggal Pelacakan</td><td>{{ $fmt($case->tanggal_penyelidikan ?? null) }}</td>
+            {{-- Bag B "Tanggal Penyelidikan" — kolomnya bernama tanggal_penyidikan. --}}
+            <td class="lbl">Tanggal Pelacakan</td><td>{{ $fmt($case->tanggal_penyidikan) }}</td>
             <td colspan="2"></td>
         </tr>
     </table>
@@ -69,31 +87,39 @@
         <tr><td colspan="4" class="sh sh-orange">IDENTITAS BAYI DAN IBU</td></tr>
         <tr>
             <td class="lbl" style="width:16%">Nama Bayi</td><td style="width:34%">{{ $case->nama_lengkap }}</td>
-            <td class="lbl" style="width:16%">Jenis Kelamin / Anak ke-</td><td>{{ $jk }} &nbsp;|&nbsp; {{ $case->anak_ke ?? '' }}</td>
+            {{-- "Anak ke-" belum punya kolom di aplikasi: dikosongkan untuk diisi manual. --}}
+            <td class="lbl" style="width:16%">Jenis Kelamin / Anak ke-</td><td>{{ $jk }} &nbsp;|&nbsp; </td>
         </tr>
         <tr>
-            <td class="lbl">Nama Ibu</td><td>{{ $case->nama_ibu ?? '' }}</td>
-            <td class="lbl">Usia Ibu / Pekerjaan / Pendidikan</td><td>{{ $case->usia_ibu ?? '' }}</td>
+            {{-- Bag A "Nama Orang Tua". Usia/pekerjaan/pendidikan ibu belum ada kolomnya. --}}
+            <td class="lbl">Nama Ibu</td><td>{{ $case->nama_orang_tua ?? '' }}</td>
+            <td class="lbl">Usia Ibu / Pekerjaan / Pendidikan</td><td></td>
         </tr>
         <tr><td class="lbl">Alamat</td><td colspan="3">{{ $case->alamat_lengkap }}</td></tr>
         <tr>
             <td class="lbl">Desa/Kelurahan</td><td>{{ $case->kelurahan->name ?? '' }}</td>
             <td class="lbl">Kecamatan</td><td>{{ $case->kecamatan->name ?? '' }}</td>
         </tr>
-        <tr><td class="lbl">Sudah berapa lama Ibu tinggal di desa ini?</td><td colspan="3"></td></tr>
+        <tr><td class="lbl">Sudah berapa lama Ibu tinggal di desa ini?</td><td colspan="3">{{ $case->lama_tinggal_desa ?? '' }}</td></tr>
     </table>
 
     {{-- INFORMASI KELAHIRAN BAYI --}}
     <table class="t" style="margin-top:-1px;">
         <tr><td colspan="3" class="sh sh-blue">INFORMASI KELAHIRAN BAYI</td></tr>
-        <tr><td class="no">1</td><td class="q">Apakah bayi lahir hidup?</td><td>{!! $rb(false) !!} a. Ya &nbsp; {!! $rb(false) !!} b. Tidak &nbsp; <span class="stop">&raquo; bila tidak, Stop Pelacakan</span></td></tr>
+        <tr><td class="no">1</td><td class="q">Apakah bayi lahir hidup?</td><td>{!! $rb($case->bayi_lahir_hidup === 'ya') !!} a. Ya &nbsp; {!! $rb($case->bayi_lahir_hidup === 'tidak') !!} b. Tidak &nbsp; <span class="stop">&raquo; bila tidak, Stop Pelacakan</span></td></tr>
         <tr><td class="no">2</td><td class="q">Tanggal lahir bayi / Tanggal mulai sakit</td><td>Lahir: {{ $fmt($case->tanggal_lahir) }} &nbsp;|&nbsp; Mulai sakit: {{ $fmt($case->tanggal_onset) }}</td></tr>
         <tr><td class="no">3</td><td class="q">Bila bayi meninggal, tanggal meninggal / umur (hari)</td><td>{{ $meninggal ? $fmt($case->tanggal_kondisi_akhir) : '' }} @if($umurMeninggalHari !== null) &nbsp;|&nbsp; {{ $umurMeninggalHari }} hari @endif</td></tr>
-        <tr><td class="no">4</td><td class="q">Waktu lahir apakah bayi menangis?</td><td>{!! $rb(false) !!} a. Ya &nbsp; {!! $rb(false) !!} b. Tidak &nbsp; {!! $rb(false) !!} c. Tidak Tahu</td></tr>
-        <tr><td class="no">5</td><td class="q">Bila no.4 tidak tahu, apakah terlihat tanda kelahiran hidup (mis. gerakan)?</td><td>{!! $rb(false) !!} a. Ya &nbsp; {!! $rb(false) !!} b. Tidak &nbsp; {!! $rb(false) !!} c. Tidak Tahu</td></tr>
-        <tr><td class="no">6</td><td class="q">Setelah lahir apakah bayi bisa menyusu/minum dengan baik?</td><td>{!! $rb(false) !!} a. Ya &nbsp; {!! $rb(false) !!} b. Tidak &nbsp; {!! $rb(false) !!} c. Tidak Tahu &nbsp; <span class="stop">&raquo; bila tidak, Stop</span></td></tr>
-        <tr><td class="no">7</td><td class="q">Apakah 3 hari kemudian tiba-tiba mulut bayi mencucu dan tidak bisa menyusu?</td><td>{!! $rb(false) !!} a. Ya &nbsp; {!! $rb(false) !!} b. Tidak &nbsp; {!! $rb(false) !!} c. Tidak Tahu &nbsp; <span class="stop">&raquo; bila tidak, Stop</span></td></tr>
-        <tr><td class="no">8</td><td class="q">Apakah bayi mudah kejang jika disentuh/terkena sinar atau mendengar bunyi?</td><td>{!! $rb(false) !!} a. Ya &nbsp; {!! $rb(false) !!} b. Tidak &nbsp; {!! $rb(false) !!} c. Tidak Tahu</td></tr>
+        @foreach([
+            ['no' => 4, 'q' => 'Waktu lahir apakah bayi menangis?', 'v' => $case->bayi_menangis_lahir, 'stop' => ''],
+            ['no' => 5, 'q' => 'Bila no.4 tidak tahu, apakah terlihat tanda kelahiran hidup (mis. gerakan)?', 'v' => $case->tanda_kelahiran_hidup, 'stop' => ''],
+            ['no' => 6, 'q' => 'Setelah lahir apakah bayi bisa menyusu/minum dengan baik?', 'v' => $case->bayi_bisa_menyusu, 'stop' => '&raquo; bila tidak, Stop'],
+            ['no' => 7, 'q' => 'Apakah 3 hari kemudian tiba-tiba mulut bayi mencucu dan tidak bisa menyusu?', 'v' => $case->bayi_mulut_mencucu, 'stop' => '&raquo; bila tidak, Stop'],
+            ['no' => 8, 'q' => 'Apakah bayi mudah kejang jika disentuh/terkena sinar atau mendengar bunyi?', 'v' => $case->bayi_mudah_kejang, 'stop' => ''],
+        ] as $row)
+        <tr><td class="no">{{ $row['no'] }}</td><td class="q">{{ $row['q'] }}</td>
+            <td>{!! $rb($row['v'] === 'ya') !!} a. Ya &nbsp; {!! $rb($row['v'] === 'tidak') !!} b. Tidak &nbsp; {!! $rb($row['v'] === 'tidak_tahu') !!} c. Tidak Tahu
+                @if($row['stop']) &nbsp; <span class="stop">{!! $row['stop'] !!}</span> @endif</td></tr>
+        @endforeach
         <tr><td class="no">9</td><td class="q">Apakah bayi dirawat? (tempat &amp; tanggal)</td><td>{!! $rb($isRawat) !!} a. Ya &nbsp; {!! $rb(!$isRawat) !!} b. Tidak &nbsp; Tempat: {{ $case->nama_faskes_rawat ?? '' }} &nbsp; Tgl: {{ $fmt($case->tanggal_masuk_rawat) }}</td></tr>
         <tr><td class="no">10</td><td class="q">Keadaan bayi setelah dirawat</td><td>{!! $rb($sembuh) !!} a. Sembuh &nbsp; {!! $rb($meninggal) !!} b. Meninggal</td></tr>
     </table>
@@ -105,19 +131,42 @@
 
     <table class="t" style="margin-top:6px;">
         <tr><td colspan="3" class="sh sh-yellow">RIWAYAT PEMERIKSAAN KEHAMILAN IBU</td></tr>
-        <tr><td class="no">11</td><td class="q">Berapa kali kunjungan ibu hamil (antenatal care)?</td><td><span class="muted">…… kali</span></td></tr>
-        <tr><td class="no">12</td><td class="q">Tempat pemeriksaan Ibu Hamil</td><td><span class="muted">RS/Puskesmas ……</span></td></tr>
-        <tr><td class="no">13</td><td class="q">Pemeriksaan kehamilan oleh</td><td>{!! $rb(false) !!} a. Dokter &nbsp; {!! $rb(false) !!} b. Bidan/Perawat &nbsp; {!! $rb(false) !!} c. Lainnya</td></tr>
+        <tr><td class="no">11</td><td class="q">Berapa kali kunjungan ibu hamil (antenatal care)?</td>
+            <td>{{ $case->jumlah_kunjungan_anc !== null ? $case->jumlah_kunjungan_anc.' kali' : '…… kali' }}</td></tr>
+        <tr><td class="no">12</td><td class="q">Tempat pemeriksaan Ibu Hamil</td>
+            <td>{{ $case->tempat_pemeriksaan_hamil ?: 'RS/Puskesmas ……' }}</td></tr>
+        <tr><td class="no">13</td><td class="q">Pemeriksaan kehamilan oleh</td><td>
+            {!! $rb($cocok($case->pemeriksa_kehamilan, ['dokter'])) !!} a. Dokter &nbsp;
+            {!! $rb($cocok($case->pemeriksa_kehamilan, ['bidan', 'perawat'])) !!} b. Bidan/Perawat &nbsp;
+            {!! $rb($cocok($case->pemeriksa_kehamilan, ['lain'])) !!} c. Lainnya</td></tr>
     </table>
 
     <table class="t" style="margin-top:-1px;">
         <tr><td colspan="3" class="sh sh-blue">RIWAYAT PERSALINAN</td></tr>
-        <tr><td class="no">14</td><td class="q">Tempat persalinan</td><td>{!! $rb(false) !!} RS &nbsp; {!! $rb(false) !!} Puskesmas &nbsp; {!! $rb(false) !!} Lainnya</td></tr>
-        <tr><td class="no">15</td><td class="q">Usia kehamilan ibu saat persalinan</td><td></td></tr>
-        <tr><td class="no">16</td><td class="q">Penolong persalinan</td><td>{!! $rb(false) !!} a. Dokter &nbsp; {!! $rb(false) !!} b. Bidan/Perawat &nbsp; {!! $rb(false) !!} c. Lainnya</td></tr>
-        <tr><td class="no">17</td><td class="q">Alat potong tali pusat</td><td>{!! $rb(false) !!} a. Gunting &nbsp; {!! $rb(false) !!} b. Silet &nbsp; {!! $rb(false) !!} c. Pisau &nbsp; {!! $rb(false) !!} d. Sembilu &nbsp; {!! $rb(false) !!} e. Tidak tahu &nbsp; {!! $rb(false) !!} f. Lainnya</td></tr>
-        <tr><td class="no">18</td><td class="q">Perawatan tali pusat</td><td>{!! $rb(false) !!} a. Alkohol &nbsp; {!! $rb(false) !!} b. Betadine/Yodium &nbsp; {!! $rb(false) !!} c. Ramuan tradisional</td></tr>
-        <tr><td class="no">19</td><td class="q">Keadaan ibu saat ini</td><td>{!! $rb(false) !!} a. Hidup &nbsp; {!! $rb(false) !!} b. Meninggal</td></tr>
+        <tr><td class="no">14</td><td class="q">Tempat persalinan</td><td>
+            {!! $rb($cocok($case->tempat_persalinan, ['rs', 'rumah sakit'])) !!} RS &nbsp;
+            {!! $rb($cocok($case->tempat_persalinan, ['puskesmas'])) !!} Puskesmas &nbsp;
+            {!! $rb($cocok($case->tempat_persalinan, ['lain', 'rumah', 'klinik'])) !!} Lainnya</td></tr>
+        <tr><td class="no">15</td><td class="q">Usia kehamilan ibu saat persalinan</td>
+            <td>{{ $case->usia_kehamilan_bulan !== null ? $case->usia_kehamilan_bulan.' bulan' : '' }}</td></tr>
+        <tr><td class="no">16</td><td class="q">Penolong persalinan</td><td>
+            {!! $rb($cocok($case->penolong_persalinan, ['dokter'])) !!} a. Dokter &nbsp;
+            {!! $rb($cocok($case->penolong_persalinan, ['bidan', 'perawat'])) !!} b. Bidan/Perawat &nbsp;
+            {!! $rb($cocok($case->penolong_persalinan, ['lain', 'dukun'])) !!} c. Lainnya</td></tr>
+        <tr><td class="no">17</td><td class="q">Alat potong tali pusat</td><td>
+            {!! $rb($cocok($case->alat_potong_tali_pusat, ['gunting'])) !!} a. Gunting &nbsp;
+            {!! $rb($cocok($case->alat_potong_tali_pusat, ['silet'])) !!} b. Silet &nbsp;
+            {!! $rb($cocok($case->alat_potong_tali_pusat, ['pisau'])) !!} c. Pisau &nbsp;
+            {!! $rb($cocok($case->alat_potong_tali_pusat, ['sembilu'])) !!} d. Sembilu &nbsp;
+            {!! $rb($cocok($case->alat_potong_tali_pusat, ['tidak_tahu', 'tidak tahu'])) !!} e. Tidak tahu &nbsp;
+            {!! $rb($cocok($case->alat_potong_tali_pusat, ['lain'])) !!} f. Lainnya</td></tr>
+        <tr><td class="no">18</td><td class="q">Perawatan tali pusat</td><td>
+            {!! $rb($cocok($case->perawatan_tali_pusat, ['alkohol'])) !!} a. Alkohol &nbsp;
+            {!! $rb($cocok($case->perawatan_tali_pusat, ['betadine', 'yodium', 'iodium'])) !!} b. Betadine/Yodium &nbsp;
+            {!! $rb($cocok($case->perawatan_tali_pusat, ['ramuan', 'tradisional'])) !!} c. Ramuan tradisional</td></tr>
+        <tr><td class="no">19</td><td class="q">Keadaan ibu saat ini</td><td>
+            {!! $rb($cocok($case->keadaan_ibu_saat_ini, ['hidup', 'sehat'])) !!} a. Hidup &nbsp;
+            {!! $rb($cocok($case->keadaan_ibu_saat_ini, ['meninggal', 'wafat'])) !!} b. Meninggal</td></tr>
     </table>
 
     <table class="t" style="margin-top:-1px;">
@@ -153,7 +202,7 @@
 
     <div style="margin-top:26px; text-align:center;">
         <div style="font-weight:bold;">Petugas Pelaksana Investigasi</div>
-        <div style="margin-top:44px;">( {{ $case->petugasInput->name ?? ($case->nama_pelapor ?? '________________') }} )</div>
+        <div style="margin-top:44px;">( {{ $petugas ?: '________________' }} )</div>
         <div>No. Kontak : {{ $case->telepon_pelapor ?? '' }}</div>
     </div>
 

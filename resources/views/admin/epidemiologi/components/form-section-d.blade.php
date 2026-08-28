@@ -27,6 +27,8 @@
         ['name' => 'gejala_pseudomembran',           'label' => 'Pseudomembran',            'icon' => 'fa-layer-group',         'date_field' => 'tanggal_pseudomembran'],
         ['name' => 'gejala_leher_bengkak',           'label' => 'Leher Bengkak',            'icon' => 'fa-arrows-alt-v',        'date_field' => 'tanggal_leher_bengkak'],
         ['name' => 'gejala_apnea',                  'label' => 'Apnea',                    'icon' => 'fa-wind',                'date_field' => 'tanggal_apnea'],
+        ['name' => 'gejala_sakit_tenggorokan',       'label' => 'Sakit Tenggorokan',        'icon' => 'fa-comment-medical',     'date_field' => 'tanggal_sakit_tenggorokan'],
+        ['name' => 'gejala_batuk_rejan',             'label' => 'Batuk Rejan',              'icon' => 'fa-lungs',               'date_field' => 'tanggal_batuk_rejan'],
     ];
     @endphp
 

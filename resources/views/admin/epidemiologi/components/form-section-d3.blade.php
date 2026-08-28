@@ -21,6 +21,18 @@
     </div>
     <div class="col-md-4">
         <div class="form-group">
+            <label>Tracheostomi</label>
+            <select name="tracheostomi" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="ya" {{ old('tracheostomi', $case->tracheostomi ?? '') == 'ya' ? 'selected' : '' }}>Ya</option>
+                <option value="tidak" {{ old('tracheostomi', $case->tracheostomi ?? '') == 'tidak' ? 'selected' : '' }}>Tidak</option>
+            </select>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
             <label>Obat Lainnya</label>
             <textarea name="obat_lainnya" class="form-control" rows="1">{{ old('obat_lainnya', $case->obat_lainnya ?? '') }}</textarea>
         </div>
@@ -100,6 +112,27 @@
     </div>
 </div>
 
+{{-- FP-1 kolom "Gangguan rasa raba" per anggota gerak. --}}
+<div class="row">
+    @foreach ([
+        'rasa_raba_tungkai_kanan' => 'Tungkai Kanan',
+        'rasa_raba_tungkai_kiri'  => 'Tungkai Kiri',
+        'rasa_raba_lengan_kanan'  => 'Lengan Kanan',
+        'rasa_raba_lengan_kiri'   => 'Lengan Kiri',
+    ] as $field => $label)
+    <div class="col-md-3">
+        <div class="form-group">
+            <label>Gangguan Rasa Raba — {{ $label }}</label>
+            <select name="{{ $field }}" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="ya" {{ old($field, $case->{$field} ?? '') == 'ya' ? 'selected' : '' }}>Ya</option>
+                <option value="tidak" {{ old($field, $case->{$field} ?? '') == 'tidak' ? 'selected' : '' }}>Tidak</option>
+            </select>
+        </div>
+    </div>
+    @endforeach
+</div>
+
 <div class="row">
     <div class="col-md-3">
         <div class="form-group">
@@ -171,8 +204,19 @@
     <div class="col-md-2">
         <div class="form-group">
             <label>Jenis Jamban</label>
-            <input type="text" name="jenis_jamban" class="form-control"
-                   value="{{ old('jenis_jamban', $case->jenis_jamban ?? '') }}">
+            {{-- Pilihannya disamakan dengan FP-1 bagian V agar centang di PDF akurat. --}}
+            @php $jenisJambanVal = old('jenis_jamban', $case->jenis_jamban ?? ''); @endphp
+            <select name="jenis_jamban" class="form-control">
+                <option value="">-- Pilih --</option>
+                @foreach ([
+                    'leher_angsa_septic' => 'Leher angsa dengan septic tank',
+                    'cemplung'           => 'Cemplung (tanpa septic tank)',
+                    'sungai_kebun_kolam' => 'Di sungai/kebun/kolam',
+                    'lainnya'            => 'Lainnya',
+                ] as $val => $label)
+                <option value="{{ $val }}" {{ $jenisJambanVal === $val ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
         </div>
     </div>
     <div class="col-md-2">
@@ -189,8 +233,18 @@
     <div class="col-md-2">
         <div class="form-group">
             <label>Pembuangan Diapers</label>
-            <input type="text" name="pembuangan_diapers" class="form-control"
-                   value="{{ old('pembuangan_diapers', $case->pembuangan_diapers ?? '') }}">
+            @php $diapersVal = old('pembuangan_diapers', $case->pembuangan_diapers ?? ''); @endphp
+            <select name="pembuangan_diapers" class="form-control">
+                <option value="">-- Pilih --</option>
+                @foreach ([
+                    'sampah_tertutup' => 'Sampah tertutup',
+                    'sungai_kebun'    => 'Sungai/kebun',
+                    'dibakar'         => 'Dibakar',
+                    'lainnya'         => 'Lainnya',
+                ] as $val => $label)
+                <option value="{{ $val }}" {{ $diapersVal === $val ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
             <small class="form-text text-muted">Jika masih pakai diapers</small>
         </div>
     </div>

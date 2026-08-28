@@ -31,6 +31,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         'gejala_lemas', 'gejala_kehilangan_nafsu_makan', 'gejala_mata_merah',
         'gejala_pembengkakan_kelenjar', 'gejala_kejang', 'gejala_penurunan_kesadaran',
         'gejala_pseudomembran', 'gejala_leher_bengkak', 'gejala_apnea',
+        'gejala_sakit_tenggorokan', 'gejala_batuk_rejan',
         'gejala_adenopathy', 'gejala_arthralgia', 'gejala_kehamilan',
         'komplikasi_diare', 'komplikasi_kebutaan', 'komplikasi_pneumonia',
         'komplikasi_malnutrisi', 'komplikasi_bronchopneumonia', 'komplikasi_otitis_media',
@@ -476,6 +477,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             $case->spesimen()->create([
                 'urutan'                        => $urutan++,
                 'jenis_spesimen'                => $row['jenis_spesimen'],
+                'no_kode_spesimen'              => ($row['no_kode_spesimen'] ?? '') ?: null,
                 'tanggal_ambil_spesimen'        => $row['tanggal_ambil_spesimen'] ?: null,
                 'tanggal_kirim_sampel'          => $row['tanggal_kirim_sampel'] ?: null,
                 'tanggal_terima_lab'            => $row['tanggal_terima_lab'] ?: null,

@@ -1,4 +1,16 @@
 {{-- Section G: Tempat Berobat MoD --}}
+{{-- PERT-01 "Nomor Rekam Medik" (reviu klien Agustus 2026: "Bag G tambahkan"). --}}
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label>Nomor Rekam Medik</label>
+            <input type="text" name="no_rekam_medik" class="form-control"
+                   value="{{ old('no_rekam_medik', $case->no_rekam_medik ?? '') }}"
+                   placeholder="Nomor rekam medik di faskes perawatan">
+        </div>
+    </div>
+</div>
+
 <h6 class="section-subtitle"><i class="fa fa-hospital-alt"></i> Riwayat Tempat Berobat</h6>
 <p class="text-muted mb-3"><i class="fa fa-info-circle"></i> Tambahkan semua fasilitas kesehatan yang pernah dikunjungi pasien.</p>
 

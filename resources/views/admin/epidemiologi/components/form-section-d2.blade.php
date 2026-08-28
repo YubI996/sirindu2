@@ -30,10 +30,18 @@
     @endforeach
 </div>
 
-{{-- Vitamin A & Status Gizi --}}
+</div>
+
+{{-- Vitamin A & Status Gizi — Campak/Rubella DAN Difteri.
+     DIF-1 no.5 "Status Gizi" diminta klien tersedia saat penyakit Difteri dipilih
+     (reviu Agustus 2026: "Minta tambahan pertanyaan bag A, jika di pilih difteri").
+     BB/TB dipakai DIF-1 no.5-6. --}}
+<div class="disease-section" data-diseases="CAMPAK_RUBELLA,DIFTERI_OBS"
+     style="{{ in_array(optional($case->jenisKasus ?? null)->kode_penyakit ?? '', ['CAMPAK_RUBELLA', 'DIFTERI_OBS']) ? '' : 'display:none;' }}">
 <h6 class="section-subtitle"><i class="fa fa-capsules"></i> Vitamin A & Status Gizi</h6>
 <div class="row">
-    <div class="col-md-3">
+    <div class="col-md-3 disease-field" data-diseases="CAMPAK_RUBELLA"
+         style="{{ (optional($case->jenisKasus ?? null)->kode_penyakit ?? '') === 'CAMPAK_RUBELLA' ? '' : 'display:none;' }}">
         <div class="form-group">
             <label>Apakah diberikan Vitamin A?</label>
             <select name="vitamin_a" class="form-control">

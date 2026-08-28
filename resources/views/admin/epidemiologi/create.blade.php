@@ -137,12 +137,12 @@
                 </div>
             </div>
 
-            <!-- Section D2: Komplikasi (Campak/Rubella) -->
-            <div class="card disease-card" data-diseases="CAMPAK_RUBELLA" style="display:none;">
+            <!-- Section D2: Komplikasi (Campak/Rubella) + Status Gizi (Campak/Rubella & Difteri) -->
+            <div class="card disease-card" data-diseases="CAMPAK_RUBELLA,DIFTERI_OBS" style="display:none;">
                 <div class="card-header section-header-d" id="headingD2">
                     <h5 class="mb-0">
                         <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#collapseD2" aria-expanded="false" aria-controls="collapseD2">
-                            <i class="fa fa-exclamation-triangle" aria-hidden="true"></i> D2. Komplikasi
+                            <i class="fa fa-exclamation-triangle" aria-hidden="true"></i> D2. Komplikasi &amp; Status Gizi
                         </button>
                     </h5>
                 </div>
@@ -338,6 +338,18 @@ $(document).ready(function() {
                 $(this).find('.collapse').collapse('hide');
                 $(this).hide();
             }
+        });
+
+        // Blok per-penyakit DI DALAM kartu (mis. komplikasi & status gizi di D2,
+        // pengobatan Difteri dan pemeriksaan AFP di D3). Visibilitasnya dulu hanya
+        // dirender server-side dari $case, sehingga pada halaman CREATE (belum ada
+        // $case) blok-blok ini permanen display:none — kartunya terbuka tapi isinya
+        // tak pernah muncul, jadi field seperti status gizi, antibiotik, kelumpuhan,
+        // dan sanitasi mustahil diisi saat kasus baru dibuat. Itu sebab banyak
+        // isian formulir *1 tercetak kosong (reviu klien Agustus 2026).
+        $('.disease-section, .disease-field').each(function() {
+            var diseases = ($(this).data('diseases') || '').toString().split(',');
+            $(this).toggle(!!kode && diseases.indexOf(kode) !== -1);
         });
     }
 

@@ -29,6 +29,7 @@ class SurveillanceCase extends Model
         'no_telepon',
         // Patient Identity — Google Form additions
         'tempat_kerja_sekolah',
+        'pekerjaan',
         'nama_orang_tua',
         'no_hp_orang_tua',
         'provinsi',
@@ -74,6 +75,8 @@ class SurveillanceCase extends Model
         'gejala_pseudomembran',
         'gejala_leher_bengkak',
         'gejala_apnea',
+        'gejala_sakit_tenggorokan',
+        'gejala_batuk_rejan',
         // Symptoms — Google Form additions
         'tanggal_demam',
         'tanggal_batuk',
@@ -99,6 +102,8 @@ class SurveillanceCase extends Model
         'tanggal_sesak_nafas',
         'tanggal_pseudomembran',
         'tanggal_apnea',
+        'tanggal_sakit_tenggorokan',
+        'tanggal_batuk_rejan',
 
         // ===== Category D2: Komplikasi =====
         'komplikasi_diare',
@@ -120,6 +125,7 @@ class SurveillanceCase extends Model
         // ===== Category D4: Pengobatan =====
         'jenis_antibiotik',
         'dosis_ads',
+        'tracheostomi',
         'obat_lainnya',
 
         // ===== Category D5: AFP/Polio =====
@@ -133,6 +139,10 @@ class SurveillanceCase extends Model
         'tanda_tungkai_kiri',
         'tanda_lengan_kanan',
         'tanda_lengan_kiri',
+        'rasa_raba_tungkai_kanan',
+        'rasa_raba_tungkai_kiri',
+        'rasa_raba_lengan_kanan',
+        'rasa_raba_lengan_kiri',
         'kekuatan_otot',
         'lokasi_kelemahan_lain',
         'tanda_penyakit_observasi',
@@ -190,6 +200,7 @@ class SurveillanceCase extends Model
         // ===== Category G: Management =====
         'status_rawat',
         'nama_faskes_rawat',
+        'no_rekam_medik',
         'tanggal_masuk_rawat',
         'tanggal_keluar_rawat',
 
@@ -291,6 +302,8 @@ class SurveillanceCase extends Model
         'tanggal_sesak_nafas' => 'date',
         'tanggal_pseudomembran' => 'date',
         'tanggal_apnea' => 'date',
+        'tanggal_sakit_tenggorokan' => 'date',
+        'tanggal_batuk_rejan' => 'date',
         'tanggal_kunjungan_rs' => 'date',
         'tanggal_kunjungan_fktp' => 'date',
         'tanggal_kunjungan_tradisional' => 'date',
@@ -319,6 +332,8 @@ class SurveillanceCase extends Model
         'gejala_pseudomembran' => 'boolean',
         'gejala_leher_bengkak' => 'boolean',
         'gejala_apnea' => 'boolean',
+        'gejala_sakit_tenggorokan' => 'boolean',
+        'gejala_batuk_rejan' => 'boolean',
         // Google Form addition booleans
         'gejala_adenopathy' => 'boolean',
         'gejala_arthralgia' => 'boolean',

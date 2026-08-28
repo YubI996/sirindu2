@@ -12,6 +12,7 @@ class SurveillanceCaseSpesimen extends Model
         'id_surveillance_case',
         'urutan',
         'jenis_spesimen',
+        'no_kode_spesimen',
         'tanggal_ambil_spesimen',
         'tanggal_kirim_sampel',
         'tanggal_terima_lab',

@@ -46,6 +46,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'longitude' => 'nullable|numeric|between:-180,180',
             // Patient Identity — Google Form additions
             'tempat_kerja_sekolah' => 'nullable|string|max:255',
+            'pekerjaan' => 'nullable|string|max:150',
             'nama_orang_tua' => 'nullable|string|max:255',
             'no_hp_orang_tua' => 'nullable|string|max:20',
             'provinsi' => 'nullable|string|max:100',
@@ -92,6 +93,8 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'gejala_pseudomembran' => 'nullable|boolean',
             'gejala_leher_bengkak' => 'nullable|boolean',
             'gejala_apnea' => 'nullable|boolean',
+            'gejala_sakit_tenggorokan' => 'nullable|boolean',
+            'gejala_batuk_rejan' => 'nullable|boolean',
             // Symptoms — Google Form additions
             'tanggal_demam' => 'nullable|date|before_or_equal:today',
             'gejala_adenopathy' => 'nullable|boolean',
@@ -118,6 +121,8 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'tanggal_sesak_nafas' => 'nullable|date|before_or_equal:today',
             'tanggal_pseudomembran' => 'nullable|date|before_or_equal:today',
             'tanggal_apnea' => 'nullable|date|before_or_equal:today',
+            'tanggal_sakit_tenggorokan' => 'nullable|date|before_or_equal:today',
+            'tanggal_batuk_rejan' => 'nullable|date|before_or_equal:today',
 
             // Category D2: Komplikasi
             'komplikasi_diare' => 'nullable|boolean',
@@ -138,6 +143,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
             // Category D4: Pengobatan
             'jenis_antibiotik' => 'nullable|string|max:255',
             'dosis_ads' => 'nullable|string|max:255',
+            'tracheostomi' => 'nullable|in:ya,tidak',
             'obat_lainnya' => 'nullable|string',
 
             // Category D5: AFP/Polio
@@ -151,6 +157,10 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'tanda_tungkai_kiri' => 'nullable|string|max:255',
             'tanda_lengan_kanan' => 'nullable|string|max:255',
             'tanda_lengan_kiri' => 'nullable|string|max:255',
+            'rasa_raba_tungkai_kanan' => 'nullable|in:ya,tidak',
+            'rasa_raba_tungkai_kiri' => 'nullable|in:ya,tidak',
+            'rasa_raba_lengan_kanan' => 'nullable|in:ya,tidak',
+            'rasa_raba_lengan_kiri' => 'nullable|in:ya,tidak',
             'kekuatan_otot' => 'nullable|integer|min:0|max:5',
             'lokasi_kelemahan_lain' => 'nullable|string',
             'tanda_penyakit_observasi' => 'nullable|string',
@@ -211,7 +221,8 @@ class StoreSurveillanceCaseRequest extends FormRequest
             'jenis_spesimen_3' => 'nullable|string|max:100',
             'tanggal_spesimen_3' => 'nullable|date|before_or_equal:today',
 
-            // Category G: Management — auto-derived in SurveillanceRepository::prepareData(), not submitted via form
+            // Category G: Management — sisanya auto-derived di SurveillanceRepository::prepareData()
+            'no_rekam_medik' => 'nullable|string|max:50',
 
             // Category H: Final Status
             'kondisi_akhir' => 'nullable|in:sembuh,meninggal,dalam_perawatan,pindah,unknown',
@@ -273,6 +284,7 @@ class StoreSurveillanceCaseRequest extends FormRequest
             // MoD: Spesimen
             'spesimen' => 'nullable|array',
             'spesimen.*.jenis_spesimen' => 'required_with:spesimen.*|nullable|string|max:100',
+            'spesimen.*.no_kode_spesimen' => 'nullable|string|max:50',
             'spesimen.*.tanggal_ambil_spesimen' => 'nullable|date|before_or_equal:today',
             'spesimen.*.tanggal_kirim_sampel' => 'nullable|date|before_or_equal:today',
             'spesimen.*.tanggal_terima_lab' => 'nullable|date|before_or_equal:today',

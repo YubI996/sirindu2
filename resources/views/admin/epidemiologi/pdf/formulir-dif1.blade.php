@@ -43,14 +43,61 @@
     $jk = strtoupper(substr((string) $case->jenis_kelamin, 0, 1));
     $umurTahun = $case->tanggal_lahir ? $case->tanggal_lahir->age : null;
     $umurBulan = $case->tanggal_lahir ? (int) $case->tanggal_lahir->diffInMonths(now()) % 12 : null;
+
     $spesimen  = $case->spesimen ?? collect();
     $sp1 = $spesimen->get(0);
-    $jenisSp = strtolower($sp1?->jenis_spesimen ?? '');
-    $isRS = ($case->status_rawat === 'rawat_inap') || (bool) $case->nama_faskes_rawat;
+    $jenisSpAll = strtolower($spesimen->pluck('jenis_spesimen')->implode(' '));
+    $spTenggorok = str_contains($jenisSpAll, 'tenggorok');
+    $spHidung    = str_contains($jenisSpAll, 'hidung') || str_contains($jenisSpAll, 'nasal');
+    $spKeduanya  = str_contains($jenisSpAll, 'kedua') || ($spTenggorok && $spHidung);
+
+    // Bag G: tempat berobat per jenis faskes (bukan tebakan dari status_rawat).
+    $faskes = $case->faskesBerobat ?? collect();
+    $byJenis = fn(string $jenis) => $faskes->firstWhere('jenis_faskes', $jenis);
+    $fRs        = $byJenis('rs');
+    $fPuskesmas = $byJenis('puskesmas');
+    $fKlinik    = $byJenis('klinik');
+    $fLainnya   = $byJenis('lainnya');
+    $tidakBerobat = $faskes->isEmpty();
+
+    // Bag E: riwayat imunisasi per antigen (slot 1–5 sesuai form-section-e).
+    $imun = collect($case->imunisasi ?? [])->keyBy('imunisasi_ke');
+    $sumberImun = strtolower((string) ($case->sumber_informasi_imunisasi
+        ?? optional($imun->first())->sumber_informasi ?? ''));
+
     $riw = $case->riwayat_imunisasi;
-    $imBelum   = $riw === 'tidak';
+    $imBelum   = $riw === 'tidak' || $riw === 'tidak_ada';
     $imPernah  = in_array($riw, ['lengkap', 'tidak_lengkap'], true);
     $imTdkTahu = !$imBelum && !$imPernah;
+
+    // Bag D: keluhan utama dirangkai dari gejala klinis yang dicentang
+    // (reviu klien Agustus 2026: "Bagian D gejala klinis yang dicentang").
+    $gejalaLabels = [
+        'gejala_demam'                  => 'Demam',
+        'gejala_sakit_tenggorokan'      => 'Sakit Tenggorokan',
+        'gejala_leher_bengkak'          => 'Leher Bengkak',
+        'gejala_pseudomembran'          => 'Pseudomembran',
+        'gejala_sesak_napas'            => 'Sesak Napas',
+        'gejala_batuk'                  => 'Batuk',
+        'gejala_pilek'                  => 'Pilek',
+        'gejala_mual'                   => 'Mual',
+        'gejala_muntah'                 => 'Muntah',
+        'gejala_lemas'                  => 'Lemas',
+        'gejala_kehilangan_nafsu_makan' => 'Hilang Nafsu Makan',
+        'gejala_kejang'                 => 'Kejang',
+        'gejala_penurunan_kesadaran'    => 'Penurunan Kesadaran',
+    ];
+    $keluhanUtama = collect($gejalaLabels)
+        ->filter(fn($label, $field) => (bool) $case->{$field})
+        ->values()
+        ->when((bool) $case->gejala_lainnya, fn($c) => $c->push($case->gejala_lainnya))
+        ->implode(', ');
+
+    // Bag E: bepergian terstruktur, dengan teks riwayat_perjalanan sebagai cadangan.
+    $pernahBepergian = $case->riwayat_bepergian === 'ya' || (bool) $case->riwayat_perjalanan;
+    $tidakBepergian  = $case->riwayat_bepergian === 'tidak';
+    $daerahBepergian = $case->lokasi_bepergian ?: $case->riwayat_perjalanan;
+
     $kontakErat = $case->kontakErat ?? collect();
     // Uraikan NO EPID -> D - [Kd Prov][Kd Kab][Tahun][No urut]
     $epidPrefix = preg_match('/^([A-Z]+)-/', (string) $case->no_registrasi, $m) ? $m[1] : 'D';
@@ -105,7 +152,8 @@
         <tr><td class="num">3</td><td>Kabupaten/Kota</td><td>:</td><td class="val">{{ $case->kab_kota ?? 'Bontang' }}</td></tr>
         <tr><td class="num">4</td><td>Provinsi</td><td>:</td><td class="val">{{ $case->provinsi ?? 'Kalimantan Timur' }}</td></tr>
         <tr><td class="num">5</td><td>Tanggal Terima Laporan</td><td>:</td><td class="val">{{ $fmt($case->tanggal_lapor) }}</td></tr>
-        <tr><td class="num">6</td><td>Tanggal Pelacakan Laporan</td><td>:</td><td class="val">{{ $fmt($case->tanggal_penyelidikan ?? null) }}</td></tr>
+        {{-- Bag B "Tanggal Penyelidikan" — kolomnya bernama tanggal_penyidikan. --}}
+        <tr><td class="num">6</td><td>Tanggal Pelacakan Laporan</td><td>:</td><td class="val">{{ $fmt($case->tanggal_penyidikan) }}</td></tr>
     </table>
 
     {{-- II. Identitas Penderita --}}
@@ -130,27 +178,28 @@
             <td class="num">11.</td><td>Kabupaten/Kota</td><td>:</td><td class="val">{{ $case->kab_kota ?? 'Bontang' }}</td>
             <td>Provinsi :</td><td class="val">{{ $case->provinsi ?? 'Kalimantan Timur' }}</td>
         </tr>
+        {{-- 12–21 seluruhnya dari Bag A (identitas), sesuai coretan klien. --}}
         <tr><td class="num">12.</td><td>Tel/HP</td><td>:</td><td class="val" colspan="3">{{ $case->no_telepon ?? '' }}</td></tr>
         <tr><td class="num">13.</td><td>Pekerjaan</td><td>:</td><td class="val" colspan="3">{{ $case->pekerjaan ?? '' }}</td></tr>
-        <tr><td class="num">14.</td><td>Alamat Tempat Kerja</td><td>:</td><td class="val" colspan="3">{{ $case->alamat_kerja ?? '' }}</td></tr>
-        <tr><td class="num">15.</td><td class="top">Orang tua/Wali/Saudara dekat yang dapat dihubungi</td><td class="top">:</td><td class="val" colspan="3">{{ $case->nama_wali ?? '' }}</td></tr>
-        <tr><td class="num">16.</td><td>Alamat Lengkap Wali</td><td>:</td><td class="val" colspan="3">{{ $case->alamat_wali ?? '' }}</td></tr>
-        <tr><td class="num">21.</td><td>Nomor Telepon/HP Wali</td><td>:</td><td class="val" colspan="3">{{ $case->no_hp_wali ?? '' }}</td></tr>
+        <tr><td class="num">14.</td><td>Alamat Tempat Kerja</td><td>:</td><td class="val" colspan="3">{{ $case->tempat_kerja_sekolah ?? '' }}</td></tr>
+        <tr><td class="num">15.</td><td class="top">Orang tua/Wali/Saudara dekat yang dapat dihubungi</td><td class="top">:</td><td class="val" colspan="3">{{ $case->nama_orang_tua ?? '' }}</td></tr>
+        <tr><td class="num">16.</td><td>Alamat Lengkap Wali</td><td>:</td><td class="val" colspan="3">{{ $case->alamat_lengkap }}</td></tr>
+        <tr><td class="num">21.</td><td>Nomor Telepon/HP Wali</td><td>:</td><td class="val" colspan="3">{{ $case->no_hp_orang_tua ?? '' }}</td></tr>
     </table>
 
     {{-- III. Riwayat Sakit --}}
     <div class="sec-title">III. Riwayat Sakit</div>
     <table class="lay">
         <tr><td class="num">1</td><td style="width:250px">Tanggal mulai sakit (sakit tenggorokan)</td><td>:</td><td class="val">{{ $fmt($case->tanggal_onset) }}</td></tr>
-        <tr><td class="num">2</td><td class="top" colspan="2">Keluhan utama yang mendorong berobat</td><td class="val">{{ $case->keluhan_utama ?? '' }}</td></tr>
+        <tr><td class="num">2</td><td class="top" colspan="2">Keluhan utama yang mendorong berobat</td><td class="val">{{ $keluhanUtama }}</td></tr>
         <tr><td class="num">3</td><td colspan="3">Gejala dan Tanda Sakit</td></tr>
     </table>
     <table class="lay" style="margin-left:26px;">
-        <tr><td style="width:230px">{!! $cb($case->gejala_demam) !!} a) Demam</td><td>Tanggal :</td><td class="val" style="width:35%">{{ $fmt($case->tanggal_demam ?? null) }}</td></tr>
-        <tr><td>{!! $cb(false) !!} b) Sakit Tenggorokan</td><td>Tanggal :</td><td class="val"></td></tr>
-        <tr><td>{!! $cb(false) !!} c) Leher Bengkak</td><td>Tanggal :</td><td class="val"></td></tr>
-        <tr><td>{!! $cb($case->gejala_sesak_napas) !!} d) Sesak nafas</td><td>Tanggal :</td><td class="val"></td></tr>
-        <tr><td>{!! $cb(false) !!} e) Pseudomembran</td><td>Tanggal :</td><td class="val"></td></tr>
+        <tr><td style="width:230px">{!! $cb($case->gejala_demam) !!} a) Demam</td><td>Tanggal :</td><td class="val" style="width:35%">{{ $fmt($case->tanggal_demam) }}</td></tr>
+        <tr><td>{!! $cb($case->gejala_sakit_tenggorokan) !!} b) Sakit Tenggorokan</td><td>Tanggal :</td><td class="val">{{ $fmt($case->tanggal_sakit_tenggorokan) }}</td></tr>
+        <tr><td>{!! $cb($case->gejala_leher_bengkak) !!} c) Leher Bengkak</td><td>Tanggal :</td><td class="val">{{ $fmt($case->tanggal_leher_bengkak) }}</td></tr>
+        <tr><td>{!! $cb($case->gejala_sesak_napas) !!} d) Sesak nafas</td><td>Tanggal :</td><td class="val">{{ $fmt($case->tanggal_sesak_nafas) }}</td></tr>
+        <tr><td>{!! $cb($case->gejala_pseudomembran) !!} e) Pseudomembran</td><td>Tanggal :</td><td class="val">{{ $fmt($case->tanggal_pseudomembran) }}</td></tr>
         <tr><td colspan="3">f) Gejala lain, sebutkan : <span class="val" style="display:inline-block; min-width:60%;">{{ $case->gejala_lainnya ?? '' }}</span></td></tr>
     </table>
 </div>
@@ -163,22 +212,32 @@
         <tr><td class="num">4</td><td colspan="3">Status imunisasi Difteri : &nbsp;
             {!! $cb($imBelum) !!} a. Belum Pernah &nbsp; {!! $cb($imPernah) !!} b. Pernah &nbsp; {!! $cb($imTdkTahu) !!} c. Tidak tahu</td></tr>
     </table>
+    {{-- Bag E: slot antigen 1–4 (lihat form-section-e). --}}
     <table class="lay" style="margin-left:26px;">
         <tr><td colspan="4">Jika Pernah :</td></tr>
-        <tr><td style="width:36px">1)</td><td style="width:230px">DPT-HB-Hib 1, 2 dan 3</td><td>Tanggal/tahun Pemberian :</td><td class="val">{{ $fmt($case->tanggal_dpt ?? null) }}</td></tr>
-        <tr><td>2)</td><td>DPT-HB-Hib Booster (18 bulan)</td><td>Tanggal/tahun Pemberian :</td><td class="val"></td></tr>
-        <tr><td>3)</td><td>DT kelas 1</td><td>Tanggal/tahun Pemberian :</td><td class="val"></td></tr>
-        <tr><td>4)</td><td>TD kelas 2 dan 5</td><td>Tanggal/tahun Pemberian :</td><td class="val">{{ $fmt($case->tanggal_imunisasi_terakhir) }}</td></tr>
-        <tr><td colspan="4">Sumber Informasi : &nbsp; {!! $cb(false) !!} a. KMS &nbsp; {!! $cb(false) !!} b. Buku KIA &nbsp; {!! $cb(false) !!} c. Ingatan responden &nbsp; {!! $cb(false) !!} d. Lain-lain</td></tr>
+        <tr><td style="width:36px">1)</td><td style="width:230px">DPT-HB-Hib 1, 2 dan 3</td><td>Tanggal/tahun Pemberian :</td><td class="val">{{ $fmt(optional($imun->get(1))->tanggal_imunisasi) }}</td></tr>
+        <tr><td>2)</td><td>DPT-HB-Hib Booster (18 bulan)</td><td>Tanggal/tahun Pemberian :</td><td class="val">{{ $fmt(optional($imun->get(2))->tanggal_imunisasi) }}</td></tr>
+        <tr><td>3)</td><td>DT kelas 1</td><td>Tanggal/tahun Pemberian :</td><td class="val">{{ $fmt(optional($imun->get(3))->tanggal_imunisasi) }}</td></tr>
+        <tr><td>4)</td><td>TD kelas 2 dan 5</td><td>Tanggal/tahun Pemberian :</td><td class="val">{{ $fmt(optional($imun->get(4))->tanggal_imunisasi ?? $case->tanggal_imunisasi_terakhir) }}</td></tr>
+        <tr><td colspan="4">Sumber Informasi : &nbsp;
+            {!! $cb(str_contains($sumberImun, 'kms')) !!} a. KMS &nbsp;
+            {!! $cb(str_contains($sumberImun, 'kia')) !!} b. Buku KIA &nbsp;
+            {!! $cb(str_contains($sumberImun, 'ingatan') || str_contains($sumberImun, 'wawancara')) !!} c. Ingatan responden &nbsp;
+            {!! $cb($sumberImun !== '' && !preg_match('/kms|kia|ingatan|wawancara/', $sumberImun)) !!} d. Lain-lain</td></tr>
     </table>
 
     <table class="lay" style="margin-top:4px;">
-        <tr><td class="num">5</td><td colspan="3">Status Gizi : &nbsp; {!! $cb(false) !!} a. Buruk &nbsp; {!! $cb(false) !!} b. Kurang &nbsp; {!! $cb(false) !!} c. Baik</td></tr>
+        {{-- Bag D2: status gizi (kini tersedia juga saat penyakit Difteri dipilih). --}}
+        <tr><td class="num">5</td><td colspan="3">Status Gizi : &nbsp;
+            {!! $cb($case->status_gizi === 'buruk') !!} a. Buruk &nbsp;
+            {!! $cb($case->status_gizi === 'kurang') !!} b. Kurang &nbsp;
+            {!! $cb(in_array($case->status_gizi, ['baik', 'lebih'], true)) !!} c. Baik</td></tr>
+        {{-- Bag F: jenis & tanggal spesimen, plus no. kode spesimen dari lab. --}}
         <tr><td class="num">6</td><td colspan="3">Jenis Spesimen yang diambil : &nbsp;
-            {!! $cb(str_contains($jenisSp,'tenggorok')) !!} a. Tenggorokan &nbsp;
-            {!! $cb(str_contains($jenisSp,'hidung')) !!} b. Hidung &nbsp;
-            {!! $cb(str_contains($jenisSp,'kedua')) !!} c. Keduanya</td></tr>
-        <tr><td class="num">7</td><td style="width:230px">Tanggal pengambilan spesimen</td><td>:</td><td class="val">{{ $fmt($sp1?->tanggal_ambil_spesimen) }} &nbsp; No. Kode Spesimen: ______</td></tr>
+            {!! $cb($spTenggorok && !$spKeduanya) !!} a. Tenggorokan &nbsp;
+            {!! $cb($spHidung && !$spKeduanya) !!} b. Hidung &nbsp;
+            {!! $cb($spKeduanya) !!} c. Keduanya</td></tr>
+        <tr><td class="num">7</td><td style="width:230px">Tanggal pengambilan spesimen</td><td>:</td><td class="val">{{ $fmt($sp1?->tanggal_ambil_spesimen) }} &nbsp; No. Kode Spesimen: {{ $sp1?->no_kode_spesimen ?: '______' }}</td></tr>
         <tr><td class="num">8</td><td>Tanggal pengiriman spesimen</td><td>:</td><td class="val">{{ $fmt($sp1?->tanggal_kirim_sampel) }}</td></tr>
     </table>
 
@@ -187,18 +246,26 @@
     <table class="lay">
         <tr><td class="num">1</td><td colspan="3">Penderita berobat ke :</td></tr>
     </table>
+    {{-- Bag G: satu baris per jenis faskes yang benar-benar dikunjungi. --}}
     <table class="lay" style="margin-left:26px;">
-        <tr><td style="width:230px">{!! $cb($isRS) !!} a. Rumah Sakit</td><td>Tanggal :</td><td class="val" style="width:22%">{{ $fmt($case->tanggal_masuk_rawat) }}</td><td style="padding-left:8px;">Tracheostomi : Ya / Tidak</td></tr>
-        <tr><td>{!! $cb(!$isRS && $case->status_rawat==='rawat_jalan') !!} b. Puskesmas</td><td>Tanggal :</td><td class="val"></td><td></td></tr>
-        <tr><td>{!! $cb(false) !!} c. Dokter Praktek Swasta</td><td>Tanggal :</td><td class="val"></td><td></td></tr>
-        <tr><td>{!! $cb(false) !!} d. Perawat/Mantri/Bidan</td><td>Tanggal :</td><td class="val"></td><td></td></tr>
-        <tr><td>{!! $cb(false) !!} e. Tidak Berobat</td><td colspan="3"></td></tr>
+        <tr>
+            <td style="width:230px">{!! $cb((bool) $fRs) !!} a. Rumah Sakit</td>
+            <td>Tanggal :</td><td class="val" style="width:22%">{{ $fmt(optional($fRs)->tanggal_berobat) }}</td>
+            <td style="padding-left:8px;">Tracheostomi : {!! $cb($case->tracheostomi === 'ya') !!} Ya &nbsp; {!! $cb($case->tracheostomi === 'tidak') !!} Tidak</td>
+        </tr>
+        <tr><td>{!! $cb((bool) $fPuskesmas) !!} b. Puskesmas</td><td>Tanggal :</td><td class="val">{{ $fmt(optional($fPuskesmas)->tanggal_berobat) }}</td><td>{{ optional($fPuskesmas)->nama_faskes ?? optional($fRs)->nama_faskes ?? '' }}</td></tr>
+        <tr><td>{!! $cb((bool) $fKlinik) !!} c. Dokter Praktek Swasta</td><td>Tanggal :</td><td class="val">{{ $fmt(optional($fKlinik)->tanggal_berobat) }}</td><td></td></tr>
+        <tr><td>{!! $cb((bool) $fLainnya) !!} d. Perawat/Mantri/Bidan</td><td>Tanggal :</td><td class="val">{{ $fmt(optional($fLainnya)->tanggal_berobat) }}</td><td></td></tr>
+        <tr><td>{!! $cb($tidakBerobat) !!} e. Tidak Berobat</td><td colspan="3"></td></tr>
     </table>
     <table class="lay" style="margin-top:2px;">
         <tr><td class="num">2</td><td style="width:250px">Diagnosis sebagai suspek difteri</td><td>:</td><td>{!! $cb($case->status_kasus !== 'discarded') !!} Ya &nbsp; {!! $cb($case->status_kasus === 'discarded') !!} Tidak</td></tr>
-        <tr><td class="num">3</td><td>Pemberian antibiotik</td><td>:</td><td>{!! $cb(false) !!} Ya &nbsp; {!! $cb(false) !!} Tidak &nbsp; Jenis: <span class="val" style="display:inline-block; min-width:120px;">{{ $case->antibiotik ?? '' }}</span></td></tr>
-        <tr><td class="num">4</td><td>Pemberian ADS</td><td>:</td><td>{!! $cb(false) !!} Ya, Dosis (IU): ______ &nbsp; {!! $cb(false) !!} Tidak, Alasan: ______</td></tr>
-        <tr><td class="num">5</td><td>Obat lain</td><td>:</td><td class="val">{{ $case->obat_lain ?? '' }}</td></tr>
+        {{-- Bag D3: antibiotik & ADS — dicentang bila isiannya ada. --}}
+        <tr><td class="num">3</td><td>Pemberian antibiotik</td><td>:</td><td>{!! $cb((bool) $case->jenis_antibiotik) !!} Ya &nbsp; {!! $cb(!$case->jenis_antibiotik) !!} Tidak &nbsp; Jenis: <span class="val" style="display:inline-block; min-width:120px;">{{ $case->jenis_antibiotik ?? '' }}</span></td></tr>
+        <tr><td class="num">4</td><td>Pemberian ADS</td><td>:</td><td>
+            {!! $cb((bool) $case->dosis_ads) !!} Ya, Dosis (IU): <span class="val" style="display:inline-block; min-width:90px;">{{ $case->dosis_ads ?? '' }}</span> &nbsp;
+            {!! $cb(!$case->dosis_ads) !!} Tidak, Alasan: ______</td></tr>
+        <tr><td class="num">5</td><td>Obat lain</td><td>:</td><td class="val">{{ $case->obat_lainnya ?? '' }}</td></tr>
         <tr><td class="num">6</td><td class="top">Kondisi kasus saat ini</td><td class="top">:</td><td>
             {!! $cb($case->kondisi_akhir==='dalam_perawatan') !!} a. Masih sakit &nbsp;
             {!! $cb($case->kondisi_akhir==='sembuh') !!} b. Sembuh &nbsp;
@@ -207,15 +274,18 @@
         </td></tr>
     </table>
 
-    {{-- IV. Riwayat Kontak --}}
+    {{-- IV. Riwayat Kontak (penomoran ganda mengikuti formulir asli) --}}
     <div class="sec-title">IV. Riwayat Kontak</div>
     <table class="lay">
+        {{-- Bag E: riwayat bepergian. --}}
         <tr><td class="num">1.</td><td class="top" colspan="3">Dalam 10 hari terakhir sebelum sakit sampai 2 hari setelah minum antibiotik, apakah penderita pernah bepergian?<br>
-            {!! $cb((bool) $case->riwayat_perjalanan) !!} [a] Pernah &nbsp; {!! $cb(!$case->riwayat_perjalanan) !!} [b] Tidak pernah &nbsp; {!! $cb(false) !!} [c] Tidak jelas
-            &nbsp; Jika pernah, daerah: <span class="val" style="display:inline-block; min-width:35%;">{{ $case->riwayat_perjalanan ?? '' }}</span></td></tr>
+            {!! $cb($pernahBepergian) !!} [a] Pernah &nbsp; {!! $cb($tidakBepergian) !!} [b] Tidak pernah &nbsp; {!! $cb(!$pernahBepergian && !$tidakBepergian) !!} [c] Tidak jelas
+            &nbsp; Jika pernah, daerah: <span class="val" style="display:inline-block; min-width:35%;">{{ $daerahBepergian ?? '' }}</span>
+            &nbsp; Tanggal: <span class="val" style="display:inline-block; min-width:14%;">{{ $fmt($case->tanggal_bepergian) }}</span></td></tr>
+        {{-- Bag E: kontak dengan kasus serupa. --}}
         <tr><td class="num">2.</td><td class="top" colspan="3">Pernah berkunjung ke rumah teman/saudara yang sehat atau sakit/meninggal dengan gejala yang sama?<br>
-            {!! $cb(false) !!} [a] Pernah &nbsp; {!! $cb(false) !!} [b] Tidak pernah &nbsp; {!! $cb(false) !!} [c] Tidak jelas
-            &nbsp; Jika pernah, nama & alamat: <span class="val" style="display:inline-block; min-width:35%;"></span></td></tr>
+            {!! $cb((bool) $case->riwayat_kontak_kasus) !!} [a] Pernah &nbsp; {!! $cb(!$case->riwayat_kontak_kasus) !!} [b] Tidak pernah &nbsp; {!! $cb(false) !!} [c] Tidak jelas
+            &nbsp; Jika pernah, nama &amp; alamat: <span class="val" style="display:inline-block; min-width:35%;">{{ $case->riwayat_perjalanan ?? '' }}</span></td></tr>
     </table>
 </div>
 
@@ -244,7 +314,8 @@
                 <td style="text-align:center;">{{ $k && $k->tanggal_lahir ? (int) $k->tanggal_lahir->diffInYears(now()) : '' }}</td>
                 <td>{{ $k->alamat ?? '' }}</td>
                 <td>{{ $k->hubungan ?? '' }}</td>
-                <td></td>
+                {{-- Bag I: "Status Imunisasi <penyakit>" per kontak. --}}
+                <td style="text-align:center;">{{ $k?->jumlah_imunisasi_campak_rubella }}</td>
             </tr>
             @endfor
         </tbody>

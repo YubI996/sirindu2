@@ -117,9 +117,13 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Pemeriksa kehamilan</label>
-            <input type="text" name="pemeriksa_kehamilan" class="form-control"
-                   value="{{ old('pemeriksa_kehamilan', $case->pemeriksa_kehamilan ?? '') }}"
-                   placeholder="Bidan, Dokter, dll">
+            @php $pemeriksa_kehamilanVal = old('pemeriksa_kehamilan', $case->pemeriksa_kehamilan ?? ''); @endphp
+            <select name="pemeriksa_kehamilan" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="dokter" {{ $pemeriksa_kehamilanVal === 'dokter' ? 'selected' : '' }}>Dokter</option>
+                <option value="bidan_perawat" {{ $pemeriksa_kehamilanVal === 'bidan_perawat' ? 'selected' : '' }}>Bidan/Perawat</option>
+                <option value="lainnya" {{ $pemeriksa_kehamilanVal === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
+            </select>
         </div>
     </div>
 </div>
@@ -131,9 +135,13 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Tempat persalinan</label>
-            <input type="text" name="tempat_persalinan" class="form-control"
-                   value="{{ old('tempat_persalinan', $case->tempat_persalinan ?? '') }}"
-                   placeholder="Rumah, Puskesmas, RS, dll">
+            @php $tempat_persalinanVal = old('tempat_persalinan', $case->tempat_persalinan ?? ''); @endphp
+            <select name="tempat_persalinan" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="rs" {{ $tempat_persalinanVal === 'rs' ? 'selected' : '' }}>RS</option>
+                <option value="puskesmas" {{ $tempat_persalinanVal === 'puskesmas' ? 'selected' : '' }}>Puskesmas</option>
+                <option value="lainnya" {{ $tempat_persalinanVal === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
+            </select>
         </div>
     </div>
     <div class="col-md-4">
@@ -146,9 +154,13 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Penolong persalinan</label>
-            <input type="text" name="penolong_persalinan" class="form-control"
-                   value="{{ old('penolong_persalinan', $case->penolong_persalinan ?? '') }}"
-                   placeholder="Bidan, Dokter, Dukun, dll">
+            @php $penolong_persalinanVal = old('penolong_persalinan', $case->penolong_persalinan ?? ''); @endphp
+            <select name="penolong_persalinan" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="dokter" {{ $penolong_persalinanVal === 'dokter' ? 'selected' : '' }}>Dokter</option>
+                <option value="bidan_perawat" {{ $penolong_persalinanVal === 'bidan_perawat' ? 'selected' : '' }}>Bidan/Perawat</option>
+                <option value="lainnya" {{ $penolong_persalinanVal === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
+            </select>
         </div>
     </div>
 </div>
@@ -160,25 +172,39 @@
     <div class="col-md-4">
         <div class="form-group">
             <label>Alat potong tali pusat</label>
-            <input type="text" name="alat_potong_tali_pusat" class="form-control"
-                   value="{{ old('alat_potong_tali_pusat', $case->alat_potong_tali_pusat ?? '') }}"
-                   placeholder="Gunting steril, Pisau, dll">
+            @php $alat_potong_tali_pusatVal = old('alat_potong_tali_pusat', $case->alat_potong_tali_pusat ?? ''); @endphp
+            <select name="alat_potong_tali_pusat" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="gunting" {{ $alat_potong_tali_pusatVal === 'gunting' ? 'selected' : '' }}>Gunting</option>
+                <option value="silet" {{ $alat_potong_tali_pusatVal === 'silet' ? 'selected' : '' }}>Silet</option>
+                <option value="pisau" {{ $alat_potong_tali_pusatVal === 'pisau' ? 'selected' : '' }}>Pisau</option>
+                <option value="sembilu" {{ $alat_potong_tali_pusatVal === 'sembilu' ? 'selected' : '' }}>Sembilu</option>
+                <option value="tidak_tahu" {{ $alat_potong_tali_pusatVal === 'tidak_tahu' ? 'selected' : '' }}>Tidak tahu</option>
+                <option value="lainnya" {{ $alat_potong_tali_pusatVal === 'lainnya' ? 'selected' : '' }}>Lainnya</option>
+            </select>
         </div>
     </div>
     <div class="col-md-4">
         <div class="form-group">
             <label>Ramuan/perawatan tali pusat</label>
-            <input type="text" name="perawatan_tali_pusat" class="form-control"
-                   value="{{ old('perawatan_tali_pusat', $case->perawatan_tali_pusat ?? '') }}"
-                   placeholder="Betadine, Ramuan tradisional, dll">
+            @php $perawatan_tali_pusatVal = old('perawatan_tali_pusat', $case->perawatan_tali_pusat ?? ''); @endphp
+            <select name="perawatan_tali_pusat" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="alkohol" {{ $perawatan_tali_pusatVal === 'alkohol' ? 'selected' : '' }}>Alkohol</option>
+                <option value="betadine" {{ $perawatan_tali_pusatVal === 'betadine' ? 'selected' : '' }}>Betadine/Yodium</option>
+                <option value="ramuan_tradisional" {{ $perawatan_tali_pusatVal === 'ramuan_tradisional' ? 'selected' : '' }}>Ramuan tradisional</option>
+            </select>
         </div>
     </div>
     <div class="col-md-4">
         <div class="form-group">
             <label>Keadaan ibu saat ini</label>
-            <input type="text" name="keadaan_ibu_saat_ini" class="form-control"
-                   value="{{ old('keadaan_ibu_saat_ini', $case->keadaan_ibu_saat_ini ?? '') }}"
-                   placeholder="Sehat, Sakit, Meninggal, dll">
+            @php $keadaan_ibu_saat_iniVal = old('keadaan_ibu_saat_ini', $case->keadaan_ibu_saat_ini ?? ''); @endphp
+            <select name="keadaan_ibu_saat_ini" class="form-control">
+                <option value="">-- Pilih --</option>
+                <option value="hidup" {{ $keadaan_ibu_saat_iniVal === 'hidup' ? 'selected' : '' }}>Hidup</option>
+                <option value="meninggal" {{ $keadaan_ibu_saat_iniVal === 'meninggal' ? 'selected' : '' }}>Meninggal</option>
+            </select>
         </div>
     </div>
 </div>

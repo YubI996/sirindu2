@@ -45,6 +45,31 @@
     $instansiUpper = strtoupper($case->instansi_pelapor ?? '');
     $sumber = (str_starts_with($instansiUpper, 'RS') || str_starts_with($instansiUpper, 'RUMAH SAKIT')
                || $case->petugasInput?->faskes_type === 'rs') ? 'Rumah Sakit' : 'Puskesmas';
+    // Bag E: riwayat imunisasi per slot antigen (lihat form-section-e).
+    $imun = collect($case->imunisasi ?? [])->keyBy('imunisasi_ke');
+    $statusImun = fn($ke) => optional($imun->get($ke))->diberikan;
+    $labelImun = fn($ke) => match ($statusImun($ke)) {
+        'ya'    => 'Ya',
+        'tidak' => 'Tidak',
+        default => optional($imun->get($ke)) ? 'Tidak tahu' : '',
+    };
+
+    // Bag I: kontak erat menjawab "anggota keluarga/masyarakat sakit sama".
+    $kontakErat = $case->kontakErat ?? collect();
+    $kontakBergejala = $kontakErat->where('ada_gejala', true)->count();
+    $adaSakitSama = $case->keluarga_sakit_sama
+        ? $case->keluarga_sakit_sama === 'ya'
+        : $kontakBergejala > 0;
+    $jumlahSakitSama = $case->jumlah_keluarga_sakit ?? ($kontakBergejala ?: null);
+
+    // Bag E: bepergian terstruktur, teks riwayat_perjalanan sebagai cadangan.
+    $pernahBepergian = $case->riwayat_bepergian === 'ya' || (bool) $case->riwayat_perjalanan;
+    $lokasiBepergian = $case->lokasi_bepergian ?: $case->riwayat_perjalanan;
+
+    // Pelaksana investigasi = petugas pelapor kasus (Bag B), bukan user yang
+    // membuka export (reviu klien Agustus 2026: "nama petugas pelapor").
+    $petugas = $case->nama_pelapor ?: ($case->petugasInput->name ?? '');
+
     $hidup = in_array($case->kondisi_akhir, ['sembuh', 'dalam_perawatan'], true);
     $meninggal = $case->kondisi_akhir === 'meninggal';
     $lost = in_array($case->kondisi_akhir, ['unknown', 'pindah'], true);
@@ -67,7 +92,8 @@
         </tr>
         <tr>
             <td class="lbl">Tanggal Terima Laporan</td><td>{{ $fmt($case->tanggal_lapor) }}</td>
-            <td class="lbl">Tanggal Pelacakan</td><td colspan="3">{{ $fmt($case->tanggal_penyelidikan ?? null) }}</td>
+            {{-- Bag B "Tanggal Penyelidikan" — kolomnya bernama tanggal_penyidikan. --}}
+            <td class="lbl">Tanggal Pelacakan</td><td colspan="3">{{ $fmt($case->tanggal_penyidikan) }}</td>
         </tr>
     </table>
 
@@ -90,7 +116,8 @@
         </tr>
         <tr>
             <td class="lbl">Nama Orangtua/Wali</td><td colspan="2">{{ $case->nama_orang_tua ?? '' }}</td>
-            <td class="lbl">No. Kontak Orangtua/Wali</td><td colspan="2">{{ $case->no_telepon ?? '' }}</td>
+            {{-- Bag A "No HP Ortu" (bukan no. telepon pasien). --}}
+            <td class="lbl">No. Kontak Orangtua/Wali</td><td colspan="2">{{ $case->no_hp_orang_tua ?? $case->no_telepon ?? '' }}</td>
         </tr>
     </table>
 
@@ -103,14 +130,15 @@
             <td class="lbl" style="width:20%">Tanggal Mulai Batuk</td><td>{{ $fmt($case->tanggal_onset) }}</td>
         </tr>
         <tr>
+            {{-- Bag D: gejala apnea beserta tanggal onsetnya. --}}
             <td class="lbl">Apnea</td>
-            <td>{!! $rb(false) !!} Ya &nbsp; {!! $rb(false) !!} Tidak</td>
-            <td class="lbl">Tanggal Mulai Apnea</td><td></td>
+            <td>{!! $rb($case->gejala_apnea) !!} Ya &nbsp; {!! $rb(!$case->gejala_apnea) !!} Tidak</td>
+            <td class="lbl">Tanggal Mulai Apnea</td><td>{{ $fmt($case->tanggal_apnea) }}</td>
         </tr>
         <tr>
             <td class="lbl">Gejala lain</td>
             <td colspan="3">
-                {!! $cb(false) !!} Batuk rejan &nbsp;&nbsp;
+                {!! $cb($case->gejala_batuk_rejan) !!} Batuk rejan &nbsp;&nbsp;
                 {!! $cb($case->gejala_muntah) !!} Muntah setelah batuk &nbsp;&nbsp;
                 {!! $cb((bool) ($case->gejala_lainnya ?? false)) !!} Lainnya: {{ $case->gejala_lainnya ?? '' }}
             </td>
@@ -137,20 +165,21 @@
     {{-- RIWAYAT VAKSINASI --}}
     <table class="t" style="margin-top:-1px;">
         <tr><td colspan="4" class="sh sh-yellow">RIWAYAT VAKSINASI</td></tr>
-        @foreach(['usia 2 bulan','usia 3 bulan','usia 4 bulan','usia 18 bulan'] as $usia)
+        {{-- Bag E: slot antigen 1–4 = dosis usia 2/3/4/18 bulan, slot 5 = ORI. --}}
+        @foreach([1 => 'usia 2 bulan', 2 => 'usia 3 bulan', 3 => 'usia 4 bulan', 4 => 'usia 18 bulan'] as $ke => $usia)
         <tr>
             <td class="lbl" style="width:44%">Imunisasi pertusis (DPT-HB-HiB) {{ $usia }}</td>
-            <td style="width:16%"></td>
-            <td class="lbl" style="width:18%">Sumber Informasi</td><td></td>
+            <td style="width:16%">{{ $labelImun($ke) }}@if(optional($imun->get($ke))->tanggal_imunisasi) — {{ $fmt($imun->get($ke)->tanggal_imunisasi) }}@endif</td>
+            <td class="lbl" style="width:18%">Sumber Informasi</td><td>{{ optional($imun->get($ke))->sumber_informasi }}</td>
         </tr>
         @endforeach
         <tr>
-            <td class="lbl">Pernah menerima imunisasi DPT-HB-HiB saat ORI?</td><td></td>
-            <td class="lbl">Sumber Informasi</td><td></td>
+            <td class="lbl">Pernah menerima imunisasi DPT-HB-HiB saat ORI?</td><td>{{ $labelImun(5) }}</td>
+            <td class="lbl">Sumber Informasi</td><td>{{ optional($imun->get(5))->sumber_informasi }}</td>
         </tr>
         <tr>
             <td class="lbl">Tanggal Vaksinasi DPT-HB-HiB terakhir</td>
-            <td colspan="3">{{ $fmt($case->tanggal_imunisasi_terakhir) }}</td>
+            <td colspan="3">{{ $fmt($case->tanggal_imunisasi_terakhir ?? $imun->max('tanggal_imunisasi')) }}</td>
         </tr>
     </table>
 </div>
@@ -163,17 +192,19 @@
     <table class="t" style="margin-top:6px;">
         <tr><td colspan="4" class="sh sh-slate">INFORMASI EPIDEMIOLOGIS</td></tr>
         <tr>
+            {{-- Bag I: "Ya" bila ada kontak erat yang bergejala; jumlahnya sebanyak itu. --}}
             <td class="lbl" style="width:44%">Apakah ada anggota keluarga/masyarakat sekitar yang mengalami sakit sama?</td>
-            <td style="width:16%"></td>
-            <td class="lbl" style="width:12%">Jumlah</td><td></td>
+            <td style="width:16%">{!! $rb($adaSakitSama) !!} Ya &nbsp; {!! $rb(!$adaSakitSama) !!} Tidak</td>
+            <td class="lbl" style="width:12%">Jumlah</td><td>{{ $jumlahSakitSama }}</td>
         </tr>
         <tr>
+            {{-- Bag E: riwayat bepergian terstruktur. --}}
             <td class="lbl">Apakah bepergian 1 bulan terakhir?</td>
-            <td>{!! $rb((bool) $case->riwayat_perjalanan) !!} Ya &nbsp; {!! $rb(!$case->riwayat_perjalanan) !!} Tidak</td>
-            <td class="lbl">Lokasi</td><td>{{ $case->riwayat_perjalanan ?? '' }}</td>
+            <td>{!! $rb($pernahBepergian) !!} Ya &nbsp; {!! $rb(!$pernahBepergian) !!} Tidak</td>
+            <td class="lbl">Lokasi</td><td>{{ $lokasiBepergian ?? '' }}</td>
         </tr>
         <tr>
-            <td class="lbl">Tanggal pergi</td><td></td>
+            <td class="lbl">Tanggal pergi</td><td>{{ $fmt($case->tanggal_bepergian) }}</td>
             <td class="lbl">Tanggal kembali</td><td></td>
         </tr>
     </table>
@@ -209,14 +240,14 @@
         </tr>
         <tr>
             <td class="lbl">Pelaksana investigasi</td>
-            <td>{{ $case->petugasInput->name ?? ($case->nama_pelapor ?? '') }}</td>
+            <td>{{ $petugas }}</td>
         </tr>
     </table>
 
     {{-- Tanda tangan petugas --}}
     <div style="margin-top:26px; margin-left:6px;">
         <div style="font-weight:bold;">Petugas Pelaksana</div>
-        <div style="margin-top:40px;">( {{ $case->petugasInput->name ?? ($case->nama_pelapor ?? '________________') }} )</div>
+        <div style="margin-top:40px;">( {{ $petugas ?: '________________' }} )</div>
         <div>No. Kontak : {{ $case->telepon_pelapor ?? '' }}</div>
     </div>
 

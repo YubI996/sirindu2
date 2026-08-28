@@ -109,6 +109,17 @@
     </div>
     <div class="col-md-4">
         <div class="form-group">
+            <label>Pekerjaan</label>
+            <input type="text" name="pekerjaan" class="form-control"
+                   value="{{ old('pekerjaan', $case->pekerjaan ?? '') }}"
+                   placeholder="Pelajar, karyawan, dll">
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
             <label>Nama Orang Tua</label>
             <input type="text" name="nama_orang_tua" class="form-control"
                    value="{{ old('nama_orang_tua', $case->nama_orang_tua ?? '') }}">
