@@ -6,6 +6,7 @@ use App\Repositories\Admin\Epidemiologi\SurveillanceRepository;
 use App\Http\Requests\Epidemiologi\StoreSurveillanceCaseRequest;
 use App\Http\Requests\Epidemiologi\UpdateSurveillanceCaseRequest;
 use App\Models\SurveillanceCase;
+use App\Models\EpidRenumberLog;
 use App\Models\JenisKasusEpidemiologi;
 use App\Models\LokasiPenularanMaster;
 use App\Models\SekolahDasar;
@@ -279,7 +280,18 @@ class EpidemiologiController extends Controller
             ? ImportLog::where('user_id', auth()->id())->latest()->take(5)->get()
             : collect();
 
-        return view('admin.epidemiologi.index', compact('diseases', 'kecamatanList', 'isFaskes', 'importLogs'));
+        // Peringatan import hasil lab: nomor EPID bergeser saat kasus dihapus, jadi
+        // file lab yang dibuat sebelum pergeseran bisa menempel ke kasus yang salah.
+        // Ditampilkan dengan angka nyata agar tidak jadi imbauan yang selalu diabaikan.
+        $geserTerakhir = EpidRenumberLog::latest('created_at')->first();
+        $jumlahGeser   = $geserTerakhir
+            ? EpidRenumberLog::where('created_at', '>=', now()->subDays(30))->count()
+            : 0;
+
+        return view('admin.epidemiologi.index', compact(
+            'diseases', 'kecamatanList', 'isFaskes', 'importLogs',
+            'geserTerakhir', 'jumlahGeser'
+        ));
     }
 
     /**

@@ -774,6 +774,35 @@
                         <input type="file" name="file_hasil_lab" id="file_hasil_lab" class="form-control" accept=".csv,text/csv" required>
                         <div class="form-text">Format: .csv. Maksimal ukuran file: 10 MB.</div>
                     </div>
+                    {{-- Nomor EPID bergeser saat kasus dihapus (deret dirapatkan). File lab
+                         yang dibuat SEBELUM pergeseran masih memakai nomor lama, dan nomor itu
+                         kini milik kasus lain — hasilnya bisa menempel ke pasien yang salah
+                         tanpa pesan error. Karena itu peringatan ini muncul dengan angka nyata. --}}
+                    @if($geserTerakhir)
+                    <div class="alert alert-warning small">
+                        <strong>
+                            <span class="material-symbols-outlined" style="vertical-align:middle;font-size:18px;">warning</span>
+                            Periksa dulu nomor Epid pada file Anda.
+                        </strong>
+                        <p class="mb-1 mt-1">
+                            Nomor Epid <strong>pernah bergeser</strong> karena ada kasus yang dihapus
+                            @if($jumlahGeser > 0)
+                                — {{ $jumlahGeser }} nomor berubah dalam 30 hari terakhir,
+                            @else
+                                —
+                            @endif
+                            terakhir pada
+                            <strong>{{ $geserTerakhir->created_at?->translatedFormat('d F Y, H:i') ?? '-' }}</strong>
+                            ({{ $geserTerakhir->no_lama }} &rarr; {{ $geserTerakhir->no_baru }}).
+                        </p>
+                        <p class="mb-0">
+                            Import mencocokkan baris memakai <em>No Epid</em>. Bila file ini dibuat
+                            sebelum tanggal tersebut, nomornya sudah tidak sesuai lagi dan hasil lab
+                            dapat masuk ke <strong>pasien yang salah</strong>. Pastikan nomor pada file
+                            sudah cocok dengan nomor terbaru sebelum melanjutkan.
+                        </p>
+                    </div>
+                    @endif
                     <div class="alert alert-info small mb-0">
                         <strong>Catatan:</strong>
                         <ul class="mb-0 mt-1">
