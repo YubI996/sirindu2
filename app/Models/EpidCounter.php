@@ -91,25 +91,86 @@ class EpidCounter extends Model
      * Format: `[PREFIX]-1710[YY][NNN]` atau `1710[YY][NNN]` (AFP/Polio tanpa prefix).
      * Kembalikan null untuk nomor legacy/non-format (mis. "KTM9").
      *
-     * @return array{tahun:int, prefix:string}|null
+     * @return array{tahun:int, prefix:string, urutan:int}|null
      */
     public static function parseNoRegistrasi(string $noReg): ?array
     {
-        if (preg_match('/^([A-Z]{1,3})-1710(\d{2})\d{3}$/', $noReg, $m)) {
-            return ['tahun' => 2000 + (int) $m[2], 'prefix' => $m[1]];
+        if (preg_match('/^([A-Z]{1,3})-1710(\d{2})(\d{3})$/', $noReg, $m)) {
+            return ['tahun' => 2000 + (int) $m[2], 'prefix' => $m[1], 'urutan' => (int) $m[3]];
         }
-        if (preg_match('/^1710(\d{2})\d{3}$/', $noReg, $m)) {
-            return ['tahun' => 2000 + (int) $m[1], 'prefix' => ''];
+        if (preg_match('/^1710(\d{2})(\d{3})$/', $noReg, $m)) {
+            return ['tahun' => 2000 + (int) $m[1], 'prefix' => '', 'urutan' => (int) $m[2]];
         }
         return null;
     }
 
     /**
+     * Susun nomor resmi dari komponennya: `[prefix]-1710[YY][NNN]`
+     * (AFP/Polio tanpa prefix: `1710[YY][NNN]`).
+     */
+    public static function formatNoRegistrasi(int $tahun, string $prefix, int $urutan): string
+    {
+        $nomor = '1710' . substr((string) $tahun, -2) . str_pad((string) $urutan, 3, '0', STR_PAD_LEFT);
+
+        return $prefix === '' ? $nomor : $prefix . '-' . $nomor;
+    }
+
+    /**
+     * Rapatkan deret setelah sebuah nomor dihapus: semua kasus dengan prefix +
+     * tahun yang sama dan urutan LEBIH TINGGI diturunkan satu.
+     * Contoh: deret 1..10, nomor 007 hilang → 008;009;010 menjadi 007;008;009.
+     *
+     * Diproses menaik supaya nomor tujuan selalu baru saja dikosongkan — kolom
+     * no_registrasi UNIQUE, kalau menurun urutannya pasti bentrok.
+     *
+     * PERINGATAN: ini mengubah nomor resmi kasus LAIN yang tak disentuh petugas.
+     * Nomor EPID adalah kunci pencocokan HasilLabImport & Pd3iImport, jadi hasil
+     * lab yang terlanjur dikirim memakai nomor lama akan menempel ke kasus yang
+     * kini memegang nomor itu. Setiap perubahan dicatat di epid_renumber_log.
+     * Nomor legacy di luar format resmi (mis. "KTM9") tidak pernah disentuh.
+     *
+     * @return array<int, array{id:int, lama:string, baru:string}> daftar perubahan
+     */
+    public static function rapatkanSetelahHapus(int $tahun, string $prefix, int $urutanDihapus): array
+    {
+        $yy = substr((string) $tahun, -2);
+        $pola = $prefix !== ''
+            ? '^' . $prefix . '-1710' . $yy . '[0-9]{3}$'
+            : '^1710' . $yy . '[0-9]{3}$';
+
+        $kasus = DB::table('surveillance_cases')
+            ->whereRaw('no_registrasi REGEXP ?', [$pola])
+            ->whereRaw('CAST(RIGHT(no_registrasi, 3) AS UNSIGNED) > ?', [$urutanDihapus])
+            ->orderByRaw('CAST(RIGHT(no_registrasi, 3) AS UNSIGNED) ASC')
+            ->get(['id', 'no_registrasi']);
+
+        $perubahan = [];
+
+        foreach ($kasus as $baris) {
+            $urutanLama = (int) substr($baris->no_registrasi, -3);
+            $baru = static::formatNoRegistrasi($tahun, $prefix, $urutanLama - 1);
+
+            DB::table('surveillance_cases')
+                ->where('id', $baris->id)
+                ->update(['no_registrasi' => $baru]);
+
+            $perubahan[] = [
+                'id'   => (int) $baris->id,
+                'lama' => $baris->no_registrasi,
+                'baru' => $baru,
+            ];
+        }
+
+        return $perubahan;
+    }
+
+    /**
      * Selaraskan counter ke nomor tertinggi yang MASIH terpakai untuk prefix+tahun.
      *
-     * Dipanggil setelah penghapusan kasus: bila yang dihapus adalah nomor terakhir,
-     * counter turun sehingga nomor itu bisa dipakai lagi (tak melompat). TIDAK pernah
-     * mengisi gap di tengah — nomor bisa milik register resmi/import.
+     * Dipanggil setelah penghapusan kasus: counter turun ke nomor tertinggi yang
+     * masih ada, sehingga nomor berikutnya menyambung tanpa melompat. Perapatan
+     * deretnya sendiri dikerjakan rapatkanSetelahHapus() — method ini hanya
+     * menyelaraskan counter dengan keadaan tabel setelahnya.
      */
     public static function syncToUsed(int $tahun, string $prefix): void
     {

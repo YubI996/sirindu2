@@ -607,13 +607,16 @@ class EpidemiologiController extends Controller
 
         try {
             $case = SurveillanceCase::findOrFail($id);
-            if ($case->foto_dokumentasi) {
-                Storage::delete($case->foto_dokumentasi);
-            }
-            if ($case->foto_dokumentasi_2) {
-                Storage::delete($case->foto_dokumentasi_2);
-            }
+            $fotoLama = array_filter([$case->foto_dokumentasi, $case->foto_dokumentasi_2]);
+
+            // Hapus barisnya dulu (sekalian merapatkan deret nomor EPID). Foto baru
+            // dibuang setelah itu berhasil — kalau dibuang lebih dulu lalu proses
+            // hapus gagal, kasusnya tetap ada tapi fotonya hilang permanen.
             $this->surveillanceRepository->deleteCase($id);
+
+            foreach ($fotoLama as $foto) {
+                Storage::delete($foto);
+            }
 
             $this->clearEpiCache();
 

@@ -6,6 +6,7 @@ use App\Repositories\Admin\Core\Epidemiologi\SurveillanceRepositoryInterface;
 use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
 use App\Models\EpidCounter;
+use App\Models\EpidRenumberLog;
 use App\Models\JumlahPenduduk;
 use App\Models\LokasiPenularanMaster;
 use Illuminate\Support\Facades\Auth;
@@ -225,19 +226,44 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
      */
     public function deleteCase($id)
     {
-        $case = SurveillanceCase::findOrFail($id);
-        $noReg = (string) $case->no_registrasi;
+        return DB::transaction(function () use ($id) {
+            $case = SurveillanceCase::findOrFail($id);
+            $noReg = (string) $case->no_registrasi;
 
-        $result = $case->delete();
+            $result = $case->delete();
 
-        // Setelah hapus: turunkan counter ke nomor tertinggi yang masih ada, agar
-        // menghapus kasus terakhir membebaskan nomornya (tak melompat). Gap tengah
-        // tidak diisi otomatis — nomornya bisa milik register resmi/import.
-        if ($parsed = EpidCounter::parseNoRegistrasi($noReg)) {
+            // Nomor legacy di luar format resmi: tak ada deret yang bisa dirapatkan.
+            $parsed = EpidCounter::parseNoRegistrasi($noReg);
+            if (!$parsed) {
+                return $result;
+            }
+
+            // Rapatkan deret: nomor di ATAS yang dihapus turun satu, sehingga
+            // register tak berlubang (permintaan Dinkes, Agustus 2026).
+            $perubahan = EpidCounter::rapatkanSetelahHapus(
+                $parsed['tahun'],
+                $parsed['prefix'],
+                $parsed['urutan']
+            );
+
+            if ($perubahan) {
+                $sekarang = now();
+                EpidRenumberLog::insert(array_map(fn (array $p) => [
+                    'id_surveillance_case' => $p['id'],
+                    'no_lama'              => $p['lama'],
+                    'no_baru'              => $p['baru'],
+                    'dipicu_hapus'         => $noReg,
+                    'id_user'              => Auth::id(),
+                    'created_at'           => $sekarang,
+                ], $perubahan));
+            }
+
+            // Turunkan counter ke nomor tertinggi yang masih ada agar kasus
+            // berikutnya menyambung tanpa melompat.
             EpidCounter::syncToUsed($parsed['tahun'], $parsed['prefix']);
-        }
 
-        return $result;
+            return $result;
+        });
     }
 
     /**
