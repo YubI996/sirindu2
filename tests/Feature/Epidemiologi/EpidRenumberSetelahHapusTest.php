@@ -187,4 +187,40 @@ class EpidRenumberSetelahHapusTest extends TestCase
             'id_user'              => $this->admin->id,
         ]);
     }
+
+    /**
+     * Hasil lab menempel ke kasus lewat id_surveillance_case, bukan lewat nomor
+     * EPID, jadi nomor yang tampil di hasil lab ikut bergeser bersama induknya
+     * tanpa perlu disalin ulang — dan hasilnya TIDAK berpindah ke pasien lain.
+     *
+     * Kalau suatu saat nomor EPID disalin (didenormalisasi) ke baris spesimen
+     * atau tabel lab mana pun, test ini yang pertama jatuh: salinan itu wajib
+     * ikut diperbarui di rapatkanSetelahHapus().
+     */
+    public function test_hasil_lab_ikut_nomor_baru_induknya(): void
+    {
+        $difteri = $this->penyakit('DIFTERI_OBS');
+        $this->buatKasus('D-171026001', $difteri);
+        $dihapus = $this->buatKasus('D-171026002', $difteri);
+        $naik    = $this->buatKasus('D-171026003', $difteri);
+
+        $spesimen = $naik->spesimen()->create([
+            'urutan'                 => 1,
+            'jenis_spesimen'         => 'Swab Tenggorokan',
+            'no_kode_spesimen'       => 'LAB-778',
+            'tanggal_ambil_spesimen' => '2026-08-01',
+            'status_pemeriksaan'     => 'positif',
+        ]);
+
+        $this->repo->deleteCase($dihapus->id);
+
+        // Spesimen tetap milik kasus yang sama, dan kasus itu kini bernomor 002.
+        $spesimen->refresh();
+        $this->assertSame($naik->id, $spesimen->id_surveillance_case);
+        $this->assertSame('D-171026002', $spesimen->surveillanceCase->no_registrasi);
+        $this->assertSame('LAB-778', $spesimen->no_kode_spesimen);
+
+        // Nomor lama tak lagi menunjuk ke kasus mana pun.
+        $this->assertDatabaseMissing('surveillance_cases', ['no_registrasi' => 'D-171026003']);
+    }
 }
