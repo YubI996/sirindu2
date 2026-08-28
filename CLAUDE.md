@@ -116,6 +116,19 @@ Yang wajib diingat:
   lab yang terlanjur dikirim memakai nomor lama akan menempel ke kasus yang kini
   memegang nomor itu — pasien yang salah, tanpa error. Risiko ini disadari dan
   diterima klien; jangan "diperbaiki" diam-diam dengan melewati kasus tertentu.
+  Penanganan yang dipilih klien adalah **peringatan, bukan penolakan**: modal
+  import hasil lab menampilkan pergeseran terakhir (lama → baru + tanggal) dan
+  jumlah perubahan 30 hari terakhir, lalu petugas yang memutuskan. Aplikasi
+  sengaja TIDAK menerjemahkan nomor lama lewat `epid_renumber_log` secara
+  otomatis — nomor yang sama bisa berarti dua kasus berbeda tergantung file itu
+  dibuat sebelum atau sesudah pergeseran, dan menebaknya berarti salah pasien
+  secara senyap. Dikunci `PeringatanImportHasilLabTest`.
+- **Data lab di database tidak perlu disinkronkan saat nomor bergeser.** Baris
+  spesimen menempel ke kasus lewat `id_surveillance_case`, bukan lewat nomor
+  EPID, jadi ia sudah ikut induknya. Kalau suatu saat nomor EPID disalin ke
+  baris spesimen atau tabel lab, salinan itu wajib ikut diperbarui di
+  `rapatkanSetelahHapus()` — dikunci
+  `EpidRenumberSetelahHapusTest::test_hasil_lab_ikut_nomor_baru_induknya`.
 - Penggeseran diproses **menaik** (008→007 dulu, baru 009→008). Kalau dibalik,
   pasti bentrok karena `no_registrasi` UNIQUE.
 - Deret berjalan per prefix per tahun, jadi menghapus Difteri tak menyentuh nomor
