@@ -568,6 +568,8 @@ ANAK
         $filters = array_filter([
             'id_kecamatan' => $request->integer('id_kecamatan') ?: null,
             'id_kelurahan' => $request->integer('id_kelurahan') ?: null,
+            'id_rt'        => $request->integer('id_rt') ?: null,
+            'id_puskesmas' => $request->integer('id_puskesmas') ?: null,
             'id_posyandu'  => $request->integer('id_posyandu') ?: null,
         ]);
 
@@ -576,45 +578,29 @@ ANAK
         $coverage = $service->getIdlCoverage($filters, withKejar: true);
         $butuhKejar = $coverage['butuh_kejar'] ?? 0;
 
-        // Daftar anak ≥12 bln — dipaginasi server-side agar tak membangun/mengirim ribuan
-        // baris. Hanya baris pada halaman aktif yang dihitung statusnya.
-        $anakKejarQuery = Anak::with(['imunisasi.jenisVaksin', 'kel', 'posyandu'])
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12')
-            ->orderBy('nama');
-
-        if (!empty($filters['id_posyandu'])) {
-            $anakKejarQuery->where('id_posyandu', $filters['id_posyandu']);
-        } elseif (!empty($filters['id_kelurahan'])) {
-            $anakKejarQuery->where('id_kel', $filters['id_kelurahan']);
-        } elseif (!empty($filters['id_kecamatan'])) {
-            $anakKejarQuery->where('id_kec', $filters['id_kecamatan']);
-        }
-
-        $anakList = $anakKejarQuery->paginate(25)->withQueryString();
-        $anakList->getCollection()->transform(function ($anak) use ($service) {
-            $kejar = $anak->statusKejarVaksin();
-
-            return [
-                'anak'          => $anak,
-                'idl_lengkap'   => $service->isIdlLengkap($anak),
-                'kejar_idl'     => $kejar['kejar_idl'],
-                'kejar_ibl'     => $kejar['kejar_ibl'],
-                'vaksin_kejar'  => $kejar['vaksin_kejar'],
-            ];
-        });
+        // Agregat dashboard rutin (redesign) — lihat ImunisasiStatusService untuk metodologi tiap angka.
+        $sasaran          = $service->getRingkasanSasaran($filters);
+        $iblCoverage      = $service->getIblCoverage($filters);
+        $funnel           = $service->getFunnelDosis($filters);
+        $cakupanAntigen   = $service->getCakupanAntigen($filters);
+        $kohortWilayah    = $service->getKohortWilayah($filters);
+        $rincianPuskesmas = $service->getRincianPuskesmas($filters);
+        $sasaranHarian    = $service->getSasaranHarianBesok($filters);
 
         $kecamatanList = \App\Models\Kecamatan::orderBy('name')->get();
         $kelurahanList = \App\Models\Kelurahan::orderBy('name')->get();
         $posyanduList  = \App\Models\Posyandu::orderBy('name')->get();
+        $puskesmasList = \App\Models\Puskesmas::orderBy('name')->get();
 
         // Korelasi cakupan IDL vs prevalensi stunting per kelurahan (Paket E).
         $korelasiData = $this->korelasiStuntingVaksin($filters, $coverage);
         $alasanTidakImunisasi = $this->alasanTidakImunisasiData($filters);
 
         return view('admin.imunisasi.dashboard', compact(
-            'coverage', 'anakList', 'butuhKejar', 'filters',
-            'kecamatanList', 'kelurahanList', 'posyanduList', 'korelasiData',
-            'alasanTidakImunisasi'
+            'coverage', 'butuhKejar', 'filters',
+            'kecamatanList', 'kelurahanList', 'posyanduList', 'puskesmasList', 'korelasiData',
+            'alasanTidakImunisasi',
+            'sasaran', 'iblCoverage', 'funnel', 'cakupanAntigen', 'kohortWilayah', 'rincianPuskesmas', 'sasaranHarian'
         ));
     }
 

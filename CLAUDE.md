@@ -139,3 +139,69 @@ Yang wajib diingat:
   fotonya hilang permanen.
 
 Dikunci oleh `tests/Feature/Epidemiologi/EpidRenumberSetelahHapusTest.php`.
+
+### `ImunisasiStatusService` — cache statis bocor antar test PHPUnit
+
+`ImunisasiStatusService` menyimpan `KelompokVaksin`/`JenisVaksin` di properti
+`static` (didesain "sekali per request" — aman di produksi karena PHP
+membersihkannya tiap akhir request). Di PHPUnit, `RefreshDatabase` membungkus
+tiap test dalam transaksi yang di-rollback, TAPI auto-increment MySQL **tidak**
+ikut rollback — jadi `KelompokVaksin::where('kode','IDL')->first()->id` beda
+nilainya di tiap test method, sementara cache statis dari test method
+sebelumnya (dalam proses PHPUnit yang sama) masih menunjuk id lama. Akibatnya
+`isIdlLengkap()` diam-diam selalu `false` di test yang berjalan setelah test
+pertama yang memicu cache — tanpa error, cuma assert gagal dengan alasan yang
+membingungkan.
+
+Panggil `ImunisasiStatusService::flushCache()` di `setUp()` tiap test yang
+memakai service ini bersama `RefreshDatabase` (pola yang sama dengan
+`WilkerPuskesmas::flushCache()` yang sudah ada). Lihat
+`tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php`.
+
+### Filter cascade Kecamatan→Kelurahan: jangan pakai jQuery `:hidden` pada `<option>`
+
+`<option>` tidak punya box model saat `<select>`-nya tertutup, jadi jQuery
+`:hidden`/`:visible` SELALU menganggapnya hidden — tidak peduli `display`
+sebenarnya. Kode yang mengecek `$sel.find('option:selected').is(':hidden')`
+untuk memutuskan "apakah pilihan lama masih valid setelah difilter" akan
+selalu true dan mereset pilihan yang sebenarnya masih benar (kejadian nyata:
+buka dashboard imunisasi dengan `?id_kecamatan=1&id_kelurahan=1` di URL,
+Kelurahan yang seharusnya ter-pre-select malah balik ke "Semua kelurahan").
+Cek validitas dari atribut data (`data-kec`) langsung, bukan dari visibility
+jQuery. Lihat `filterKelOptionsByKec()` di
+`resources/views/admin/imunisasi/dashboard.blade.php`.
+
+### DB lokal `sirindu` (dev) bisa kosong dari user — cek sebelum asumsi kredensial seed jalan
+
+`php artisan db:seed` penuh (`DatabaseSeeder`) berhenti di tengah kalau salah
+satu seeder gagal (mis. `SurveillanceCaseSeeder` pernah gagal karena data dummy
+`status_lab` kepanjangan untuk kolom enum) — seeder SETELAHNYA di daftar
+(termasuk `RoleUserSeeder`, sumber akun `dinkes@sirindu.go.id`/`Sirindu@2026`)
+tidak ikut jalan, walau tidak ada pesan error yang jelas soal itu. Kalau login
+dev lokal gagal padahal kredensial di memori/dokumentasi benar, cek dulu
+`SELECT COUNT(*) FROM users` sebelum curiga ke hal lain — MySQL & tabel users
+di `sirindu` (beda dari `sirindu_testing`) tidak auto-start/ter-seed di mesin
+ini.
+
+### `@section('x')isi@endsection` satu baris tanpa spasi — Blade diam-diam TIDAK mem-parse `@endsection`
+
+Blade menolak mengenali directive (`@endsection`, dst.) kalau `@`-nya nempel
+langsung ke huruf/angka sebelumnya tanpa spasi/baris baru (`\B` di regex
+compiler Blade). Jadi `@section('title')Dashboard Imunisasi@endsection` —
+`@section` ke-compile, tapi `@endsection` TIDAK, dan `@endsection` ikut
+tercetak sebagai teks literal di halaman. Section jadi tidak pernah ditutup,
+sehingga `@yield('title')`/breadcrumb (lihat `partials/breadcrumb.blade.php`)
+tampil kosong — tanpa error apa pun, di Blade maupun di browser console. Bug
+ini nyata terjadi di `resources/views/admin/imunisasi/dashboard.blade.php`
+(disalin dari kode lama yang sudah begini) sampai breadcrumb-nya dilaporkan
+kosong oleh user. Cek pola ini di file manapun sebelum menyalahkan hal lain
+kalau breadcrumb/title halaman admin kosong:
+
+```
+grep -rnE "@section\('[a-z-]+'\)\S.*@endsection" resources/views
+```
+
+Perbaikannya sekadar kasih spasi: `@section('title') Dashboard Imunisasi @endsection`
+(pola yang sudah dipakai `pd3i-dashboard.blade.php`). Setelah mengubah blade
+manapun, `php artisan view:clear` dulu sebelum menyimpulkan perubahan tak
+berefek — compiled view lama tetap disajikan sampai di-clear.
