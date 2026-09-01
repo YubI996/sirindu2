@@ -209,11 +209,28 @@ class StatusGiziService
      */
     public function enumEppgbm(?float $zBbU, ?float $zTbU, ?float $zBbTb): array
     {
+        // Sentinel (mis. 999.99) menandakan sumber data GAGAL menghitung
+        // z-score itu — biasanya karena bb/tb tak masuk akal untuk usianya.
+        // Ketiga indikator berasal dari pengukuran yang sama, jadi kalau
+        // salah satu kena sentinel, dua lainnya (walau tampak seperti angka
+        // wajar) sama-sama tak bisa dipercaya. Kasus nyata: bb=1.82kg,
+        // tb=43cm → zscore_bb_pb=999.99, tapi zscore_bb_u=-3.69 & tb_u=-3.64
+        // tampak "wajar" walau berasal dari pengukuran implausibel yang sama.
+        if ($this->sentinel($zBbU) || $this->sentinel($zTbU) || $this->sentinel($zBbTb)) {
+            return ['bb_u' => null, 'tb_u' => null, 'bb_tb' => null];
+        }
+
         return [
             'bb_u'  => $this->eppgbmBb($zBbU),
             'tb_u'  => $this->eppgbmTb($zTbU),
             'bb_tb' => $this->eppgbmBbTb($zBbTb),
         ];
+    }
+
+    /** Nilai |z| >= 90 mustahil biologis — sentinel "gagal dihitung", bukan z-score sungguhan. */
+    private function sentinel(?float $z): bool
+    {
+        return $z !== null && abs($z) >= 90;
     }
 
     private function eppgbmTb(?float $z): ?string

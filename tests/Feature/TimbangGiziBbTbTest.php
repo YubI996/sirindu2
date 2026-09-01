@@ -264,6 +264,37 @@ class TimbangGiziBbTbTest extends TestCase
         $this->assertSame('3201000000009501', $daftar['rows'][0]['nik']);
     }
 
+    /**
+     * Kasus nyata (Bontang Lestari, MUHAMMAD AZHAM): bb=1.82kg, tb=43cm —
+     * implausibel untuk balita mana pun. Sumber gagal hitung BB/TB (sentinel
+     * 999.99), tapi BB/U (-3.69) & TB/U (-3.64) tampak wajar walau berasal
+     * dari pengukuran implausibel yang sama. Sebelum fix, anak ini ikut
+     * dihitung stunting+underweight di dashboard walau dikeluarkan Dinkes.
+     */
+    public function test_sentinel_zscore_pada_satu_indikator_mengeluarkan_anak_dari_semua_kartu(): void
+    {
+        $superAdmin = User::factory()->create(['type' => 0]);
+
+        $anak = Anak::create([
+            'nama' => 'Muhammad Azham', 'nik' => '3201000000009601', 'jk' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2024-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
+        ]);
+        DataAnak::create([
+            'id_anak' => $anak->id, 'tgl_kunjungan' => '2026-06-10', 'bln' => 24,
+            'posisi' => 'berdiri', 'tb' => 43, 'bb' => 1.82, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'zscore_bb_u' => -3.690, 'zscore_pb_u' => -3.640, 'zscore_bb_pb' => 999.990,
+            'sumber' => 'operasi_timbang',
+        ]);
+
+        $data = $this->actingAs($superAdmin)
+            ->getJson(route('admin.timbang.gizi'))->assertStatus(200)->json();
+
+        $this->assertSame(0, $data['stunting']);
+        $this->assertSame(0, $data['underweight']);
+        $this->assertSame(0, $data['wasting']);
+        $this->assertSame(1, $data['total']); // tetap masuk penyebut (diukur), cuma tak diklasifikasi
+    }
+
     /** Baris tanpa z-score tersimpan TIDAK dihitung (persis COUNTIFS Dinkes). */
     public function test_baris_zscore_kosong_tidak_dihitung(): void
     {
