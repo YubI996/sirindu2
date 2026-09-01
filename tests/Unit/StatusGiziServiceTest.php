@@ -183,44 +183,33 @@ class StatusGiziServiceTest extends TestCase
     }
 
     /**
-     * Baris nyata (kasus produksi, kelurahan Bontang Lestari): bb=1.82kg,
-     * tb=43cm — implausibel untuk balita mana pun. Sumber data sendiri gagal
-     * menghitung z-score BB/TB dan menulis sentinel 999.99, tapi BB/U (-3.69)
-     * dan TB/U (-3.64) TETAP tampak seperti angka wajar walau berasal dari
-     * pengukuran yang sama-sama tak masuk akal. Ketiganya harus dianggap
-     * gagal dihitung bersama — bukan cuma kolom yang kena sentinel.
+     * Baris nyata (kasus produksi, kelurahan Bontang Lestari, MUHAMMAD AZHAM):
+     * bb=1.82kg, tb=43cm — implausibel, dan sumber gagal hitung z-score BB/TB
+     * (sentinel 999.99). Sempat dicoba membatalkan TB/U & BB/U-nya juga
+     * (dianggap "sama-sama tak bisa dipercaya"), TAPI sheet resmi Dinkes
+     * (COUNTIFS per kolom) tetap menghitung TB/U (-3.64) & BB/U (-3.69) anak
+     * ini sebagai stunting+underweight — hanya BB/TB-nya yang gagal. Dashboard
+     * harus mereproduksi itu PERSIS, bukan menerapkan penilaian sendiri soal
+     * plausibilitas lintas-indikator.
      */
-    public function test_enum_eppgbm_sentinel_di_satu_indikator_membatalkan_ketiganya(): void
+    public function test_enum_eppgbm_sentinel_di_satu_indikator_tidak_pengaruhi_indikator_lain(): void
     {
         $g = $this->svc->enumEppgbm(-3.690, -3.640, 999.990);
-        $this->assertNull($g['bb_u']);
-        $this->assertNull($g['tb_u']);
-        $this->assertNull($g['bb_tb']);
+        $this->assertSame('severely_underweight', $g['bb_u']);
+        $this->assertSame('severely_stunted', $g['tb_u']);
+        // BB/TB sendiri gagal dihitung — 999.99 tak masuk kategori mana pun
+        // yang bermakna dalam rumus resmi (jatuh ke 'obese' apa adanya).
+        $this->assertSame('obese', $g['bb_tb']);
     }
 
-    /** Sentinel bisa muncul di kolom mana pun, bukan cuma BB/TB. */
-    public function test_enum_eppgbm_sentinel_di_bb_u_atau_tb_u_juga_membatalkan_ketiganya(): void
+    /** Nilai ekstrem tapi masih dalam ambang plausibilitas TB/U tetap dihitung. */
+    public function test_enum_eppgbm_ekstrem_dalam_ambang_tetap_dihitung(): void
     {
-        $g1 = $this->svc->enumEppgbm(999.99, -1.0, 0.0);
-        $this->assertNull($g1['bb_u']);
-        $this->assertNull($g1['tb_u']);
-        $this->assertNull($g1['bb_tb']);
-
-        $g2 = $this->svc->enumEppgbm(-1.0, -999.99, 0.0);
-        $this->assertNull($g2['bb_u']);
-        $this->assertNull($g2['tb_u']);
-        $this->assertNull($g2['bb_tb']);
-    }
-
-    /** Nilai ekstrem tapi masuk akal (bukan sentinel) tetap dihitung per indikator. */
-    public function test_enum_eppgbm_ekstrem_wajar_tetap_dihitung_bukan_sentinel(): void
-    {
-        // Kasus nyata: ALFATUNISA zs_tbu=-7.12, MUHAMMAD ALGHIFARI zs_tbu=-6.38 —
-        // ekstrem tapi bukan sentinel, tetap diproses (dan dikeluarkan oleh
-        // ambang outlier -6.01 yang sudah ada, bukan oleh pembatalan sentinel).
+        // Kasus nyata: ALFATUNISA zs_tbu=-7.12 (di luar ambang -6.01 →
+        // outlier, null), MUHAMMAD ALGHIFARI zs_tbu=-6.38 (juga outlier).
         $g = $this->svc->enumEppgbm(-3.58, -7.12, -1.42);
         $this->assertSame('severely_underweight', $g['bb_u']);
-        $this->assertNull($g['tb_u']); // outlier plausibilitas TB/U (<= -6.01), bukan sentinel
+        $this->assertNull($g['tb_u']); // outlier plausibilitas TB/U (<= -6.01)
         $this->assertSame('normal', $g['bb_tb']);
     }
 }
