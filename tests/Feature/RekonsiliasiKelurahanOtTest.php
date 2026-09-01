@@ -23,6 +23,18 @@ class RekonsiliasiKelurahanOtTest extends TestCase
         return $path;
     }
 
+    /** @param array<int,array{0:string,1:string,2:string,3:string}> $rows [nama, tgl_lahir_dmy, nama_ortu, kel] */
+    private function csvLengkap(array $rows): string
+    {
+        $lines = ["Nama,Tgl Lahir,Nama Ortu,Desa/Kel"];
+        foreach ($rows as [$nama, $tgl, $ortu, $kel]) {
+            $lines[] = "{$nama},{$tgl},{$ortu},{$kel}";
+        }
+        $path = tempnam(sys_get_temp_dir(), 'kel_') . '.csv';
+        file_put_contents($path, implode("\n", $lines));
+        return $path;
+    }
+
     public function test_dry_run_tidak_menulis_apapun(): void
     {
         Storage::fake('local');
@@ -149,6 +161,71 @@ class RekonsiliasiKelurahanOtTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertSame($loktuan->id, $anak->fresh()->id_kel);
+    }
+
+    public function test_tgl_lahir_membedakan_nama_kembar(): void
+    {
+        Storage::fake('local');
+        $lestari = Kelurahan::factory()->create(['name' => 'Bontang Lestari']);
+        $loktuan = Kelurahan::factory()->create(['name' => 'Loktuan']);
+        // Dua anak nama sama, tgl lahir BEDA — keduanya salah kelurahan.
+        $a1 = Anak::create(['nama' => 'MUHAMMAD ABIZAR', 'nik' => '1111111111111111', 'jk' => 1, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-01-01', 'status' => 1, 'sumber' => 'operasi_timbang', 'id_kel' => $loktuan->id]);
+        $a2 = Anak::create(['nama' => 'MUHAMMAD ABIZAR', 'nik' => '2222222222222222', 'jk' => 1, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2023-05-10', 'status' => 1, 'sumber' => 'operasi_timbang', 'id_kel' => $loktuan->id]);
+
+        $csv = $this->csvLengkap([
+            ['MUHAMMAD ABIZAR', '01/01/2022', '', 'BONTANG LESTARI'],
+            ['MUHAMMAD ABIZAR', '10/05/2023', '', 'LOKTUAN'], // sudah benar, tak perlu koreksi
+        ]);
+
+        $this->artisan('wilayah:rekonsiliasi-kelurahan', ['csv' => $csv, '--commit' => true])
+            ->expectsOutputToContain('AMBIGU (anak)    : 0')
+            ->expectsOutputToContain('PERLU KOREKSI    : 1')
+            ->assertExitCode(0);
+
+        $this->assertSame($lestari->id, $a1->fresh()->id_kel); // dikoreksi via tgl lahir
+        $this->assertSame($loktuan->id, $a2->fresh()->id_kel); // sudah benar, tak disentuh
+    }
+
+    public function test_nama_ortu_jadi_penentu_saat_nama_dan_tgl_lahir_sama(): void
+    {
+        Storage::fake('local');
+        $lestari = Kelurahan::factory()->create(['name' => 'Bontang Lestari']);
+        $loktuan = Kelurahan::factory()->create(['name' => 'Loktuan']);
+        // "Kembar" sungguhan: nama DAN tgl lahir sama, ortu beda.
+        $a1 = Anak::create(['nama' => 'ALTI MIDI', 'nik' => '1111111111111111', 'jk' => 2, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-01-01', 'nama_ayah' => 'BUDI', 'nama_ibu' => 'SITI', 'status' => 1, 'sumber' => 'operasi_timbang', 'id_kel' => $loktuan->id]);
+        $a2 = Anak::create(['nama' => 'ALTI MIDI', 'nik' => '2222222222222222', 'jk' => 2, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-01-01', 'nama_ayah' => 'AGUS', 'nama_ibu' => 'RINA', 'status' => 1, 'sumber' => 'operasi_timbang', 'id_kel' => $loktuan->id]);
+
+        $csv = $this->csvLengkap([
+            ['ALTI MIDI', '01/01/2022', 'BUDI / SITI', 'BONTANG LESTARI'],
+        ]);
+
+        $this->artisan('wilayah:rekonsiliasi-kelurahan', ['csv' => $csv, '--commit' => true])
+            ->expectsOutputToContain('AMBIGU (anak)    : 0')
+            ->expectsOutputToContain('PERLU KOREKSI    : 1')
+            ->assertExitCode(0);
+
+        $this->assertSame($lestari->id, $a1->fresh()->id_kel); // cocok via nama ayah "BUDI"
+        $this->assertSame($loktuan->id, $a2->fresh()->id_kel); // tak disentuh
+    }
+
+    public function test_masih_ambigu_kalau_nama_ortu_juga_tak_bisa_membedakan(): void
+    {
+        Storage::fake('local');
+        $lestari = Kelurahan::factory()->create(['name' => 'Bontang Lestari']);
+        $loktuan = Kelurahan::factory()->create(['name' => 'Loktuan']);
+        $a1 = Anak::create(['nama' => 'ALTI MIDI', 'nik' => '1111111111111111', 'jk' => 2, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-01-01', 'nama_ayah' => 'BUDI', 'nama_ibu' => 'SITI', 'status' => 1, 'sumber' => 'operasi_timbang', 'id_kel' => $loktuan->id]);
+        $a2 = Anak::create(['nama' => 'ALTI MIDI', 'nik' => '2222222222222222', 'jk' => 2, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-01-01', 'nama_ayah' => 'BUDI', 'nama_ibu' => 'SITI', 'status' => 1, 'sumber' => 'operasi_timbang', 'id_kel' => $loktuan->id]);
+
+        $csv = $this->csvLengkap([
+            ['ALTI MIDI', '01/01/2022', 'BUDI / SITI', 'BONTANG LESTARI'],
+        ]);
+
+        $this->artisan('wilayah:rekonsiliasi-kelurahan', ['csv' => $csv, '--commit' => true])
+            ->expectsOutputToContain('AMBIGU (anak)    : 1')
+            ->assertExitCode(0);
+
+        $this->assertSame($loktuan->id, $a1->fresh()->id_kel);
+        $this->assertSame($loktuan->id, $a2->fresh()->id_kel);
     }
 
     public function test_csv_harus_punya_kolom_nama_dan_desa_kel(): void
