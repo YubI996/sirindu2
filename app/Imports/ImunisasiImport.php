@@ -315,6 +315,7 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
             'lk'                     => 0,
             'id_user'                => $this->userId,
             'alasan_tidak_imunisasi' => $alasan,
+            'sumber'                 => 'imunisasi',
         ]);
     }
 

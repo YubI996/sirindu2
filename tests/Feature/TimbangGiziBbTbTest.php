@@ -49,12 +49,12 @@ class TimbangGiziBbTbTest extends TestCase
 
         $anak = Anak::create([
             'nama' => 'Balita Wasted', 'nik' => '3201000000009001', 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
         ]);
         // Wasting bersumber dari z-score BB/TB tersimpan (indikator BB/TB, bukan IMT/U).
         DataAnak::create([
             'id_anak' => $anak->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
-            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
             'zscore_bb_u' => -1.0, 'zscore_pb_u' => -1.0, 'zscore_bb_pb' => -3.5,
         ]);
 
@@ -91,11 +91,11 @@ class TimbangGiziBbTbTest extends TestCase
         //   - zscore_bb_pb=0.0 → normal
         $anak = Anak::create([
             'nama' => 'Balita ZScore', 'nik' => '3201000000009002', 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
         ]);
         DataAnak::create([
             'id_anak' => $anak->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
-            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
             'zscore_bb_u' => -1.0, 'zscore_pb_u' => -2.5, 'zscore_bb_pb' => 0.0,
         ]);
 
@@ -124,22 +124,22 @@ class TimbangGiziBbTbTest extends TestCase
         // Underweight: zscore_bb_u = -2.5 (< -2).
         $uw = Anak::create([
             'nama' => 'Balita Underweight', 'nik' => '3201000000009101', 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
         ]);
         DataAnak::create([
             'id_anak' => $uw->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
-            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
             'zscore_bb_u' => -2.5, 'zscore_pb_u' => 0.0, 'zscore_bb_pb' => 0.0,
         ]);
 
         // BB/U normal: zscore_bb_u = -1.0 → tak boleh muncul.
         $ok = Anak::create([
             'nama' => 'Balita Normal', 'nik' => '3201000000009102', 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
         ]);
         DataAnak::create([
             'id_anak' => $ok->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
-            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
             'zscore_bb_u' => -1.0, 'zscore_pb_u' => 0.0, 'zscore_bb_pb' => 0.0,
         ]);
 
@@ -169,11 +169,11 @@ class TimbangGiziBbTbTest extends TestCase
         foreach ($kasus as [$nik, $zTb]) {
             $a = Anak::create([
                 'nama' => 'Anak '.$nik, 'nik' => $nik, 'jk' => 1,
-                'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+                'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
             ]);
             DataAnak::create([
                 'id_anak' => $a->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
-                'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+                'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
                 'zscore_bb_u' => 0.0, 'zscore_pb_u' => $zTb, 'zscore_bb_pb' => 0.0,
             ]);
         }
@@ -193,11 +193,11 @@ class TimbangGiziBbTbTest extends TestCase
         foreach ([['3201000000009301', -2.5], ['3201000000009302', -3.5]] as [$nik, $zBt]) {
             $a = Anak::create([
                 'nama' => 'Anak '.$nik, 'nik' => $nik, 'jk' => 1,
-                'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+                'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
             ]);
             DataAnak::create([
                 'id_anak' => $a->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
-                'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+                'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
                 'zscore_bb_u' => 0.0, 'zscore_pb_u' => 0.0, 'zscore_bb_pb' => $zBt,
             ]);
         }
@@ -222,11 +222,11 @@ class TimbangGiziBbTbTest extends TestCase
         // Balita: umur skrg ~24 bln, ditimbang pada bln=24.
         $balita = Anak::create([
             'nama' => 'Balita Aktif', 'nik' => '3201000000009501', 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(24)->toDateString(), 'status' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(24)->toDateString(), 'status' => 1, 'sumber' => 'operasi_timbang',
         ]);
         DataAnak::create([
             'id_anak' => $balita->id, 'tgl_kunjungan' => now()->toDateString(), 'bln' => 24,
-            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
             'zscore_bb_u' => -2.5, 'zscore_pb_u' => -2.5, 'zscore_bb_pb' => -2.5,
         ]);
 
@@ -234,11 +234,11 @@ class TimbangGiziBbTbTest extends TestCase
         // ekstrem — kalau bocor ikut dihitung, angka kartu pasti berubah.
         $sd = Anak::create([
             'nama' => 'Anak SD', 'nik' => '3201000000009502', 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(90)->toDateString(), 'status' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(90)->toDateString(), 'status' => 1, 'sumber' => 'operasi_timbang',
         ]);
         DataAnak::create([
             'id_anak' => $sd->id, 'tgl_kunjungan' => now()->toDateString(), 'bln' => 90,
-            'posisi' => 'berdiri', 'tb' => 110, 'bb' => 15, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'posisi' => 'berdiri', 'tb' => 110, 'bb' => 15, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
             'zscore_bb_u' => -3.0, 'zscore_pb_u' => -3.0, 'zscore_bb_pb' => -3.0,
         ]);
 
@@ -271,11 +271,11 @@ class TimbangGiziBbTbTest extends TestCase
 
         $a = Anak::create([
             'nama' => 'Tanpa ZScore', 'nik' => '3201000000009401', 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1,
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2022-06-01', 'status' => 1, 'sumber' => 'operasi_timbang',
         ]);
         DataAnak::create([
             'id_anak' => $a->id, 'tgl_kunjungan' => '2024-06-01', 'bln' => 24,
-            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1,
+            'posisi' => 'berdiri', 'tb' => 90, 'bb' => 12, 'lla' => 0, 'lk' => 0, 'id_user' => 1, 'sumber' => 'operasi_timbang',
             // z-score sengaja NULL → tak boleh diklasifikasi/di-recompute.
         ]);
 

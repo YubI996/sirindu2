@@ -263,6 +263,7 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
             'id_posyandu'          => $idPos,
             'no'                   => 'OT-' . str_pad((string) $rowNum, 5, '0', STR_PAD_LEFT),
             'status'               => 1,
+            'sumber'               => 'operasi_timbang',
         ]);
 
         return $anak;
@@ -292,6 +293,7 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
                 'kelas_ibu_balita' => $this->parseBoolean($this->colVal($row, $map, 'kelas ibu balita')),
                 'mbg'              => $this->parseBoolean($this->colVal($row, $map, 'mbg')),
                 'id_user'          => $this->userId,
+                'sumber'           => 'operasi_timbang',
             ]
         );
     }

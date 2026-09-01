@@ -79,6 +79,7 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(49.0, (float) $anak->pbl);
         $this->assertSame(34.0, (float) $anak->lk_lahir);
         $this->assertSame(1, (int) $anak->status);
+        $this->assertSame('operasi_timbang', $anak->sumber);
         $this->assertSame(1, $import->getResults()['anak_dibuat']);
     }
 
@@ -194,6 +195,7 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(-1.80, (float) $d->zscore_pb_u);
         $this->assertSame(-0.40, (float) $d->zscore_bb_pb);
         $this->assertSame(1, (int) $d->id_user);
+        $this->assertSame('operasi_timbang', $d->sumber);
         $this->assertSame(1, $import->getResults()['ukur_ditulis']);
     }
 

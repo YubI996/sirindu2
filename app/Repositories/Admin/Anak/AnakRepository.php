@@ -57,6 +57,7 @@ class AnakRepository implements AnakRepositoryInterface
             'alamat' => $request->alamat,
             'alamat_ktp' => $request->alamat_ktp,
             'catatan' => $request->catatan ?? '',
+            'sumber' => 'manual',
         ]);
 
         DataAnak::create([
@@ -73,6 +74,7 @@ class AnakRepository implements AnakRepositoryInterface
             'obat_cacing' => $request->obat_cacing,
             'ddtka' => $request->ddtka,
             'id_user' => Auth::user()->id,
+            'sumber' => 'manual',
         ]);
     }
 
@@ -219,6 +221,7 @@ class AnakRepository implements AnakRepositoryInterface
             'imunisasi_terakhir' => $request->imunisasi_terakhir,
             'alasan_tidak_imunisasi' => $request->alasan_tidak_imunisasi,
             'id_user' => Auth::user()->id,
+            'sumber' => 'manual',
         ]);
     }
 

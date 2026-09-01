@@ -230,6 +230,7 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
             'id_rt'     => $idRt,
             'no'        => 'OT-' . str_pad((string) $rowNum, 5, '0', STR_PAD_LEFT),
             'status'    => 1,
+            'sumber'    => 'operasi_timbang',
         ]);
 
         $this->dibuatList[] = ['baris' => $rowNum, 'nama' => $nama, 'tgl_lahir' => $tglLahir, 'nik' => $anak->nik];
@@ -274,8 +275,17 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
                 'kelas_ibu_balita' => $this->parseBoolean($this->colVal($row, $map, 'kelas ibu balita')),
                 'mbg'              => $this->parseBoolean($this->colVal($row, $map, 'mbg')),
                 'id_user'          => $this->userId,
+                'sumber'           => 'operasi_timbang',
             ]
         );
+
+        // Anak yang benar-benar menerima pengukuran OT harus ikut populasi
+        // terkunci juga — walau identitasnya semula dibuat lewat jalur lain
+        // (Capil/manual/AnakImport), begitu ia punya data timbang OT sungguhan
+        // ia bagian dari sasaran OT.
+        if ($anak->sumber !== 'operasi_timbang') {
+            $anak->update(['sumber' => 'operasi_timbang']);
+        }
     }
 
     // --- parse helpers (pola sama seperti UkurImport) ---

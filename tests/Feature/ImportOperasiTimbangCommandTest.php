@@ -62,6 +62,8 @@ class ImportOperasiTimbangCommandTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertEquals(1, DataAnak::where('id_anak', $anak->id)->count());
+        $this->assertSame('operasi_timbang', DataAnak::where('id_anak', $anak->id)->first()->sumber);
+        $this->assertSame('operasi_timbang', $anak->fresh()->sumber);
         // Baris tak cocok terekspor
         $files = Storage::disk('local')->allFiles('timbang');
         $this->assertNotEmpty(array_filter($files, fn ($f) => str_contains($f, 'takcocok')));

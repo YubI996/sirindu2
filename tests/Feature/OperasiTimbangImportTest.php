@@ -67,6 +67,11 @@ class OperasiTimbangImportTest extends TestCase
         $this->assertEquals(-2.95, (float) $d->zscore_pb_u);
         $this->assertEquals(-0.15, (float) $d->zscore_bb_pb);
         $this->assertEquals(1, $import->getResults()['matched']);
+
+        // Pengukuran DAN anak yang dicocokkan ikut ditandai sumber OT, walau
+        // anak semula dibuat lewat jalur lain (default 'manual').
+        $this->assertSame('operasi_timbang', $d->sumber);
+        $this->assertSame('operasi_timbang', $anak->fresh()->sumber);
     }
 
     public function test_dry_run_tidak_menulis_apa_pun(): void
@@ -244,6 +249,8 @@ class OperasiTimbangImportTest extends TestCase
         $this->assertEquals($kec->id, (int) $anak->id_kec);
         $this->assertEquals($kel->id, (int) $anak->id_kel);
         $this->assertEquals(1, DataAnak::where('id_anak', $anak->id)->where('tgl_kunjungan', '2026-06-09')->count());
+        $this->assertSame('operasi_timbang', $anak->sumber);
+        $this->assertSame('operasi_timbang', DataAnak::where('id_anak', $anak->id)->first()->sumber);
 
         $r = $import->getResults();
         $this->assertEquals(1, $r['dibuat']);

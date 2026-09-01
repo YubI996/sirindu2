@@ -59,6 +59,7 @@ class TimbangDashboardController extends Controller
         $tahunList = DB::table('data_anak')
             ->selectRaw('YEAR(tgl_kunjungan) as tahun')
             ->whereNotNull('tgl_kunjungan')
+            ->where('sumber', 'operasi_timbang')
             ->distinct()
             ->orderByDesc('tahun')
             ->pluck('tahun');
@@ -77,6 +78,7 @@ class TimbangDashboardController extends Controller
         $tahunList = DB::table('data_anak')
             ->selectRaw('YEAR(tgl_kunjungan) as tahun')
             ->whereNotNull('tgl_kunjungan')
+            ->where('sumber', 'operasi_timbang')
             ->distinct()
             ->orderByDesc('tahun')
             ->pluck('tahun');
@@ -192,7 +194,8 @@ class TimbangDashboardController extends Controller
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->selectRaw("DATE_FORMAT(da.tgl_kunjungan, '%Y-%m') as bulan, COUNT(*) as total")
             ->whereNotNull('da.tgl_kunjungan')
-            ->where('da.bln', '<=', 60); // hanya kunjungan balita
+            ->where('da.bln', '<=', 60) // hanya kunjungan balita
+            ->where('da.sumber', 'operasi_timbang');
         if ($f['tahun']) {
             $kunjunganQ->whereYear('da.tgl_kunjungan', $f['tahun']);
         } else {
@@ -206,7 +209,8 @@ class TimbangDashboardController extends Controller
             ->select('da.bln', DB::raw('ROUND(AVG(da.bb),2) as avg_bb'), DB::raw('ROUND(AVG(da.tb),2) as avg_tb'), DB::raw('COUNT(*) as n'))
             ->whereBetween('da.bln', [0, 60])
             ->where('da.bb', '>', 0)
-            ->where('da.tb', '>', 0);
+            ->where('da.tb', '>', 0)
+            ->where('da.sumber', 'operasi_timbang');
         if ($f['tahun']) $growthQ->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($growthQ, $f);
         $growthTren = $growthQ->groupBy('da.bln')->orderBy('da.bln')->get();
@@ -224,7 +228,7 @@ class TimbangDashboardController extends Controller
         $totalQ = DB::table('anak as a')
             ->join('kelurahan', 'a.id_kel', '=', 'kelurahan.id')
             ->selectRaw('kelurahan.id, kelurahan.name as nama, COUNT(DISTINCT a.id) as total');
-        $this->applyBalita($totalQ, 'a'); // denominator = balita saja
+        $this->applySasaranTerkunci($totalQ, 'a'); // denominator = sasaran terkunci OT
         $this->applyWilayah($totalQ, $f);
         $totalPerKel = $totalQ->groupBy('kelurahan.id', 'kelurahan.name')->get()->keyBy('id');
 
@@ -232,6 +236,7 @@ class TimbangDashboardController extends Controller
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->join('kelurahan as k', 'a.id_kel', '=', 'k.id')
             ->where('da.bln', '<=', 60) // hanya kunjungan balita
+            ->where('da.sumber', 'operasi_timbang')
             ->selectRaw('k.id, k.name as nama, COUNT(DISTINCT da.id_anak) as ditimbang');
         if ($f['tahun']) $timbangQ->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($timbangQ, $f);
@@ -342,19 +347,19 @@ class TimbangDashboardController extends Controller
             ]);
         }
 
-        // Penyebut: balita terdaftar per wilayah.
+        // Penyebut: sasaran terkunci ke populasi OT per wilayah.
         $denomQ = DB::table('anak as a');
-        $this->applyBalita($denomQ, 'a');
+        $this->applySasaranTerkunci($denomQ, 'a');
         $this->applyWilayah($denomQ, $f);
         if ($level === 'rt') {
             $denomQ->join('rt', 'a.id_rt', '=', 'rt.id')
                 ->whereNotNull('a.id_rt')
-                ->selectRaw('a.id_rt as wid, rt.name as nama, COUNT(*) as total')
+                ->selectRaw('a.id_rt as wid, rt.name as nama, COUNT(DISTINCT a.id) as total')
                 ->groupBy('a.id_rt', 'rt.name');
         } else {
             $denomQ->join('kelurahan as k', 'a.id_kel', '=', 'k.id')
                 ->whereNotNull('a.id_kel')
-                ->selectRaw('a.id_kel as wid, k.name as nama, COUNT(*) as total')
+                ->selectRaw('a.id_kel as wid, k.name as nama, COUNT(DISTINCT a.id) as total')
                 ->groupBy('a.id_kel', 'k.name');
         }
         $denom = $denomQ->get()->keyBy('wid');
@@ -479,27 +484,31 @@ class TimbangDashboardController extends Controller
     }
 
     /**
-     * Batasi ke balita ≤60 bln memakai umur SAAT INI dari tgl_lahir — untuk
-     * hitungan yang bersumber tabel anak (sasaran/cakupan), yang tak punya
-     * kolom umur-saat-ditimbang. Mengeluarkan anak SD (>60 bln).
+     * Kunci sasaran ke populasi Operasi Timbang: anak.sumber='operasi_timbang'
+     * DAN punya pengukuran terkunci (data_anak.sumber='operasi_timbang',
+     * bln<=60). Dipakai untuk hitungan yang bersumber tabel anak
+     * (sasaran/cakupan/peringkat) supaya statistiknya tidak bergeser saat ada
+     * anak baru terdaftar (kelahiran baru, import berikutnya, dst) atau saat
+     * dilihat bertahun-tahun kemudian (umur SAAT INI dari tgl_lahir tak lagi
+     * dipakai). Anak OT selalu punya pengukurannya sendiri (tak ada kasus
+     * "terdaftar OT tapi belum diukur"), jadi INNER JOIN aman di sini.
      *
-     * Anak tanpa tgl_lahir tetap disertakan: umurnya tak bisa dibuktikan >60
-     * bln, jadi jangan sampai keliru membuang balita yg tgl lahirnya kosong.
      * Untuk kartu gizi & pengukuran, batas 60 bln memakai da.bln (umur saat
      * ditimbang) supaya tetap persis cocok ekspor Dinkes — lihat latestVisitQuery.
      */
-    private function applyBalita($q, string $a = 'a'): void
+    private function applySasaranTerkunci($q, string $a = 'a'): void
     {
-        $q->where(function ($w) use ($a) {
-            $w->whereNull("$a.tgl_lahir")
-              ->orWhereRaw("TIMESTAMPDIFF(MONTH, $a.tgl_lahir, CURDATE()) <= 60");
-        });
+        $q->join('data_anak as sbal', 'sbal.id_anak', '=', "$a.id")
+          ->where("$a.sumber", 'operasi_timbang')
+          ->where('sbal.sumber', 'operasi_timbang')
+          ->where('sbal.bln', '<=', 60);
     }
 
     private function baseQuery(array $f)
     {
         $q = DB::table('data_anak as da')->join('anak as a', 'da.id_anak', '=', 'a.id')
-            ->where('da.bln', '<=', 60); // hanya kunjungan balita; kunjungan anak SD dikecualikan
+            ->where('da.bln', '<=', 60) // hanya kunjungan balita; kunjungan anak SD dikecualikan
+            ->where('da.sumber', 'operasi_timbang'); // kunci ke pengukuran Operasi Timbang
         if ($f['tahun']) $q->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($q, $f);
         return $q;
@@ -508,12 +517,12 @@ class TimbangDashboardController extends Controller
     private function totalAnakQuery(array $f): int
     {
         $q = Anak::query();
-        $this->applyBalita($q, 'anak'); // sasaran balita saja (≤60 bln), tanpa anak SD
+        $this->applySasaranTerkunci($q, 'anak'); // sasaran terkunci ke populasi OT
         if ($f['kec'])      $q->where('id_kec', $f['kec']);
         if ($f['kel'])      $q->where('id_kel', $f['kel']);
         if ($f['rt'])       $q->where('id_rt', $f['rt']);
         if ($f['posyandu']) $q->where('id_posyandu', $f['posyandu']);
-        return $q->count();
+        return $q->distinct('anak.id')->count('anak.id');
     }
 
     /**
@@ -528,7 +537,8 @@ class TimbangDashboardController extends Controller
             ->join('anak as am', 'dm.id_anak', '=', 'am.id')
             ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
             ->whereNotNull('dm.tgl_kunjungan')
-            ->where('dm.bln', '<=', 60);
+            ->where('dm.bln', '<=', 60)
+            ->where('dm.sumber', 'operasi_timbang');
         if ($f['tahun']) $maxTgl->whereYear('dm.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($maxTgl, $f, 'am');
         $maxTgl->groupBy('dm.id_anak');
@@ -539,6 +549,7 @@ class TimbangDashboardController extends Controller
                      ->on('m.max_tgl', '=', 'da.tgl_kunjungan');
             })
             ->where('da.bln', '<=', 60)
+            ->where('da.sumber', 'operasi_timbang')
             ->selectRaw('MAX(da.id) as max_id')
             ->groupBy('da.id_anak');
     }
@@ -569,7 +580,8 @@ class TimbangDashboardController extends Controller
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
             ->whereNotNull('da.tgl_kunjungan')
             ->where('da.bb', '>', 0)
-            ->where('da.bln', '<=', 60); // hanya kunjungan balita
+            ->where('da.bln', '<=', 60) // hanya kunjungan balita
+            ->where('da.sumber', 'operasi_timbang');
         if ($f['tahun']) $q->whereYear('da.tgl_kunjungan', $f['tahun']);
         $this->applyWilayah($q, $f);
 
@@ -633,12 +645,12 @@ class TimbangDashboardController extends Controller
         if ($kategori === 'sasaran') {
             $ids = (function () use ($f) {
                 $q = Anak::query();
-                $this->applyBalita($q, 'anak'); // sasaran balita saja (≤60 bln)
+                $this->applySasaranTerkunci($q, 'anak'); // sasaran terkunci ke populasi OT
                 if ($f['kec'])      $q->where('id_kec', $f['kec']);
                 if ($f['kel'])      $q->where('id_kel', $f['kel']);
                 if ($f['rt'])       $q->where('id_rt', $f['rt']);
                 if ($f['posyandu']) $q->where('id_posyandu', $f['posyandu']);
-                return $q->pluck('id')->all();
+                return $q->select('anak.id')->distinct()->pluck('id')->all();
             })();
             $info = $this->anakInfo($ids);
             return array_map(fn($a) => $this->baseRow($a) + ['indikator' => null, 'tgl_kunjungan' => null], array_values($info));
