@@ -4,8 +4,7 @@ namespace App\Imports;
 
 use App\Models\Anak;
 use App\Models\DataAnak;
-use App\Models\Posyandu;
-use App\Models\Puskesmas;
+use App\Services\FaskesMatcher;
 use App\Services\NikDummyService;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use App\Traits\ResolvesWilayah;
@@ -58,9 +57,7 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
     protected int $rowOffset = 0;
     protected bool $headerRusak = false;
 
-    protected array $posyanduCache = [];
-    protected array $puskesmasCache = [];
-    protected bool $faskesCacheSiap = false;
+    protected ?FaskesMatcher $faskesMatcher = null;
 
     /** Kunci anak yang sudah ditemui pada run ini ("NIK:xxx" / "BARIS:n"). */
     protected array $kunciAnak = [];
@@ -226,8 +223,6 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
 
         [$namaAyah, $namaIbu] = $this->pecahNamaOrtu($this->colVal($row, $map, 'nama orang tua (ibu/ayah)'));
 
-        $this->initFaskesCache();
-
         $kecNama = trim((string) ($this->colVal($row, $map, 'kecamatan') ?? ''));
         $kelNama = trim((string) ($this->colVal($row, $map, 'kelurahan') ?? ''));
         $rtNama  = trim((string) ($this->colVal($row, $map, 'rt') ?? ''));
@@ -237,8 +232,8 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
         $idKec = $kecNama !== '' ? $this->resolveKecamatan($kecNama) : null;
         $idKel = $kelNama !== '' ? $this->resolveKelurahan($kelNama, $idKec) : null;
         $idRt  = $rtNama  !== '' ? $this->resolveRt($rtNama, $idKel) : null;
-        $idPus = $pusNama !== '' ? $this->resolveFaskes($this->puskesmasCache, $pusNama, Puskesmas::class) : null;
-        $idPos = $posNama !== '' ? $this->resolveFaskes($this->posyanduCache, $posNama, Posyandu::class) : null;
+        $idPus = $this->faskes()->cocokkanPuskesmas($pusNama)['id'];
+        $idPos = $this->faskes()->cocokkan($posNama, $pusNama)['id'];
 
         $anak = Anak::updateOrCreate(['nik' => $nik], [
             'nama'                 => $nama,
@@ -298,34 +293,17 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
         );
     }
 
-    protected function initFaskesCache(): void
+    /**
+     * Matcher faskes, dibangun sekali per import (master dibaca sekali).
+     *
+     * Menggantikan resolveFaskes() lama yang mencocokkan nama apa adanya lalu
+     * jatuh ke LIKE '%nama%' GLOBAL — pola itu menaruh 23,8% baris Juni 2026 di
+     * id_posyandu NULL dan 6,5% lainnya di posyandu milik puskesmas lain.
+     * Sama seperti sebelumnya, TIDAK pernah membuat master baru.
+     */
+    protected function faskes(): FaskesMatcher
     {
-        if ($this->faskesCacheSiap) {
-            return;
-        }
-
-        $this->posyanduCache = Posyandu::pluck('id', 'name')
-            ->mapWithKeys(fn ($id, $name) => [strtoupper(trim($name)) => $id])->toArray();
-        $this->puskesmasCache = Puskesmas::pluck('id', 'name')
-            ->mapWithKeys(fn ($id, $name) => [strtoupper(trim($name)) => $id])->toArray();
-
-        $this->faskesCacheSiap = true;
-    }
-
-    /** Cari id faskes by nama. TIDAK pernah membuat master baru. */
-    protected function resolveFaskes(array &$cache, string $name, string $modelClass): ?int
-    {
-        $key = strtoupper(trim($name));
-        if ($key === '') {
-            return null;
-        }
-
-        if (!array_key_exists($key, $cache)) {
-            $record = $modelClass::where('name', 'like', '%' . trim($name) . '%')->first();
-            $cache[$key] = $record?->id;
-        }
-
-        return $cache[$key];
+        return $this->faskesMatcher ??= new FaskesMatcher();
     }
 
     /** NIK berkas bila ada; kosong → NIK dummy baru. */
