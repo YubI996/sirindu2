@@ -500,11 +500,13 @@
                 <span class="material-symbols-outlined">map</span>
                 Peta Sebaran
             </a>
-            @if(!$isFaskes)
+            {{-- Export terbuka untuk faskes; isinya sudah dibatasi ke wilayah
+                 mereka sendiri oleh SurveillanceExport (scope visibleTo). --}}
             <a href="{{ route('admin.epidemiologi.exportExcel') }}" class="st-btn st-btn-success" aria-label="Export ke Excel">
                 <span class="material-symbols-outlined">download</span>
                 Export Excel
             </a>
+            @if(!$isFaskes)
             <button type="button" class="st-btn st-btn-outline-teal" data-toggle="modal" data-target="#modalImportPd3i" aria-label="Import Excel PD3I">
                 <span class="material-symbols-outlined">upload_file</span>
                 Import Excel PD3I

@@ -39,9 +39,16 @@ class LaporanKasusIndividuExport implements FromQuery, WithHeadings, WithMapping
         $this->columns = $this->columnsFor($disease?->kode_penyakit ?? '');
     }
 
+    /**
+     * Dibatasi ke kasus yang boleh dilihat pengguna — lihat
+     * SurveillanceCase::scopeVisibleTo(). Tanpa ini, puskesmas mana pun yang
+     * membuka Laporan Kasus PD3I mengunduh data pasien seluruh faskes se-kota.
+     * auth()->user() null (job/console) berarti tanpa batas, sesuai konvensi.
+     */
     public function query()
     {
         return SurveillanceCase::query()
+            ->visibleTo(auth()->user())
             ->with(['jenisKasus:id,nama_penyakit', 'kecamatan:id,name', 'kelurahan:id,name', 'spesimen'])
             ->whereYear('tanggal_lapor', $this->tahun)
             ->where('id_jenis_kasus', $this->jenisKasusId)

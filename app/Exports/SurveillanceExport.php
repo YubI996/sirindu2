@@ -36,10 +36,20 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
         // membatasi tahun). Dashboard PD3I selalu mengirim tahun eksplisit.
     }
 
-    /** Query dasar (filter saja) — dipakai untuk caps & query export. */
+    /**
+     * Query dasar (filter saja) — dipakai untuk caps & query export.
+     *
+     * Dibatasi ke kasus yang boleh dilihat pengguna: Dinkes/superadmin seluruh
+     * kota, puskesmas hanya kelurahan catchment wilker-nya, RS hanya kasus yang
+     * ia input. Tanpa ini, tombol Excel/PDF di Dashboard PD3I — yang memang
+     * ditampilkan ke faskes — mengunduh data pasien SELURUH KOTA.
+     *
+     * auth()->user() null (job/console) diperlakukan tanpa batas, sesuai
+     * konvensi SurveillanceCase::scopeVisibleTo().
+     */
     private function baseQuery()
     {
-        $q = SurveillanceCase::query();
+        $q = SurveillanceCase::query()->visibleTo(auth()->user());
 
         if ($this->tahun !== null) {
             $q->whereYear('tanggal_lapor', $this->tahun);
