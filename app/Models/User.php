@@ -137,8 +137,14 @@ class User extends Authenticatable
 
     /**
      * Apakah user adalah faskes (bukan Dinkes) di modul surveilans PD3I.
-     * Faskes PD3I bisa: input data scoped, lihat dashboard, lihat peta sebaran.
-     * Faskes PD3I tidak bisa: export, hapus, lihat data faskes lain.
+     * Faskes PD3I bisa: input data scoped, lihat dashboard, lihat peta sebaran,
+     * dan meng-export — TAPI seluruh keluarannya dibatasi scopeVisibleTo()
+     * (puskesmas = catchment wilker-nya, RS = kasus yang ia input).
+     * Faskes PD3I tidak bisa: hapus kasus, import, lihat data faskes lain.
+     *
+     * Catatan (Sept 2026): aturan export dulu tertulis "tidak bisa export" tapi
+     * hanya ditegakkan di 2 dari 5 endpoint — tiga sisanya malah mengeluarkan
+     * data seluruh kota. Sekarang seragam: boleh, tapi ter-scope.
      */
     public function isFaskesSurveilans(): bool
     {

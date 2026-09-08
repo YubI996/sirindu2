@@ -916,8 +916,11 @@ class EpidemiologiController extends Controller
      */
     public function exportExcel(Request $request)
     {
-        abort_if(auth()->user()->isFaskesSurveilans(), 403, 'Faskes tidak memiliki izin export data.');
-
+        // Faskes BOLEH export, tapi hanya datanya sendiri — pembatasannya di
+        // SurveillanceExport::baseQuery() lewat scope visibleTo. Sebelumnya
+        // jalur ini menolak faskes dengan 403 sementara tombol Excel/PDF di
+        // Dashboard PD3I justru membiarkan mereka mengunduh data seluruh kota:
+        // aturan yang sama diterapkan berbeda di lima endpoint.
         try {
             // Export penuh: pakai SurveillanceExport yang sama dengan dashboard PD3I
             // (seluruh field kasus + relasi, kolom dinamis). Tahun null = semua tahun,

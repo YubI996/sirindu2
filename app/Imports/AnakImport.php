@@ -3,8 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Anak;
-use App\Models\Posyandu;
-use App\Models\Puskesmas;
+use App\Services\FaskesMatcher;
 use App\Services\NikDummyService;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use App\Traits\ResolvesWilayah;
@@ -39,8 +38,7 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
     protected ?array $columnMap    = null;
     protected int    $headerRowIdx = 0;
 
-    protected array $posyanduCache  = [];
-    protected array $puskesmasCache = [];
+    protected FaskesMatcher $faskesMatcher;
 
     protected NikDummyService $nikService;
 
@@ -49,7 +47,7 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
         $this->userId     = $userId;
         $this->nikService = new NikDummyService();
         $this->initWilayahCache();
-        $this->initFaskesCache();
+        $this->faskesMatcher = new FaskesMatcher();
     }
 
     public function startRow(): int { return 1; }
@@ -99,29 +97,12 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
     // Cache faskes
     // =========================================================================
 
-    protected function initFaskesCache(): void
-    {
-        $this->posyanduCache  = Posyandu::pluck('id', 'name')
-            ->mapWithKeys(fn($id, $name) => [strtoupper(trim($name)) => $id])
-            ->toArray();
-
-        $this->puskesmasCache = Puskesmas::pluck('id', 'name')
-            ->mapWithKeys(fn($id, $name) => [strtoupper(trim($name)) => $id])
-            ->toArray();
-    }
-
-    protected function resolveFaskes(array &$cache, string $name, $modelClass): ?int
-    {
-        $key = strtoupper(trim($name));
-        if (empty($key)) return null;
-
-        if (!array_key_exists($key, $cache)) {
-            $record = $modelClass::where('name', 'like', '%' . trim($name) . '%')->first();
-            $cache[$key] = $record?->id;
-        }
-
-        return $cache[$key];
-    }
+    // Pencocokan faskes dipindah ke App\Services\FaskesMatcher — lihat
+    // $this->faskesMatcher. resolveFaskes() lama mencocokkan nama apa adanya
+    // lalu jatuh ke LIKE '%nama%' GLOBAL; pola itu menaruh 23,8% baris berkas
+    // Operasi Timbang Juni 2026 di id_posyandu NULL (master pakai angka Romawi,
+    // berkas pakai Arab) dan menempelkan 6,5% lainnya ke posyandu milik
+    // puskesmas lain tanpa error apa pun.
 
     // =========================================================================
     // Main processor
@@ -186,8 +167,8 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
 
                 $posyanduNama  = (string) ($this->colVal($row, $map, 'nama_posyandu') ?? '');
                 $puskesmasNama = (string) ($this->colVal($row, $map, 'nama_puskesmas') ?? '');
-                $idPosyandu    = $posyanduNama  ? $this->resolveFaskes($this->posyanduCache, $posyanduNama, Posyandu::class) : null;
-                $idPuskesmas   = $puskesmasNama ? $this->resolveFaskes($this->puskesmasCache, $puskesmasNama, Puskesmas::class) : null;
+                $idPosyandu    = $this->faskesMatcher->cocokkan($posyanduNama, $puskesmasNama)['id'];
+                $idPuskesmas   = $this->faskesMatcher->cocokkanPuskesmas($puskesmasNama)['id'];
 
                 // No registrasi (NOT NULL) -----------------------------------
                 $noReg = (string) ($this->colVal($row, $map, 'no_registrasi') ?? '');
