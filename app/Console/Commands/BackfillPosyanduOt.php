@@ -35,6 +35,7 @@ class BackfillPosyanduOt extends Command
 {
     protected $signature = 'posyandu:backfill-ot
         {csv : Path CSV berkas OT (kolom Nama, Tgl Lahir, Posyandu, Pukesmas; opsional Nama Ortu)}
+        {--keputusan= : Path CSV keputusan Dinkes (posyandu_berkas,puskesmas,kelurahan,posyandu_master)}
         {--commit : Tulis koreksi ke DB (tanpa flag ini hanya dry-run)}';
 
     protected $description = 'Perbaiki id_posyandu/id_puskesmas anak sumber=operasi_timbang dari berkas OT (default dry-run).';
@@ -59,6 +60,11 @@ class BackfillPosyanduOt extends Command
         $matcher    = new FaskesMatcher();
         $namaByIdPos = Posyandu::pluck('name', 'id')->all();
 
+        $keputusan = $this->bacaKeputusan((string) $this->option('keputusan'));
+        if ($keputusan === null) {
+            return self::FAILURE;
+        }
+
         // 1. Kelompokkan anak OT by kunci (NAMA|tgl_lahir).
         $anakByKey = [];
         Anak::where('sumber', 'operasi_timbang')
@@ -76,9 +82,22 @@ class BackfillPosyanduOt extends Command
         $ambiguAnak = [];
         $takDitemukan = 0;
 
+        $dariKeputusan = 0;
+
         foreach ($baris as $b) {
-            $hasil = $matcher->cocokkan($b['posyandu'], $b['puskesmas']);
             $idPus = $matcher->cocokkanPuskesmas($b['puskesmas'])['id'];
+
+            // Keputusan Dinkes menang atas tebakan matcher — itu gunanya. Ia juga
+            // satu-satunya cara mengisi baris yang kolom posyandunya kosong di
+            // berkas, karena di situ tak ada nama untuk dicocokkan.
+            $ditetapkan = $keputusan[$this->kunciKeputusan($b['posyandu'], $b['puskesmas'], $b['kelurahan'])] ?? null;
+
+            if ($ditetapkan !== null) {
+                $hasil = ['id' => $ditetapkan, 'alasan' => 'keputusan-dinkes', 'kandidat' => []];
+                $dariKeputusan++;
+            } else {
+                $hasil = $matcher->cocokkan($b['posyandu'], $b['puskesmas']);
+            }
 
             if ($hasil['id'] === null) {
                 $kunci = $b['posyandu'] . '|' . $b['puskesmas'] . '|' . $b['kelurahan'];
@@ -148,6 +167,9 @@ class BackfillPosyanduOt extends Command
         }
 
         $this->newLine();
+        if ($dariKeputusan > 0) {
+            $this->info('DARI KEPUTUSAN   : ' . $dariKeputusan . ' baris dipetakan mengikuti keputusan Dinkes');
+        }
         $this->info('SUDAH BENAR      : ' . $sudahBenar);
         $this->info('PERLU KOREKSI    : ' . count($koreksi) . ($commit ? ' (ditulis)' : ' (akan ditulis)'));
         $this->line('PERLU KEPUTUSAN  : ' . array_sum(array_column($perluKeputusan, 'jumlah_baris'))
@@ -180,6 +202,106 @@ class BackfillPosyanduOt extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Kunci pemetaan keputusan: nama posyandu di berkas + puskesmas + kelurahan,
+     * semuanya ternormalisasi. Kelurahan ikut karena dua baris bisa punya nama
+     * dan puskesmas sama tetapi posyandu berbeda — persis kasus "Anggrek"
+     * Belimbing vs "Anggrek1" Gunung Telihan.
+     */
+    private function kunciKeputusan(string $posyandu, string $puskesmas, string $kelurahan): string
+    {
+        return FaskesMatcher::normalisasi($posyandu)
+            . '|' . FaskesMatcher::normalisasi($puskesmas)
+            . '|' . FaskesMatcher::normalisasi($kelurahan);
+    }
+
+    /**
+     * Baca CSV keputusan Dinkes menjadi peta kunci => id posyandu.
+     *
+     * Kolom: posyandu_berkas, puskesmas, kelurahan, posyandu_master.
+     * `posyandu_berkas` boleh kosong — itu justru kasus yang tak bisa ditangani
+     * matcher. Nama posyandu_master yang tak ada di data induk DILAPORKAN, tidak
+     * didiamkan: salah ketik di berkas keputusan jangan sampai lolos jadi baris
+     * yang diam-diam tak terisi.
+     *
+     * @return array<string,int>|null null bila berkasnya bermasalah
+     */
+    private function bacaKeputusan(string $path): ?array
+    {
+        if ($path === '') {
+            return [];
+        }
+
+        if (!is_file($path)) {
+            $this->error("Berkas keputusan tidak ditemukan: {$path}");
+
+            return null;
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (empty($lines)) {
+            return [];
+        }
+
+        $lines[0] = preg_replace('/^\x{FEFF}/u', '', $lines[0]);
+        $header = array_map(
+            fn ($h) => strtolower(trim($h)),
+            str_getcsv(array_shift($lines), ',', '"', '\\')
+        );
+
+        foreach (['posyandu_berkas', 'puskesmas', 'kelurahan', 'posyandu_master'] as $wajib) {
+            if (!in_array($wajib, $header, true)) {
+                $this->error("Berkas keputusan wajib punya kolom \"{$wajib}\".");
+
+                return null;
+            }
+        }
+
+        $idx = array_flip($header);
+
+        // Cocokkan nama posyandu_master ke data induk lewat normalisasi yang sama
+        // dengan matcher, supaya "Sejahtera 5" tetap ketemu "Sejahtera V".
+        $master = [];
+        foreach (Posyandu::select('id', 'name')->get() as $p) {
+            $master[FaskesMatcher::normalisasi((string) $p->name)][] = (int) $p->id;
+        }
+
+        $peta = [];
+        $takDikenal = [];
+
+        foreach ($lines as $line) {
+            $row = str_getcsv($line, ',', '"', '\\');
+
+            $namaMaster = trim((string) ($row[$idx['posyandu_master']] ?? ''));
+            if ($namaMaster === '') {
+                continue; // baris tanpa keputusan — dilewati, bukan kesalahan
+            }
+
+            $kandidat = $master[FaskesMatcher::normalisasi($namaMaster)] ?? [];
+            if (count($kandidat) !== 1) {
+                $takDikenal[$namaMaster] = count($kandidat) > 1
+                    ? 'ada lebih dari satu di data induk'
+                    : 'tidak ada di data induk';
+                continue;
+            }
+
+            $peta[$this->kunciKeputusan(
+                (string) ($row[$idx['posyandu_berkas']] ?? ''),
+                (string) ($row[$idx['puskesmas']] ?? ''),
+                (string) ($row[$idx['kelurahan']] ?? '')
+            )] = $kandidat[0];
+        }
+
+        foreach ($takDikenal as $nama => $sebab) {
+            $this->warn("Keputusan dilewati — posyandu \"{$nama}\" {$sebab}.");
+        }
+
+        $this->line('Keputusan dimuat: ' . count($peta) . ' pemetaan'
+            . ($takDikenal ? ', ' . count($takDikenal) . ' dilewati' : '') . '.');
+
+        return $peta;
     }
 
     /**

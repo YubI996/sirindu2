@@ -29,6 +29,12 @@ class BackfillPosyanduOtTest extends TestCase
     {
         parent::setUp();
 
+        // Command-nya menulis berkas tinjauan lewat Storage::disk('local').
+        // Tanpa fake, tiap kali suite dijalankan ia menumpuk sampah di
+        // storage/app/posyandu milik proyek — bukan sekadar berantakan, tapi
+        // bercampur dengan berkas tinjauan sungguhan yang dibaca manusia.
+        Storage::fake('local');
+
         $kec = Kecamatan::create(['name' => 'Bontang Barat']);
         $this->barat = Puskesmas::create(['name' => 'Bontang Barat', 'id_kecamatan' => $kec->id]);
         $this->csv = tempnam(sys_get_temp_dir(), 'ot') . '.csv';
@@ -111,7 +117,6 @@ class BackfillPosyanduOtTest extends TestCase
 
     public function test_posyandu_ambigu_tidak_ditebak_dan_diekspor_untuk_dinkes(): void
     {
-        Storage::fake('local');
         Posyandu::create(['name' => 'Anggrek', 'id_puskesmas' => $this->barat->id]);
         Posyandu::create(['name' => 'Anggrek', 'id_puskesmas' => $this->barat->id]);
         $anak = $this->anak(['id_posyandu' => null]);
