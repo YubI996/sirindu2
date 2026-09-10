@@ -194,12 +194,28 @@ ANAK
         return response()->json($posyandu);
     }
 
-    /** Posyandu pada satu kelurahan (lewat tabel rt yg menaut kel↔posyandu). */
+    /**
+     * Posyandu pada satu kelurahan — gabungan DUA sumber.
+     *
+     * `rt.id_posyandu` saja tidak cukup: ia peta ketiga yang tak pernah
+     * dicocokkan dengan data anak. Di server ia melewatkan 742 anak (termasuk
+     * keenam posyandu tambahan September 2026, yang tak ditunjuk satu RT pun),
+     * sekaligus menampilkan posyandu yang tak punya anak di sana — itulah
+     * keluhan "Kanaan -> Sejahtera IV, datanya kosong".
+     *
+     * Data anak saja juga tidak cukup: posyandu yang sah tapi belum berisi anak
+     * harus tetap bisa dipilih di form tambah anak, kalau tidak yang pertama
+     * mustahil diisi. Maka keduanya digabung.
+     */
     public function getPosyanduByKelAnak($id)
     {
-        $posyandu = Posyandu::whereIn('id', Rt::where('id_kelurahan', $id)->pluck('id_posyandu')->filter()->unique())
-            ->orderBy('name')
-            ->pluck('name', 'id');
+        $ids = Rt::where('id_kelurahan', $id)->pluck('id_posyandu')
+            ->merge(Anak::where('id_kel', $id)->distinct()->pluck('id_posyandu'))
+            ->filter()
+            ->unique();
+
+        $posyandu = Posyandu::whereIn('id', $ids)->orderBy('name')->pluck('name', 'id');
+
         return response()->json($posyandu);
     }
 
