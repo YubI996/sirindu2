@@ -42,6 +42,10 @@ UNION ALL SELECT 'migrasi: posyandu baru',
        IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%tambah_posyandu_baru%'), 'SUDAH', 'BELUM')
 UNION ALL SELECT 'migrasi: koreksi master posyandu',
        IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%koreksi_master_posyandu%'), 'SUDAH', 'BELUM')
+UNION ALL SELECT 'migrasi: penamaan Anggrek tuntas',
+       IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%selesaikan_penamaan_anggrek%'), 'SUDAH', 'BELUM')
+UNION ALL SELECT 'migrasi: koreksi Cendana & Nisa Indah',
+       IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%koreksi_cendana_dan_nisa_indah%'), 'SUDAH', 'BELUM')
 UNION ALL SELECT 'counter EPID per penyakit',
        IF(EXISTS(SELECT 1 FROM information_schema.COLUMNS
                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'epid_counter'

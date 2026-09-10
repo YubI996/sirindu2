@@ -48,7 +48,13 @@ UNION ALL SELECT
     IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%tambah_posyandu_baru_ot_juni_2026%'), 'SUDAH', 'BELUM')
 UNION ALL SELECT
     'koreksi_master_posyandu_hasil_verifikasi_dinkes',
-    IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%koreksi_master_posyandu%'), 'SUDAH', 'BELUM');
+    IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%koreksi_master_posyandu%'), 'SUDAH', 'BELUM')
+UNION ALL SELECT
+    'selesaikan_penamaan_anggrek_bontang_barat',
+    IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%selesaikan_penamaan_anggrek%'), 'SUDAH', 'BELUM')
+UNION ALL SELECT
+    'koreksi_cendana_dan_nisa_indah',
+    IF(EXISTS(SELECT 1 FROM migrations WHERE migration LIKE '%koreksi_cendana_dan_nisa_indah%'), 'SUDAH', 'BELUM');
 
 
 -- =====================================================================
@@ -70,9 +76,10 @@ SELECT
 FROM anak
 WHERE sumber = 'operasi_timbang';
 
--- Berapa posyandu yang tampil kosong di dashboard. Semula 35 dari 121;
--- sesudah perbaikan + keputusan Dinkes seharusnya tinggal 7 (yang memang
--- tidak punya anak di berkas Juni).
+-- Berapa posyandu yang tampil kosong di dashboard. Semula 35 dari 121; sesudah
+-- perbaikan + keputusan Dinkes + koreksi Cendana/Nisa Indah seharusnya tinggal
+-- 4 dari 127 — Jasmine, Permata Bunda, Melati 2, Taman Gizi —
+-- dan keempatnya memang tidak punya satu pun anak di berkas Juni.
 SELECT '--- posyandu tanpa satu pun anak OT ---' AS bagian;
 SELECT
     COUNT(*)                                       AS posyandu_master,
