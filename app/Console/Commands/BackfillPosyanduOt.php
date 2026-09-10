@@ -29,6 +29,13 @@ use Illuminate\Support\Facades\Storage;
  * Yang MASIH ambigu tidak pernah ditebak: diekspor ke
  * storage/app/posyandu/<berkas>-perlu-keputusan.csv untuk diputuskan Dinkes.
  *
+ * Selain yang gagal, dilaporkan juga TABRAKAN NAMA — dua nama BERBEDA di berkas
+ * yang jatuh ke SATU posyandu. Semua baris "cocok" tapi sebagiannya salah
+ * kandang, dan angka cakupan tidak akan pernah menunjukkannya: begitulah
+ * "ANGGREK"+"ANGGREK1" (178 anak), "CENDRAWASIH"+"CENDRAWASIH1" (113 anak), dan
+ * "nusa indah" dua puskesmas (31 anak) lolos sampai daftarnya dibandingkan
+ * manual dengan isi server pada September 2026.
+ *
  * Default DRY-RUN; menulis hanya dengan --commit.
  */
 class BackfillPosyanduOt extends Command
@@ -39,6 +46,9 @@ class BackfillPosyanduOt extends Command
         {--commit : Tulis koreksi ke DB (tanpa flag ini hanya dry-run)}';
 
     protected $description = 'Perbaiki id_posyandu/id_puskesmas anak sumber=operasi_timbang dari berkas OT (default dry-run).';
+
+    /** Sisa tabrakan tetap lengkap di berkas CSV; layar hanya perlu cukup untuk ditindaklanjuti. */
+    private const TABRAKAN_DITAMPILKAN = 15;
 
     public function handle(): int
     {
@@ -81,6 +91,7 @@ class BackfillPosyanduOt extends Command
         $perluKeputusan = [];
         $ambiguAnak = [];
         $takDitemukan = 0;
+        $tabrakan = [];
 
         $dariKeputusan = 0;
 
@@ -116,6 +127,22 @@ class BackfillPosyanduOt extends Command
                     'jumlah_baris'    => (int) ($perluKeputusan[$kunci]['jumlah_baris'] ?? 0) + 1,
                 ];
                 continue;
+            }
+
+            // Dicatat di sini, sebelum anaknya dicari: yang diperiksa adalah
+            // pemetaan berkas -> data induk, dan itu sudah salah walau anaknya
+            // belum ada di tabel. Hanya tebakan sistem yang dihitung — keputusan
+            // Dinkes memang sengaja mengarahkan beberapa penulisan ke satu
+            // posyandu, dan melaporkannya cuma jadi derau.
+            if ($ditetapkan === null) {
+                $idPos = (int) $hasil['id'];
+                $kt    = $this->kunciTabrakan($b['posyandu'], $b['puskesmas']);
+
+                $tabrakan[$idPos][$kt] = [
+                    'posyandu_berkas' => $b['posyandu'],
+                    'puskesmas'       => $b['puskesmas'],
+                    'jumlah_baris'    => (int) ($tabrakan[$idPos][$kt]['jumlah_baris'] ?? 0) + 1,
+                ];
             }
 
             $kandidat = $anakByKey[$this->kunci($b['nama'], $b['tgl_lahir'])] ?? [];
@@ -176,6 +203,28 @@ class BackfillPosyanduOt extends Command
             . ' baris / ' . count($perluKeputusan) . ' nama posyandu — tidak ditebak');
         $this->line('AMBIGU (anak)    : ' . count($ambiguAnak) . ' — kembar di tabel anak, dilewati');
         $this->line('TAK DITEMUKAN    : ' . $takDitemukan . ' — ada di CSV, tak ada di anak sumber OT');
+
+        $tabrakan = array_filter($tabrakan, fn (array $varian) => count($varian) > 1);
+        if ($tabrakan !== []) {
+            $this->newLine();
+            $this->warn('TABRAKAN NAMA    : ' . count($tabrakan)
+                . ' posyandu menerima lebih dari satu nama berbeda dari berkas.');
+            $this->warn('Ini tebakan sistem, bukan keputusan Dinkes — pastikan keduanya memang satu tempat.');
+
+            foreach (array_slice($tabrakan, 0, self::TABRAKAN_DITAMPILKAN, true) as $idPos => $varian) {
+                $this->line('  ' . ($namaByIdPos[$idPos] ?? $idPos) . '  <-  ' . implode(' + ', array_map(
+                    fn (array $v) => ($v['posyandu_berkas'] === '' ? '(kosong)' : $v['posyandu_berkas'])
+                        . ' @ ' . $v['puskesmas'] . ' (' . $v['jumlah_baris'] . ' baris)',
+                    array_values($varian)
+                )));
+            }
+
+            if (count($tabrakan) > self::TABRAKAN_DITAMPILKAN) {
+                $this->line('  … dan ' . (count($tabrakan) - self::TABRAKAN_DITAMPILKAN)
+                    . ' lagi — selengkapnya di berkas tabrakan-nama.');
+            }
+        }
+
         $this->newLine();
 
         $base = pathinfo($path, PATHINFO_FILENAME);
@@ -185,6 +234,8 @@ class BackfillPosyanduOt extends Command
             ['posyandu_berkas', 'puskesmas', 'kelurahan', 'jumlah_baris', 'alasan', 'kandidat_master']);
         $this->tulisCsv("posyandu/{$base}-ambigu-anak.csv", $ambiguAnak,
             ['nama', 'tgl_lahir', 'jumlah_kandidat', 'posyandu_target']);
+        $this->tulisCsv("posyandu/{$base}-tabrakan-nama.csv", $this->barisTabrakan($tabrakan, $namaByIdPos),
+            ['posyandu_master', 'posyandu_berkas', 'puskesmas', 'jumlah_baris']);
 
         if ($commit && !empty($koreksi)) {
             DB::transaction(function () use ($koreksi) {
@@ -215,6 +266,42 @@ class BackfillPosyanduOt extends Command
         return FaskesMatcher::normalisasi($posyandu)
             . '|' . FaskesMatcher::normalisasi($puskesmas)
             . '|' . FaskesMatcher::normalisasi($kelurahan);
+    }
+
+    /**
+     * Kunci tabrakan: nama posyandu di berkas + puskesmas, ternormalisasi.
+     *
+     * Puskesmas ikut karena satu nama yang ditulis sama persis di DUA puskesmas
+     * berbeda tetap dua tempat berbeda — itulah bentuk kasus "nusa indah"
+     * Bontang Utara 1 yang nyasar ke "Nusa Indah" milik Bontang Utara 2.
+     * Kelurahan sengaja TIDAK ikut: satu posyandu wajar melayani beberapa
+     * kelurahan, jadi memasukkannya akan menandai keadaan yang normal.
+     */
+    private function kunciTabrakan(string $posyandu, string $puskesmas): string
+    {
+        return FaskesMatcher::normalisasi($posyandu) . '|' . FaskesMatcher::normalisasi($puskesmas);
+    }
+
+    /**
+     * @param  array<int,array<string,array{posyandu_berkas:string,puskesmas:string,jumlah_baris:int}>>  $tabrakan
+     * @param  array<int,string>  $namaByIdPos
+     * @return array<int,array<string,string|int>>
+     */
+    private function barisTabrakan(array $tabrakan, array $namaByIdPos): array
+    {
+        $rows = [];
+        foreach ($tabrakan as $idPos => $varian) {
+            foreach ($varian as $v) {
+                $rows[] = [
+                    'posyandu_master' => $namaByIdPos[$idPos] ?? $idPos,
+                    'posyandu_berkas' => $v['posyandu_berkas'],
+                    'puskesmas'       => $v['puskesmas'],
+                    'jumlah_baris'    => $v['jumlah_baris'],
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     /**
