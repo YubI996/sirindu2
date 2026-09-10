@@ -52,3 +52,57 @@ yang di data induk bernama `Griya Edelweis` dan `Bakung 2`. Karena di puskesmas
 tersebut hanya ada satu kandidat, keduanya diperlakukan sebagai **sinonim** —
 nama di data induk sengaja TIDAK diubah, dan variasi namanya dicatat di berkas
 ini. Dengan begitu berkas yang menulis salah satu nama sama-sama ketemu.
+
+### Tambahan 10 September 2026 — hasil membandingkan daftar berkas dengan server
+
+Angka "cocok 100%" ternyata berarti *semuanya ketemu*, bukan *semuanya benar*.
+Menjejerkan 113 nama posyandu berkas Juni dengan 127 baris data induk server
+memunculkan **250 anak (2,5%)** yang mendarat di posyandu keliru tanpa satu pun
+baris dilaporkan gagal:
+
+- **`CENDRAWASIH` + `CENDRAWASIH1`** — keduanya jatuh ke satu baris
+  `Cendrawasih` lewat tahap "nomor 1 opsional", sementara `Cendrawasih II`
+  tinggal kosong. Yang salah kandang 29 anak Belimbing. Bentuknya sama persis
+  dengan `ANGGREK`/`ANGGREK1`.
+- **`SEJAHTERA 2` di Kanaan (147 anak)** — nama yang sama dipakai di DUA
+  kelurahan (Kanaan 147, Gunung Telihan 119), sehingga Kanaan ikut tersedot ke
+  `Sejahtera II` dan `Sejahtera IV` tampak kosong di dasbor. Inilah keluhan yang
+  memicu seluruh penelusuran ini.
+- **`Cendana` (43 anak)** dan **`Nisa Indah` (31 anak)** diperbaiki di data induk
+  lewat migration `2026_09_10_000001_koreksi_cendana_dan_nisa_indah`, bukan di
+  berkas ini — nama dan puskesmas posyandu tampil di layar petugas, jadi
+  membiarkannya salah berarti membiarkan petugas membaca yang keliru walau
+  anaknya sudah mendarat benar.
+
+Arah dua kasus pertama ditetapkan dari **urutan id data induk**, bukan tebakan.
+Seeder menyusun posyandu per kelurahan, alfabetis dalam tiap blok:
+
+| Blok id | Kelurahan | Isi |
+|---|---|---|
+| 1–2 | Kanaan | Sejahtera I, **Sejahtera IV** |
+| 3–10 | Gunung Telihan | Anggrek, Bakung 1, **Cendrawasih**, Jasmine, Sejahtera II/III/V, Tulip |
+| 11–22 | Belimbing | Anggrek, Anyelir, **Cendrawasih II**, Gotong Royong … Suka Makmur |
+
+`rt.id_posyandu` cocok dengan blok itu di 14 dari 15 kelurahan; setiap
+penyimpangan yang tersisa selalu berupa nama yang KEMBAR di data induk (Mawar,
+Tulip, Kartini, Nusa Indah) — jejak bahwa peta RT pun dulu diisi lewat pencarian
+nama dan kena bug `pluck` yang sama. Untuk nama yang unik seperti `Cendrawasih`
+dan `Cendrawasih II`, penunjuknya tak mungkin tercemar, dan ia sepakat dengan
+blok id.
+
+Maka: Belimbing = `Cendrawasih II`, Gunung Telihan = `Cendrawasih`, Kanaan =
+`Sejahtera IV`. **Ini kebalikan dari dugaan awal** yang menyamakan penulisan
+berkas dengan penomoran data induk. Untuk `Sejahtera IV` ada penguat kedua: 12
+RT Kanaan terbagi rata 6/6 antara Sejahtera I dan Sejahtera IV, sedangkan berkas
+mencatat 121 + 147 anak di sana — kalau Sejahtera IV benar-benar kosong, 6 RT-nya
+nihil sementara 6 RT tetangganya menampung 268 anak.
+
+`ANGGREK`/`ANGGREK1` sendiri sudah benar di server: baris blok Gunung Telihan
+(id kecil) bernama `Anggrek1`, baris blok Belimbing bernama `Anggrek`.
+
+Supaya ini tidak perlu ditemukan manual lagi, `posyandu:backfill-ot` kini
+melaporkan **TABRAKAN NAMA**: dua nama berbeda di berkas yang jatuh ke satu
+posyandu. Yang dihitung hanya tebakan sistem — pemetaan yang diputuskan di
+berkas ini memang sengaja mengarahkan beberapa penulisan ke satu posyandu, dan
+melaporkannya cuma jadi derau. Pada berkas Juni 2026 aturan itu menyisakan tepat
+dua baris: `Cendrawasih` dan `Nusa Indah` — keduanya kini tertutup.
