@@ -32,8 +32,8 @@
 						<span class="micon fa fa-tachometer"></span><span class="mtext">Dashboard</span>
 					</a>
 					<ul class="submenu" {!! $dashboard ? 'style="display:block;"' : '' !!}>
-						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Imunisasi</a></li>
-						<li><a href="{{route('admin.imunisasiDashboard')}}" class="{{ request()->routeIs('admin.imunisasiDashboard') ? 'active' : '' }}">Cakupan IDL &amp; Kejar</a></li>
+						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Gizi</a></li>
+						<li><a href="{{route('admin.imunisasiDashboard')}}" class="{{ request()->routeIs('admin.imunisasiDashboard') ? 'active' : '' }}">Imunisasi</a></li>
 						<li><a href="{{route('admin.timbang.dashboard')}}" class="{{ request()->routeIs('admin.timbang.*') ? 'active' : '' }}">Operasi Timbang</a></li>
 						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}">Surveilans PD3I</a></li>
 						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Surveilans (legacy)</a></li>
@@ -148,8 +148,8 @@
 						<span class="micon fa fa-tachometer"></span><span class="mtext">Dashboard</span>
 					</a>
 					<ul class="submenu" {!! $dashboard ? 'style="display:block;"' : '' !!}>
-						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Imunisasi</a></li>
-						<li><a href="{{route('admin.imunisasiDashboard')}}" class="{{ request()->routeIs('admin.imunisasiDashboard') ? 'active' : '' }}">Cakupan IDL &amp; Kejar</a></li>
+						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Gizi</a></li>
+						<li><a href="{{route('admin.imunisasiDashboard')}}" class="{{ request()->routeIs('admin.imunisasiDashboard') ? 'active' : '' }}">Imunisasi</a></li>
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>

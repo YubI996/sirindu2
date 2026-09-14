@@ -27,3 +27,4 @@ node_modules/
 /playwright/.auth/
 /e2e/.auth/
 /.playwright-mcp/
+patch_run.log
