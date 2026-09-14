@@ -120,6 +120,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         Route::get('api/peringkat',[App\Http\Controllers\TimbangDashboardController::class, 'peringkat'])->name('admin.timbang.peringkat');
         Route::get('api/daftar',   [App\Http\Controllers\TimbangDashboardController::class, 'daftar'])   ->name('admin.timbang.daftar');
         Route::get('api/daftar/export', [App\Http\Controllers\TimbangDashboardController::class, 'daftarExport'])->name('admin.timbang.daftar.export');
+        // Penanggung jawab per anak — diisi inline dari modal daftar (stunting/gizi buruk/underweight).
+        Route::put('api/anak/{anak}/pj', [App\Http\Controllers\PjAnakController::class, 'update'])->name('admin.timbang.pj');
         // Toggle publikasi landing publik — hanya superadmin (Dinkes), dicek di controller.
         Route::post('publikasi', [App\Http\Controllers\TimbangDashboardController::class, 'setPublikasi'])->name('admin.timbang.publikasi');
     });

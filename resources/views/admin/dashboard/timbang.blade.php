@@ -268,6 +268,15 @@
 .tb-dt thead th { background:var(--thead); padding:.55rem .7rem; text-align:left; font-size:.66rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); white-space:nowrap; position:sticky; top:0; }
 .tb-dt tbody td { padding:.55rem .7rem; border-top:1px solid var(--line-soft); }
 .tb-dt tbody tr:hover { background:var(--bg); }
+/* Sel Penanggung Jawab — klik untuk mengetik, Enter/blur simpan, Esc batal */
+.tb-pj { cursor:text; min-width:150px; }
+.tb-pj__val { display:inline-block; padding:.15rem .4rem; border-radius:6px; border:1px dashed transparent; }
+.tb-pj:hover .tb-pj__val { border-color:var(--line); background:var(--card); }
+.tb-pj__val--kosong { color:var(--faint); font-style:italic; }
+.tb-pj__input { width:100%; min-width:150px; font:inherit; padding:.25rem .45rem; border:1px solid oklch(0.48 0.14 145); border-radius:6px; outline:none; }
+.tb-pj--simpan .tb-pj__val { opacity:.5; }
+.tb-pj--gagal .tb-pj__val { border-color:#dc2626; color:#dc2626; }
+.tb-pj__meta { display:block; font-size:.66rem; color:var(--faint); margin-top:.1rem; }
 @keyframes tb-fade { from{ opacity:0; } }
 @keyframes tb-pop { from{ opacity:0; transform:translateY(10px) scale(.99); } }
 
@@ -515,6 +524,7 @@
                     <span class="material-symbols-outlined">download</span>Export Excel
                 </a>
             </div>
+            <datalist id="pj-saran"></datalist>
             <div id="daftar-table-wrap">
                 <div class="tb-loading"><span class="material-symbols-outlined tb-spin">sync</span></div>
             </div>
@@ -539,6 +549,11 @@ var API_PROGRAM   = '{{ route("admin.timbang.program") }}';
 var API_PERINGKAT = '{{ route("admin.timbang.peringkat") }}';
 var API_DAFTAR    = '{{ route("admin.timbang.daftar") }}';
 var API_DAFTAR_EXPORT = '{{ route("admin.timbang.daftar.export") }}';
+// Endpoint PJ per anak; '__ID__' diganti hashid anak saat dipanggil.
+var API_PJ = '{{ route("admin.timbang.pj", ["anak" => "__ID__"]) }}';
+var CSRF_TOKEN = '{{ csrf_token() }}';
+// Kategori yang menampilkan kolom Penanggung Jawab (sinkron dengan KATEGORI_PJ di controller).
+var PJ_KATEGORI = ['stunting', 'gizi_buruk', 'underweight'];
 var URL_KEL_BY_KEC = '{{ url("admin/get-kel-dasar-anak") }}';
 var URL_RT_BY_KEL  = '{{ url("admin/get-rt-by-kel-anak") }}';
 var URL_POS_BY_KEL = '{{ url("admin/get-posyandu-by-kel-anak") }}';
@@ -949,6 +964,7 @@ var KAT_LABEL = {
     underweight:'Underweight', wasting:'Wasting', gizi_kurang:'Gizi Kurang', gizi_buruk:'Gizi Buruk', bb_tidak_naik:'BB Tidak Naik'
 };
 var daftarRows = [];
+var daftarKategori = '';
 
 function uniqSorted(vals){
     return Array.from(new Set(vals)).filter(function(v){ return v && v !== '-'; })
@@ -997,9 +1013,12 @@ function renderDaftar(filterText){
             '<div style="text-align:center;padding:28px;color:var(--faint);">Tidak ada data</div>';
         return;
     }
+    var denganPj = PJ_KATEGORI.indexOf(daftarKategori) >= 0;
     var h = '<table class="tb-dt"><thead><tr>'
         +'<th>No</th><th>Nama</th><th>NIK</th><th>Kelurahan</th><th>RT</th><th>Posyandu</th>'
-        +'<th>Alamat Domisili</th><th>Indikator</th><th>Tgl Kunjungan</th></tr></thead><tbody>';
+        +'<th>Alamat Domisili</th><th>Indikator</th><th>Tgl Kunjungan</th>'
+        +(denganPj ? '<th>Penanggung Jawab</th>' : '')
+        +'</tr></thead><tbody>';
     rows.forEach(function(r, i){
         h += '<tr><td>'+(i+1)+'</td>'
             +'<td>'+escHtml(r.nama)+'</td>'
@@ -1009,15 +1028,93 @@ function renderDaftar(filterText){
             +'<td>'+escHtml(r.posyandu)+'</td>'
             +'<td>'+escHtml(r.alamat)+'</td>'
             +'<td>'+escHtml(r.indikator)+'</td>'
-            +'<td>'+escHtml(r.tgl_kunjungan)+'</td></tr>';
+            +'<td>'+escHtml(r.tgl_kunjungan)+'</td>'
+            +(denganPj ? pjCell(r) : '')
+            +'</tr>';
     });
     h += '</tbody></table>';
     document.getElementById('daftar-table-wrap').innerHTML = h;
 }
 
+// ── Penanggung Jawab: sel inline-edit (klik → ketik → Enter/blur simpan, Esc batal) ──
+function pjCell(r){
+    var kosong = !r.pj_nama;
+    return '<td class="tb-pj" data-id="'+escHtml(r.id)+'" title="Klik untuk mengisi penanggung jawab">'
+        +'<span class="tb-pj__val'+(kosong ? ' tb-pj__val--kosong' : '')+'">'
+        +(kosong ? 'klik untuk isi' : escHtml(r.pj_nama))+'</span>'
+        +(r.pj_oleh ? '<span class="tb-pj__meta">oleh '+escHtml(r.pj_oleh)+'</span>' : '')
+        +'</td>';
+}
+function pjCellInner(row){
+    var tmp = document.createElement('tbody');
+    tmp.innerHTML = '<tr>'+pjCell(row || {id:'', pj_nama:''})+'</tr>';
+    return tmp.querySelector('td').innerHTML;
+}
+function fillPjSaran(list){
+    var dl = document.getElementById('pj-saran');
+    if(!dl) return;
+    dl.innerHTML = (list || []).map(function(n){ return '<option value="'+escHtml(n).replace(/"/g,'&quot;')+'">'; }).join('');
+}
+function pjRow(id){
+    for(var i = 0; i < daftarRows.length; i++){ if(daftarRows[i].id === id) return daftarRows[i]; }
+    return null;
+}
+function bukaEditorPj(td){
+    if(td.querySelector('.tb-pj__input')) return;           // editor sudah terbuka
+    var row = pjRow(td.getAttribute('data-id'));
+    if(!row) return;
+    var awal = row.pj_nama || '';
+    td.innerHTML = '<input class="tb-pj__input" list="pj-saran" maxlength="100" placeholder="Nama penanggung jawab">';
+    var input = td.querySelector('input');
+    input.value = awal;
+    input.focus(); input.select();
+    var selesai = false;
+    function tutup(simpan){
+        if(selesai) return; selesai = true;
+        var nilai = input.value.trim();
+        if(!simpan || nilai === awal){ td.innerHTML = pjCellInner(row); return; }
+        simpanPj(td, row, nilai);
+    }
+    input.addEventListener('keydown', function(e){
+        if(e.key === 'Enter'){ e.preventDefault(); tutup(true); }
+        else if(e.key === 'Escape'){ e.preventDefault(); tutup(false); }
+    });
+    input.addEventListener('blur', function(){ tutup(true); });
+}
+function simpanPj(td, row, nilai){
+    td.classList.add('tb-pj--simpan'); td.classList.remove('tb-pj--gagal');
+    td.innerHTML = pjCellInner(Object.assign({}, row, {pj_nama: nilai}));
+    fetch(API_PJ.replace('__ID__', encodeURIComponent(row.id)), {
+        method: 'PUT',
+        headers: { 'X-CSRF-TOKEN': CSRF_TOKEN, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ pj_nama: nilai })
+    })
+    .then(function(r){ if(!r.ok){ throw new Error('HTTP '+r.status); } return r.json(); })
+    .then(function(d){
+        row.pj_nama = d.pj_nama; row.pj_oleh = d.pj_oleh;
+        td.classList.remove('tb-pj--simpan');
+        td.innerHTML = pjCellInner(row);
+        // Tambahkan ke saran supaya nama yang sama bisa dipilih untuk anak berikutnya.
+        var dl = document.getElementById('pj-saran');
+        if(d.pj_nama && dl && !Array.prototype.some.call(dl.options, function(o){ return o.value === d.pj_nama; })){
+            var o = document.createElement('option'); o.value = d.pj_nama; dl.appendChild(o);
+        }
+    })
+    .catch(function(){
+        td.classList.remove('tb-pj--simpan'); td.classList.add('tb-pj--gagal');
+        td.innerHTML = pjCellInner(row);
+        td.title = 'Gagal menyimpan penanggung jawab — coba lagi';
+    });
+}
+document.getElementById('daftar-table-wrap').addEventListener('click', function(e){
+    var td = e.target.closest('td.tb-pj');
+    if(td) bukaEditorPj(td);
+});
+
 function openDaftar(kategori){
     var params = getParams();
     var sep = params ? '&' : '?';
+    daftarKategori = kategori;
     document.getElementById('daftar-title').textContent = KAT_LABEL[kategori] || 'Daftar';
     document.getElementById('daftar-count').textContent = 'Memuat…';
     document.getElementById('daftar-search').value = '';
@@ -1028,6 +1125,7 @@ function openDaftar(kategori){
 
     $.getJSON(API_DAFTAR+params+sep+'kategori='+kategori, function(d){
         daftarRows = d.rows || [];
+        fillPjSaran(d.pj_saran);
         document.getElementById('daftar-count').textContent = daftarRows.length+' anak';
         initDaftarFilters();
         renderDaftar('');

@@ -15,7 +15,8 @@ class TimbangDaftarExport implements FromArray, WithHeadings, WithTitle, ShouldA
 {
     public function __construct(
         protected array $rows,
-        protected string $kategori = 'Daftar'
+        protected string $kategori = 'Daftar',
+        protected bool $denganPj = false
     ) {
     }
 
@@ -24,7 +25,7 @@ class TimbangDaftarExport implements FromArray, WithHeadings, WithTitle, ShouldA
         $no = 0;
         return array_map(function ($r) use (&$no) {
             $no++;
-            return [
+            $baris = [
                 $no,
                 $r['nama'] ?? '-',
                 $r['nik'] ?? '-',
@@ -36,15 +37,23 @@ class TimbangDaftarExport implements FromArray, WithHeadings, WithTitle, ShouldA
                 $r['indikator'] ?? '-',
                 $r['tgl_kunjungan'] ?? '-',
             ];
+            if ($this->denganPj) {
+                $baris[] = $r['pj_nama'] ?? '-';
+            }
+            return $baris;
         }, $this->rows);
     }
 
     public function headings(): array
     {
-        return [
+        $h = [
             'No', 'Nama', 'NIK', 'Kecamatan', 'Kelurahan', 'RT', 'Posyandu',
             'Alamat Domisili', 'Indikator', 'Tgl Kunjungan Terakhir',
         ];
+        if ($this->denganPj) {
+            $h[] = 'Penanggung Jawab';
+        }
+        return $h;
     }
 
     public function title(): string

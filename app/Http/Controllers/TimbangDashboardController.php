@@ -7,6 +7,7 @@ use App\Models\Anak;
 use App\Models\AppSetting;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
+use App\Services\HashIdService;
 use App\Services\StatusGiziService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,9 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class TimbangDashboardController extends Controller
 {
+    /** Kategori modal yang menampilkan & mengedit kolom Penanggung Jawab (juga di export). */
+    public const KATEGORI_PJ = ['stunting', 'gizi_buruk', 'underweight'];
+
     public function __construct(private StatusGiziService $statusGizi)
     {
         // Endpoint agregat + landing publik boleh diakses tamu (tanpa login).
@@ -432,6 +436,7 @@ class TimbangDashboardController extends Controller
         return response()->json([
             'kategori' => $kategori,
             'rows'     => $this->daftarRows($f, $kategori),
+            'pj_saran' => $this->pjSaran($f),
         ]);
     }
 
@@ -444,7 +449,22 @@ class TimbangDashboardController extends Controller
         $namaKategori = $this->labelKategori($kategori);
         $file = 'daftar-' . $kategori . '-' . now()->format('Ymd_His') . '.xlsx';
 
-        return Excel::download(new TimbangDaftarExport($rows, $namaKategori), $file);
+        return Excel::download(
+            new TimbangDaftarExport($rows, $namaKategori, in_array($kategori, self::KATEGORI_PJ, true)),
+            $file
+        );
+    }
+
+    /**
+     * Nama PJ yang sudah pernah dipakai di wilayah user — jadi saran (datalist)
+     * agar ejaan nama kader/bidan konsisten antar anak.
+     */
+    private function pjSaran(array $f): array
+    {
+        $q = DB::table('anak as a')->whereNotNull('a.pj_nama')->where('a.pj_nama', '!=', '');
+        $this->applyWilayah($q, $f);
+
+        return $q->distinct()->orderBy('a.pj_nama')->pluck('a.pj_nama')->all();
     }
 
     // ==================== HELPERS ====================
@@ -722,7 +742,7 @@ class TimbangDashboardController extends Controller
             ->leftJoin('posyandu as pos', 'a.id_posyandu', '=', 'pos.id')
             ->whereIn('a.id', $ids)
             ->select(
-                'a.id', 'a.nama', 'a.nik', 'a.alamat',
+                'a.id', 'a.nama', 'a.nik', 'a.alamat', 'a.pj_nama',
                 'kec.name as kecamatan', 'kel.name as kelurahan',
                 'rt.name as rt', 'pos.name as posyandu'
             )
@@ -734,6 +754,8 @@ class TimbangDashboardController extends Controller
     private function baseRow(object $a): array
     {
         return [
+            'id'        => HashIdService::encode($a->id, 'anak'), // kunci endpoint PJ (route binding hashid)
+            'pj_nama'   => $a->pj_nama ?: null,
             'nama'      => $a->nama,
             'nik'       => $a->nik,
             'alamat'    => $a->alamat ?: '-',
