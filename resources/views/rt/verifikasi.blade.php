@@ -69,6 +69,7 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
 .pair{ border:1px solid var(--line); border-radius:12px; background:var(--card); margin-bottom:12px; overflow:hidden; }
 .pair__head{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; background:oklch(0.96 0.016 145); font-size:.8rem; color:var(--muted); }
 .pair__head b{ color:var(--ink); }
+.pair__kecocokan b{ color:var(--green); }
 .pair table{ width:100%; border-collapse:collapse; font-size:.85rem; }
 .pair th{ text-align:left; width:140px; padding:.45rem .8rem; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); border-top:1px solid var(--line); }
 .pair td{ padding:.45rem .8rem; border-top:1px solid var(--line); width:calc((100% - 140px)/2); }
@@ -181,7 +182,9 @@ function renderKandidat(){
   if(!rows.length){ document.getElementById('tabel').innerHTML = '<div class="rt-empty">'+(q ? 'Tidak ada yang cocok dengan pencarian' : KOSONG.kandidat)+'</div>'; return; }
   var h = '';
   rows.forEach(function(p){
-    h += '<div class="pair" data-a="'+esc(p.a.id)+'" data-b="'+esc(p.b.id)+'"><div class="pair__head"><span>Alasan: <b>'+esc(p.via_label)+'</b></span><span>'+p.beda.length+' kolom berbeda</span></div><table>';
+    var k = p.kecocokan || {};
+    var kecocokan = 'Kecocokan: nama <b>'+Math.round(k.nama || 0)+'%</b> · orang tua <b>'+Math.round(k.ortu || 0)+'%</b>'+(k.kk_sama ? ' · <b>No KK sama</b>' : '')+(p.via === 'nama_kuat' ? ' · <span style="color:var(--amber)">tanggal lahir beda</span>' : '');
+    h += '<div class="pair" data-a="'+esc(p.a.id)+'" data-b="'+esc(p.b.id)+'"><div class="pair__head"><span class="pair__kecocokan">'+kecocokan+'</span><span>'+p.beda.length+' kolom berbeda</span></div><table>';
     Object.keys(FIELD_LABEL).forEach(function(f){
       var beda = p.beda.indexOf(f) >= 0;
       var va = f === 'sumber_label' ? badgeSumber(p.a) : esc(p.a[f] || '-');

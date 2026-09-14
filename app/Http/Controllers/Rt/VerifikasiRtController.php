@@ -106,6 +106,8 @@ class VerifikasiRtController extends Controller
                 'skor'      => (float) $k->skor,
                 'via'       => $k->via,
                 'via_label' => self::LABEL_VIA[$k->via] ?? $k->via,
+                // Persentase kemiripan (permintaan klien 14 Sep 2026): RT melihat seberapa yakin pemindai
+                'kecocokan' => ['nama' => (float) $k->child_sim, 'ortu' => (float) $k->parent_sim, 'kk_sama' => $k->via === 'kk'],
                 'beda'      => $beda,
             ];
         })->values()->all();

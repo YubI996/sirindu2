@@ -54,6 +54,9 @@ class EndpointTautanRtTest extends TestCase
         $this->assertSame($b->hashid, $row['b']['id']);
         $this->assertSame('OT', $row['a']['sumber_label']);
         $this->assertSame('kk', $row['via']);
+        $this->assertEquals(100, $row['kecocokan']['nama'], 'persentase kemiripan nama ikut dikirim');
+        $this->assertEquals(90, $row['kecocokan']['ortu']);
+        $this->assertTrue($row['kecocokan']['kk_sama']);
         $this->assertContains('nik', $row['beda']);
         $this->assertContains('alamat', $row['beda']);
         $this->assertNotContains('nama', $row['beda']);
@@ -100,6 +103,7 @@ class EndpointTautanRtTest extends TestCase
             ->assertSee(route('rt.api.kandidat'))
             ->assertSee(route('rt.api.putuskan'))
             ->assertSee('data-keputusan="sama"', false)
-            ->assertSee('data-keputusan="beda"', false);
+            ->assertSee('data-keputusan="beda"', false)
+            ->assertSee('kecocokan', false);
     }
 }
