@@ -36,6 +36,15 @@ Route::prefix('timbang-publik')->name('public.timbang.')->middleware('timbang.pu
 
 /*------------------------------------------
 --------------------------------------------
+Peran RT — verifikasi domisili warga (spec verifikasi RT §4)
+--------------------------------------------
+--------------------------------------------*/
+Route::middleware(['auth', 'module.role:rt'])->prefix('rt')->name('rt.')->group(function () {
+    Route::get('verifikasi', fn () => 'verifikasi rt')->name('verifikasi'); // diganti controller di Task 5
+});
+
+/*------------------------------------------
+--------------------------------------------
 All Normal Users Routes List
 --------------------------------------------
 --------------------------------------------*/

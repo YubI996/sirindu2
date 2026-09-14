@@ -19,7 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // route('home') — sudah dihapus — lalu jatuh ke '/', yaitu landing publik.
         // Akibatnya klik "Masuk" saat sesi masih hidup terlihat cuma me-refresh
         // halaman (bug prod Sept 2026). Arahkan eksplisit ke beranda admin.
-        $middleware->redirectUsersTo(\App\Providers\AppServiceProvider::HOME);
+        // Peran rt punya beranda sendiri (/rt/verifikasi); selain itu AppServiceProvider::HOME.
+        $middleware->redirectUsersTo(fn () => route(auth()->user()->berandaRoute()));
 
         $middleware->alias([
             'user-access' => \App\Http\Middleware\UserAccess::class,

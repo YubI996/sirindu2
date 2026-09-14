@@ -300,7 +300,7 @@
             {{-- Sesi masih hidup (mis. "Ingat saya"): /login akan memantul, jadi
                  tawarkan dasbor langsung, bukan tombol Masuk yang terlihat mati. --}}
             @auth
-            <a class="lp-btn-masuk" href="{{ route('admin.home') }}">
+            <a class="lp-btn-masuk" href="{{ route(auth()->user()->berandaRoute()) }}">
                 <span class="material-symbols-outlined">dashboard</span>Ke Dasbor
             </a>
             @else
@@ -322,7 +322,7 @@
                 </div>
                 <div class="lp-hero-cta">
                     @auth
-                    <a class="lp-btn-masuk" href="{{ route('admin.home') }}">
+                    <a class="lp-btn-masuk" href="{{ route(auth()->user()->berandaRoute()) }}">
                         <span class="material-symbols-outlined">dashboard</span>Lanjut ke Dasbor Petugas
                     </a>
                     @else
@@ -500,7 +500,7 @@
         <footer class="lp-footer">
             <span>© {{ date('Y') }} SIRINDU — Dinas Kesehatan.</span>
             @auth
-            <span>Anda sudah masuk sebagai {{ auth()->user()->name }} — <a href="{{ route('admin.home') }}">buka dasbor</a>.</span>
+            <span>Anda sudah masuk sebagai {{ auth()->user()->name }} — <a href="{{ route(auth()->user()->berandaRoute()) }}">buka dasbor</a>.</span>
             @else
             <span>Data rinci per anak memerlukan <a href="{{ route('login') }}">login petugas</a>.</span>
             @endauth

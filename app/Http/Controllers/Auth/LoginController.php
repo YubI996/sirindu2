@@ -56,6 +56,9 @@ class LoginController extends Controller
 
             // Redirect berdasarkan role sistem baru + legacy type
             return match(true) {
+                // RT: satu halaman verifikasi warga, tanpa akses admin
+                $user->isRt()                  => redirect()->route('rt.verifikasi'),
+
                 // Dinkes: superadmin — akses ke admin dashboard
                 // (isSuperAdmin juga mengenali legacy type=1/'super-admin')
                 $user->isSuperAdmin()          => redirect()->route('admin.home'),
