@@ -26,7 +26,9 @@ class storeUserRequest extends FormRequest
                     ? Rule::unique('users', 'email')->ignore($userId)
                     : Rule::unique('users', 'email'),
             ],
-            'role'         => 'required|in:superadmin,imunisasi_faskes,surveilans_puskesmas,surveilans_rs',
+            'role'         => 'required|in:superadmin,imunisasi_faskes,surveilans_puskesmas,surveilans_rs,rt',
+            // Peran RT: wajib memilih RT; kelurahan/kecamatan diturunkan dari RT (spec verifikasi RT §2)
+            'id_rt'        => [Rule::requiredIf($role === 'rt'), 'nullable', 'integer', 'exists:rt,id'],
             'faskes_type'  => [
                 Rule::requiredIf($role === 'imunisasi_faskes'),
                 'nullable',
@@ -66,6 +68,8 @@ class storeUserRequest extends FormRequest
             'id_puskesmas.exists' => 'Puskesmas tidak ditemukan.',
             'id_rs.exists'        => 'Rumah sakit tidak ditemukan.',
             'id_posyandu.exists'  => 'Posyandu tidak ditemukan.',
+            'id_rt.required'      => 'RT wajib dipilih untuk peran RT.',
+            'id_rt.exists'        => 'RT tidak ditemukan.',
         ];
     }
 }

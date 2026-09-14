@@ -34,6 +34,7 @@
                             <option value="imunisasi_faskes">Faskes Imunisasi (Puskesmas / RS)</option>
                             <option value="surveilans_puskesmas">Surveilans PD3I – Puskesmas</option>
                             <option value="surveilans_rs">Surveilans PD3I – Rumah Sakit</option>
+                            <option value="rt">RT (verifikasi warga)</option>
                         </select>
                         @error('role') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
@@ -76,6 +77,15 @@
                     <hr>
                     <small class="text-muted">Lokasi alamat (opsional)</small>
 
+                    {{-- Peran RT: pilih RT lewat cascade Kec → Kel → RT; wilayah user diturunkan dari RT --}}
+                    <div class="form-group d-none" id="create_rt_group">
+                        <label for="create_rt">RT</label>
+                        <select id="create_rt" name="id_rt" class="form-control">
+                            <option value="">== Pilih Kelurahan dulu ==</option>
+                        </select>
+                        @error('id_rt') <span class="text-danger">{{ $message }}</span> @enderror
+                    </div>
+
                     <div class="row mt-2">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -116,8 +126,11 @@
         document.getElementById('create_faskes_type_group').classList.add('d-none');
         document.getElementById('create_puskesmas_group').classList.add('d-none');
         document.getElementById('create_rs_group').classList.add('d-none');
+        document.getElementById('create_rt_group').classList.add('d-none');
 
-        if (role === 'surveilans_puskesmas') {
+        if (role === 'rt') {
+            document.getElementById('create_rt_group').classList.remove('d-none');
+        } else if (role === 'surveilans_puskesmas') {
             document.getElementById('create_puskesmas_group').classList.remove('d-none');
         } else if (role === 'surveilans_rs') {
             document.getElementById('create_rs_group').classList.remove('d-none');
@@ -133,6 +146,15 @@
 
     document.getElementById('create_role').addEventListener('change', updateCreateFaskesVisibility);
     document.getElementById('create_faskes_type').addEventListener('change', updateCreateFaskesVisibility);
+
+    $('#create_kel').on('change', function () {
+        var id = $(this).val();
+        $('#create_rt').empty().append('<option value="">== Pilih RT ==</option>');
+        if (!id) { return; }
+        $.getJSON('{{ url("admin/get-rt-by-kel-anak") }}' + '/' + id, function (response) {
+            $.each(response, function (rtId, name) { $('#create_rt').append(new Option(name, rtId)); });
+        });
+    });
 
     $('#create_kec').on('change', function () {
         var id = $(this).val();

@@ -3,6 +3,8 @@
 namespace App\Repositories\Admin\User;
 
 use App\Repositories\Admin\Core\User\UserRepositoryInterface;
+use App\Models\Kelurahan;
+use App\Models\Rt;
 use App\Models\User;
 use Illuminate\Support\Str;
 
@@ -29,7 +31,29 @@ class UserRepository implements UserRepositoryInterface
 
     private function typeFromRole(string $role): int
     {
-        return $role === 'superadmin' ? 0 : 1;
+        // 0 = superadmin, 1 = admin/faskes (akses /admin), 2 = user biasa (peran rt: TIDAK boleh /admin)
+        return match ($role) {
+            'superadmin' => 0,
+            'rt'         => 2,
+            default      => 1,
+        };
+    }
+
+    /** Peran RT: wilayah diturunkan dari RT yang dipilih, bukan dari isian form. */
+    private function wilayahDariRt($request): array
+    {
+        if ($request->role !== 'rt' || !$request->id_rt) {
+            return [];
+        }
+        $rt  = Rt::findOrFail($request->id_rt);
+        $kel = Kelurahan::find($rt->id_kelurahan);
+
+        return [
+            'id_rt'       => $rt->id,
+            'id_kel'      => $rt->id_kelurahan,
+            'id_kec'      => $kel?->id_kecamatan,
+            'id_posyandu' => $rt->id_posyandu,
+        ];
     }
 
     public function storeUser($request): string
@@ -37,7 +61,7 @@ class UserRepository implements UserRepositoryInterface
         $role = $request->role;
         $plainPassword = Str::random(12);
 
-        User::create([
+        User::create(array_merge([
             'name'        => $request->name,
             'email'       => $request->email,
             'type'        => $this->typeFromRole($role),
@@ -49,7 +73,7 @@ class UserRepository implements UserRepositoryInterface
             'id_puskesmas'=> $request->id_puskesmas ?: null,
             'id_rs'       => $request->id_rs ?: null,
             'id_posyandu' => $request->id_posyandu ?: null,
-        ]);
+        ], $this->wilayahDariRt($request)));
 
         return $plainPassword;
     }
@@ -65,6 +89,7 @@ class UserRepository implements UserRepositoryInterface
             'type'        => $this->typeFromRole($role),
             'role'        => $role,
             'faskes_type' => $this->deriveFaskesType($role, $request),
+            'id_rt'       => null, // ditimpa wilayahDariRt() untuk peran rt
             'id_puskesmas'=> $request->id_puskesmas ?: null,
             'id_rs'       => $request->id_rs ?: null,
         ];
@@ -78,6 +103,8 @@ class UserRepository implements UserRepositoryInterface
             $data['id_kel']      = $request->id_kelx;
             $data['id_posyandu'] = $request->id_posyandux ?: null;
         }
+
+        $data = array_merge($data, $this->wilayahDariRt($request));
 
         $user->update($data);
     }

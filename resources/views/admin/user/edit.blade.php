@@ -54,6 +54,7 @@ Edit User
                     <option value="imunisasi_faskes"     {{$user->role === 'imunisasi_faskes'      ? 'selected' : ''}}>Faskes Imunisasi</option>
                     <option value="surveilans_puskesmas" {{$user->role === 'surveilans_puskesmas'  ? 'selected' : ''}}>Surveilans PD3I – Puskesmas</option>
                     <option value="surveilans_rs"        {{$user->role === 'surveilans_rs'         ? 'selected' : ''}}>Surveilans PD3I – Rumah Sakit</option>
+                    <option value="rt"                   {{$user->role === 'rt'                    ? 'selected' : ''}}>RT (verifikasi warga)</option>
                 </select>
                 @error('role') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
@@ -158,6 +159,18 @@ Edit User
                 </select>
             </div>
         </div>
+        {{-- Peran RT: RT yang diverifikasi; wilayah user diturunkan dari RT ini saat disimpan --}}
+        <div class="col-md-3 col-sm-12 mt-2" id="edit_rt_group" style="{{ $user->role === 'rt' ? '' : 'display:none' }}">
+            <div class="form-group">
+                <label>RT (peran RT)</label>
+                <select id="rtx" name="id_rt" class="form-control">
+                    <option value="">== Pilih Kelurahan dulu ==</option>
+                    @foreach (\App\Models\Rt::where('id_kelurahan', $user->id_kel)->orderBy('name')->get() as $rt)
+                    <option value="{{ $rt->id }}" {{ (int) $user->id_rt === $rt->id ? 'selected' : '' }}>{{ $rt->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
 
         <div class="col-md-12 mt-3">
             <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
@@ -168,6 +181,17 @@ Edit User
 @endsection
 @section('custom_scripts')
 <script>
+    document.getElementById('edit_role').addEventListener('change', function () {
+        document.getElementById('edit_rt_group').style.display = this.value === 'rt' ? '' : 'none';
+    });
+    $('#kelx').on('change', function () {
+        var id = $(this).val();
+        $('#rtx').empty().append('<option value="">== Pilih RT ==</option>');
+        if (!id) { return; }
+        $.getJSON('{{ url("admin/get-rt-by-kel-anak") }}' + '/' + id, function (response) {
+            $.each(response, function (rtId, name) { $('#rtx').append(new Option(name, rtId)); });
+        });
+    });
     function passwordChange() {
         var cb = document.getElementById('gantiPassword');
         var pass = document.getElementById('pass');
