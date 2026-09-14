@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
+        // Middleware `guest` bawaan Laravel melempar user yang sudah login ke
+        // route('home') — sudah dihapus — lalu jatuh ke '/', yaitu landing publik.
+        // Akibatnya klik "Masuk" saat sesi masih hidup terlihat cuma me-refresh
+        // halaman (bug prod Sept 2026). Arahkan eksplisit ke beranda admin.
+        $middleware->redirectUsersTo(\App\Providers\AppServiceProvider::HOME);
+
         $middleware->alias([
             'user-access' => \App\Http\Middleware\UserAccess::class,
             'is_admin' => \App\Http\Middleware\IsAdmin::class,

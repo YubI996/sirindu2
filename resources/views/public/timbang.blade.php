@@ -297,9 +297,17 @@
                 <img class="lp-logo" src="{{ asset('logo/icon-sirindu.png') }}" alt="">
                 <span class="lp-wordmark">SIRINDU</span>
             </div>
+            {{-- Sesi masih hidup (mis. "Ingat saya"): /login akan memantul, jadi
+                 tawarkan dasbor langsung, bukan tombol Masuk yang terlihat mati. --}}
+            @auth
+            <a class="lp-btn-masuk" href="{{ route('admin.home') }}">
+                <span class="material-symbols-outlined">dashboard</span>Ke Dasbor
+            </a>
+            @else
             <a class="lp-btn-masuk" href="{{ route('login') }}">
                 <span class="material-symbols-outlined">login</span>Masuk
             </a>
+            @endauth
         </header>
 
         <section class="lp-hero">
@@ -313,9 +321,15 @@
                     <span class="lp-tag"><span class="material-symbols-outlined">health_and_safety</span>Surveilans PD3I</span>
                 </div>
                 <div class="lp-hero-cta">
+                    @auth
+                    <a class="lp-btn-masuk" href="{{ route('admin.home') }}">
+                        <span class="material-symbols-outlined">dashboard</span>Lanjut ke Dasbor Petugas
+                    </a>
+                    @else
                     <a class="lp-btn-masuk" href="{{ route('login') }}">
                         <span class="material-symbols-outlined">login</span>Masuk sebagai Petugas
                     </a>
+                    @endauth
                     @if($publikasiAktif)
                     <a class="lp-scrolllink" href="#data">
                         Lihat ringkasan data<span class="material-symbols-outlined" style="font-size:18px;">arrow_downward</span>
@@ -485,7 +499,11 @@
 
         <footer class="lp-footer">
             <span>© {{ date('Y') }} SIRINDU — Dinas Kesehatan.</span>
+            @auth
+            <span>Anda sudah masuk sebagai {{ auth()->user()->name }} — <a href="{{ route('admin.home') }}">buka dasbor</a>.</span>
+            @else
             <span>Data rinci per anak memerlukan <a href="{{ route('login') }}">login petugas</a>.</span>
+            @endauth
         </footer>
     </div>
 
