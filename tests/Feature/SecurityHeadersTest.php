@@ -47,4 +47,25 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString('https://fonts.gstatic.com', $csp); // Google Fonts
         $this->assertStringContainsString('https://www.google.com', $csp);   // reCAPTCHA
     }
+
+    /**
+     * Dev lokal lewat http://sirindu.test: `upgrade-insecure-requests` membuat Chrome
+     * memaksa POST login ke https://sirindu.test (sertifikat self-signed Laragon) →
+     * net::ERR_CERT_AUTHORITY_INVALID. Di env local + HTTP polos, dua header itu tak dikirim.
+     * Env lain (production/testing) tetap mengirimnya — dikunci test di atas.
+     */
+    public function test_env_local_lewat_http_polos_tidak_memaksa_https(): void
+    {
+        app()->detectEnvironment(fn () => 'local');
+
+        $http = $this->get('http://sirindu.test/');
+        $http->assertOk();
+        $http->assertHeaderMissing('Strict-Transport-Security');
+        $this->assertStringNotContainsString('upgrade-insecure-requests', $http->headers->get('Content-Security-Policy'));
+
+        $https = $this->get('https://sirindu.test/');
+        $https->assertOk();
+        $https->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        $this->assertStringContainsString('upgrade-insecure-requests', $https->headers->get('Content-Security-Policy'));
+    }
 }

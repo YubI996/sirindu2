@@ -50,8 +50,17 @@ class SecurityHeaders
         $response->headers->set('X-XSS-Protection', '1; mode=block');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), payment=()');
-        $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-        $response->headers->set('Content-Security-Policy', $this->buildCsp());
+
+        // Dev lokal lewat http://sirindu.test: HSTS + upgrade-insecure-requests memaksa Chrome
+        // meng-upgrade POST login ke https://sirindu.test (sertifikat self-signed Laragon) →
+        // net::ERR_CERT_AUTHORITY_INVALID. Hanya env `local` + HTTP polos yang dilonggarkan;
+        // production/testing tetap mengirim keduanya (dikunci SecurityHeadersTest).
+        $paksaHttps = !(app()->environment('local') && !$request->isSecure());
+
+        if ($paksaHttps) {
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        }
+        $response->headers->set('Content-Security-Policy', $this->buildCsp($paksaHttps));
         $response->headers->remove('X-Powered-By');
         $response->headers->remove('Server');
 
@@ -59,9 +68,10 @@ class SecurityHeaders
     }
 
     /** Rangkai direktif CSP jadi satu string header. */
-    private function buildCsp(): string
+    private function buildCsp(bool $denganUpgrade = true): string
     {
         return collect(self::CSP)
+            ->when(!$denganUpgrade, fn ($c) => $c->forget('upgrade-insecure-requests'))
             ->map(fn ($value, $directive) => trim("{$directive} {$value}"))
             ->implode('; ');
     }
