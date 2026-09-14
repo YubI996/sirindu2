@@ -7,6 +7,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\Exportable;
+use App\Models\VerifikasiAnak;
 use Illuminate\Support\Facades\DB;
 
 
@@ -82,6 +83,10 @@ class AnakExport implements FromQuery, WithMapping, WithHeadings, ShouldAutoSize
             'ASI',
             'Vitamin A',
             'Nama Petugas',
+            // Verifikasi RT (spec §7): asal data & status domisili hasil verifikasi RT
+            'Sumber Data',
+            'Verifikasi RT',
+            'Reviu Verifikasi',
         ];
     }
 
@@ -117,6 +122,16 @@ class AnakExport implements FromQuery, WithMapping, WithHeadings, ShouldAutoSize
             $data->asi,
             $data->vit_a,
             $data->namaPetugas,
+            $this->labelSumber($data),
+            $data->verifRtStatus ? (VerifikasiAnak::LABEL_STATUS[$data->verifRtStatus] ?? $data->verifRtStatus) : '-',
+            $data->verifRtReviu ?: '-',
         ];
+    }
+
+    /** "operasi_timbang (+capil)" — sumber utama + sumber lain yang pernah dilebur (verifikasi RT §3.2). */
+    private function labelSumber($data): string
+    {
+        $lain = array_values(array_diff((array) (json_decode((string) $data->sumber_gabungan, true) ?: []), [$data->sumber]));
+        return (string) $data->sumber . ($lain ? ' (+'.implode(', ', $lain).')' : '');
     }
 }
