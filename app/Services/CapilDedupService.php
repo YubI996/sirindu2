@@ -26,16 +26,16 @@ use Illuminate\Support\Facades\DB;
 class CapilDedupService
 {
     /** Ambang minimum kemiripan nama anak saat tgl lahir TEPAT sama (persen). */
-    public const CHILD_MIN = 70.0;
+    public const CHILD_MIN = IdentitasMatcher::CHILD_MIN;
 
     /** Ambang minimum kemiripan nama anak saat tgl lahir MELESET (lebih ketat, cegah sibling/kembar). */
-    public const CHILD_NEAR_MIN = 90.0;
+    public const CHILD_NEAR_MIN = IdentitasMatcher::CHILD_NEAR_MIN;
 
     /** Ambang minimum kemiripan nama ortu (persen). */
-    public const PARENT_MIN = 87.0;
+    public const PARENT_MIN = IdentitasMatcher::PARENT_MIN;
 
     /** Toleransi selisih tanggal lahir (hari) untuk menoleransi typo tanggal. */
-    public const DATE_TOLERANCE_DAYS = 1;
+    public const DATE_TOLERANCE_DAYS = IdentitasMatcher::DATE_TOLERANCE_DAYS;
 
     /**
      * Ambang "kemiripan sangat tinggi": bila nama anak >= CHILD_STRONG DAN nama ortu
@@ -44,11 +44,19 @@ class CapilDedupService
      * jendela ini — harus lewat kemiripan nama+ortu, agar sibling (KK sama, nama ortu
      * sama, tapi anak beda) tidak ikut tergabung.
      */
-    public const CHILD_STRONG = 95.0;
-    public const PARENT_STRONG = 95.0;
+    public const CHILD_STRONG = IdentitasMatcher::CHILD_STRONG;
+    public const PARENT_STRONG = IdentitasMatcher::PARENT_STRONG;
 
     /** Panjang prefiks nama untuk blocking-index pencarian lintas-tanggal (kinerja). */
-    private const NAME_BLOCK_LEN = 3;
+    private const NAME_BLOCK_LEN = IdentitasMatcher::NAME_BLOCK_LEN;
+
+    /** Aturan kemiripan kini hidup di IdentitasMatcher (dipakai juga oleh verifikasi RT). */
+    private IdentitasMatcher $matcher;
+
+    public function __construct(?IdentitasMatcher $matcher = null)
+    {
+        $this->matcher = $matcher ?? new IdentitasMatcher();
+    }
 
     // =========================================================================
     // Identifikasi kelompok
@@ -416,81 +424,41 @@ class CapilDedupService
     /** Kemiripan dua string (persen, case-insensitive). */
     public function nameSim(?string $a, ?string $b): float
     {
-        similar_text(trim(mb_strtolower((string) $a)), trim(mb_strtolower((string) $b)), $pct);
-        return $pct;
-    }
-
-    /** Kumpulkan token nama ortu (nama_ibu + nama_ayah), dipecah pada '/'. */
-    private function parentTokens(Anak $a): array
-    {
-        $tokens = [];
-        foreach (['nama_ibu', 'nama_ayah'] as $field) {
-            foreach (explode('/', (string) $a->$field) as $seg) {
-                $seg = trim(mb_strtolower($seg));
-                if ($seg !== '') {
-                    $tokens[] = $seg;
-                }
-            }
-        }
-        return $tokens;
+        return $this->matcher->nameSim($a, $b);
     }
 
     /** Kemiripan terbaik antar-segmen nama ortu kedua record (persen). */
     public function parentMatch(Anak $a, Anak $b): float
     {
-        $best = 0.0;
-        foreach ($this->parentTokens($a) as $x) {
-            foreach ($this->parentTokens($b) as $y) {
-                similar_text($x, $y, $pct);
-                if ($pct > $best) {
-                    $best = $pct;
-                }
-            }
-        }
-        return $best;
+        return $this->matcher->parentMatch($a, $b);
     }
 
     private function kkSame(Anak $a, Anak $b): bool
     {
-        $x = trim((string) $a->no_kk);
-        $y = trim((string) $b->no_kk);
-        return $x !== '' && $y !== '' && $x === $y;
+        return $this->matcher->kkSame($a, $b);
     }
 
     private function dateKey($value): string
     {
-        return substr((string) $value, 0, 10);
+        return $this->matcher->dateKey($value);
     }
 
     /** Kunci blocking nama: prefiks nama ternormalisasi (untuk lookup lintas-tanggal). */
     private function nameKey(?string $nama): string
     {
-        return mb_substr(trim(mb_strtolower((string) $nama)), 0, self::NAME_BLOCK_LEN);
+        return $this->matcher->nameKey($nama);
     }
 
     /** Kunci tanggal kandidat: tgl tepat + tetangga dalam toleransi (untuk bucket lookup). */
     private function neighborDateKeys($value): array
     {
-        $ts = strtotime($this->dateKey($value));
-        if ($ts === false) {
-            return [$this->dateKey($value)];
-        }
-        $keys = [];
-        for ($d = -self::DATE_TOLERANCE_DAYS; $d <= self::DATE_TOLERANCE_DAYS; $d++) {
-            $keys[] = date('Y-m-d', $ts + $d * 86400);
-        }
-        return $keys;
+        return $this->matcher->neighborDateKeys($value);
     }
 
     /** Selisih hari (mutlak) dua tanggal lahir; PHP_INT_MAX bila tak terbaca. */
     private function dayDiff($a, $b): int
     {
-        $ta = strtotime($this->dateKey($a));
-        $tb = strtotime($this->dateKey($b));
-        if ($ta === false || $tb === false) {
-            return PHP_INT_MAX;
-        }
-        return (int) round(abs($ta - $tb) / 86400);
+        return $this->matcher->dayDiff($a, $b);
     }
 
     /**
@@ -504,35 +472,13 @@ class CapilDedupService
      */
     public function evaluate(Anak $capil, Anak $sigizi): ?array
     {
-        $child  = $this->nameSim($capil->nama, $sigizi->nama);
-        $parent = $this->parentMatch($capil, $sigizi);
-        $kkSame = $this->kkSame($capil, $sigizi);
-        $diff   = $this->dayDiff($capil->tgl_lahir, $sigizi->tgl_lahir);
-        $exactDate = $diff === 0;
-
-        // Identitas nama sangat kuat → boleh abaikan tanggal (typo tahun/bulan).
-        $strongName = $child >= self::CHILD_STRONG && $parent >= self::PARENT_STRONG;
-
-        if (!$strongName) {
-            // Jalur normal: tanggal wajib dalam toleransi.
-            if ($diff > self::DATE_TOLERANCE_DAYS) {
-                return null;
-            }
-            if ($child < ($exactDate ? self::CHILD_MIN : self::CHILD_NEAR_MIN)) {
-                return null; // jaga-jaga kembar/sibling: nama anak harus cukup mirip
-            }
-            if (!$kkSame && $parent < self::PARENT_MIN) {
-                return null;
-            }
+        $info = $this->matcher->evaluate($capil, $sigizi);
+        if ($info === null) {
+            return null;
         }
-
-        return [
-            'via'    => $kkSame ? 'kk' : 'ortu',
-            // Bonus tgl tepat agar saat berebut sigizi yang sama, kandidat tgl-tepat menang.
-            'score'  => ($kkSame ? 1000.0 : 0.0) + ($exactDate ? 100.0 : 0.0) + $parent + $child,
-            'child'  => $child,
-            'parent' => $parent,
-        ];
+        // Jalur dedup Capil hanya mengenal via kk|ortu (nama_kuat = ortu tanpa KK sama)
+        $info['via'] = $this->matcher->kkSame($capil, $sigizi) ? 'kk' : 'ortu';
+        return $info;
     }
 
     /**
