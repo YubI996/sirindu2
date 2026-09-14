@@ -1341,6 +1341,9 @@ All Admin Controller
             ->limit(20)
             ->get();
 
+        // Verifikasi RT (spec verifikasi RT §7) — hasil verifikasi domisili oleh RT
+        $verifikasiRt = app(\App\Services\VerifikasiRtService::class)->ringkasanVerifikasi();
+
         return view('admin.dashboard.analytics', compact(
             'totalAnak',
             'totalDataAnak',
@@ -1360,7 +1363,8 @@ All Admin Controller
             'recentActivities',
             'rtDistribution',
             'kelurahanList',
-            'vaksinList'
+            'vaksinList',
+            'verifikasiRt'
         ));
     }
 
@@ -1373,44 +1377,44 @@ All Admin Controller
         $filterKel = $request->input('kelurahan');
         $antigen = $request->input('antigen');
         $status = $request->input('status');
+        // Status verifikasi RT (spec verifikasi RT §7); kosong = Semua → angka tak berubah
+        $verif = (string) $request->input('verif', '');
+        $verifSvc = app(\App\Services\VerifikasiRtService::class);
 
-        // --- Anak filter (kelurahan) ---
-        $applyAnakFilter = function($query, $table = 'anak') use ($filterKel) {
+        // --- Syarat anak (kelurahan + verifikasi RT) sebagai EXISTS untuk tabel yang tak join anak ---
+        $anakExists = function($query, $kolomIdAnak) use ($filterKel, $verif, $verifSvc) {
+            if (!$filterKel && !$verif) return $query;
+            $query->whereExists(function($sub) use ($filterKel, $verif, $verifSvc, $kolomIdAnak) {
+                $sub->select(DB::raw(1))->from('anak')->whereColumn('anak.id', $kolomIdAnak);
+                if ($filterKel) $sub->where('anak.id_kel', $filterKel);
+                $verifSvc->terapkanFilterVerif($sub, $verif, 'anak');
+            });
+            return $query;
+        };
+
+        // --- Anak filter (kelurahan + verifikasi RT) ---
+        $applyAnakFilter = function($query, $table = 'anak') use ($filterKel, $verif, $verifSvc) {
             if ($filterKel) $query->where("$table.id_kel", $filterKel);
+            $verifSvc->terapkanFilterVerif($query, $verif, $table);
             return $query;
         };
 
         // --- Imunisasi filter (all 4 filters) ---
-        $applyImunisasiFilter = function($query) use ($bulan, $filterKel, $antigen, $status) {
+        $applyImunisasiFilter = function($query) use ($bulan, $antigen, $status, $anakExists) {
             if ($bulan) {
                 $parts = explode('-', $bulan);
                 $query->whereYear('imunisasi.tanggal_pemberian', $parts[0])
                       ->whereMonth('imunisasi.tanggal_pemberian', $parts[1]);
             }
-            if ($filterKel) {
-                $query->whereExists(function($sub) use ($filterKel) {
-                    $sub->select(DB::raw(1))
-                        ->from('anak')
-                        ->whereColumn('anak.id', 'imunisasi.id_anak')
-                        ->where('anak.id_kel', $filterKel);
-                });
-            }
+            $anakExists($query, 'imunisasi.id_anak');
             if ($antigen) $query->where('imunisasi.id_jenis_vaksin', $antigen);
             if ($status) $query->where('imunisasi.status', $status);
             return $query;
         };
 
         // --- data_anak filter (kelurahan via anak join) ---
-        $applyDataAnakFilter = function($query) use ($filterKel) {
-            if ($filterKel) {
-                $query->whereExists(function($sub) use ($filterKel) {
-                    $sub->select(DB::raw(1))
-                        ->from('anak')
-                        ->whereColumn('anak.id', 'data_anak.id_anak')
-                        ->where('anak.id_kel', $filterKel);
-                });
-            }
-            return $query;
+        $applyDataAnakFilter = function($query) use ($anakExists) {
+            return $anakExists($query, 'data_anak.id_anak');
         };
 
         // ========== Stat Cards ==========
@@ -1477,13 +1481,7 @@ All Admin Controller
 
         // ========== ASI Status ==========
         $asiSubQuery = DB::table('data_anak')->selectRaw('MAX(id)')->groupBy('id_anak');
-        if ($filterKel) {
-            $asiSubQuery->whereExists(function($sub) use ($filterKel) {
-                $sub->select(DB::raw(1))->from('anak')
-                    ->whereColumn('anak.id', 'data_anak.id_anak')
-                    ->where('anak.id_kel', $filterKel);
-            });
-        }
+        $anakExists($asiSubQuery, 'data_anak.id_anak');
         $asiStatus = DB::table('data_anak')
             ->select('asi', DB::raw('count(DISTINCT id_anak) as total'))
             ->whereIn('id', $asiSubQuery)
@@ -1514,19 +1512,13 @@ All Admin Controller
         ];
         $measurementQuery = DB::table('data_anak as da')
             ->join('anak as a', 'da.id_anak', '=', 'a.id')
-            ->whereIn('da.id', function($q) use ($filterKel) {
+            ->whereIn('da.id', function($q) use ($anakExists) {
                 $sub = $q->selectRaw('MAX(id)')->from('data_anak')->groupBy('id_anak');
-                if ($filterKel) {
-                    $sub->whereExists(function($s) use ($filterKel) {
-                        $s->select(DB::raw(1))->from('anak')
-                            ->whereColumn('anak.id', 'data_anak.id_anak')
-                            ->where('anak.id_kel', $filterKel);
-                    });
-                }
+                $anakExists($sub, 'data_anak.id_anak');
             })
             ->where('da.bln', '<=', 60)
             ->select('da.id_anak', 'da.bb', 'da.tb', 'da.bln', 'da.posisi', 'a.jk');
-        if ($filterKel) $measurementQuery->where('a.id_kel', $filterKel);
+        $applyAnakFilter($measurementQuery, 'a');
         $latestMeasurements = $measurementQuery->get();
 
         // Pemetaan enum kanonik → bucket. IMT di sini hanya 5 pita (>+2SD = obesitas).
@@ -1555,7 +1547,7 @@ All Admin Controller
             ->join('anak', 'data_anak.id_anak', '=', 'anak.id')
             ->select('anak.nama', 'data_anak.tgl_kunjungan', 'data_anak.bb', 'data_anak.tb', 'data_anak.bln')
             ->orderByDesc('data_anak.tgl_kunjungan')->limit(20);
-        if ($filterKel) $recentQuery->where('anak.id_kel', $filterKel);
+        $applyAnakFilter($recentQuery, 'anak');
         $recentActivities = $recentQuery->get()->map(function($a) {
             $bmi = $a->tb > 0 ? round(10000 * $a->bb / pow($a->tb, 2), 1) : 0;
             return [
@@ -1576,13 +1568,7 @@ All Admin Controller
             ->groupBy('imunisasi.id_anak')
             ->havingRaw('COUNT(DISTINCT jenis_vaksin.kode) >= 11')
             ->select('imunisasi.id_anak');
-        if ($filterKel) {
-            $completeQuery->whereExists(function($sub) use ($filterKel) {
-                $sub->select(DB::raw(1))->from('anak')
-                    ->whereColumn('anak.id', 'imunisasi.id_anak')
-                    ->where('anak.id_kel', $filterKel);
-            });
-        }
+        $anakExists($completeQuery, 'imunisasi.id_anak');
         $completeCount = $completeQuery->get()->count();
         $incompleteImunisasiCount = $totalAnak - $completeCount;
 
@@ -1607,6 +1593,8 @@ All Admin Controller
             'visitTrend' => ['labels' => $visitTrend->pluck('month'), 'data' => $visitTrend->pluck('total')],
             'zScoreAnalysis' => $zScoreResults,
             'recentActivities' => $recentActivities,
+            // Ringkasan verifikasi RT mengikuti kelurahan, bukan filter verif (kartu harus selalu utuh)
+            'verifikasiRt' => $verifSvc->ringkasanVerifikasi($filterKel ? (int) $filterKel : null),
         ]);
     }
 

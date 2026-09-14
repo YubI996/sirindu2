@@ -88,8 +88,10 @@ class AnalyticsVerifikasiRtTest extends TestCase
         $this->assertSame(2, array_sum($r['genderDistribution']['data']));
 
         $r = $this->actingAs($super)->getJson(route('admin.analytics.filterImunisasi', ['kelurahan' => $s['kel']->id, 'verif' => 'belum']))->assertOk()->json();
-        $this->assertSame(2, $r['totalAnak']);
+        $this->assertSame(3, $r['totalAnak'], 'filter belum = belum final: menunggu + ditolak + belum pernah (c, d, e)');
         $this->assertSame(5, $r['verifikasiRt']['total'], 'ringkasan mengikuti kelurahan, bukan filter verif');
+        $this->assertSame(1, $r['verifikasiRt']['menunggu']);
+        $this->assertSame(2, $r['verifikasiRt']['belum'], 'kartu memisahkan menunggu dari belum');
     }
 
     public function test_halaman_analytics_memuat_filter_dan_kartu_verifikasi(): void
