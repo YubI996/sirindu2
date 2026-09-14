@@ -18,6 +18,9 @@ use InvalidArgumentException;
  */
 class VerifikasiRtService
 {
+    /** Catatan reviu untuk usulan yang digantikan usulan baru dari RT yang sama (bukan keputusan peninjau). */
+    public const CATATAN_DIGANTIKAN = 'Digantikan usulan baru';
+
     /** Anak yang sudah dipetakan ke RT ini (tab "Warga RT"). */
     public function wargaQuery(Rt $rt): Builder
     {
@@ -73,7 +76,7 @@ class VerifikasiRtService
                 ->where('reviu', 'diusulkan')
                 ->update([
                     'reviu'         => 'ditolak',
-                    'catatan_reviu' => 'Digantikan usulan baru',
+                    'catatan_reviu' => self::CATATAN_DIGANTIKAN,
                     'ditinjau_at'   => now(),
                 ]);
 
@@ -115,6 +118,20 @@ class VerifikasiRtService
 
             if ($setuju && $v->klaim_id_rt) {
                 $rt = Rt::findOrFail($v->klaim_id_rt);
+
+                // Klaim RT lain atas anak yang sama tak lagi bermakna — tutup agar antrean bersih dan
+                // id_rt tidak bolak-balik bila peninjau menyetujui keduanya.
+                VerifikasiAnak::where('id_anak', $anak->id)
+                    ->where('id', '!=', $v->id)
+                    ->whereNotNull('klaim_id_rt')
+                    ->where('reviu', 'diusulkan')
+                    ->update([
+                        'reviu'         => 'ditolak',
+                        'ditinjau_oleh' => $peninjau->id,
+                        'ditinjau_at'   => now(),
+                        'catatan_reviu' => "Anak sudah dimasukkan ke {$rt->name} lewat klaim RT lain",
+                    ]);
+
                 $update = ['id_rt' => $rt->id];
                 if (!$anak->id_kel) {
                     $update['id_kel'] = $rt->id_kelurahan;
@@ -157,6 +174,8 @@ class VerifikasiRtService
     {
         $terbaru = VerifikasiAnak::where('id_anak', $anak->id)
             ->where('status', '!=', 'bukan_rt_ini')
+            // Usulan yang digantikan RT sendiri bukan keputusan — jangan sampai tampil sebagai "ditolak"
+            ->where(fn ($q) => $q->whereNull('catatan_reviu')->orWhere('catatan_reviu', '!=', self::CATATAN_DIGANTIKAN))
             ->orderByDesc('id')
             ->first();
 

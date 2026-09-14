@@ -47,7 +47,24 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
 .aksi button:hover{ border-color:var(--green); color:var(--green); }
 .aksi button.aktif{ background:var(--green); border-color:var(--green); color:#fff; }
 .rt-empty{ text-align:center; padding:28px; color:var(--faint); }
-.rt-toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; border-radius:10px; font-size:.85rem; display:none; }
+.rt-toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; border-radius:10px; font-size:.85rem; display:none; z-index:10; }
+/* Ponsel: tabel warga jadi kartu per anak — tombol keputusan harus terlihat tanpa geser ke samping
+   (temuan simulasi persona RT: di 360px hanya kolom No/Sumber/NIK/Nama yang terlihat). */
+@media (max-width: 640px){
+  .rt-top{ padding:8px 0 12px; }
+  .rt-who{ width:100%; order:3; }
+  .rt-tab{ padding:8px 8px; font-size:.85rem; }
+  .rt-dt thead{ display:none; }
+  .rt-dt, .rt-dt tbody, .rt-dt tr, .rt-dt td{ display:block; width:100%; }
+  .rt-dt tr{ border-top:6px solid var(--bg); padding:6px 0; }
+  .rt-dt td{ border:0; padding:.25rem .8rem; display:flex; gap:10px; }
+  .rt-dt td::before{ content:attr(data-label); flex:0 0 38%; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); padding-top:.15rem; }
+  .rt-dt td.c-no{ display:none; }
+  .rt-dt td.c-nama{ font-size:1rem; }
+  .rt-dt td.c-aksi{ display:block; padding-top:.5rem; }
+  .rt-dt td.c-aksi::before{ display:none; }
+  .aksi button{ font-size:.85rem; padding:8px 12px; }
+}
 /* Tab "Kemungkinan sama": satu kartu per pasangan, kolom berbeda disorot kuning */
 .pair{ border:1px solid var(--line); border-radius:12px; background:var(--card); margin-bottom:12px; overflow:hidden; }
 .pair__head{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; background:oklch(0.96 0.016 145); font-size:.8rem; color:var(--muted); }
@@ -80,9 +97,9 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
     <button class="rt-tab" data-tab="kandidat">Kemungkinan sama <span class="n" id="n-kandidat">–</span></button>
   </nav>
 
-  <p class="rt-hint" id="hint-warga">Tandai setiap anak: masih berdomisili di RT ini, sudah pindah, meninggal, atau tidak dikenal. Keputusan Anda ditinjau puskesmas.</p>
+  <p class="rt-hint" id="hint-warga">Tandai setiap anak: masih berdomisili di RT ini, sudah pindah, meninggal, atau tidak dikenal. Salah pencet? Pencet tombol yang benar — pilihan terakhir yang dipakai. Keputusan Anda ditinjau puskesmas. Anak yang belum terdaftar sama sekali: laporkan ke puskesmas/posyandu (tidak bisa ditambah dari sini).</p>
   <p class="rt-hint" id="hint-tanpa" style="display:none">Anak di kelurahan ini yang belum diketahui RT-nya. Klik <b>Warga RT saya</b> bila ia tinggal di RT Anda, atau <b>Bukan</b> bila tidak.</p>
-  <p class="rt-hint" id="hint-kandidat" style="display:none">Dua baris data yang mungkin adalah <b>anak yang sama</b> (mis. dari Operasi Timbang dan Capil). Bandingkan lalu putuskan <b>Sama</b> atau <b>Beda</b>. Kolom berlatar kuning = isinya berbeda.</p>
+  <p class="rt-hint" id="hint-kandidat" style="display:none">Dua baris data yang mungkin adalah <b>anak yang sama</b> (mis. dari Operasi Timbang dan Capil). Bandingkan lalu putuskan <b>Sama</b> atau <b>Beda</b>. Kolom berlatar kuning = isinya berbeda. Nama mirip belum tentu orang yang sama — cek tanggal lahir, orang tua, dan alamat.</p>
 
   <div class="rt-tools">
     <input type="search" id="cari" placeholder="Cari nama / NIK / orang tua / alamat…">
@@ -129,10 +146,12 @@ var API_USULKAN = '{{ route('rt.api.usulkan', ['anak' => '__ID__'] + request()->
 var CSRF        = '{{ csrf_token() }}';
 var API_KANDIDAT = '{{ route("rt.api.kandidat", request()->only("rt")) }}';
 var API_PUTUSKAN = '{{ route("rt.api.putuskan", request()->only("rt")) }}';
-var FIELD_LABEL = { sumber_label:'Sumber', nik:'NIK', nama:'Nama', jk:'JK', tgl_lahir:'Tgl lahir', nama_ibu:'Ibu', nama_ayah:'Ayah', no_kk:'No KK', alamat:'Alamat domisili', alamat_ktp:'Alamat KTP', posyandu:'Posyandu' };
+var FIELD_LABEL = { sumber_label:'Sumber', nik:'NIK', nama:'Nama', jk:'JK', tgl_lahir:'Tgl lahir', nama_ibu:'Ibu', nama_ayah:'Ayah', no_kk:'No KK', alamat:'Alamat domisili', alamat_ktp:'Alamat KTP', posyandu:'Posyandu', wilayah:'Kelurahan / RT' };
 var LABEL = { berdomisili:'Berdomisili', pindah:'Pindah', meninggal:'Meninggal', tidak_dikenal:'Tidak dikenal', bukan_rt_ini:'Bukan warga RT ini' };
 var data = { warga:[], tanpa:[], kandidat:[] };
 var tab = 'warga';
+var sudahMuat = false;
+var KOSONG = { warga:'Belum ada anak yang terdaftar di RT ini.', tanpa:'Tidak ada anak tanpa RT di kelurahan ini — semua sudah punya RT.', kandidat:'Tidak ada pasangan yang perlu diputuskan' };
 
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(msg){ var t = document.getElementById('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function(){ t.style.display = 'none'; }, 2600); }
@@ -159,7 +178,7 @@ function renderKandidat(){
   var q = document.getElementById('cari').value.trim().toLowerCase();
   if(q){ rows = rows.filter(function(p){ return [p.a.nama,p.a.nik,p.b.nama,p.b.nik,p.a.nama_ibu,p.b.nama_ibu].join(' ').toLowerCase().indexOf(q) >= 0; }); }
   document.getElementById('n-kandidat').textContent = data.kandidat.length;
-  if(!rows.length){ document.getElementById('tabel').innerHTML = '<div class="rt-empty">Tidak ada pasangan yang perlu diputuskan</div>'; return; }
+  if(!rows.length){ document.getElementById('tabel').innerHTML = '<div class="rt-empty">'+(q ? 'Tidak ada yang cocok dengan pencarian' : KOSONG.kandidat)+'</div>'; return; }
   var h = '';
   rows.forEach(function(p){
     h += '<div class="pair" data-a="'+esc(p.a.id)+'" data-b="'+esc(p.b.id)+'"><div class="pair__head"><span>Alasan: <b>'+esc(p.via_label)+'</b></span><span>'+p.beda.length+' kolom berbeda</span></div><table>';
@@ -176,6 +195,7 @@ function renderKandidat(){
   document.getElementById('tabel').innerHTML = h;
 }
 function render(){
+  if(!sudahMuat){ document.getElementById('tabel').innerHTML = '<div class="rt-empty">Memuat…</div>'; return; }
   if(tab === 'kandidat'){ renderKandidat(); return; }
   var rows = data[tab];
   var q = document.getElementById('cari').value.trim().toLowerCase();
@@ -186,12 +206,16 @@ function render(){
   document.getElementById('n-warga').textContent = data.warga.length;
   document.getElementById('n-tanpa').textContent = data.tanpa.length;
   document.getElementById('n-kandidat').textContent = data.kandidat.length;
-  if(!rows.length){ document.getElementById('tabel').innerHTML = '<div class="rt-empty">Tidak ada data</div>'; return; }
+  if(!rows.length){
+    var adaFilter = q || fs;
+    document.getElementById('tabel').innerHTML = '<div class="rt-empty">'+(adaFilter ? 'Tidak ada yang cocok dengan pencarian/filter' : KOSONG[tab])+'</div>';
+    return;
+  }
   var h = '<table class="rt-dt"><thead><tr><th>No</th><th>Sumber</th><th>NIK</th><th>Nama</th><th>JK</th><th>Tgl Lahir</th><th>Ibu</th><th>Ayah</th><th>No KK</th><th>Alamat Domisili</th><th>Alamat KTP</th><th>Posyandu</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
   rows.forEach(function(r, i){
-    h += '<tr data-row="'+esc(r.id)+'"><td>'+(i+1)+'</td><td>'+badgeSumber(r)+'</td><td>'+esc(r.nik)+'</td><td><b>'+esc(r.nama)+'</b></td><td>'+esc(r.jk)+'</td><td>'+esc(r.tgl_lahir)+'</td>'
-      +'<td>'+esc(r.nama_ibu)+'</td><td>'+esc(r.nama_ayah)+'</td><td>'+esc(r.no_kk)+'</td><td>'+esc(r.alamat || '-')+'</td><td>'+esc(r.alamat_ktp || '-')+'</td><td>'+esc(r.posyandu || '-')+'</td>'
-      +'<td class="c-status">'+statusCell(r)+'</td><td>'+aksiCell(r)+'</td></tr>';
+    h += '<tr data-row="'+esc(r.id)+'"><td class="c-no" data-label="No">'+(i+1)+'</td><td data-label="Sumber">'+badgeSumber(r)+'</td><td data-label="NIK">'+esc(r.nik)+'</td><td class="c-nama" data-label="Nama"><b>'+esc(r.nama)+'</b></td><td data-label="JK">'+esc(r.jk)+'</td><td data-label="Tgl lahir">'+esc(r.tgl_lahir)+'</td>'
+      +'<td data-label="Ibu">'+esc(r.nama_ibu || '-')+'</td><td data-label="Ayah">'+esc(r.nama_ayah || '-')+'</td><td data-label="No KK">'+esc(r.no_kk || '-')+'</td><td data-label="Alamat domisili">'+esc(r.alamat || '-')+'</td><td data-label="Alamat KTP">'+esc(r.alamat_ktp || '-')+'</td><td data-label="Posyandu">'+esc(r.posyandu || '-')+'</td>'
+      +'<td class="c-status" data-label="Status">'+statusCell(r)+'</td><td class="c-aksi" data-label="Aksi">'+aksiCell(r)+'</td></tr>';
   });
   document.getElementById('tabel').innerHTML = h + '</tbody></table>';
 }
@@ -205,8 +229,24 @@ function muat(){
   Promise.all([fetch(API_WARGA, {headers:{Accept:'application/json'}}).then(function(r){ return r.json(); }),
                fetch(API_TANPA, {headers:{Accept:'application/json'}}).then(function(r){ return r.json(); }),
                fetch(API_KANDIDAT, {headers:{Accept:'application/json'}}).then(function(r){ return r.json(); })])
-    .then(function(res){ data.warga = res[0].rows || []; data.tanpa = res[1].rows || []; data.kandidat = res[2].rows || []; setProgres(res[0].progres); render(); })
-    .catch(function(){ document.getElementById('tabel').innerHTML = '<div class="rt-empty" style="color:#b91c1c">Gagal memuat data</div>'; });
+    .then(function(res){
+      if(res.some(function(r){ return r && r.message && !r.rows; })){ throw new Error(res.find(function(r){ return r.message; }).message); }
+      data.warga = res[0].rows || []; data.tanpa = res[1].rows || []; data.kandidat = res[2].rows || []; sudahMuat = true; setProgres(res[0].progres); render();
+    })
+    .catch(function(e){
+      if(/Unauthenticated/i.test(String(e.message))){ sesiHabis(); return; }
+      document.getElementById('tabel').innerHTML = '<div class="rt-empty" style="color:#b91c1c">Gagal memuat data. <a href="javascript:location.reload()">Muat ulang</a></div>';
+    });
+}
+// Sesi habis (halaman dibiarkan lama) → jelaskan, lalu ke halaman masuk; jangan cuma "Unauthenticated".
+function sesiHabis(){
+  document.getElementById('tabel').innerHTML = '<div class="rt-empty" style="color:#b91c1c">Sesi Anda sudah berakhir. Silakan masuk kembali.</div>';
+  toast('Sesi berakhir — mengarahkan ke halaman masuk…');
+  setTimeout(function(){ location.href = '{{ route("login") }}'; }, 1800);
+}
+function tanganiRespons(r){
+  if(r.status === 401 || r.status === 419){ sesiHabis(); throw new Error('sesi berakhir'); }
+  return r.json().then(function(j){ if(!r.ok) throw new Error(j.message || 'HTTP '+r.status); return j; });
 }
 function usulkan(id, status, btn){
   var catatan = null;
@@ -216,7 +256,7 @@ function usulkan(id, status, btn){
     method:'POST', headers:{ 'X-CSRF-TOKEN':CSRF, 'Content-Type':'application/json', Accept:'application/json' },
     body: JSON.stringify({ status:status, catatan:catatan })
   })
-  .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.message || 'HTTP '+r.status); return j; }); })
+  .then(tanganiRespons)
   .then(function(j){
     var list = data[tab];
     var idx = list.findIndex(function(r){ return r.id === id; });
@@ -224,7 +264,7 @@ function usulkan(id, status, btn){
     else if(idx >= 0){ list[idx].verif_status = j.verif_status; list[idx].verif_label = j.verif_label; list[idx].verif_reviu = j.verif_reviu; list[idx].verif_at = j.verif_at; }
     setProgres(j.progres); render(); toast('Tersimpan — menunggu reviu puskesmas');
   })
-  .catch(function(e){ btn.disabled = false; toast('Gagal: '+e.message); });
+  .catch(function(e){ btn.disabled = false; if(e.message !== 'sesi berakhir') toast('Gagal menyimpan: '+e.message); });
 }
 function putuskan(card, keputusan, btn){
   var catatan = window.prompt(keputusan === 'sama' ? 'Catatan (opsional), mis. "NIK lama salah ketik":' : 'Catatan (opsional), mis. "kembar / kakak-adik":', '');
@@ -240,7 +280,7 @@ function putuskan(card, keputusan, btn){
     data.kandidat = data.kandidat.filter(function(p){ return !(p.a.id === idA && p.b.id === idB); });
     render(); toast(keputusan === 'sama' ? 'Ditandai satu anak — menunggu reviu puskesmas' : 'Ditandai beda orang — menunggu reviu puskesmas');
   })
-  .catch(function(e){ btn.disabled = false; toast('Gagal: '+e.message); });
+  .catch(function(e){ btn.disabled = false; if(e.message !== 'sesi berakhir') toast('Gagal menyimpan: '+e.message); });
 }
 document.querySelectorAll('.rt-tab').forEach(function(b){
   b.addEventListener('click', function(){

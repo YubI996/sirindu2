@@ -98,7 +98,7 @@ class TautanIdentitasService
         }
 
         return AnakKandidat::query()
-            ->with(['anakA.posyandu:id,name', 'anakB.posyandu:id,name'])
+            ->with(['anakA.posyandu:id,name', 'anakA.kel:id,name', 'anakA.rt:id,name', 'anakB.posyandu:id,name', 'anakB.kel:id,name', 'anakB.rt:id,name'])
             ->where(fn ($q) => $q->whereIn('id_anak_a', $ids)->orWhereIn('id_anak_b', $ids))
             ->whereNotExists(function ($q) {
                 $q->select(DB::raw(1))->from('anak_tautan as t')

@@ -39,7 +39,17 @@ class VerifikasiRtController extends Controller
     ];
 
     /** Kolom identitas yang dibandingkan berdampingan di tab "Kemungkinan sama". */
-    private const FIELD_BANDING = ['nik', 'nama', 'tgl_lahir', 'jk', 'nama_ibu', 'nama_ayah', 'no_kk', 'alamat', 'alamat_ktp', 'posyandu'];
+    private const FIELD_BANDING = ['nik', 'nama', 'tgl_lahir', 'jk', 'nama_ibu', 'nama_ayah', 'no_kk', 'alamat', 'alamat_ktp', 'posyandu', 'wilayah'];
+
+    /** Pesan validasi berbahasa Indonesia — ditampilkan apa adanya sebagai toast di halaman RT. */
+    private const PESAN_VALIDASI = [
+        'status.required'    => 'Status wajib dipilih.',
+        'status.in'          => 'Status tidak dikenal.',
+        'keputusan.required' => 'Keputusan wajib dipilih.',
+        'keputusan.in'       => 'Keputusan tidak dikenal.',
+        'catatan.max'        => 'Catatan terlalu panjang (maksimal 1000 karakter).',
+        'catatan.string'     => 'Catatan harus berupa teks.',
+    ];
 
     public function __construct(
         private readonly VerifikasiRtService $svc,
@@ -112,7 +122,7 @@ class VerifikasiRtController extends Controller
             'b'         => 'required|string',
             'keputusan' => ['required', Rule::in(AnakTautan::KEPUTUSAN)],
             'catatan'   => 'nullable|string|max:1000',
-        ]);
+        ], self::PESAN_VALIDASI);
         $a = Anak::findByHashIdOrFail($data['a']);
         $b = Anak::findByHashIdOrFail($data['b']);
 
@@ -133,7 +143,7 @@ class VerifikasiRtController extends Controller
         $data = $request->validate([
             'status'  => ['required', Rule::in(VerifikasiAnak::STATUS)],
             'catatan' => 'nullable|string|max:1000',
-        ]);
+        ], self::PESAN_VALIDASI);
 
         try {
             $v = $this->svc->usulkan($anak, $rt, $request->user(), $data['status'], $data['catatan'] ?? null);
@@ -171,7 +181,7 @@ class VerifikasiRtController extends Controller
 
     private function rows(Builder $q): array
     {
-        return $q->with('posyandu:id,name')
+        return $q->with(['posyandu:id,name', 'kel:id,name', 'rt:id,name'])
             ->orderBy('nama')
             ->get()
             ->map(fn (Anak $a) => $this->row($a))
@@ -196,6 +206,8 @@ class VerifikasiRtController extends Controller
                 'alamat'       => $a->alamat,
                 'alamat_ktp'   => $a->alamat_ktp,
                 'posyandu'     => $a->posyandu?->name,
+                // Kelurahan / RT — penting di tab "Kemungkinan sama" karena pasangan boleh dari wilayah lain
+                'wilayah'      => ($a->kel?->name ?? 'Kel. ?').' / '.($a->rt?->name ?? 'RT belum diketahui'),
                 'verif_status' => $a->verif_rt_status,
                 'verif_label'  => $a->verif_rt_status ? VerifikasiAnak::LABEL_STATUS[$a->verif_rt_status] : null,
                 'verif_reviu'  => $a->verif_rt_reviu,
