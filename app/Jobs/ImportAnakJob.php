@@ -37,6 +37,8 @@ class ImportAnakJob implements ShouldQueue
             $import  = new AnakImport($this->importLog->user_id);
             app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
             app(PrioritasGiziService::class)->refreshAll();
+            // Data anak berubah → segarkan kandidat tautan identitas untuk halaman RT (spec verifikasi RT §5)
+            app(\App\Services\TautanIdentitasService::class)->pindai();
             $results = $import->getResults();
 
             $this->importLog->update([
