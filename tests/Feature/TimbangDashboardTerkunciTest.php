@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Anak;
 use App\Models\DataAnak;
+use App\Models\Rt;
 use App\Models\User;
+use App\Services\VerifikasiRtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -127,5 +129,34 @@ class TimbangDashboardTerkunciTest extends TestCase
 
         $this->assertSame($ringSebelum['total_kunjungan'], $ringSesudah['total_kunjungan']);
         $this->assertSame($ringSebelum['total_anak'], $ringSesudah['total_anak']);
+    }
+
+    /** Spec verifikasi RT §1.1: tag pindah/meninggal yang disetujui TIDAK mengubah angka dasbor OT. */
+    public function test_verifikasi_rt_tidak_mengubah_angka_dasbor_ot(): void
+    {
+        $super = User::factory()->create(['type' => 0]);
+        $rt    = Rt::factory()->create();
+        $rtUser = User::factory()->create(['type' => 2, 'role' => 'rt', 'id_rt' => $rt->id, 'id_kel' => $rt->id_kelurahan]);
+        $a = $this->anakOt('3201000000005101', -2.5, ['id_rt' => $rt->id, 'id_kel' => $rt->id_kelurahan]);
+        $b = $this->anakOt('3201000000005102', -2.5, ['id_rt' => $rt->id, 'id_kel' => $rt->id_kelurahan]);
+
+        $sebelum = [
+            $this->actingAs($super)->getJson(route('admin.timbang.ringkasan'))->json(),
+            $this->actingAs($super)->getJson(route('admin.timbang.gizi'))->json(),
+            count($this->actingAs($super)->getJson(route('admin.timbang.daftar', ['kategori' => 'stunting']))->json('rows')),
+        ];
+
+        $svc = app(VerifikasiRtService::class);
+        $svc->tinjau($svc->usulkan($a, $rt, $rtUser, 'pindah'), $super, true);
+        $svc->tinjau($svc->usulkan($b, $rt, $rtUser, 'meninggal'), $super, true);
+
+        $sesudah = [
+            $this->actingAs($super)->getJson(route('admin.timbang.ringkasan'))->json(),
+            $this->actingAs($super)->getJson(route('admin.timbang.gizi'))->json(),
+            count($this->actingAs($super)->getJson(route('admin.timbang.daftar', ['kategori' => 'stunting']))->json('rows')),
+        ];
+
+        $this->assertSame($sebelum, $sesudah);
+        $this->assertSame(2, $sesudah[2]);
     }
 }
