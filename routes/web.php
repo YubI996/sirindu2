@@ -40,7 +40,10 @@ Peran RT — verifikasi domisili warga (spec verifikasi RT §4)
 --------------------------------------------
 --------------------------------------------*/
 Route::middleware(['auth', 'module.role:rt'])->prefix('rt')->name('rt.')->group(function () {
-    Route::get('verifikasi', fn () => 'verifikasi rt')->name('verifikasi'); // diganti controller di Task 5
+    Route::get('verifikasi',   [App\Http\Controllers\Rt\VerifikasiRtController::class, 'index'])->name('verifikasi');
+    Route::get('api/warga',    [App\Http\Controllers\Rt\VerifikasiRtController::class, 'warga'])->name('api.warga');
+    Route::get('api/tanpa-rt', [App\Http\Controllers\Rt\VerifikasiRtController::class, 'tanpaRt'])->name('api.tanpaRt');
+    Route::post('api/anak/{anak}/verifikasi', [App\Http\Controllers\Rt\VerifikasiRtController::class, 'usulkan'])->name('api.usulkan');
 });
 
 /*------------------------------------------

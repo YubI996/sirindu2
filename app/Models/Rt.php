@@ -10,4 +10,9 @@ class Rt extends Model
     use HasFactory;
     protected $table = 'rt';
     protected $fillable = ['id_kelurahan', 'id_posyandu', 'name'];
+
+    public function kelurahan()
+    {
+        return $this->belongsTo(Kelurahan::class, 'id_kelurahan');
+    }
 }
