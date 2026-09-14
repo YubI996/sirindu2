@@ -167,6 +167,58 @@ class VerifikasiRtService
         ]);
     }
 
+    // =========================================================================
+    // Dasbor Gizi (spec §7)
+    // =========================================================================
+
+    /** Nilai filter "Status verifikasi RT" di Dasbor Gizi. */
+    public const FILTER_VERIF = ['berdomisili', 'pindah', 'meninggal', 'tidak_dikenal', 'belum'];
+
+    /**
+     * Terapkan filter status verifikasi ke kueri anak. Kosong / tak dikenal = tanpa filter (Semua).
+     * `belum` = belum pernah diusulkan, masih menunggu reviu, atau ditolak — pokoknya belum final.
+     */
+    public function terapkanFilterVerif($query, ?string $verif, string $tabel = 'anak'): void
+    {
+        if (!$verif || !in_array($verif, self::FILTER_VERIF, true)) {
+            return;
+        }
+        if ($verif === 'belum') {
+            $query->where(fn ($w) => $w->whereNull("$tabel.verif_rt_reviu")->orWhere("$tabel.verif_rt_reviu", '!=', 'disetujui'));
+            return;
+        }
+        $query->where("$tabel.verif_rt_status", $verif)->where("$tabel.verif_rt_reviu", 'disetujui');
+    }
+
+    /** @return array{total:int, berdomisili:int, pindah:int, meninggal:int, tidak_dikenal:int, menunggu:int, belum:int} */
+    public function ringkasanVerifikasi(?int $idKel = null): array
+    {
+        $q = DB::table('anak');
+        if ($idKel) {
+            $q->where('id_kel', $idKel);
+        }
+        $r = $q->selectRaw("
+            COUNT(*) AS total,
+            SUM(verif_rt_status = 'berdomisili'   AND verif_rt_reviu = 'disetujui') AS berdomisili,
+            SUM(verif_rt_status = 'pindah'        AND verif_rt_reviu = 'disetujui') AS pindah,
+            SUM(verif_rt_status = 'meninggal'     AND verif_rt_reviu = 'disetujui') AS meninggal,
+            SUM(verif_rt_status = 'tidak_dikenal' AND verif_rt_reviu = 'disetujui') AS tidak_dikenal,
+            SUM(verif_rt_reviu = 'diusulkan') AS menunggu
+        ")->first();
+
+        $out = [
+            'total'         => (int) $r->total,
+            'berdomisili'   => (int) $r->berdomisili,
+            'pindah'        => (int) $r->pindah,
+            'meninggal'     => (int) $r->meninggal,
+            'tidak_dikenal' => (int) $r->tidak_dikenal,
+            'menunggu'      => (int) $r->menunggu,
+        ];
+        $out['belum'] = $out['total'] - $out['berdomisili'] - $out['pindah'] - $out['meninggal'] - $out['tidak_dikenal'] - $out['menunggu'];
+
+        return $out;
+    }
+
     /** @return array{total:int, diverifikasi:int} */
     public function progres(Rt $rt): array
     {
