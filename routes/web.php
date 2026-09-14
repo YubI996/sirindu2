@@ -98,6 +98,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     // Antrean reviu usulan verifikasi RT (spec verifikasi RT §6) — faskes: kelurahannya; superadmin: semua
     Route::get('verifikasi-rt', [App\Http\Controllers\VerifikasiRtReviuController::class, 'index'])->name('admin.verifikasiRt.index');
     Route::post('verifikasi-rt/{verifikasi}/tinjau', [App\Http\Controllers\VerifikasiRtReviuController::class, 'tinjau'])->name('admin.verifikasiRt.tinjau');
+    Route::post('verifikasi-rt/tautan/{tautan}/tinjau', [App\Http\Controllers\VerifikasiRtReviuController::class, 'tinjauTautan'])->name('admin.verifikasiRt.tinjauTautan');
+    Route::post('verifikasi-rt/pindai', [App\Http\Controllers\VerifikasiRtReviuController::class, 'pindai'])->name('admin.verifikasiRt.pindai');
     //Anak Route List
     Route::get('data-dasar-anak', [App\Http\Controllers\AdminController::class, 'anak'])->name('admin.anak');
     Route::get('get-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'getAnak'])->name('admin.getAnak');

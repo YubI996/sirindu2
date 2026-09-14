@@ -20,6 +20,12 @@
 @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
 @if(session('error'))   <div class="alert alert-danger">{{ session('error') }}</div> @endif
 
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link {{ $tab === 'domisili' ? 'active' : '' }}" href="{{ route('admin.verifikasiRt.index') }}">Status domisili <span class="badge badge-light">{{ $antrean->total() }}</span></a></li>
+    <li class="nav-item"><a class="nav-link {{ $tab === 'tautan' ? 'active' : '' }}" href="{{ route('admin.verifikasiRt.index', ['tab' => 'tautan']) }}">Tautan identitas <span class="badge badge-light">{{ $antreanTautan->total() }}</span></a></li>
+</ul>
+
+@if($tab === 'domisili')
 <div class="card-box mb-3">
     <form method="GET" class="form-inline">
         <select name="rt" class="form-control mr-2">
@@ -79,4 +85,50 @@
     </div>
     {{ $antrean->onEachSide(1)->links('pagination::bootstrap-4') }}
 </div>
+@else
+{{-- Tab Tautan identitas: keputusan RT "sama"/"beda" atas kandidat hasil pindai (spec §6.1) --}}
+<div class="card-box mb-3">
+    <div class="d-flex flex-wrap align-items-center">
+        <span class="text-muted mr-3">Kandidat hasil pindai: <b>{{ number_format($ringkasanKandidat['jumlah']) }}</b>
+            @if($ringkasanKandidat['dipindai_at']) · dipindai {{ \Carbon\Carbon::parse($ringkasanKandidat['dipindai_at'])->format('d/m/Y H:i') }} @endif</span>
+        <span class="text-muted mr-3"><b>{{ $menungguGabung }} tautan menunggu penggabungan</b></span>
+        @if(auth()->user()->isSuperAdmin())
+        <form method="POST" action="{{ route('admin.verifikasiRt.pindai') }}" class="ml-auto">@csrf
+            <button class="btn btn-outline-primary btn-sm"><i class="fa fa-refresh mr-1"></i> Pindai ulang</button>
+        </form>
+        @endif
+    </div>
+</div>
+
+<div class="card-box">
+    @forelse($antreanTautan as $t)
+    <div class="border rounded mb-3">
+        <div class="px-3 py-2 bg-light d-flex justify-content-between flex-wrap">
+            <span><b>{{ $t->keputusan === 'sama' ? 'SAMA — satu anak' : 'BEDA orang' }}</b> · alasan pindai: {{ $t->via }} · skor {{ $t->skor }}</span>
+            <small class="text-muted">{{ $t->pengusul?->name }} ({{ $t->pengusul?->rt?->name }}) · {{ $t->diusulkan_at?->format('d/m/Y H:i') }}{{ $t->catatan ? ' · "'.$t->catatan.'"' : '' }}</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th style="width:140px"></th><th>Baris A ({{ $t->anakA?->sumber }})</th><th>Baris B ({{ $t->anakB?->sumber }})</th></tr></thead>
+                <tbody>
+                @foreach(['nik' => 'NIK', 'nama' => 'Nama', 'tgl_lahir' => 'Tgl lahir', 'nama_ibu' => 'Ibu', 'nama_ayah' => 'Ayah', 'no_kk' => 'No KK', 'alamat' => 'Alamat', 'alamat_ktp' => 'Alamat KTP'] as $f => $labelKolom)
+                    @php $beda = trim((string) $t->anakA?->$f) !== trim((string) $t->anakB?->$f); @endphp
+                    <tr class="{{ $beda ? 'table-warning' : '' }}"><th>{{ $labelKolom }}</th><td>{{ $t->anakA?->$f ?: '-' }}</td><td>{{ $t->anakB?->$f ?: '-' }}</td></tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        <form method="POST" action="{{ route('admin.verifikasiRt.tinjauTautan', $t) }}" class="form-inline px-3 py-2">
+            @csrf
+            <input type="text" name="catatan" class="form-control form-control-sm mr-2" placeholder="Catatan reviu" maxlength="1000" style="min-width:260px">
+            <button class="btn btn-sm btn-success mr-1" name="setuju" value="1">Setujui</button>
+            <button class="btn btn-sm btn-outline-danger" name="setuju" value="0">Tolak</button>
+        </form>
+    </div>
+    @empty
+    <div class="text-center text-muted py-4">Tidak ada tautan yang menunggu.</div>
+    @endforelse
+    {{ $antreanTautan->onEachSide(1)->links('pagination::bootstrap-4') }}
+</div>
+@endif
 @endsection
