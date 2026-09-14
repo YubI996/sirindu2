@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Anak;
+use App\Models\AnakTautan;
 use App\Models\DataAnak;
 use App\Models\Rt;
 use App\Models\User;
+use App\Services\IdentitasMergeService;
 use App\Services\VerifikasiRtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -158,5 +160,32 @@ class TimbangDashboardTerkunciTest extends TestCase
 
         $this->assertSame($sebelum, $sesudah);
         $this->assertSame(2, $sesudah[2]);
+    }
+
+    /** Spec §6.3: merge OT×Capil mempertahankan baris OT → angka dasbor OT tidak berubah. */
+    public function test_merge_ot_dengan_capil_tidak_mengubah_angka_dasbor_ot(): void
+    {
+        $super = User::factory()->create(['type' => 0]);
+        $ot = $this->anakOt('3201000000005201', -2.5);
+        $cap = Anak::create(['nama' => 'Kembaran Capil', 'nik' => '3201000000005202', 'jk' => 1, 'tempat_lahir' => 'Bontang',
+            'tgl_lahir' => $ot->tgl_lahir, 'status' => 1, 'sumber' => 'capil']);
+        [$a, $b] = AnakTautan::urut($ot->id, $cap->id);
+        $t = AnakTautan::create(['id_anak_a' => $a, 'id_anak_b' => $b, 'keputusan' => 'sama', 'status' => 'disetujui',
+            'diusulkan_oleh' => $super->id, 'diusulkan_at' => now()]);
+
+        $sebelum = [
+            $this->actingAs($super)->getJson(route('admin.timbang.ringkasan'))->json(),
+            $this->actingAs($super)->getJson(route('admin.timbang.gizi'))->json(),
+        ];
+
+        app(IdentitasMergeService::class)->gabung($t, $super, ['nama' => $ot->id < $cap->id ? 'b' : 'a']);
+
+        $sesudah = [
+            $this->actingAs($super)->getJson(route('admin.timbang.ringkasan'))->json(),
+            $this->actingAs($super)->getJson(route('admin.timbang.gizi'))->json(),
+        ];
+        $this->assertSame($sebelum, $sesudah);
+        $this->assertSame('operasi_timbang', $ot->fresh()->sumber);
+        $this->assertSame('Kembaran Capil', $ot->fresh()->nama);
     }
 }

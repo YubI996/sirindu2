@@ -80,4 +80,113 @@ class IdentitasMergeService
             'boleh_pilih_baris'   => !$kunci,
         ];
     }
+
+    /**
+     * Eksekusi penggabungan dalam satu transaksi.
+     * $pilihan = ['nik' => 'a'|'b', …] (kolom di luar KOLOM diabaikan, yang tak disebut memakai default);
+     * $dipertahankan 'a'|'b' hanya dihormati bila boleh_pilih_baris (tanpa baris OT).
+     */
+    public function gabung(AnakTautan $t, User $oleh, array $pilihan, ?string $dipertahankan = null): AnakMergeLog
+    {
+        $p = $this->pratinjau($t);
+        $sisi = $p['dipertahankan'];
+        if ($p['boleh_pilih_baris'] && in_array($dipertahankan, ['a', 'b'], true)) {
+            $sisi = $dipertahankan;
+        }
+        /** @var Anak $keep */
+        $keep = $p[$sisi];
+        $sisiDrop = $sisi === 'a' ? 'b' : 'a';
+        /** @var Anak $drop */
+        $drop = $p[$sisiDrop];
+
+        $final = $p['default'];
+        foreach ($pilihan as $k => $v) {
+            if (in_array($k, self::KOLOM, true) && in_array($v, ['a', 'b'], true)) {
+                $final[$k] = $v;
+            }
+        }
+
+        return DB::transaction(function () use ($t, $oleh, $keep, $drop, $sisiDrop, $final) {
+            $dipindah = [
+                'data_anak'       => DB::table('data_anak')->where('id_anak', $drop->id)->pluck('id')->all(),
+                'imunisasi'       => DB::table('imunisasi')->where('id_anak', $drop->id)->pluck('id')->all(),
+                'intervensi_gizi' => DB::table('intervensi_gizi')->where('id_anak', $drop->id)->pluck('id')->all(),
+                'verifikasi_anak' => DB::table('verifikasi_anak')->where('id_anak', $drop->id)->pluck('id')->all(),
+            ];
+            $prioritasDrop = (array) DB::table('prioritas_gizi')->where('id_anak', $drop->id)->first();
+            $tautanLain = AnakTautan::where('id', '!=', $t->id)
+                ->where(fn ($q) => $q->where('id_anak_a', $drop->id)->orWhere('id_anak_b', $drop->id))
+                ->whereIn('status', ['diusulkan', 'disetujui'])
+                ->get(['id', 'status', 'catatan_reviu'])
+                ->map(fn ($x) => ['id' => $x->id, 'status_lama' => $x->status, 'catatan_reviu_lama' => $x->catatan_reviu])
+                ->all();
+
+            $nilaiLama = [];
+            foreach ([...self::KOLOM, 'sumber_gabungan', 'pj_nama', 'pj_updated_by', 'pj_updated_at'] as $k) {
+                $nilaiLama[$k] = $keep->getAttribute($k);
+            }
+
+            $log = AnakMergeLog::create([
+                'id_dipertahankan' => $keep->id,
+                'id_dihapus'       => $drop->id,
+                'id_tautan'        => $t->id,
+                'oleh'             => $oleh->id,
+                'snapshot'         => [
+                    'anak_dihapus'             => $drop->getAttributes(),
+                    'nilai_lama_dipertahankan' => $nilaiLama,
+                    'pilihan'                  => $final,
+                    'dipindah'                 => $dipindah,
+                    'prioritas_dihapus'        => $prioritasDrop ?: null,
+                    'tautan_lain'              => $tautanLain,
+                    'id_anak_dipertahankan_saat_merge' => [
+                        'data_anak' => DB::table('data_anak')->where('id_anak', $keep->id)->pluck('id')->all(),
+                        'imunisasi' => DB::table('imunisasi')->where('id_anak', $keep->id)->pluck('id')->all(),
+                    ],
+                ],
+            ]);
+
+            // 1) Pindahkan SEMUA data anak sebelum menghapus (FK cascade akan menghapusnya kalau tidak).
+            foreach (['data_anak', 'imunisasi', 'intervensi_gizi', 'verifikasi_anak'] as $tabel) {
+                DB::table($tabel)->where('id_anak', $drop->id)->update(['id_anak' => $keep->id]);
+            }
+            DB::table('prioritas_gizi')->where('id_anak', $drop->id)->delete();
+
+            // 2) Tautan lain yang memuat baris yang dihapus tak lagi bermakna.
+            foreach ($tautanLain as $x) {
+                AnakTautan::where('id', $x['id'])->update([
+                    'status'        => 'ditolak',
+                    'catatan_reviu' => "Baris digabung ke anak #{$keep->id}",
+                ]);
+            }
+
+            // 3) Hapus baris yang dilebur — melepas NIK dari unique key; anak_kandidat ikut cascade.
+            $drop->delete();
+
+            // 4) Timpa kolom terpilih; sumber milik yang dipertahankan TIDAK berubah (OT tetap OT).
+            $update = [];
+            foreach ($final as $k => $sisiPilih) {
+                if ($sisiPilih === $sisiDrop) {
+                    $update[$k] = $drop->getAttribute($k);
+                }
+            }
+            $update['sumber_gabungan'] = array_values(array_unique(array_filter(array_merge(
+                [$keep->sumber, $drop->sumber],
+                (array) ($keep->sumber_gabungan ?? []),
+                (array) ($drop->sumber_gabungan ?? []),
+            ))));
+            if (!$keep->pj_nama && $drop->pj_nama) {
+                $update['pj_nama']       = $drop->pj_nama;
+                $update['pj_updated_by'] = $drop->pj_updated_by;
+                $update['pj_updated_at'] = $drop->pj_updated_at;
+            }
+            $keep->update($update);
+
+            $t->update(['status' => 'digabung']);
+            $this->prioritas->refreshAnak($keep->id);
+
+            Log::info("Merge anak #{$drop->id} → #{$keep->id} (log #{$log->id}) oleh user #{$oleh->id}");
+
+            return $log;
+        });
+    }
 }
