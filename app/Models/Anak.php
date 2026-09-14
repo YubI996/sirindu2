@@ -14,6 +14,7 @@ class Anak extends Model
     protected $table = 'anak';
     protected $guarded = [];
     protected $appends = ['hashid'];
+    protected $casts = ['sumber_gabungan' => 'array']; // daftar sumber yang pernah dilebur (verifikasi RT §3.2)
 
     public function kec()
     {
