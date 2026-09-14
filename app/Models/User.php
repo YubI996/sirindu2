@@ -34,6 +34,7 @@ class User extends Authenticatable
         'id_puskesmas',
         'id_rs',
         'id_posyandu',
+        'id_rt',       // peran rt: RT yang diverifikasi (spec verifikasi RT)
         'beranda_quicklinks', // Paket F: key quicklink beranda yang dipilih user (JSON)
     ];
 
@@ -61,6 +62,23 @@ class User extends Authenticatable
     public function puskesmas()
     {
         return $this->belongsTo(Puskesmas::class, 'id_puskesmas');
+    }
+
+    public function rt()
+    {
+        return $this->belongsTo(Rt::class, 'id_rt');
+    }
+
+    /** Peran RT: memverifikasi domisili anak di RT-nya (spec verifikasi RT §2). */
+    public function isRt(): bool
+    {
+        return $this->role === 'rt';
+    }
+
+    /** Nama route beranda sesuai peran — dipakai login, guest-redirect, dan tombol landing. */
+    public function berandaRoute(): string
+    {
+        return $this->isRt() ? 'rt.verifikasi' : 'admin.home';
     }
 
     public function rumahSakit()
