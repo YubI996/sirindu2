@@ -91,7 +91,7 @@
     <div class="d-flex flex-wrap align-items-center">
         <span class="text-muted mr-3">Kandidat hasil pindai: <b>{{ number_format($ringkasanKandidat['jumlah']) }}</b>
             @if($ringkasanKandidat['dipindai_at']) · dipindai {{ \Carbon\Carbon::parse($ringkasanKandidat['dipindai_at'])->format('d/m/Y H:i') }} @endif</span>
-        <span class="text-muted mr-3"><b>{{ $menungguGabung }} tautan menunggu penggabungan</b></span>
+        <a class="mr-3" href="{{ route('admin.gabung.index') }}"><b>{{ $menungguGabung }} tautan menunggu penggabungan</b></a>
         @if(auth()->user()->isSuperAdmin())
         <form method="POST" action="{{ route('admin.verifikasiRt.pindai') }}" class="ml-auto">@csrf
             <button class="btn btn-outline-primary btn-sm"><i class="fa fa-refresh mr-1"></i> Pindai ulang</button>
