@@ -92,6 +92,10 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::post('intervensi-gizi', [App\Http\Controllers\IntervensiGiziController::class, 'store'])->name('admin.intervensi.store');
     Route::put('intervensi-gizi/{intervensi}', [App\Http\Controllers\IntervensiGiziController::class, 'update'])->name('admin.intervensi.update');
     Route::delete('intervensi-gizi/{intervensi}', [App\Http\Controllers\IntervensiGiziController::class, 'destroy'])->name('admin.intervensi.destroy');
+
+    // Antrean reviu usulan verifikasi RT (spec verifikasi RT §6) — faskes: kelurahannya; superadmin: semua
+    Route::get('verifikasi-rt', [App\Http\Controllers\VerifikasiRtReviuController::class, 'index'])->name('admin.verifikasiRt.index');
+    Route::post('verifikasi-rt/{verifikasi}/tinjau', [App\Http\Controllers\VerifikasiRtReviuController::class, 'tinjau'])->name('admin.verifikasiRt.tinjau');
     //Anak Route List
     Route::get('data-dasar-anak', [App\Http\Controllers\AdminController::class, 'anak'])->name('admin.anak');
     Route::get('get-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'getAnak'])->name('admin.getAnak');
