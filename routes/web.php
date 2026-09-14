@@ -44,6 +44,8 @@ Route::middleware(['auth', 'module.role:rt'])->prefix('rt')->name('rt.')->group(
     Route::get('api/warga',    [App\Http\Controllers\Rt\VerifikasiRtController::class, 'warga'])->name('api.warga');
     Route::get('api/tanpa-rt', [App\Http\Controllers\Rt\VerifikasiRtController::class, 'tanpaRt'])->name('api.tanpaRt');
     Route::post('api/anak/{anak}/verifikasi', [App\Http\Controllers\Rt\VerifikasiRtController::class, 'usulkan'])->name('api.usulkan');
+    Route::get('api/kandidat', [App\Http\Controllers\Rt\VerifikasiRtController::class, 'kandidat'])->name('api.kandidat');
+    Route::post('api/tautan',  [App\Http\Controllers\Rt\VerifikasiRtController::class, 'putuskan'])->name('api.putuskan');
 });
 
 /*------------------------------------------
