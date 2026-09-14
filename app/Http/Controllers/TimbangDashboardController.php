@@ -18,7 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class TimbangDashboardController extends Controller
 {
     /** Kategori modal yang menampilkan & mengedit kolom Penanggung Jawab (juga di export). */
-    public const KATEGORI_PJ = ['stunting', 'gizi_buruk', 'underweight'];
+    public const KATEGORI_PJ = ['stunting', 'wasting', 'underweight']; // koreksi klien 14 Sep 2026: wasting, bukan gizi buruk
 
     public function __construct(private StatusGiziService $statusGizi)
     {

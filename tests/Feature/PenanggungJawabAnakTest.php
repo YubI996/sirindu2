@@ -13,8 +13,8 @@ use Tests\TestCase;
 
 /**
  * Penanggung jawab (PJ) per anak bermasalah gizi — diisi langsung dari modal
- * daftar anak di dasbor Operasi Timbang (kategori stunting / gizi buruk /
- * underweight). Satu PJ per anak, apa pun kategorinya.
+ * daftar anak di dasbor Operasi Timbang (kategori stunting / wasting /
+ * underweight — koreksi klien 14 Sep 2026). Satu PJ per anak, apa pun kategorinya.
  */
 class PenanggungJawabAnakTest extends TestCase
 {
@@ -200,13 +200,13 @@ class PenanggungJawabAnakTest extends TestCase
         );
     }
 
-    /** Blade dasbor: kolom PJ hanya untuk tiga kategori & memakai endpoint PJ. */
+    /** Blade dasbor: kolom PJ hanya untuk stunting, wasting, underweight (koreksi klien) & memakai endpoint PJ. */
     public function test_dasbor_memuat_kolom_pj_untuk_tiga_kategori(): void
     {
         $src = file_get_contents(resource_path('views/admin/dashboard/timbang.blade.php'));
 
         $this->assertMatchesRegularExpression(
-            "/PJ_KATEGORI\s*=\s*\[\s*'stunting'\s*,\s*'gizi_buruk'\s*,\s*'underweight'\s*\]/",
+            "/PJ_KATEGORI\s*=\s*\[\s*'stunting'\s*,\s*'wasting'\s*,\s*'underweight'\s*\]/",
             $src
         );
         $this->assertStringContainsString("admin.timbang.pj", $src);

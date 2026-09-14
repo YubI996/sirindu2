@@ -553,7 +553,7 @@ var API_DAFTAR_EXPORT = '{{ route("admin.timbang.daftar.export") }}';
 var API_PJ = '{{ route("admin.timbang.pj", ["anak" => "__ID__"]) }}';
 var CSRF_TOKEN = '{{ csrf_token() }}';
 // Kategori yang menampilkan kolom Penanggung Jawab (sinkron dengan KATEGORI_PJ di controller).
-var PJ_KATEGORI = ['stunting', 'gizi_buruk', 'underweight'];
+var PJ_KATEGORI = ['stunting', 'wasting', 'underweight'];
 var URL_KEL_BY_KEC = '{{ url("admin/get-kel-dasar-anak") }}';
 var URL_RT_BY_KEL  = '{{ url("admin/get-rt-by-kel-anak") }}';
 var URL_POS_BY_KEL = '{{ url("admin/get-posyandu-by-kel-anak") }}';

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Penanggung jawab (PJ) per anak bermasalah gizi — diisi dari modal daftar
- * anak di dasbor Operasi Timbang (stunting / gizi buruk / underweight).
+ * anak di dasbor Operasi Timbang (stunting / wasting / underweight).
  * Satu PJ per anak, apa pun kategorinya; nama bebas (kader/bidan/petugas).
  */
 return new class extends Migration
