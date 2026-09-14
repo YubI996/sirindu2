@@ -8,6 +8,7 @@ use App\Models\AnakTautan;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 /**
@@ -187,6 +188,73 @@ class IdentitasMergeService
             Log::info("Merge anak #{$drop->id} → #{$keep->id} (log #{$log->id}) oleh user #{$oleh->id}");
 
             return $log;
+        });
+    }
+
+    /** Pulihkan penggabungan dari snapshot. Ditolak bila ada data baru yang tak bisa dipetakan. */
+    public function batalkan(AnakMergeLog $log, User $oleh): Anak
+    {
+        if ($log->dibatalkan_at) {
+            throw new InvalidArgumentException('Penggabungan ini sudah dibatalkan.');
+        }
+        $keep = Anak::find($log->id_dipertahankan);
+        if (!$keep) {
+            throw new InvalidArgumentException('Baris yang dipertahankan sudah tidak ada.');
+        }
+        $s = $log->snapshot;
+        $anakLama = $s['anak_dihapus'];
+
+        if (Anak::where('nik', $anakLama['nik'])->where('id', '!=', $keep->id)->exists()) {
+            throw new InvalidArgumentException("NIK {$anakLama['nik']} kini dipakai baris lain — tidak bisa dipulihkan otomatis.");
+        }
+
+        // Baris data anak yang muncul SETELAH merge tak bisa dipetakan ke salah satu pihak → tangani manual.
+        foreach (['data_anak', 'imunisasi'] as $tabel) {
+            $dikenal = array_merge($s['dipindah'][$tabel] ?? [], $s['id_anak_dipertahankan_saat_merge'][$tabel] ?? []);
+            $baru = DB::table($tabel)->where('id_anak', $keep->id)->whereNotIn('id', $dikenal)->count();
+            if ($baru > 0) {
+                throw new InvalidArgumentException("Ada {$baru} baris {$tabel} baru sejak penggabungan yang tak bisa dipetakan ke salah satu anak — tangani manual.");
+            }
+        }
+
+        return DB::transaction(function () use ($log, $oleh, $keep, $s, $anakLama) {
+            // 1) Pulihkan nilai lama baris yang dipertahankan DULU — melepas NIK/KK yang tadinya
+            //    diambil dari baris yang dihapus, supaya insert ulang di bawah tak bentrok unique key.
+            $keep->update($s['nilai_lama_dipertahankan']);
+
+            // 2) Hidupkan kembali baris lama dengan id aslinya (kolom yang sudah tak ada di skema diabaikan).
+            $kolomValid = array_flip(Schema::getColumnListing('anak'));
+            DB::table('anak')->insert(array_intersect_key($anakLama, $kolomValid));
+
+            // 3) Kembalikan data anak yang dipindah.
+            foreach ($s['dipindah'] as $tabel => $ids) {
+                if (!empty($ids)) {
+                    DB::table($tabel)->whereIn('id', $ids)->update(['id_anak' => $anakLama['id']]);
+                }
+            }
+            if (!empty($s['prioritas_dihapus'])) {
+                $row = $s['prioritas_dihapus'];
+                unset($row['id']);
+                DB::table('prioritas_gizi')->where('id_anak', $anakLama['id'])->delete();
+                DB::table('prioritas_gizi')->insert($row);
+            }
+
+            // 4) Tautan lain & tautan utama.
+            foreach ($s['tautan_lain'] ?? [] as $x) {
+                AnakTautan::where('id', $x['id'])->update(['status' => $x['status_lama'], 'catatan_reviu' => $x['catatan_reviu_lama']]);
+            }
+            if ($log->id_tautan) {
+                AnakTautan::where('id', $log->id_tautan)->update(['status' => 'disetujui']);
+            }
+
+            $log->update(['dibatalkan_oleh' => $oleh->id, 'dibatalkan_at' => now()]);
+
+            $this->prioritas->refreshAnak($keep->id);
+            $this->prioritas->refreshAnak((int) $anakLama['id']);
+
+            Log::info("Batal merge log #{$log->id}: anak #{$anakLama['id']} dipulihkan oleh user #{$oleh->id}");
+
+            return Anak::findOrFail($anakLama['id']);
         });
     }
 }
