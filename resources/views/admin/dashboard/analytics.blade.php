@@ -152,13 +152,13 @@ Analytics
     </div>
     <div class="card-body">
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-md">
                 <div class="form-group">
                     <label class="font-weight-bold" style="font-size: 0.8125rem;">Bulan</label>
                     <input type="month" id="filterBulan" class="form-control filter-input">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md">
                 <div class="form-group">
                     <label class="font-weight-bold" style="font-size: 0.8125rem;">Kelurahan</label>
                     <select id="filterKelurahan" class="form-control filter-input">
@@ -169,7 +169,7 @@ Analytics
                     </select>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md">
                 <div class="form-group">
                     <label class="font-weight-bold" style="font-size: 0.8125rem;">Jenis Antigen</label>
                     <select id="filterAntigen" class="form-control filter-input">
@@ -180,7 +180,7 @@ Analytics
                     </select>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md">
                 <div class="form-group">
                     <label class="font-weight-bold" style="font-size: 0.8125rem;">Status Imunisasi</label>
                     <select id="filterStatus" class="form-control filter-input">
@@ -188,6 +188,20 @@ Analytics
                         <option value="belum">Belum</option>
                         <option value="sudah">Sudah</option>
                         <option value="terlambat">Terlambat</option>
+                    </select>
+                </div>
+            </div>
+            {{-- Verifikasi RT (spec verifikasi RT §7). Default Semua → angka lama tidak bergeser. --}}
+            <div class="col-md">
+                <div class="form-group">
+                    <label class="font-weight-bold" style="font-size: 0.8125rem;">Status Verifikasi RT</label>
+                    <select id="filterVerifRt" class="form-control filter-input">
+                        <option value="">-- Semua --</option>
+                        <option value="berdomisili">Berdomisili (disetujui)</option>
+                        <option value="belum">Belum diverifikasi</option>
+                        <option value="pindah">Pindah</option>
+                        <option value="meninggal">Meninggal</option>
+                        <option value="tidak_dikenal">Tidak dikenal</option>
                     </select>
                 </div>
             </div>
@@ -255,6 +269,26 @@ Analytics
 </div>
 
 {{-- Z-Score Status Cards --}}
+{{-- Verifikasi RT (spec verifikasi RT §7) — status domisili hasil verifikasi RT; angka final = yang disetujui peninjau --}}
+<h4 class="section-title"><i class="fa fa-check-square-o mr-2"></i> Verifikasi RT</h4>
+<div class="row mb-4" id="verifRtCards">
+    @foreach ([
+        ['verifBerdomisili', 'berdomisili', 'Berdomisili (disetujui)', 'success'],
+        ['verifPindah', 'pindah', 'Pindah', 'warning'],
+        ['verifMeninggal', 'meninggal', 'Meninggal', 'danger'],
+        ['verifTidakDikenal', 'tidak_dikenal', 'Tidak dikenal', 'warning'],
+        ['verifMenunggu', 'menunggu', 'Menunggu reviu', 'primary'],
+        ['verifBelum', 'belum', 'Belum diverifikasi', 'primary'],
+    ] as [$idKartu, $kunciKartu, $labelKartu, $warnaKartu])
+    <div class="col-xl-2 col-lg-4 col-md-4 col-6 mb-3">
+        <div class="stat-card {{ $warnaKartu }} p-3">
+            <div class="stat-value" id="{{ $idKartu }}">{{ number_format($verifikasiRt[$kunciKartu]) }}</div>
+            <div class="stat-label">{{ $labelKartu }}</div>
+        </div>
+    </div>
+    @endforeach
+</div>
+
 <h4 class="section-title"><i class="fa fa-heartbeat mr-2"></i> Status Gizi Anak</h4>
 <div class="row mb-4">
     <div class="col-lg-4 mb-3">
@@ -705,14 +739,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var kelurahan = $('#filterKelurahan').val();
         var antigen = $('#filterAntigen').val();
         var status = $('#filterStatus').val();
+        var verif = $('#filterVerifRt').val();
 
-        $('#btnResetFilter').toggle(!!(bulan || kelurahan || antigen || status));
+        $('#btnResetFilter').toggle(!!(bulan || kelurahan || antigen || status || verif));
         $('#filterLoading').show();
 
         pendingFilterXhr = $.ajax({
             url: '{{ route("admin.analytics.filterImunisasi") }}',
             type: 'GET',
-            data: { bulan: bulan, kelurahan: kelurahan, antigen: antigen, status: status },
+            data: { bulan: bulan, kelurahan: kelurahan, antigen: antigen, status: status, verif: verif },
             dataType: 'json',
             success: function(r) {
                 pendingFilterXhr = null;
@@ -723,6 +758,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 $('#statTotalDataAnak').text(fmt(r.totalDataAnak));
                 $('#statTotalImunisasi').text(fmt(r.totalImunisasi));
                 $('#statIncomplete').text(fmt(r.incompleteImunisasiCount));
+
+                // === Verifikasi RT ===
+                if (r.verifikasiRt) {
+                    $('#verifBerdomisili').text(fmt(r.verifikasiRt.berdomisili));
+                    $('#verifPindah').text(fmt(r.verifikasiRt.pindah));
+                    $('#verifMeninggal').text(fmt(r.verifikasiRt.meninggal));
+                    $('#verifTidakDikenal').text(fmt(r.verifikasiRt.tidak_dikenal));
+                    $('#verifMenunggu').text(fmt(r.verifikasiRt.menunggu));
+                    $('#verifBelum').text(fmt(r.verifikasiRt.belum));
+                }
 
                 // === Z-Score Charts ===
                 var z = r.zScoreAnalysis;
@@ -827,7 +872,7 @@ document.addEventListener('DOMContentLoaded', function() {
     $('.filter-input').on('change', function() { applyDashboardFilter(); });
 
     $('#btnResetFilter').on('click', function() {
-        $('#filterBulan, #filterKelurahan, #filterAntigen, #filterStatus').val('');
+        $('#filterBulan, #filterKelurahan, #filterAntigen, #filterStatus, #filterVerifRt').val('');
         $(this).hide();
         applyDashboardFilter();
     });
