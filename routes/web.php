@@ -39,7 +39,12 @@ Route::prefix('timbang-publik')->name('public.timbang.')->middleware('timbang.pu
 Peran RT — verifikasi domisili warga (spec verifikasi RT §4)
 --------------------------------------------
 --------------------------------------------*/
-Route::middleware(['auth', 'module.role:rt'])->prefix('rt')->name('rt.')->group(function () {
+// Pintu tautan bertoken per RT (scoping akses Sept 2026): tanpa akun, sesi menyimpan id tautan.
+Route::get('rt/akses/{token}',  [App\Http\Controllers\Rt\AksesTautanController::class, 'masuk'])->name('rt.akses.masuk');
+Route::post('rt/akses/keluar',  [App\Http\Controllers\Rt\AksesTautanController::class, 'keluar'])->name('rt.akses.keluar');
+
+// `rt.akses` = sesi tautan yang berlaku ATAU akun peran rt / superadmin (lihat RtAksesService).
+Route::middleware(['rt.akses'])->prefix('rt')->name('rt.')->group(function () {
     Route::get('verifikasi',   [App\Http\Controllers\Rt\VerifikasiRtController::class, 'index'])->name('verifikasi');
     Route::get('api/warga',    [App\Http\Controllers\Rt\VerifikasiRtController::class, 'warga'])->name('api.warga');
     Route::get('api/tanpa-rt', [App\Http\Controllers\Rt\VerifikasiRtController::class, 'tanpaRt'])->name('api.tanpaRt');

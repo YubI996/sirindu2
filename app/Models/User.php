@@ -35,6 +35,7 @@ class User extends Authenticatable
         'id_rs',
         'id_posyandu',
         'id_rt',       // peran rt: RT yang diverifikasi (spec verifikasi RT)
+        'rt_sekelurahan', // peran rt tanpa id_rt: akun lingkup kelurahan, memilih RT saat masuk
         'beranda_quicklinks', // Paket F: key quicklink beranda yang dipilih user (JSON)
     ];
 

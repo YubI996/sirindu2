@@ -8,6 +8,7 @@ use App\Models\AnakTautan;
 use App\Models\Rt;
 use App\Models\VerifikasiAnak;
 use App\Services\HashIdService;
+use App\Services\RtAksesService;
 use App\Services\TautanIdentitasService;
 use App\Services\VerifikasiRtService;
 use Carbon\Carbon;
@@ -54,17 +55,31 @@ class VerifikasiRtController extends Controller
     public function __construct(
         private readonly VerifikasiRtService $svc,
         private readonly TautanIdentitasService $tautan,
+        private readonly RtAksesService $akses,
     ) {
     }
 
+    /**
+     * Halaman RT. Akun kelurahan yang belum memilih RT (dan superadmin tanpa ?rt=)
+     * mendapat pemilih RT dulu; tab & tabel baru dimuat setelah RT dipilih.
+     */
     public function index(Request $request): View
     {
-        $rt = $this->rt($request);
-        $rt->load('kelurahan');
+        $k  = $this->akses->konteks($request);
+        $rt = $k['rt'];
+        if (!$rt && $k['rt_list']->isEmpty()) {
+            abort(403, 'Akun ini belum punya RT maupun kelurahan.');
+        }
+        $rt?->load('kelurahan');
 
         return view('rt.verifikasi', [
-            'rt'      => $rt,
-            'progres' => $this->svc->progres($rt),
+            'rt'              => $rt,
+            'progres'         => $rt ? $this->svc->progres($rt) : ['total' => 0, 'diverifikasi' => 0],
+            'mode'            => $k['mode'],
+            'user'            => $k['user'],
+            'rt_list'         => $k['rt_list'],
+            'butuh_pelaksana' => $k['butuh_pelaksana'],
+            'pelaksana'       => $request->session()->get(RtAksesService::SESI_PELAKSANA),
         ]);
     }
 
@@ -168,17 +183,20 @@ class VerifikasiRtController extends Controller
         ]);
     }
 
-    /** RT milik user; superadmin boleh memilih lewat ?rt= untuk pratinjau/dukungan. */
+    /** RT aktif menurut RtAksesService (sesi tautan / akun RT / akun kelurahan + ?rt= / superadmin + ?rt=). */
     private function rt(Request $request): Rt
     {
-        $user = $request->user();
-        if ($user->isSuperAdmin()) {
-            abort_if(!$request->query('rt'), 403, 'Pilih RT lewat parameter ?rt=');
-            return Rt::findOrFail((int) $request->query('rt'));
+        $k = $this->akses->konteks($request);
+        if ($k['rt']) {
+            return $k['rt'];
         }
-        abort_if(!$user->isRt() || !$user->id_rt, 403);
-
-        return Rt::findOrFail($user->id_rt);
+        if ($k['mode'] === 'superadmin') {
+            abort(403, 'Pilih RT lewat parameter ?rt=');
+        }
+        if ($k['mode'] === 'akun_kel') {
+            abort(422, 'Pilih RT terlebih dahulu.');
+        }
+        abort(403);
     }
 
     private function rows(Builder $q): array

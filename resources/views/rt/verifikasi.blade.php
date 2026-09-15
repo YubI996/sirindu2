@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Verifikasi Warga — {{ $rt->name }}</title>
+<title>Verifikasi Warga — {{ $rt?->name ?? 'Pilih RT' }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
@@ -20,6 +20,12 @@ body{ margin:0; font-family:Barlow,system-ui,sans-serif; color:var(--ink); backg
 .rt-who{ font-size:.9rem; color:var(--muted); }
 .rt-who b{ color:var(--ink); }
 .rt-logout{ background:transparent; border:1px solid var(--line); border-radius:8px; padding:6px 12px; font:inherit; cursor:pointer; color:var(--muted); }
+.rt-who select{ font:inherit; padding:4px 8px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
+.rt-pilih{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:22px 20px; max-width:560px; margin:24px auto; }
+.rt-pilih h2{ margin:0 0 6px; font-size:1.2rem; }
+.rt-pilih p{ margin:0 0 14px; color:var(--muted); line-height:1.5; }
+.rt-pilih select{ font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:10px; width:100%; margin-bottom:12px; }
+.rt-pilih button{ background:var(--green); color:#fff; border:0; border-radius:10px; padding:10px 18px; font:inherit; font-weight:700; cursor:pointer; }
 .rt-prog{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
 .rt-prog__bar{ height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:8px; }
 .rt-prog__fill{ height:100%; background:var(--green); width:0; transition:width .3s; }
@@ -83,9 +89,47 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
 <div class="rt-shell">
   <header class="rt-top">
     <div class="rt-brand"><img src="{{ asset('logo/icon-sirindu.png') }}" alt="">SIRINDU · Verifikasi Warga</div>
-    <div class="rt-who"><b>{{ $rt->name }}</b> · Kel. {{ $rt->kelurahan?->name ?? '-' }} · {{ auth()->user()->name }}</div>
-    <form method="POST" action="{{ route('logout') }}">@csrf<button class="rt-logout" type="submit">Keluar</button></form>
+    <div class="rt-who">
+      @if($rt)
+        <b>{{ $rt->name }}</b> · Kel. {{ $rt->kelurahan?->name ?? '-' }} ·
+      @endif
+      @if($mode === 'tautan')
+        Akses lewat tautan RT
+      @else
+        {{ $user?->name }}
+      @endif
+      @if($rt && $rt_list->count() > 1)
+        {{-- Akun kelurahan / superadmin: ganti RT tanpa keluar --}}
+        <select id="ganti-rt" aria-label="Ganti RT" onchange="location.href='{{ route('rt.verifikasi') }}?rt='+this.value">
+          @foreach($rt_list as $r)
+            <option value="{{ $r->id }}" @selected($r->id === $rt->id)>{{ $r->name }}</option>
+          @endforeach
+        </select>
+      @endif
+    </div>
+    @if($mode === 'tautan')
+      <form method="POST" action="{{ route('rt.akses.keluar') }}">@csrf<button class="rt-logout" type="submit">Keluar</button></form>
+    @else
+      <form method="POST" action="{{ route('logout') }}">@csrf<button class="rt-logout" type="submit">Keluar</button></form>
+    @endif
   </header>
+
+  @if(!$rt)
+  {{-- Akun kelurahan (atau superadmin) yang belum memilih RT: pemilih dulu, tabel belum dimuat --}}
+  <section class="rt-pilih" id="pilih-rt-awal">
+    <h2>Pilih RT</h2>
+    <p>Akun ini mencakup seluruh RT di kelurahan. Pilih RT yang akan diverifikasi — pilihan diingat sampai Anda keluar atau mengganti RT.</p>
+    <form method="GET" action="{{ route('rt.verifikasi') }}">
+      <select name="rt" required>
+        <option value="">— pilih RT —</option>
+        @foreach($rt_list as $r)
+          <option value="{{ $r->id }}">{{ $r->name }}@if($mode === 'superadmin') · {{ $r->kelurahan?->name }}@endif</option>
+        @endforeach
+      </select>
+      <button type="submit">Buka RT ini</button>
+    </form>
+  </section>
+  @else
 
   <section class="rt-prog">
     <div><b id="prog-teks">{{ $progres['diverifikasi'] }} dari {{ $progres['total'] }}</b> warga sudah diverifikasi</div>
@@ -115,6 +159,7 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
   </div>
 
   <div class="rt-wrap" id="tabel"><div class="rt-empty">Memuat…</div></div>
+  @endif
 </div>
 <div class="rt-toast" id="toast"></div>
 
@@ -140,6 +185,7 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
   </div>
 </template>
 
+@if($rt)
 <script>
 var API_WARGA   = '{{ route("rt.api.warga", request()->only("rt")) }}';
 var API_TANPA   = '{{ route("rt.api.tanpaRt", request()->only("rt")) }}';
@@ -306,5 +352,6 @@ document.getElementById('tabel').addEventListener('click', function(e){
 });
 muat();
 </script>
+@endif
 </body>
 </html>

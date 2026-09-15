@@ -18,6 +18,7 @@ class SkemaAksesTest extends TestCase
     {
         $this->assertTrue(Schema::hasColumn('verifikasi_anak', 'pelaksana'));
         $this->assertTrue(Schema::hasColumn('anak_tautan', 'pelaksana'));
+        $this->assertTrue(Schema::hasColumn('users', 'rt_sekelurahan'));
         $this->assertTrue(Schema::hasColumns('rt_akses_tautan', [
             'id_rt', 'token_hash', 'kedaluwarsa_at', 'dibuat_oleh', 'dicabut_at', 'terakhir_dipakai_at', 'jumlah_pakai',
         ]));
