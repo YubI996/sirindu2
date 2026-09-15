@@ -34,7 +34,7 @@
 					<ul class="submenu" {!! $dashboard ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.analytics')}}" class="{{ request()->routeIs('admin.analytics') ? 'active' : '' }}">Imunisasi</a></li>
 						<li><a href="{{route('admin.imunisasiDashboard')}}" class="{{ request()->routeIs('admin.imunisasiDashboard') ? 'active' : '' }}">Cakupan IDL &amp; Kejar</a></li>
-						<li><a href="{{route('admin.timbang.dashboard')}}" class="{{ request()->routeIs('admin.timbang.*') ? 'active' : '' }}">Gizi &amp; Timbang</a></li>
+						<li><a href="{{route('admin.timbang.dashboard')}}" class="{{ request()->routeIs('admin.timbang.*') ? 'active' : '' }}">Operasi Timbang</a></li>
 						<li><a href="{{route('admin.pd3i.dashboard')}}" class="{{ request()->routeIs('admin.pd3i.dashboard') ? 'active' : '' }}">Surveilans PD3I</a></li>
 						<li><a href="{{route('admin.epidemiologi.dashboard')}}" class="{{ request()->routeIs('admin.epidemiologi.dashboard') ? 'active' : '' }}">Surveilans (legacy)</a></li>
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>

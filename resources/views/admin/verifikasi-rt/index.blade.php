@@ -2,7 +2,7 @@
 
 @section('title') Verifikasi RT — SIRINDU @endsection
 @section('title-content') Verifikasi RT @endsection
-@section('item') Gizi & Timbang @endsection
+@section('item') Operasi Timbang @endsection
 @section('item-active') Verifikasi RT @endsection
 
 @section('content')

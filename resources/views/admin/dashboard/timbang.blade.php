@@ -1,7 +1,7 @@
 @extends('admin::layouts.app')
-@section('title') Dashboard Gizi & Timbang — SIRINDU @endsection
-@section('title-content') Dashboard Gizi & Operasi Timbang @endsection
-@section('item') Gizi & Timbang @endsection
+@section('title') Dashboard Operasi Timbang — SIRINDU @endsection
+@section('title-content') Dashboard Operasi Timbang @endsection
+@section('item') Operasi Timbang @endsection
 @section('item-active') Dashboard @endsection
 
 @section('content')

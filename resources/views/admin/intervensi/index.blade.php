@@ -1,7 +1,7 @@
 @extends('admin::layouts.app')
 @section('title') Intervensi Gizi — SIRINDU @endsection
 @section('title-content') Intervensi Gizi @endsection
-@section('item') Gizi & Timbang @endsection
+@section('item') Operasi Timbang @endsection
 @section('item-active') Intervensi @endsection
 
 @section('content')
