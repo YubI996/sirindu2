@@ -195,4 +195,30 @@ class FormAnakKesmasTest extends TestCase
 
         $this->assertNull($anak->refresh()->penolong_lahir);
     }
+
+    public function test_form_edit_menampilkan_nilai_kesmas_tersimpan(): void
+    {
+        $anak = $this->anakTersimpan([
+            'no_id_epus' => 'EP-777', 'air_bersih' => 0, 'skrining_shk' => 'tidak_normal', 'penolong_lahir' => 'Dukun terlatih',
+        ]);
+
+        $html = $this->actingAs($this->admin)->get(route('admin.editAnak', $anak->hashid))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Data Kesmas &amp; Lingkungan (opsional)', $html);
+        $this->assertStringContainsString('Riwayat Kelahiran &amp; Skrining Neonatal (opsional)', $html);
+        $this->assertStringContainsString('value="EP-777"', $html);
+        $this->assertMatchesRegularExpression('/<select name="air_bersih"[^>]*>.*?<option value="0" selected/s', $html);
+        $this->assertMatchesRegularExpression('/<select name="skrining_shk"[^>]*>.*?<option value="tidak_normal" selected/s', $html);
+        // nilai lama di luar daftar tetap jadi opsi terpilih agar tidak hilang saat disimpan
+        $this->assertMatchesRegularExpression('/<option value="Dukun terlatih" selected/', $html);
+    }
+
+    public function test_form_create_tampil_dengan_kartu_kesmas_tertutup(): void
+    {
+        $html = $this->actingAs($this->admin)->get(route('admin.createAnak'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Data Kesmas &amp; Lingkungan (opsional)', $html);
+        $this->assertMatchesRegularExpression('/id="kartuKesmas" class="collapse"/', $html);
+        $this->assertMatchesRegularExpression('/id="kartuRiwayatLahir" class="collapse"/', $html);
+    }
 }

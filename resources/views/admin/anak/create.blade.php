@@ -228,6 +228,9 @@ Anak
                 <textarea class="form-control" name="catatan" id="catatan" cols="30" rows="10"></textarea>
             </div>
         </div>
+        {{-- Data Kesmas & riwayat lahir (spec 2026-09-15 §3) — kartu tertutup, semua opsional --}}
+        @include('admin.anak.partials.form-kesmas', ['anak' => null])
+        @include('admin.anak.partials.form-riwayat-lahir', ['anak' => null])
         <div class="col-md-12 col-sm-12">
             <button type="submit" class="btn btn-primary">Simpan</button>
         </div>
