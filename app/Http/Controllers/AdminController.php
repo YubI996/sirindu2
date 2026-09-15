@@ -476,7 +476,7 @@ ANAK
 
     public function storeDataAnak(Request $request)
     {
-        $request->validate([
+        $request->validate(array_merge([
             'id_anak_hash' => 'required',
             'tgl_kunjungan' => 'required|date',
             'posisi' => 'required|in:H,L',
@@ -484,7 +484,7 @@ ANAK
             'bb' => 'required|numeric',
             'lla' => 'required|numeric',
             'lk' => 'required|numeric',
-        ], [
+        ], KesmasRules::kunjungan()), [ // layanan Kesmas per kunjungan (spec 2026-09-15 §3.3), semua opsional
             'tgl_kunjungan.required' => 'Tanggal kunjungan wajib diisi.',
             'tgl_kunjungan.date' => 'Format tanggal kunjungan tidak valid.',
             'posisi.required' => 'Posisi wajib dipilih.',
@@ -556,6 +556,10 @@ ANAK
 
     public function updateDataAnak(Request $request, $id)
     {
+        // Hanya field Kesmas yang divalidasi (semua opsional); field lama tetap seperti
+        // sebelumnya. Harus SEBELUM try agar ValidationException tidak tertelan catch.
+        $request->validate(KesmasRules::kunjungan());
+
         try {
             $this->anakRepository->updateDataAnak($request, $id);
             Alert::success('Anak', 'Berhasil Mengubah Data Berkala Anak');

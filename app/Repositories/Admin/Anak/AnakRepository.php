@@ -205,7 +205,7 @@ class AnakRepository implements AnakRepositoryInterface
 
     public function storeDataAnak($request)
     {
-        $anak = DataAnak::create([
+        $anak = DataAnak::create(array_merge([
             'id_anak' => $request->id_anak,
             'tgl_kunjungan' => $request->tgl_kunjungan,
             'bln' => $request->bln,
@@ -223,7 +223,7 @@ class AnakRepository implements AnakRepositoryInterface
             'alasan_tidak_imunisasi' => $request->alasan_tidak_imunisasi,
             'id_user' => Auth::user()->id,
             'sumber' => 'manual',
-        ]);
+        ], $this->layananKesmasAttributes($request)));
     }
 
     public function updateDataAnak($request, $id)
@@ -234,7 +234,7 @@ class AnakRepository implements AnakRepositoryInterface
         $anak = Anak::find($dataAnak->id_anak);
         $bln = usia_bulan($anak?->tgl_lahir, $request->tgl_kunjungan) ?? $dataAnak->bln;
 
-        $dataAnak->update([
+        $dataAnak->update(array_merge([
             'bln' => $bln,
             'posisi' => normalisasi_posisi($request->posisi),
             'tb' => $request->tb,
@@ -250,7 +250,7 @@ class AnakRepository implements AnakRepositoryInterface
             'imunisasi_terakhir' => $request->imunisasi_terakhir,
             'alasan_tidak_imunisasi' => $request->alasan_tidak_imunisasi,
             'id_user' => Auth::user()->id,
-        ]);
+        ], $this->layananKesmasAttributes($request)));
     }
 
     // ==================== ENHANCED IMUNISASI METHODS ====================
