@@ -1935,7 +1935,7 @@ Tepat setelah `</div>` penutup kolom "Location Information" (kolom `col-lg-4` ya
             <article class="card info-card h-100">
                 <div class="card-header">
                     <h2 id="lahir-info-title">
-                        <span aria-hidden="true" class="icon-copy dw dw-baby mr-2"></span>
+                        <span aria-hidden="true" class="icon-copy dw dw-hospital mr-2"></span>
                         Riwayat Kelahiran
                     </h2>
                 </div>
@@ -1985,7 +1985,7 @@ Tepat setelah `</div>` penutup kolom "Location Information" (kolom `col-lg-4` ya
         </div>
 ```
 
-Catatan: kelas `badge-accessible-success|danger|secondary` sudah didefinisikan di `<style>` halaman ini. Jika ikon `dw-house-1`/`dw-baby` tidak ada di font ikon, ganti dengan `dw-home` / `dw-user-1` — cek visual di Step 7.
+Catatan: kelas `badge-accessible-success|danger|secondary` sudah didefinisikan di `<style>` halaman ini. Ikon `dw-hospital` dipilih karena `dw-baby` tidak ada di font dropways — cek visual di Step 7.
 
 - [ ] **Step 5: Kolom "Layanan Kesmas" di tabel Data Berkala Lengkap**
 

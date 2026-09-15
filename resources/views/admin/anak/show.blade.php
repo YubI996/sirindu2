@@ -547,6 +547,113 @@ Detail
                 </div>
             </article>
         </div>
+
+        @php
+            $K = \App\Services\KesmasPresenter::class;
+            $warnaSkrining = fn (?string $kode) => in_array($kode, ['normal', 'non_reaktif'], true) ? 'success'
+                : (in_array($kode, ['tidak_normal', 'reaktif'], true) ? 'danger' : 'secondary');
+            $isiKesmas = collect(['no_id_epus', 'fktp_bpjs', 'air_bersih', 'jamban_sehat', 'merokok_keluarga', 'status_tk_paud', 'penyakit_penyerta', 'pjb'])
+                ->contains(fn ($f) => $anak->$f !== null && $anak->$f !== '');
+            $isiLahir = collect(['bbl', 'pbl', 'lk_lahir', 'usia_kehamilan_lahir', 'tempat_bersalin', 'jenis_persalinan', 'penolong_lahir', 'imd', 'riwayat_kek_ibu', 'komplikasi_persalinan', 'skrining_shk', 'skrining_shak', 'skrining_g6pd', 'pemeriksaan_hepatitis_b', 'komplikasi_neonatal'])
+                ->contains(fn ($f) => $anak->$f !== null && $anak->$f !== '');
+        @endphp
+
+        {{-- Kesmas & Lingkungan (spec 2026-09-15 §4) — NULL tampil "—", bukan "Tidak" --}}
+        <div class="col-lg-4 mb-4">
+            <article class="card info-card h-100">
+                <div class="card-header">
+                    <h2 id="kesmas-info-title">
+                        <span aria-hidden="true" class="icon-copy dw dw-house-1 mr-2"></span>
+                        Kesmas &amp; Lingkungan
+                    </h2>
+                </div>
+                <div class="card-body">
+                    @if (!$isiKesmas)
+                    <p class="text-accessible-muted mb-0">Belum diisi — lengkapi lewat Edit Anak.</p>
+                    @else
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 text-accessible-muted">No. ID ePuskesmas</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->no_id_epus) }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">FKTP BPJS</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->fktp_bpjs) }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Air bersih</dt>
+                        <dd class="col-sm-7">{{ $K::yaTidak($anak->air_bersih, '—') }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Jamban sehat</dt>
+                        <dd class="col-sm-7">{{ $K::yaTidak($anak->jamban_sehat, '—') }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Perokok serumah</dt>
+                        <dd class="col-sm-7">{{ $K::yaTidak($anak->merokok_keluarga, '—') }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">TK/PAUD</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->status_tk_paud) }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Penyakit penyerta</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->penyakit_penyerta) }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">PJB</dt>
+                        <dd class="col-sm-7 mb-0">{{ $K::teks($anak->pjb) }}</dd>
+                    </dl>
+                    @endif
+                </div>
+            </article>
+        </div>
+
+        {{-- Riwayat Kelahiran & Skrining Neonatal (spec 2026-09-15 §4) --}}
+        <div class="col-lg-4 mb-4">
+            <article class="card info-card h-100">
+                <div class="card-header">
+                    <h2 id="lahir-info-title">
+                        <span aria-hidden="true" class="icon-copy dw dw-hospital mr-2"></span>
+                        Riwayat Kelahiran
+                    </h2>
+                </div>
+                <div class="card-body">
+                    @if (!$isiLahir)
+                    <p class="text-accessible-muted mb-0">Belum diisi — lengkapi lewat Edit Anak.</p>
+                    @else
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 text-accessible-muted">BBL / PBL / LK</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->bbl) }} kg / {{ $K::teks($anak->pbl) }} cm / {{ $K::teks($anak->lk_lahir) }} cm</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Usia kehamilan</dt>
+                        <dd class="col-sm-7">{{ $anak->usia_kehamilan_lahir !== null ? $anak->usia_kehamilan_lahir . ' minggu' : '—' }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Tempat bersalin</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->tempat_bersalin) }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Jenis / penolong</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->jenis_persalinan) }} / {{ $K::teks($anak->penolong_lahir) }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">IMD</dt>
+                        <dd class="col-sm-7">{{ $K::yaTidak($anak->imd, '—') }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">KEK ibu</dt>
+                        <dd class="col-sm-7">{{ $K::yaTidak($anak->riwayat_kek_ibu, '—') }}</dd>
+
+                        @foreach (['skrining_shk' => ['SHK', 'skrining'], 'skrining_shak' => ['SHAK', 'skrining'], 'skrining_g6pd' => ['G6PD', 'skrining'], 'pemeriksaan_hepatitis_b' => ['Hepatitis B', 'hepatitis_b']] as $f => [$label, $grup])
+                        <dt class="col-sm-5 text-accessible-muted">{{ $label }}</dt>
+                        <dd class="col-sm-7">
+                            @if ($anak->$f)
+                            <span class="badge badge-accessible-{{ $warnaSkrining($anak->$f) }}">{{ $K::enumLabel($grup, $anak->$f) }}</span>
+                            @else
+                            —
+                            @endif
+                        </dd>
+                        @endforeach
+
+                        <dt class="col-sm-5 text-accessible-muted">Komplikasi persalinan</dt>
+                        <dd class="col-sm-7">{{ $K::teks($anak->komplikasi_persalinan) }}</dd>
+
+                        <dt class="col-sm-5 text-accessible-muted">Komplikasi neonatal</dt>
+                        <dd class="col-sm-7 mb-0">{{ $K::teks($anak->komplikasi_neonatal) }}</dd>
+                    </dl>
+                    @endif
+                </div>
+            </article>
+        </div>
     </section>
 
     {{-- Current Health Status --}}
@@ -823,6 +930,7 @@ Detail
                                     <th scope="col"><abbr title="Berat Badan menurut Umur">BB/U</abbr></th>
                                     <th scope="col"><abbr title="Tinggi Badan menurut Umur">TB/U</abbr></th>
                                     <th scope="col"><abbr title="Berat Badan menurut Tinggi Badan">BB/TB</abbr></th>
+                                    <th scope="col">Layanan Kesmas</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -863,6 +971,18 @@ Detail
                                         <span class="badge badge-status badge-accessible-{{ $rowBtStatus }}">
                                             {{ Str::limit($hasil['bt'], 20) }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        @foreach ($hasil['layanan']['badge'] as $b)
+                                        <span class="badge badge-accessible-info mr-1">{{ $b }}</span>
+                                        @endforeach
+                                        @if ($hasil['layanan']['keterangan'])
+                                        <span class="icon-copy dw dw-file" role="img" aria-label="{{ implode(' · ', $hasil['layanan']['keterangan']) }}" title="{{ implode(' · ', $hasil['layanan']['keterangan']) }}"></span>
+                                        <span class="sr-only">{{ implode(' · ', $hasil['layanan']['keterangan']) }}</span>
+                                        @endif
+                                        @if (!$hasil['layanan']['badge'] && !$hasil['layanan']['keterangan'])
+                                        —
+                                        @endif
                                     </td>
                                 </tr>
                                 @endforeach

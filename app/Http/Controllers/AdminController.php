@@ -12,6 +12,7 @@ use App\Http\Requests\Admin\User\storeUserRequest;
 use App\Http\Requests\Admin\Anak\storeAnakRequest;
 use App\Http\Requests\Admin\Anak\updateAnakRequest;
 use App\Http\Requests\Admin\Anak\KesmasRules;
+use App\Services\KesmasPresenter;
 use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
@@ -302,7 +303,11 @@ ANAK
 
         $dataAnak = DB::table('anak')
             ->join('data_anak', 'anak.id', '=', 'data_anak.id_anak')
-            ->select('data_anak.id', 'jk', 'tgl_kunjungan', 'bln', 'posisi', 'tb', 'bb')
+            ->select(array_merge(
+                ['data_anak.id', 'jk', 'tgl_kunjungan', 'bln', 'posisi', 'tb', 'bb', 'data_anak.tgl_penanda_ckg'],
+                array_map(fn ($k) => "data_anak.$k", array_keys(config('kesmas.layanan'))),
+                array_map(fn ($k) => "data_anak.$k", array_keys(config('kesmas.keterangan_kunjungan')))
+            ))
             ->where('data_anak.id_anak', $anak->id)
             ->orderBy('tgl_kunjungan', 'desc')
             ->get();
@@ -348,6 +353,7 @@ ANAK
                 "tb" => $tb,
                 "bt" => $bt,
                 "err" => $err,
+                "layanan" => KesmasPresenter::layananKunjungan($data), // badge & keterangan Kesmas (spec §4)
             ];
         }
 
