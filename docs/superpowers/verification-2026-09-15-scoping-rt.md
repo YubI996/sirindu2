@@ -8,6 +8,8 @@ Pembaruan lanjutan: [perbaikan tampilan RT, NIP PJ, dan panduan pengecekan](veri
 
 Koreksi impor PJ terbaru: [template dua kolom NIP/nama dan pemasangan otomatis ke anak](verification-2026-09-15-pj-tanpa-wilayah.md).
 
+Bukti uji PJ terbaru: [hasil impor, alokasi dan penunjukan anak melalui worker serta browser](verification-2026-09-15-pj-alur.md).
+
 ## Pemeriksaan sebelum melanjutkan
 
 - HEAD awal `63fb8b4`; commit T1 `b6b80a4`, T2 `b9e8f7b`, T3 `63fb8b4` cocok dengan handoff.

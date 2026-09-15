@@ -1,5 +1,7 @@
 # Impor PJ: NIP dan nama, aplikasi memasangkan ke anak
 
+Uji lanjutan: [unggah CSV, worker, alokasi, penunjukan manual, dan browser](verification-2026-09-15-pj-alur.md) — 30 tes / 206 assertion dan alur browser lolos.
+
 ## Koreksi kebutuhan — 15 September 2026
 
 Pengguna menegaskan bahwa PJ dipasangkan dengan anak. File impor cukup berisi NIP dan nama PJ; kelurahan dan posyandu tidak menjadi bagian pemetaan PJ.
