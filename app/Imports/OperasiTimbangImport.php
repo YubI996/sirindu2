@@ -6,6 +6,7 @@ use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Services\NikDummyService;
 use App\Services\OperasiTimbangMatcher;
+use App\Support\ImportError;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
@@ -147,7 +148,7 @@ class OperasiTimbangImport implements ToCollection, WithStartRow, WithChunkReadi
                     }
                 }
             } catch (\Throwable $e) {
-                $this->unmatched[] = ['baris' => $rowNum, 'nama' => $nama, 'tgl_lahir' => $tglLahir, 'alasan' => mb_substr($e->getMessage(), 0, 120), 'kandidat' => ''];
+                $this->unmatched[] = ['baris' => $rowNum, 'nama' => $nama, 'tgl_lahir' => $tglLahir, 'alasan' => ImportError::message($e->getMessage()), 'kandidat' => ''];
                 Log::warning("OperasiTimbangImport skip baris {$rowNum}: " . $e->getMessage());
             }
         }

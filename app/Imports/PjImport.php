@@ -55,12 +55,19 @@ class PjImport
             $namaPj    = $ambil('nama_pj');
             $nipPj     = $ambil('nip_pj');
 
-            if ($namaPj === '' || $nipPj === '') {
-                $gagal[] = "Baris {$no}: nip_pj dan nama_pj wajib diisi.";
-                continue;
+            $masalah = [];
+            if ($nipPj === '') {
+                $masalah[] = 'Kolom nip_pj wajib diisi.';
+            } elseif (!preg_match('/^[0-9]{18}$/', $nipPj)) {
+                $masalah[] = 'Kolom nip_pj harus 18 digit utuh. Simpan kolom NIP sebagai teks.';
             }
-            if (!preg_match('/^[0-9]{18}$/', $nipPj) || mb_strlen($namaPj) > 100) {
-                $gagal[] = "Baris {$no}: NIP harus 18 digit utuh dan nama PJ maksimal 100 karakter. Simpan kolom NIP sebagai teks.";
+            if ($namaPj === '') {
+                $masalah[] = 'Kolom nama_pj wajib diisi.';
+            } elseif (mb_strlen($namaPj) > 100) {
+                $masalah[] = 'Kolom nama_pj maksimal 100 karakter.';
+            }
+            if ($masalah !== []) {
+                $gagal[] = "Baris {$no}: ".implode(' ', $masalah);
                 continue;
             }
             $baris[] = [

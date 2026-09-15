@@ -10,6 +10,8 @@ Koreksi impor PJ terbaru: [template dua kolom NIP/nama dan pemasangan otomatis k
 
 Bukti uji PJ terbaru: [hasil impor, alokasi dan penunjukan anak melalui worker serta browser](verification-2026-09-15-pj-alur.md).
 
+Perbaikan impor berikutnya: [nama kolom dalam pesan error dan nomor HP 40 karakter](verification-2026-09-15-import-kolom-hp40.md).
+
 ## Pemeriksaan sebelum melanjutkan
 
 - HEAD awal `63fb8b4`; commit T1 `b6b80a4`, T2 `b9e8f7b`, T3 `63fb8b4` cocok dengan handoff.

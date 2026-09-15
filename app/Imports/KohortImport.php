@@ -8,6 +8,7 @@ use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Models\Rt;
 use App\Services\NikDummyService;
+use App\Support\ImportError;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -488,42 +489,7 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
 
     protected function simplifyError(string $message): string
     {
-        // Coba ekstrak nama kolom dan nilai dari pesan MySQL (Incorrect integer/date/Data too long)
-        // Contoh: "Incorrect integer value: 'xyz' for column 'anak' at row 1"
-        // Contoh: "Data too long for column 'komplikasi_persalinan' at row 1"
-        $extractColumn = function (string $msg): string {
-            if (preg_match("/for column '([^']+)'/i", $msg, $m)) {
-                return " (kolom: {$m[1]})";
-            }
-            return '';
-        };
-
-        $extractValue = function (string $msg): string {
-            if (preg_match("/value:\s*'([^']*)'/i", $msg, $m)) {
-                $val = mb_substr($m[1], 0, 30);
-                return " — nilai: '{$val}'";
-            }
-            return '';
-        };
-
-        return match (true) {
-            str_contains($message, 'Data too long') =>
-                'Data terlalu panjang' . $extractColumn($message) . '.',
-
-            str_contains($message, 'Incorrect date value') =>
-                'Format tanggal tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
-
-            str_contains($message, 'Incorrect integer') || str_contains($message, 'Incorrect decimal') =>
-                'Format angka tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
-
-            str_contains($message, 'Integrity constraint') =>
-                'Data referensi tidak ditemukan di sistem' . $extractColumn($message) . '.',
-
-            str_contains($message, 'ENUM') =>
-                'Nilai pilihan tidak valid' . $extractColumn($message) . $extractValue($message) . '.',
-
-            default => 'Gagal menyimpan' . $extractColumn($message) . ' — ' . mb_substr($message, 0, 120),
-        };
+        return ImportError::message($message);
     }
 
     public function getResults(): array

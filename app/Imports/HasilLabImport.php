@@ -6,6 +6,7 @@ use App\Models\JenisKasusEpidemiologi;
 use App\Models\SurveillanceCase;
 use App\Models\SurveillanceCaseSpesimen;
 use App\Services\NikDummyService;
+use App\Support\ImportError;
 use App\Support\LabStatus;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
@@ -353,14 +354,7 @@ class HasilLabImport implements ToCollection, WithStartRow, WithChunkReading
 
     protected function simplifyError(string $message): string
     {
-        return match (true) {
-            str_contains($message, 'Data too long')               => 'Data terlalu panjang untuk salah satu kolom.',
-            str_contains($message, 'Incorrect date value')        => 'Format tanggal tidak valid.',
-            str_contains($message, 'Integrity constraint')        => 'Data referensi tidak ditemukan di sistem.',
-            str_contains($message, 'ENUM')                        => 'Nilai pilihan tidak valid untuk salah satu kolom.',
-            str_contains($message, "doesn't have a default value") => 'Kolom wajib tidak tersedia — hubungi pengembang.',
-            default => 'Gagal menyimpan data — periksa isian baris ini.',
-        };
+        return ImportError::message($message);
     }
 
     public function getResults(): array

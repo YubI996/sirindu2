@@ -232,7 +232,7 @@ class OtFinalRegistriImportTest extends TestCase
         $this->assertSame(1, $import->getResults()['lebur']);
     }
 
-    public function test_no_hp_ganda_diambil_nomor_pertama_dan_dipotong(): void
+    public function test_no_hp_ganda_disimpan_utuh(): void
     {
         $import = new OtFinalRegistriImport(userId: 1, commit: true);
         $import->collection(collect([
@@ -242,8 +242,24 @@ class OtFinalRegistriImportTest extends TestCase
 
         $anak = \App\Models\Anak::where('nik', '6474025209250001')->first();
         $this->assertNotNull($anak, 'Anak harus tetap dibuat meski no_hp bermasalah.');
-        $this->assertSame('081254693567', $anak->no_hp);
+        $this->assertSame('081254693567 / 08125304445', $anak->no_hp);
         $this->assertSame(0, $import->getResults()['dilewati']);
+    }
+
+    public function test_no_hp_40_karakter_diterima_dan_41_dilaporkan_tanpa_menimpa_data_lama(): void
+    {
+        $hp40 = '081234567890 /082345678901 /083456789012';
+        $import = new OtFinalRegistriImport(userId: 1, commit: true);
+        $import->collection(collect([$this->header(), $this->baris(['no_hp' => $hp40])]));
+        $anak = \App\Models\Anak::where('nik', '6474025209250001')->sole();
+        $this->assertSame($hp40, $anak->no_hp);
+
+        $ulang = new OtFinalRegistriImport(userId: 1, commit: true);
+        $ulang->collection(collect([$this->header(), $this->baris(['no_hp' => $hp40.'4'])]));
+        $this->assertSame(1, $ulang->getResults()['dilewati']);
+        $this->assertStringContainsString('baris 2', implode('; ', $ulang->getResults()['peringatan']));
+        $this->assertStringContainsString('Data terlalu panjang (kolom: no_hp)', implode('; ', $ulang->getResults()['peringatan']));
+        $this->assertSame($hp40, $anak->refresh()->no_hp);
     }
 
     /**

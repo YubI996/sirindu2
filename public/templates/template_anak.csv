@@ -24,6 +24,7 @@
 #   imd                    : Ya | Tidak
 #   status                 : 1 = Aktif | 0 = Non-aktif (default: 1)
 #   nik                    : 16 digit angka; NIK dummy dibuat otomatis jika kosong/tidak valid
+#   no_hp                  : Teks maksimal 40 karakter; boleh memuat lebih dari satu nomor
 #   bbl_kg                 : Berat lahir dalam kg, 1 desimal (contoh: 3.2)
 #   pbl_cm                 : Panjang lahir dalam cm, 1 desimal (contoh: 50.5)
 #   lk_lahir_cm            : Lingkar kepala lahir dalam cm, 1 desimal (contoh: 34.0)

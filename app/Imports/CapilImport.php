@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Anak;
 use App\Services\NikDummyService;
+use App\Support\ImportError;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -308,13 +309,7 @@ class CapilImport implements ToCollection, WithStartRow, WithChunkReading, WithM
 
     protected function simplifyError(string $message): string
     {
-        return match (true) {
-            str_contains($message, 'Data too long')        => 'Data terlalu panjang untuk salah satu kolom.',
-            str_contains($message, 'Incorrect date value') => 'Format tanggal tidak valid.',
-            str_contains($message, 'Duplicate')            => 'NIK bentrok dengan data lain.',
-            str_contains($message, 'Integrity constraint') => 'Data wajib tidak lengkap atau bentrok.',
-            default => mb_substr($message, 0, 120),
-        };
+        return ImportError::message($message);
     }
 
     public function getResults(): array

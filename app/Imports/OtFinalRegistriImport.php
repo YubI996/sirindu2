@@ -6,6 +6,7 @@ use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Services\FaskesMatcher;
 use App\Services\NikDummyService;
+use App\Support\ImportError;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
@@ -205,7 +206,7 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
                 $this->tulisUkur($anak, $row, $map, $tglUkur);
             } catch (\Throwable $e) {
                 $this->dilewati++;
-                $this->peringatan[] = "baris {$rowNum} ({$nama}): " . mb_substr($e->getMessage(), 0, 120);
+                $this->peringatan[] = "baris {$rowNum} ({$nama}): " . ImportError::message($e->getMessage());
             }
         }
     }
@@ -343,11 +344,8 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
     }
 
     /**
-     * Bersihkan "No HP Orang Tua". Sel sering berisi DUA nomor ("081.. / 082..")
-     * atau berekor non-breaking space, sehingga melebihi varchar(20) dan membuat
-     * seluruh baris gagal tersimpan. Ambil nomor pertama, potong aman.
-     *
-     * Seorang anak tidak boleh hilang gara-gara nomor telepon rusak.
+     * Rapikan spasi "No HP Orang Tua"; pertahankan nomor ganda secara utuh.
+     * Kolom no_hp menerima 40 karakter. Nilai berlebih dilaporkan per baris.
      */
     protected function bersihkanNoHp($value): ?string
     {
@@ -361,13 +359,7 @@ class OtFinalRegistriImport implements ToCollection, WithStartRow, WithChunkRead
             return null;
         }
 
-        // Sel berisi lebih dari satu nomor → ambil yang pertama.
-        $pertama = trim(preg_split('#[/,;]#', $v)[0] ?? '');
-        if ($pertama === '') {
-            $pertama = $v;
-        }
-
-        return mb_substr($pertama, 0, 20);
+        return $v;
     }
 
     /**

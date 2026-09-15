@@ -109,4 +109,22 @@ class ImportPjTest extends TestCase
             unlink($path);
         }
     }
+
+    public function test_pesan_error_hanya_menyebut_kolom_pj_yang_bermasalah(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'pj');
+        file_put_contents($path, "nip_pj,nama_pj\nrusak,Sari\n198501012010012001,\n198501012010012001,".str_repeat('A', 101)."\n,Amir\nrusak,\n");
+        try {
+            $hasil = (new PjImport())->baca($path);
+            $this->assertSame([], $hasil['baris']);
+            $this->assertCount(5, $hasil['gagal']);
+            $this->assertSame('Baris 2: Kolom nip_pj harus 18 digit utuh. Simpan kolom NIP sebagai teks.', $hasil['gagal'][0]);
+            $this->assertSame('Baris 3: Kolom nama_pj wajib diisi.', $hasil['gagal'][1]);
+            $this->assertSame('Baris 4: Kolom nama_pj maksimal 100 karakter.', $hasil['gagal'][2]);
+            $this->assertSame('Baris 5: Kolom nip_pj wajib diisi.', $hasil['gagal'][3]);
+            $this->assertSame('Baris 6: Kolom nip_pj harus 18 digit utuh. Simpan kolom NIP sebagai teks. Kolom nama_pj wajib diisi.', $hasil['gagal'][4]);
+        } finally {
+            unlink($path);
+        }
+    }
 }

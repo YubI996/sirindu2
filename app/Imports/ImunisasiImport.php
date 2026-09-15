@@ -6,6 +6,7 @@ use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
+use App\Support\ImportError;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -321,13 +322,7 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
 
     protected function simplifyError(string $message): string
     {
-        return match (true) {
-            str_contains($message, 'Data too long')        => 'Data terlalu panjang untuk salah satu kolom.',
-            str_contains($message, 'Incorrect date value') => 'Format tanggal tidak valid.',
-            str_contains($message, 'Incorrect integer')    => 'Format angka tidak valid.',
-            str_contains($message, 'Integrity constraint') => 'Data referensi tidak ditemukan.',
-            default => mb_substr($message, 0, 120),
-        };
+        return ImportError::message($message);
     }
 
     public function getResults(): array
