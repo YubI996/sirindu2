@@ -37,7 +37,7 @@ Satu migrasi: `database/migrations/2026_09_22_000001_add_kesmas_fields_to_anak_a
 `$guarded = []`, tidak perlu perubahan fillable. VIEW `alldata` dan seluruh `App\Imports\*` **tidak
 disentuh**.
 
-### 2.1 `anak` — 17 kolom baru, semua `nullable()`, tanpa default
+### 2.1 `anak` — 16 kolom baru, semua `nullable()`, tanpa default
 
 | Kelompok | Kolom | Tipe | Asal di DDL |
 |---|---|---|---|
@@ -61,7 +61,7 @@ disentuh**.
 Dipetakan ke kolom yang **sudah ada** (tidak dibuat): `is_imd` → `imd`; `usia_kehamilan_minggu` →
 `usia_kehamilan_lahir`; `penolong_persalinan` → `penolong_lahir`.
 
-### 2.2 `data_anak` — 17 kolom baru, semua `nullable()`, tanpa default
+### 2.2 `data_anak` — 16 kolom baru, semua `nullable()`, tanpa default
 
 | Kolom | Tipe | Asal di DDL |
 |---|---|---|
@@ -100,10 +100,24 @@ return [
     'hepatitis_b'      => ['belum' => 'Belum', 'non_reaktif' => 'Non reaktif', 'reaktif' => 'Reaktif'],
     'pemeriksaan_gigi' => ['Sehat', 'Karies', 'Masalah lain'],
     'rujukan'          => ['Tidak dirujuk', 'Dokter gigi', 'Dokter spesialis anak', 'Rumah sakit', 'Lainnya'],
-    // kolom data_anak => singkatan badge di detail anak (§4) dan dasbor nanti
-    'badge_layanan'    => [
-        'kn1' => 'KN1', 'kn3' => 'KN3', 'mtbm' => 'MTBM', 'mtbs' => 'MTBS', 'pkat' => 'PKAT',
-        'skrining_atresia_bilier' => 'AB', 'oralit_zinc' => 'O+Z', 'mbg' => 'MBG', 'kelas_ibu_balita' => 'KIB',
+    // Checkbox layanan per kunjungan (kolom data_anak): label form, singkatan badge
+    // di detail anak (§4), dan judul kolom di export (§5). Urutan = urutan tampil.
+    'layanan' => [
+        'kn1'  => ['label' => 'KN1 — Kunjungan Neonatal 1 (6–48 jam)',        'badge' => 'KN1',  'kolom' => 'KN1'],
+        'kn3'  => ['label' => 'KN3 — Kunjungan Neonatal 3 (hari ke-8 s/d 28)', 'badge' => 'KN3',  'kolom' => 'KN3'],
+        'mtbm' => ['label' => 'MTBM — Manajemen Terpadu Bayi Muda',           'badge' => 'MTBM', 'kolom' => 'MTBM'],
+        'mtbs' => ['label' => 'MTBS — Manajemen Terpadu Balita Sakit',        'badge' => 'MTBS', 'kolom' => 'MTBS'],
+        'pkat' => ['label' => 'PKAT — Pelayanan Kesehatan Anak Terpadu (6 bulan)', 'badge' => 'PKAT', 'kolom' => 'PKAT'],
+        'skrining_atresia_bilier' => ['label' => 'Skrining atresia bilier (kartu warna tinja)', 'badge' => 'AB', 'kolom' => 'Atresia Bilier'],
+        'oralit_zinc'      => ['label' => 'Oralit & zinc sesuai standar',  'badge' => 'O+Z', 'kolom' => 'Oralit+Zinc'],
+        'mbg'              => ['label' => 'Makan Bergizi Gratis (MBG)',    'badge' => 'MBG', 'kolom' => 'MBG'],
+        'kelas_ibu_balita' => ['label' => 'Ikut Kelas Ibu Balita',         'badge' => 'KIB', 'kolom' => 'Kelas Ibu Balita'],
+    ],
+    // Field teks per kunjungan yang ditampilkan sebagai keterangan (detail §4).
+    'keterangan_kunjungan' => [
+        'pemeriksaan_gigi' => 'Gigi', 'rujukan' => 'Rujukan', 'mt_pangan_lokal' => 'MT pangan lokal',
+        'catatan_pengukuran' => 'Catatan', 'pemeriksaan_lainnya' => 'Pemeriksaan lain',
+        'pola_makan' => 'Pola makan', 'pola_asuh' => 'Pola asuh', 'intervensi' => 'Intervensi',
     ],
 ];
 ```
@@ -119,7 +133,7 @@ opsi tambahan (`selected`) di form edit supaya tidak hilang saat disimpan.
 |---|---|---|
 | `form-kesmas.blade.php` | 8 field Kesmas (§2.1 kelompok Kesmas) | `create`, `edit` |
 | `form-riwayat-lahir.blade.php` | 7 kolom lama (`bbl`, `pbl`, `lk_lahir`, `usia_kehamilan_lahir`, `penolong_lahir`, `imd`, `komplikasi_persalinan`) + 9 kolom neonatal baru | `create`, `edit` |
-| `form-layanan-kesmas.blade.php` | 17 kolom `data_anak` (§2.2) + `mbg` + `kelas_ibu_balita` | `data-anak`, form per-kunjungan di `edit` |
+| `form-layanan-kesmas.blade.php` | 16 kolom `data_anak` (§2.2) + `mbg` + `kelas_ibu_balita` | `data-anak`, form per-kunjungan di `edit` |
 
 Setiap partial menerima `$model` nullable (`$anak` / `$data`) dan `$prefix` string kosong default —
 `edit.blade.php` merender banyak form kunjungan di satu halaman, jadi `id` elemen harus unik
@@ -164,9 +178,9 @@ bisa difokus browser dan submit mati senyap (lihat CLAUDE.md). Dikunci oleh tes 
 
 Dua helper privat agar kolom tidak ditulis empat kali:
 
-- `kesmasAnakAttributes(Request $r): array` — 17 kolom `anak` + 7 kolom lama; select `''` → `null`;
+- `kesmasAnakAttributes(Request $r): array` — 16 kolom `anak` + 7 kolom lama; select `''` → `null`;
   dipanggil dari `storeAnak` dan kedua cabang `updateAnak` (`array_merge` ke array yang ada).
-- `layananKesmasAttributes(Request $r): array` — 17 kolom `data_anak`; checkbox lewat
+- `layananKesmasAttributes(Request $r): array` — 16 kolom `data_anak`; checkbox lewat
   `$r->boolean()`; dipanggil dari `storeDataAnak` dan `updateDataAnak`. `mbg`/`kelas_ibu_balita`
   masuk helper ini; di `updateAnak` (baris `DataAnak` pertama) keduanya tetap ditulis seperti sekarang.
 
@@ -196,7 +210,7 @@ bila `tgl_penanda_ckg` terisi + label `Gigi: …`/`Rujuk: …` bila terisi + iko
 isi) bila salah satu textarea terisi. Untuk itu `AdminController::show` menambah kunci
 `'layanan' => [...]` pada tiap elemen `$hasilx` — struktur lain `$hasilx` tidak berubah. Lima
 kartu "Riwayat Kunjungan" tidak disentuh. Label pendek dan warnanya diambil dari
-`config('kesmas.badge_layanan')` agar dasbor nanti memakai singkatan yang sama.
+`config('kesmas.layanan')` agar dasbor nanti memakai singkatan yang sama.
 
 ## 5. Export Kesmas
 
@@ -219,7 +233,7 @@ kartu "Riwayat Kunjungan" tidak disentuh. Label pendek dan warnanya diambil dari
     Tempat bersalin, Jenis persalinan, Penolong, IMD, KEK ibu, SHK, SHAK, G6PD, Hepatitis B,
     Komplikasi persalinan, Komplikasi neonatal). Satu baris per `anak` yang lolos filter wilayah.
   - **Sheet "Per Kunjungan"** (`KesmasKunjunganSheet`): NIK, Nama, Tgl kunjungan, Usia (bln), BB,
-    TB, lalu 17 kolom layanan (§2.2) + MBG + Kelas Ibu Balita. Satu baris per `data_anak` milik anak
+    TB, lalu 16 kolom layanan (§2.2) + MBG + Kelas Ibu Balita. Satu baris per `data_anak` milik anak
     yang lolos filter wilayah dan `tgl_kunjungan` dalam rentang (bila diisi).
   - Boolean → `Ya`/`Tidak`/`` (kosong = NULL). Enum → label `config/kesmas.php`. Tanggal `Y-m-d`.
 - Nama berkas: `kesmas-{slug kelurahan|semua}-{Ymd}.xlsx`.
@@ -233,7 +247,7 @@ asli** (checkbox tak dicentang kirim `'0'`, select kosong kirim `''`), bukan men
 
 | Tes | Yang dikunci |
 |---|---|
-| `MigrasiKesmasTest` | 17 kolom `anak` + 17 `data_anak` ada; semua nullable; **tidak ada DEFAULT** (baca `information_schema.COLUMNS`). |
+| `MigrasiKesmasTest` | 16 kolom `anak` + 16 `data_anak` ada; semua nullable; **tidak ada DEFAULT** (baca `information_schema.COLUMNS`). |
 | `FormAnakKesmasTest` | `storeAnak`/`updateAnak`: select `''` → `null`, `'1'`/`'0'` tersimpan; enum tersimpan; nilai di luar `in:` → 422/redirect error; payload **tanpa** field Kesmas tetap sukses dan tidak menimpa kolom Kesmas yang sudah terisi; nilai `penolong_lahir` lama non-daftar tetap lolos di update. |
 | `FormPengukuranKesmasTest` | `storeDataAnak`/`updateDataAnak`: checkbox `'0'` → `0` (bukan hilang), `'1'` → `1`; `mbg`/`kelas_ibu_balita` per kunjungan; select gigi/rujukan; `tgl_penanda_ckg` tanggal. |
 | `DetailAnakKesmasTest` | `show`: nilai terisi tampil; NULL → `—`; kartu kosong → "Belum diisi"; badge layanan muncul hanya untuk nilai 1; `CKG dd/mm` muncul bila terisi. Assertion dikurung per `<tr>`/kartu (helper `baris()` seperti `FormulirFp1RendersTest`). |
