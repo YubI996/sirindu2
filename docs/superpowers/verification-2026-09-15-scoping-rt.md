@@ -6,6 +6,8 @@ T1–T5 selesai di lokal. Seluruh perubahan berada di `main`; belum push atau de
 
 Pembaruan lanjutan: [perbaikan tampilan RT, NIP PJ, dan panduan pengecekan](verification-2026-09-15-rt-ui-pj-nip.md). Laporan di bawah tetap menjadi bukti historis penyelesaian scoping RT.
 
+Koreksi impor PJ terbaru: [template dua kolom NIP/nama dan pemasangan otomatis ke anak](verification-2026-09-15-pj-tanpa-wilayah.md).
+
 ## Pemeriksaan sebelum melanjutkan
 
 - HEAD awal `63fb8b4`; commit T1 `b6b80a4`, T2 `b9e8f7b`, T3 `63fb8b4` cocok dengan handoff.

@@ -22,20 +22,20 @@ class ImportPjTest extends TestCase
     public function test_parser_menerima_header_bebas_urutan_bom_dan_titik_koma(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'pj');
-        file_put_contents($path, "\xEF\xBB\xBFNama_PJ;Kelurahan;Posyandu;NIP_PJ\nKader Sari;Belimbing;;198501012010012001\n;Belimbing;Anggrek;198501012010012001\nBidan Rina;Kanaan;Melati II;198602022011012002\n");
+        file_put_contents($path, "\xEF\xBB\xBFNama_PJ;NIP_PJ\nKader Sari;198501012010012001\n;198501012010012001\nBidan Rina;198602022011012002\n");
 
         $r = (new PjImport())->baca($path);
 
         $this->assertCount(2, $r['baris']);
-        $this->assertSame(['kelurahan' => 'Belimbing', 'posyandu' => null, 'nama_pj' => 'Kader Sari', 'nip_pj' => '198501012010012001', 'baris' => 2], $r['baris'][0]);
-        $this->assertSame('Melati II', $r['baris'][1]['posyandu']);
+        $this->assertSame(['nama_pj' => 'Kader Sari', 'nip_pj' => '198501012010012001', 'baris' => 2], $r['baris'][0]);
+        $this->assertSame('Bidan Rina', $r['baris'][1]['nama_pj']);
         $this->assertStringContainsString('Baris 3', $r['gagal'][0]);
     }
 
     public function test_parser_menolak_header_tanpa_kolom_wajib(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'pj');
-        file_put_contents($path, "nama,kelurahan\nKader,Belimbing\n");
+        file_put_contents($path, "nama_pj\nKader\n");
 
         $this->expectException(\RuntimeException::class);
         (new PjImport())->baca($path);
@@ -46,7 +46,7 @@ class ImportPjTest extends TestCase
         Queue::fake();
         Storage::fake('local');
         $super = User::factory()->create(['type' => 0]);
-        $file = UploadedFile::fake()->createWithContent('pj.csv', "kelurahan,posyandu,nip_pj,nama_pj\nBelimbing,,198501012010012001,Kader Sari\n");
+        $file = UploadedFile::fake()->createWithContent('pj.csv', "nip_pj,nama_pj\n198501012010012001,Kader Sari\n");
 
         $this->actingAs($super)->post(route('admin.importCsv.pj'), ['file_pj' => $file, 'timpa' => 1])
             ->assertRedirect()->assertSessionHas('import_queued');
@@ -65,7 +65,7 @@ class ImportPjTest extends TestCase
         DataAnak::create(['id_anak' => $a->id, 'tgl_kunjungan' => now()->subDays(5)->toDateString(), 'bln' => 24, 'posisi' => 'berdiri', 'tb' => 85, 'bb' => 10,
             'lla' => 0, 'lk' => 0, 'id_user' => 1, 'zscore_bb_u' => 0, 'zscore_pb_u' => -2.5, 'zscore_bb_pb' => 0, 'sumber' => 'operasi_timbang']);
         $super = User::factory()->create(['type' => 0]);
-        Storage::disk('local')->put('imports/pj/x.csv', "kelurahan,posyandu,nip_pj,nama_pj\nBelimbing,,198501012010012001,Kader Sari\nAntah,,199006062015011006,Kader X\n");
+        Storage::disk('local')->put('imports/pj/x.csv', "nip_pj,nama_pj\n198501012010012001,Kader Sari\nNIP RUSAK,Kader X\n");
         $log = ImportLog::create(['user_id' => $super->id, 'filename' => 'x.csv', 'file_path' => 'imports/pj/x.csv', 'type' => 'pj', 'status' => 'pending']);
 
         (new ImportPjJob($log, false))->handle();
@@ -75,7 +75,8 @@ class ImportPjTest extends TestCase
         $this->assertSame(1, (int) $log->success_count);
         $this->assertSame(1, (int) $log->failure_count);
         $this->assertSame('Kader Sari', $a->fresh()->pj_nama);
-        $this->assertStringContainsString('Belimbing', implode("\n", $log->failures));
+        $this->assertSame('198501012010012001', $a->fresh()->pj_nip);
+        $this->assertStringContainsString('1 PJ, 1 anak sasaran, 1 dialokasikan', implode("\n", $log->failures));
     }
 
     public function test_halaman_import_punya_tab_pj_dan_template(): void
@@ -83,14 +84,20 @@ class ImportPjTest extends TestCase
         $super = User::factory()->create(['type' => 0]);
         $this->actingAs($super)->get(route('admin.importCsv.index'))->assertOk()
             ->assertSee('id="tab-pj"', false)->assertSee('name="file_pj"', false)->assertSee('name="timpa"', false);
-        $this->actingAs($super)->get(route('admin.importCsv.template', 'pj'))->assertOk()
+        $template = $this->actingAs($super)->get(route('admin.importCsv.template', 'pj'))->assertOk()
             ->assertHeader('Content-Type', 'text/csv; charset=utf-8');
+        $path = $template->baseResponse->getFile()->getPathname();
+        $header = strtok(file_get_contents($path), "\r\n");
+        $this->assertSame('nip_pj,nama_pj', $header);
+        $parsed = (new PjImport())->baca($path);
+        $this->assertCount(2, $parsed['baris']);
+        $this->assertSame([], $parsed['gagal']);
     }
 
     public function test_nip_utuh_disimpan_sebagai_teks_dan_nip_rusak_dilaporkan(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'pj');
-        file_put_contents($path, "kelurahan,nip_pj,nama_pj\nBelimbing,001234567890123456,Sari\nBelimbing,1.98501012010012E+17,Rina\nBelimbing,,Amir\n");
+        file_put_contents($path, "nip_pj,nama_pj\n001234567890123456,Sari\n1.98501012010012E+17,Rina\n,Amir\n");
         try {
             $hasil = (new PjImport())->baca($path);
             $this->assertCount(1, $hasil['baris']);

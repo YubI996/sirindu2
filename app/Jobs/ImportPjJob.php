@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Import nama PJ + alokasi otomatis per wilayah (lihat PjAlokasiService).
- * Ringkasan per wilayah ditulis ke ImportLog.failures agar tampil di Riwayat Import.
+ * Import NIP/nama PJ + alokasi otomatis ke anak sasaran (lihat PjAlokasiService).
+ * Ringkasan alokasi ditulis ke ImportLog.failures agar tampil di Riwayat Import.
  */
 class ImportPjJob implements ShouldQueue
 {
@@ -39,14 +39,10 @@ class ImportPjJob implements ShouldQueue
             $baca = (new PjImport())->baca($path);
             $r    = app(PjAlokasiService::class)->alokasikan($baca['baris'], $this->timpa, (int) $this->importLog->user_id);
 
-            $ringkasan = array_map(
-                fn ($w) => "{$w['label']}: {$w['pj']} PJ, {$w['anak']} anak sasaran, {$w['dialokasikan']} dialokasikan, {$w['dilewati']} dilewati",
-                $r['wilayah']
-            );
             $catatan = array_merge(
                 $baca['gagal'],
                 $r['gagal'],
-                $ringkasan,
+                ["{$r['pj']} PJ, {$r['anak']} anak sasaran, {$r['dialokasikan']} dialokasikan, {$r['dilewati']} dilewati"],
                 ["{$r['dilewati']} anak dilewati karena sudah punya PJ".($this->timpa ? ' (mode timpa)' : ' — centang "Timpa" untuk mengganti')]
             );
 

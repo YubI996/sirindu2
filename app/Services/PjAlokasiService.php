@@ -3,37 +3,28 @@
 namespace App\Services;
 
 use App\Http\Controllers\TimbangDashboardController;
-use App\Models\Kelurahan;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Alokasi otomatis Penanggung Jawab (PJ) dari CSV `kelurahan, posyandu, nip_pj, nama_pj`
- * (permintaan klien 15 Sep 2026). Per wilayah (kelurahan, atau kelurahan+posyandu),
- * anak yang saat ini stunting/wasting/underweight — aturan yang sama dengan modal dasbor OT
- * (OtGiziService) — dibagi rata bergilir ke PJ yang terdaftar di wilayah itu, urut CSV.
+ * Pasangkan daftar NIP/nama PJ ke seluruh anak sasaran stunting/wasting/underweight.
+ * Sasaran mengikuti kunjungan OT terakhir (OtGiziService); dibagi rata bergilir
+ * sesuai urutan CSV, tanpa pengelompokan kelurahan atau posyandu.
  * Anak yang sudah punya PJ dilewati kecuali $timpa. Hasil tetap bisa diubah di modal OT.
  */
 class PjAlokasiService
 {
-    public function __construct(
-        private readonly OtGiziService $otGizi,
-        private readonly FaskesMatcher $matcher,
-    ) {
+    public function __construct(private readonly OtGiziService $otGizi)
+    {
     }
 
     /**
-     * @param  array<int, array{kelurahan:string, posyandu:?string, nip_pj:string, nama_pj:string, baris:int}> $baris
-     * @return array{dialokasikan:int, dilewati:int, wilayah:array<int, array{label:string, pj:int, anak:int, dialokasikan:int, dilewati:int}>, gagal:string[]}
+     * @param  array<int, array{nip_pj:string, nama_pj:string, baris:int}> $baris
+     * @return array{dialokasikan:int, dilewati:int, pj:int, anak:int, gagal:string[]}
      */
     public function alokasikan(array $baris, bool $timpa, int $userId): array
     {
-        $kelurahan = [];
-        foreach (Kelurahan::select('id', 'name')->get() as $k) {
-            $kelurahan[FaskesMatcher::normalisasi($k->name)] = ['id' => (int) $k->id, 'nama' => $k->name];
-        }
-
         // Identitas PJ berdasarkan NIP; nama sama dengan NIP berbeda tetap dua orang.
-        $kelompok = [];
+        $daftarPj = [];
         $gagal = [];
         foreach ($baris as $b) {
             $namaPj = trim((string) ($b['nama_pj'] ?? ''));
@@ -42,72 +33,43 @@ class PjAlokasiService
                 $gagal[] = "Baris {$b['baris']}: NIP harus 18 digit dan nama PJ wajib diisi (maksimal 100 karakter).";
                 continue;
             }
-            $kel = $kelurahan[FaskesMatcher::normalisasi((string) ($b['kelurahan'] ?? ''))] ?? null;
-            if (!$kel) {
-                $gagal[] = "Baris {$b['baris']}: kelurahan \"{$b['kelurahan']}\" tidak dikenal.";
-                continue;
-            }
-            $posId = null;
-            $label = 'Kel. '.$kel['nama'];
-            $posNama = trim((string) ($b['posyandu'] ?? ''));
-            if ($posNama !== '') {
-                $cocok = $this->matcher->cocokkan($posNama);
-                if (!$cocok['id']) {
-                    $gagal[] = "Baris {$b['baris']}: posyandu \"{$posNama}\" tidak dikenal ({$cocok['alasan']}).";
-                    continue;
+            if (isset($daftarPj[$nipPj])) {
+                if (mb_strtolower($daftarPj[$nipPj]['nama']) !== mb_strtolower($namaPj)) {
+                    $gagal[] = "Baris {$b['baris']}: NIP yang sama memiliki nama PJ berbeda dalam daftar ini.";
                 }
-                $posId = (int) $cocok['id'];
-                $label .= ' / Posyandu '.$posNama;
-            }
-            if ($namaPj === '') {
-                $gagal[] = "Baris {$b['baris']}: nama PJ kosong.";
                 continue;
             }
-            $key = $kel['id'].'|'.($posId ?? '');
-            $kelompok[$key] ??= ['kel' => $kel['id'], 'pos' => $posId, 'label' => $label, 'pj' => []];
-            if (isset($kelompok[$key]['pj'][$nipPj]) && mb_strtolower($kelompok[$key]['pj'][$nipPj]['nama']) !== mb_strtolower($namaPj)) {
-                $gagal[] = "Baris {$b['baris']}: NIP yang sama memiliki nama PJ berbeda dalam wilayah ini.";
-                continue;
-            }
-            $kelompok[$key]['pj'][$nipPj] = ['nip' => $nipPj, 'nama' => $namaPj];
+            $daftarPj[$nipPj] = ['nip' => $nipPj, 'nama' => $namaPj];
         }
 
-        $ringkasan = ['dialokasikan' => 0, 'dilewati' => 0, 'wilayah' => [], 'gagal' => $gagal];
-        $kategori  = TimbangDashboardController::KATEGORI_PJ;
+        $pj = array_values($daftarPj);
+        $ringkasan = ['dialokasikan' => 0, 'dilewati' => 0, 'pj' => count($pj), 'anak' => 0, 'gagal' => $gagal];
+        if ($pj === []) {
+            return $ringkasan;
+        }
 
-        DB::transaction(function () use ($kelompok, $timpa, $userId, $kategori, &$ringkasan) {
-            foreach ($kelompok as $g) {
-                $f   = $this->otGizi->filterKosong(['kel' => $g['kel'], 'posyandu' => $g['pos']]);
-                $ids = $this->otGizi->idAnakMasalahGizi($f, $kategori);
-                sort($ids);
+        return DB::transaction(function () use ($pj, $timpa, $userId, $ringkasan) {
+            $ids = $this->otGizi->idAnakMasalahGizi($this->otGizi->filterKosong(), TimbangDashboardController::KATEGORI_PJ);
+            sort($ids);
 
-                $sudah = $timpa || empty($ids) ? [] : DB::table('anak')->whereIn('id', $ids)
-                    ->whereNotNull('pj_nama')->where('pj_nama', '!=', '')->pluck('id')->map(fn ($i) => (int) $i)->all();
-                $sasaran = array_values(array_diff($ids, $sudah));
+            $sudah = $timpa || empty($ids) ? [] : DB::table('anak')->whereIn('id', $ids)
+                ->whereNotNull('pj_nama')->where('pj_nama', '!=', '')->pluck('id')->map(fn ($i) => (int) $i)->all();
+            $sasaran = array_values(array_diff($ids, $sudah));
 
-                $n = count($g['pj']);
-                $pj = array_values($g['pj']);
-                foreach ($sasaran as $i => $idAnak) {
-                    DB::table('anak')->where('id', $idAnak)->update([
-                        'pj_nama'       => $pj[$i % $n]['nama'],
-                        'pj_nip'        => $pj[$i % $n]['nip'],
-                        'pj_updated_by' => $userId,
-                        'pj_updated_at' => now(),
-                    ]);
-                }
-
-                $ringkasan['wilayah'][] = [
-                    'label'        => $g['label'],
-                    'pj'           => $n,
-                    'anak'         => count($ids),
-                    'dialokasikan' => count($sasaran),
-                    'dilewati'     => count($sudah),
-                ];
-                $ringkasan['dialokasikan'] += count($sasaran);
-                $ringkasan['dilewati']     += count($sudah);
+            foreach ($sasaran as $i => $idAnak) {
+                $penanggungJawab = $pj[$i % count($pj)];
+                DB::table('anak')->where('id', $idAnak)->update([
+                    'pj_nama'       => $penanggungJawab['nama'],
+                    'pj_nip'        => $penanggungJawab['nip'],
+                    'pj_updated_by' => $userId,
+                    'pj_updated_at' => now(),
+                ]);
             }
-        });
 
-        return $ringkasan;
+            $ringkasan['anak'] = count($ids);
+            $ringkasan['dialokasikan'] = count($sasaran);
+            $ringkasan['dilewati'] = count($sudah);
+            return $ringkasan;
+        });
     }
 }

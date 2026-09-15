@@ -529,20 +529,20 @@
 </div>
 
 {{-- =====================================================================
-     PANEL: Penanggung Jawab (PJ) — alokasi otomatis per wilayah
+     PANEL: Penanggung Jawab (PJ) — alokasi otomatis ke anak
      ===================================================================== --}}
 <div class="imp-panel" id="panel-pj" role="tabpanel" aria-labelledby="tab-pj">
     <div class="imp-panel-grid">
         <div class="imp-guide">
             <p class="imp-guide__label">Data yang diimpor</p>
-            <p>Daftar <strong>NIP dan nama penanggung jawab</strong> per wilayah. Sistem membagi <strong>rata bergilir</strong> anak yang termasuk kategori <strong>stunting, wasting, atau underweight</strong> (kunjungan Operasi Timbang terakhir) ke PJ di wilayah itu. Setiap anak memiliki satu PJ, termasuk bila anak masuk beberapa kategori. Hasil dapat diubah di daftar anak pada dasbor Operasi Timbang.</p>
+            <p>Unggah daftar <strong>NIP dan nama penanggung jawab</strong>. Aplikasi memasangkan PJ secara <strong>rata bergilir</strong> ke seluruh anak yang termasuk kategori <strong>stunting, wasting, atau underweight</strong> berdasarkan kunjungan Operasi Timbang terakhir. Setiap anak mendapat satu PJ, termasuk bila anak masuk beberapa kategori. Satu PJ dapat menangani beberapa anak. Hasil dapat diubah di daftar anak pada dasbor Operasi Timbang.</p>
             <div class="imp-guide__rule">
                 <strong>Format CSV</strong>
-                Kolom: <strong>kelurahan</strong>, <strong>posyandu</strong> (boleh kosong = seluruh kelurahan), <strong>nip_pj</strong>, <strong>nama_pj</strong>. Satu baris per PJ; PJ yang sama boleh muncul di beberapa wilayah. Simpan NIP sebagai <strong>teks 18 digit</strong> di Excel agar tidak dibulatkan atau berubah menjadi notasi ilmiah.
+                Cukup dua kolom: <strong>nip_pj</strong> dan <strong>nama_pj</strong>. Satu baris per PJ; aplikasi menentukan anak yang ditangani. Simpan NIP sebagai <strong>teks 18 digit</strong> di Excel agar tidak dibulatkan atau berubah menjadi notasi ilmiah.
             </div>
             <div class="imp-guide__rule">
                 <strong>Anak yang sudah punya PJ</strong>
-                Dilewati, kecuali centang <em>Timpa PJ yang sudah ada</em>. Nama posyandu dicocokkan otomatis (angka Romawi/Arab, spasi).
+                Dilewati, kecuali centang <em>Timpa PJ yang sudah ada</em> untuk membagi ulang penugasan seluruh anak sasaran menggunakan daftar PJ yang diunggah.
             </div>
             <a href="{{ route('admin.importCsv.template', 'pj') }}" class="imp-template-link" download>
                 <span class="material-symbols-outlined">download</span>

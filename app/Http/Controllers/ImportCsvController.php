@@ -94,7 +94,7 @@ class ImportCsvController extends Controller
         return $this->handleUpload($request, 'ukur', 'file_ukur');
     }
 
-    /** Nama PJ per wilayah — alokasi otomatis (PjAlokasiService); opsi `timpa` dari checkbox form. */
+    /** Daftar NIP/nama PJ — alokasi otomatis ke anak; opsi `timpa` dari checkbox form. */
     public function uploadPj(Request $request)
     {
         return $this->handleUpload($request, 'pj', 'file_pj');

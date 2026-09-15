@@ -5,16 +5,16 @@ namespace App\Imports;
 use RuntimeException;
 
 /**
- * Parser CSV PJ: `kelurahan`, `posyandu` (opsional), `nip_pj`, `nama_pj`.
+ * Parser CSV daftar PJ: `nip_pj`, `nama_pj`.
  * Header bebas urutan & huruf besar/kecil, BOM dibuang, pemisah koma atau titik koma.
  * Berkas kecil (puluhan baris) → fgetcsv biasa, tanpa Maatwebsite.
  */
 class PjImport
 {
-    public const KOLOM_WAJIB = ['kelurahan', 'nip_pj', 'nama_pj'];
+    public const KOLOM_WAJIB = ['nip_pj', 'nama_pj'];
 
     /**
-     * @return array{baris: array<int, array{kelurahan:string, posyandu:?string, nip_pj:string, nama_pj:string, baris:int}>, gagal: string[]}
+     * @return array{baris: array<int, array{nip_pj:string, nama_pj:string, baris:int}>, gagal: string[]}
      */
     public function baca(string $path): array
     {
@@ -32,7 +32,7 @@ class PjImport
         $header = array_map(fn ($h) => strtolower(trim((string) $h)), str_getcsv($headerLine, $delim, '"', '\\'));
 
         $idx = [];
-        foreach (['kelurahan', 'posyandu', 'nip_pj', 'nama_pj'] as $k) {
+        foreach (self::KOLOM_WAJIB as $k) {
             $i = array_search($k, $header, true);
             if ($i !== false) $idx[$k] = $i;
         }
@@ -52,13 +52,11 @@ class PjImport
                 continue; // baris kosong
             }
             $ambil = fn (string $k) => isset($idx[$k]) ? trim((string) ($row[$idx[$k]] ?? '')) : '';
-            $kelurahan = $ambil('kelurahan');
             $namaPj    = $ambil('nama_pj');
             $nipPj     = $ambil('nip_pj');
-            $posyandu  = $ambil('posyandu');
 
-            if ($kelurahan === '' || $namaPj === '' || $nipPj === '') {
-                $gagal[] = "Baris {$no}: kelurahan, nip_pj, dan nama_pj wajib diisi.";
+            if ($namaPj === '' || $nipPj === '') {
+                $gagal[] = "Baris {$no}: nip_pj dan nama_pj wajib diisi.";
                 continue;
             }
             if (!preg_match('/^[0-9]{18}$/', $nipPj) || mb_strlen($namaPj) > 100) {
@@ -66,8 +64,6 @@ class PjImport
                 continue;
             }
             $baris[] = [
-                'kelurahan' => $kelurahan,
-                'posyandu'  => $posyandu !== '' ? $posyandu : null,
                 'nama_pj'   => $namaPj,
                 'nip_pj'    => $nipPj,
                 'baris'     => $no,

@@ -2,6 +2,8 @@
 
 ## Status
 
+**Koreksi terbaru:** [impor PJ cukup NIP dan nama; aplikasi memasangkan langsung ke anak](verification-2026-09-15-pj-tanpa-wilayah.md). Ketentuan CSV dan pembagian per wilayah di laporan ini merupakan jejak sebelum koreksi pengguna.
+
 Selesai dan diverifikasi di lokal, melanjutkan scoping RT yang selesai pada commit `8440d72`.
 Pembagian PJ tetap otomatis per wilayah sesuai keputusan pengguna. Belum push atau deploy produksi.
 
