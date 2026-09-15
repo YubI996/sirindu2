@@ -22,7 +22,7 @@ class storeAnakRequest extends FormRequest
      */
     public function rules()
     {
-        return [
+        return array_merge([
             'no_kk' => 'required',
             'nik' => 'required',
             'nama' => 'required',
@@ -41,7 +41,7 @@ class storeAnakRequest extends FormRequest
             'id_posyandu' => 'required',
             'alamat' => 'nullable|string',
             'alamat_ktp' => 'nullable|string',
-        ];
+        ], KesmasRules::anak()); // field Kesmas & riwayat lahir (spec 2026-09-15 §3.3), semua opsional
     }
 
     public function messages()

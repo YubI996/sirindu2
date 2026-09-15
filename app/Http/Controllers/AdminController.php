@@ -11,6 +11,7 @@ use App\Repositories\Admin\Anak\AnakRepository as AnakInterface;
 use App\Http\Requests\Admin\User\storeUserRequest;
 use App\Http\Requests\Admin\Anak\storeAnakRequest;
 use App\Http\Requests\Admin\Anak\updateAnakRequest;
+use App\Http\Requests\Admin\Anak\KesmasRules;
 use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Models\Imunisasi;
@@ -233,8 +234,13 @@ ANAK
 
     public function updateAnak(Request $request, $id)
     {
+        $anak = Anak::findByHashIdOrFail($id);
+        // Validasi field Kesmas saja (opsional semua); field lama tetap tanpa validasi
+        // server seperti sebelumnya. Harus SEBELUM try — ValidationException tidak boleh
+        // tertelan catch Throwable menjadi "Gagal Mengubah Data".
+        $request->validate(KesmasRules::anak($anak->penolong_lahir));
+
         try {
-            $anak = Anak::findByHashIdOrFail($id);
             $this->anakRepository->updateAnak($request, $anak->id);
             Alert::success('Anak', 'Berhasil Mengubah Data');
             return redirect()->route('admin.anak');

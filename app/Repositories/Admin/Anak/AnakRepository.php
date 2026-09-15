@@ -3,6 +3,7 @@
 namespace App\Repositories\Admin\Anak;
 
 use App\Repositories\Admin\Core\Anak\AnakRepositoryInterface;
+use App\Http\Requests\Admin\Anak\KesmasRules;
 use App\Models\Anak;
 use App\Models\User;
 use App\Models\DataAnak;
@@ -35,7 +36,7 @@ class AnakRepository implements AnakRepositoryInterface
         $m2 = date('m', $now);
         $umur = (($y2 - $y1) * 12) + ($m2 - $m1);
 
-        $anak_baru = Anak::create([
+        $anak_baru = Anak::create(array_merge([
             'no_kk' => $request->no_kk,
             'nik' => $request->nik,
             'nama' => $request->nama,
@@ -58,7 +59,7 @@ class AnakRepository implements AnakRepositoryInterface
             'alamat_ktp' => $request->alamat_ktp,
             'catatan' => $request->catatan ?? '',
             'sumber' => 'manual',
-        ]);
+        ], $this->kesmasAnakAttributes($request)));
 
         DataAnak::create([
             'id_anak' => $anak_baru->id,
@@ -92,7 +93,7 @@ class AnakRepository implements AnakRepositoryInterface
         // save() membuat baris baru, bukan diam-diam gagal seperti update() pada model null.
         $dt = DataAnak::firstOrNew(['id_anak' => $id]);
         if ($request->id_kec == null) {
-            $anak->update([
+            $anak->update(array_merge([
                 'no_kk' => $request->no_kk,
                 'nik' => $request->nik,
                 'nama' => $request->nama,
@@ -114,7 +115,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'alamat' => $request->alamat,
                 'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
-            ]);
+            ], $this->kesmasAnakAttributes($request)));
             $dt->fill([
                 'bln' => $umur,
                 'posisi' => $request->posisi ?? 'L',
@@ -141,7 +142,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'id_user' => Auth::user()->id,
             ])->save();
         } else {
-            $anak->update([
+            $anak->update(array_merge([
                 'no_kk' => $request->no_kk,
                 'nik' => $request->nik,
                 'nama' => $request->nama,
@@ -163,7 +164,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'alamat' => $request->alamat,
                 'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
-            ]);
+            ], $this->kesmasAnakAttributes($request)));
             $dt->fill([
                 'bln' => $umur,
                 'posisi' => $request->posisi ?? 'L',
@@ -317,5 +318,44 @@ class AnakRepository implements AnakRepositoryInterface
     {
         $anak = Anak::find($idAnak);
         return app(ImunisasiStatusService::class)->getCatchupPlan($anak);
+    }
+
+    // ==================== KESMAS (spec 2026-09-15 §3.4) ====================
+
+    /**
+     * Kolom Kesmas & riwayat lahir di `anak`. Hanya field yang DIKIRIM form yang
+     * disentuh — form/klien lama tanpa field ini tidak menimpa data menjadi null.
+     */
+    private function kesmasAnakAttributes($request): array
+    {
+        return $this->kolomKesmas($request, array_keys(KesmasRules::anak()), KesmasRules::BOOL_ANAK);
+    }
+
+    /** Layanan Kesmas per kunjungan di `data_anak` (checkbox hidden+checkbox → 0/1). */
+    private function layananKesmasAttributes($request): array
+    {
+        return $this->kolomKesmas($request, array_keys(KesmasRules::kunjungan()), array_keys(config('kesmas.layanan')));
+    }
+
+    /**
+     * `has()` di sini mendeteksi KEBERADAAN field (dikirim atau tidak), bukan membaca
+     * nilainya — nilai boolean tetap dibaca lewat boolean(). '' (select "— belum diisi —") → null.
+     */
+    private function kolomKesmas($request, array $kolom, array $boolean): array
+    {
+        $out = [];
+        foreach ($kolom as $f) {
+            if (!$request->has($f)) {
+                continue;
+            }
+            $v = $request->input($f);
+            if ($v === null || $v === '') {
+                $out[$f] = null;
+                continue;
+            }
+            $out[$f] = in_array($f, $boolean, true) ? (int) $request->boolean($f) : $v;
+        }
+
+        return $out;
     }
 }
