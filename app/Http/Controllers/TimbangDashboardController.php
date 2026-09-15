@@ -8,6 +8,7 @@ use App\Models\AppSetting;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Services\HashIdService;
+use App\Services\OtGiziService;
 use App\Services\StatusGiziService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,8 +21,10 @@ class TimbangDashboardController extends Controller
     /** Kategori modal yang menampilkan & mengedit kolom Penanggung Jawab (juga di export). */
     public const KATEGORI_PJ = ['stunting', 'wasting', 'underweight']; // koreksi klien 14 Sep 2026: wasting, bukan gizi buruk
 
-    public function __construct(private StatusGiziService $statusGizi)
-    {
+    public function __construct(
+        private StatusGiziService $statusGizi,
+        private OtGiziService $otGizi,
+    ) {
         // Endpoint agregat + landing publik boleh diakses tamu (tanpa login).
         // daftar/daftarExport TIDAK dikecualikan → tetap auth-only (privasi nama/NIK).
         $this->middleware('auth')->except([
@@ -494,13 +497,10 @@ class TimbangDashboardController extends Controller
         ];
     }
 
-    /** Terapkan filter wilayah pada query yg punya join/alias tabel anak. */
+    /** Terapkan filter wilayah pada query yg punya join/alias tabel anak (lihat OtGiziService). */
     private function applyWilayah($q, array $f, string $a = 'a'): void
     {
-        if ($f['kec'])      $q->where("$a.id_kec", $f['kec']);
-        if ($f['kel'])      $q->where("$a.id_kel", $f['kel']);
-        if ($f['rt'])       $q->where("$a.id_rt", $f['rt']);
-        if ($f['posyandu']) $q->where("$a.id_posyandu", $f['posyandu']);
+        $this->otGizi->applyWilayah($q, $f, $a);
     }
 
     /**
@@ -548,30 +548,10 @@ class TimbangDashboardController extends Controller
     /**
      * Builder id kunjungan TERAKHIR per anak (tgl_kunjungan terbesar, tie-break MAX(id)).
      */
+    /** Kunjungan OT terakhir per anak — aturannya hidup di OtGiziService (dipakai juga alokasi PJ). */
     private function latestVisitQuery(array $f)
     {
-        // Kunjungan TERAKHIR dihitung di antara kunjungan balita saja (da.bln<=60):
-        // bila kelak anak yg dulu balita punya kunjungan usia SD, dashboard tetap
-        // memakai kunjungan balita terakhirnya — kartu gizi tak diam-diam bergeser.
-        $maxTgl = DB::table('data_anak as dm')
-            ->join('anak as am', 'dm.id_anak', '=', 'am.id')
-            ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
-            ->whereNotNull('dm.tgl_kunjungan')
-            ->where('dm.bln', '<=', 60)
-            ->where('dm.sumber', 'operasi_timbang');
-        if ($f['tahun']) $maxTgl->whereYear('dm.tgl_kunjungan', $f['tahun']);
-        $this->applyWilayah($maxTgl, $f, 'am');
-        $maxTgl->groupBy('dm.id_anak');
-
-        return DB::table('data_anak as da')
-            ->joinSub($maxTgl, 'm', function ($join) {
-                $join->on('m.id_anak', '=', 'da.id_anak')
-                     ->on('m.max_tgl', '=', 'da.tgl_kunjungan');
-            })
-            ->where('da.bln', '<=', 60)
-            ->where('da.sumber', 'operasi_timbang')
-            ->selectRaw('MAX(da.id) as max_id')
-            ->groupBy('da.id_anak');
+        return $this->otGizi->latestVisitQuery($f);
     }
 
     /** Pengukuran kunjungan terakhir per anak (>0 bb/tb, <=60 bln). */
@@ -698,14 +678,7 @@ class TimbangDashboardController extends Controller
                 $this->zval($m->zscore_pb_u),
                 $this->zval($m->zscore_bb_pb),
             );
-            $hit = match ($kategori) {
-                'stunting'    => in_array($g['tb_u'], ['severely_stunted', 'stunted'], true),
-                'underweight' => in_array($g['bb_u'], ['severely_underweight', 'underweight'], true),
-                'wasting'     => in_array($g['bb_tb'], ['wasted', 'severely_wasted'], true),
-                'gizi_kurang' => $g['bb_tb'] === 'wasted',
-                'gizi_buruk'  => $g['bb_tb'] === 'severely_wasted',
-                default       => false,
-            };
+            $hit = OtGiziService::kena($g, $kategori);
             if ($hit) {
                 $matchIds[] = $m->id_anak;
                 $label = match ($kategori) {
@@ -783,6 +756,6 @@ class TimbangDashboardController extends Controller
     /** Nilai z-score DB → ?float (kolom bisa null / string desimal). */
     private function zval($v): ?float
     {
-        return ($v === null || $v === '') ? null : (float) $v;
+        return $this->otGizi->zval($v);
     }
 }
