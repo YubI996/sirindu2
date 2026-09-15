@@ -351,6 +351,8 @@ Edit Anak
                 <input type="text" class="form-control" name="ddtka" value="{{$data->ddtka}}">
             </div>
         </div>
+        {{-- Layanan Kesmas kunjungan ini (spec 2026-09-15 §3); awalan id unik per kunjungan --}}
+        @include('admin.anak.partials.form-layanan-kesmas', ['data' => $data, 'p' => 'k' . $data->id . '_'])
         <div class="col-md-12 col-sm-12">
             <button type="submit" class="btn btn-primary">Submit</button>
         </div>

@@ -11,8 +11,7 @@ use Tests\TestCase;
  */
 class FormKesmasBladeTest extends TestCase
 {
-    /** Partial yang ada; Task 6 menambahkan 'form-layanan-kesmas'. */
-    private const PARTIAL = ['form-kesmas', 'form-riwayat-lahir'];
+    private const PARTIAL = ['form-kesmas', 'form-riwayat-lahir', 'form-layanan-kesmas'];
 
     private function sumber(string $relatif): string
     {
@@ -26,6 +25,23 @@ class FormKesmasBladeTest extends TestCase
             $this->assertStringContainsString("admin.anak.partials.form-kesmas", $src, "$view tidak meng-include form-kesmas");
             $this->assertStringContainsString("admin.anak.partials.form-riwayat-lahir", $src, "$view tidak meng-include form-riwayat-lahir");
         }
+    }
+
+    public function test_partial_layanan_diinclude_di_tambah_pengukuran_dan_edit_per_kunjungan(): void
+    {
+        $this->assertStringContainsString('admin.anak.partials.form-layanan-kesmas', $this->sumber('data-anak'));
+        $this->assertStringContainsString('admin.anak.partials.form-layanan-kesmas', $this->sumber('edit'));
+        $this->assertStringNotContainsString('form-layanan-kesmas', $this->sumber('create'));
+        // edit merender satu form per kunjungan → awalan id harus dari id kunjungan
+        $pola = "/form-layanan-kesmas',\s*\['data' => \\\$data,\s*'p' => 'k'\s*\.\s*\\\$data->id\s*\.\s*'_'\]/";
+        $this->assertMatchesRegularExpression($pola, $this->sumber('edit'));
+    }
+
+    public function test_partial_layanan_memakai_hidden_dan_checkbox_berpasangan(): void
+    {
+        $src = $this->sumber('partials/form-layanan-kesmas');
+        $this->assertStringContainsString('<input type="hidden" name="{{ $f }}" value="0">', $src);
+        $this->assertStringContainsString('type="checkbox" name="{{ $f }}" id="{{ $p }}{{ $f }}" value="1"', $src);
     }
 
     public function test_partial_tanpa_required_dan_memakai_bootstrap4(): void

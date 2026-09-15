@@ -140,6 +140,11 @@ Data Anak
         </div>
     </div>
 
+    {{-- Layanan Kesmas kunjungan ini (spec 2026-09-15 §3) — kartu tertutup, semua opsional --}}
+    <div class="row">
+        @include('admin.anak.partials.form-layanan-kesmas', ['data' => null, 'p' => ''])
+    </div>
+
     {{-- Section Imunisasi (Opsional) --}}
     <hr>
     <div class="row mb-3">

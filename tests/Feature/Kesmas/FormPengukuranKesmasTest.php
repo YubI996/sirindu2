@@ -147,4 +147,30 @@ class FormPengukuranKesmasTest extends TestCase
 
         $this->assertNull($d->refresh()->pemeriksaan_gigi);
     }
+
+    public function test_form_tambah_pengukuran_memuat_kartu_layanan(): void
+    {
+        $html = $this->actingAs($this->admin)->get(route('admin.dataAnak', $this->anak->hashid))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Layanan Kesmas (opsional)', $html);
+        $this->assertMatchesRegularExpression('/id="kartuLayanan" class="collapse"/', $html);
+        $this->assertStringContainsString('<input type="hidden" name="kn1" value="0">', $html);
+        $this->assertStringContainsString('id="kn1"', $html);
+    }
+
+    public function test_form_edit_per_kunjungan_punya_id_unik_dan_nilai_tersimpan(): void
+    {
+        $a = $this->kunjunganTersimpan(['kn1' => 1, 'pemeriksaan_gigi' => 'Karies']);
+        $b = $this->kunjunganTersimpan(['tgl_kunjungan' => '2025-03-10', 'bln' => 2]);
+
+        $html = $this->actingAs($this->admin)->get(route('admin.editAnak', $this->anak->hashid))->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="k' . $a->id . '_kn1"', $html);
+        $this->assertStringContainsString('id="k' . $b->id . '_kn1"', $html);
+        $this->assertMatchesRegularExpression('/id="k' . $a->id . '_kn1" value="1" checked/', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="k' . $b->id . '_kn1" value="1" checked/', $html);
+        $this->assertMatchesRegularExpression('/id="k' . $a->id . '_pemeriksaan_gigi".*?<option value="Karies" selected/s', $html);
+        // id tidak boleh ganda di satu halaman
+        $this->assertSame(1, substr_count($html, 'id="k' . $a->id . '_kartuLayanan"'));
+    }
 }
