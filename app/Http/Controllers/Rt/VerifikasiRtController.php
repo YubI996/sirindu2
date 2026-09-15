@@ -50,6 +50,8 @@ class VerifikasiRtController extends Controller
         'keputusan.in'       => 'Keputusan tidak dikenal.',
         'catatan.max'        => 'Catatan terlalu panjang (maksimal 1000 karakter).',
         'catatan.string'     => 'Catatan harus berupa teks.',
+        'pelaksana.max'      => 'Nama pengisi terlalu panjang (maksimal 100 karakter).',
+        'pelaksana.string'   => 'Nama pengisi harus berupa teks.',
     ];
 
     public function __construct(
@@ -139,12 +141,16 @@ class VerifikasiRtController extends Controller
             'b'         => 'required|string',
             'keputusan' => ['required', Rule::in(AnakTautan::KEPUTUSAN)],
             'catatan'   => 'nullable|string|max:1000',
+            'pelaksana' => 'nullable|string|max:100',
         ], self::PESAN_VALIDASI);
+        if ($tolak = $this->wajibPelaksana($request)) {
+            return $tolak;
+        }
         $a = Anak::findByHashIdOrFail($data['a']);
         $b = Anak::findByHashIdOrFail($data['b']);
 
         try {
-            $t = $this->tautan->putuskan($a->id, $b->id, $rt, $request->user(), $data['keputusan'], $data['catatan'] ?? null);
+            $t = $this->tautan->putuskan($a->id, $b->id, $rt, $request->user(), $data['keputusan'], $data['catatan'] ?? null, $this->pelaksana($request));
         } catch (AuthorizationException $e) {
             abort(403, $e->getMessage());
         } catch (InvalidArgumentException $e) {
@@ -158,12 +164,16 @@ class VerifikasiRtController extends Controller
     {
         $rt   = $this->rt($request);
         $data = $request->validate([
-            'status'  => ['required', Rule::in(VerifikasiAnak::STATUS)],
-            'catatan' => 'nullable|string|max:1000',
+            'status'    => ['required', Rule::in(VerifikasiAnak::STATUS)],
+            'catatan'   => 'nullable|string|max:1000',
+            'pelaksana' => 'nullable|string|max:100',
         ], self::PESAN_VALIDASI);
+        if ($tolak = $this->wajibPelaksana($request)) {
+            return $tolak;
+        }
 
         try {
-            $v = $this->svc->usulkan($anak, $rt, $request->user(), $data['status'], $data['catatan'] ?? null);
+            $v = $this->svc->usulkan($anak, $rt, $request->user(), $data['status'], $data['catatan'] ?? null, $this->pelaksana($request));
         } catch (AuthorizationException $e) {
             abort(403, $e->getMessage());
         } catch (InvalidArgumentException $e) {
@@ -181,6 +191,30 @@ class VerifikasiRtController extends Controller
             'hilang'       => $v->status === 'bukan_rt_ini',
             'progres'      => $this->svc->progres($rt),
         ]);
+    }
+
+    /**
+     * Nama pengisi: dari request bila dikirim, kalau tidak dari sesi (ditanya sekali per sesi).
+     * Nilai baru dari request menggantikan yang di sesi.
+     */
+    private function pelaksana(Request $request): ?string
+    {
+        $p = trim((string) $request->input('pelaksana')) ?: null;
+        if ($p) {
+            $request->session()->put(RtAksesService::SESI_PELAKSANA, $p);
+        }
+
+        return $p ?? $request->session()->get(RtAksesService::SESI_PELAKSANA);
+    }
+
+    /** Mode tautan & akun kelurahan dipakai banyak orang → nama pengisi wajib. */
+    private function wajibPelaksana(Request $request): ?JsonResponse
+    {
+        if ($this->akses->konteks($request)['butuh_pelaksana'] && !$this->pelaksana($request)) {
+            return response()->json(['message' => 'Nama pengisi wajib diisi.', 'errors' => ['pelaksana' => ['Nama pengisi wajib diisi.']]], 422);
+        }
+
+        return null;
     }
 
     /** RT aktif menurut RtAksesService (sesi tautan / akun RT / akun kelurahan + ?rt= / superadmin + ?rt=). */

@@ -24,7 +24,7 @@ class MergeIdentitasController extends Controller
     public function index(): View
     {
         return view('admin.verifikasi-rt.gabung.index', [
-            'antrean' => AnakTautan::with(['anakA', 'anakB', 'pengusul.rt'])
+            'antrean' => AnakTautan::with(['anakA', 'anakB', 'pengusul.rt', 'rt'])
                 ->where('keputusan', 'sama')->where('status', 'disetujui')->orderBy('ditinjau_at')->get(),
             'log'     => AnakMergeLog::with(['dipertahankan', 'pelaku', 'pembatal'])->latest('id')->limit(50)->get(),
         ]);

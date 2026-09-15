@@ -24,7 +24,7 @@
                 <tr>
                     <td><b>{{ $t->anakA?->nama }}</b><br><small class="text-muted">NIK {{ $t->anakA?->nik }} · {{ $t->anakA?->sumber }}</small></td>
                     <td><b>{{ $t->anakB?->nama }}</b><br><small class="text-muted">NIK {{ $t->anakB?->nik }} · {{ $t->anakB?->sumber }}</small></td>
-                    <td><small>{{ $t->pengusul?->name }} ({{ $t->pengusul?->rt?->name }})</small></td>
+                    <td><small>{{ $t->pengusul?->name ?? 'Tautan RT' }} ({{ $t->rt?->name ?? $t->pengusul?->rt?->name }}){{ $t->pelaksana ? ' · pengisi: '.$t->pelaksana : '' }}</small></td>
                     <td><small>{{ $t->ditinjau_at?->format('d/m/Y H:i') }}</small></td>
                     <td class="text-right"><a class="btn btn-sm btn-primary" href="{{ route('admin.gabung.show', $t) }}">Gabungkan…</a></td>
                 </tr>

@@ -111,7 +111,7 @@ class TautanIdentitasService
     }
 
     /** Keputusan RT atas satu kandidat. Menimpa usulan lama yang belum disetujui. */
-    public function putuskan(int $idX, int $idY, Rt $rt, User $oleh, string $keputusan, ?string $catatan = null): AnakTautan
+    public function putuskan(int $idX, int $idY, Rt $rt, ?User $oleh, string $keputusan, ?string $catatan = null, ?string $pelaksana = null): AnakTautan
     {
         if (!in_array($keputusan, AnakTautan::KEPUTUSAN, true)) {
             throw new InvalidArgumentException("Keputusan tidak dikenal: {$keputusan}");
@@ -139,7 +139,9 @@ class TautanIdentitasService
             'skor'           => $kandidat->skor,
             'via'            => $kandidat->via,
             'status'         => 'diusulkan',
-            'diusulkan_oleh' => $oleh->id,
+            'id_rt'          => $rt->id,
+            'diusulkan_oleh' => $oleh?->id,
+            'pelaksana'      => $pelaksana ?: null,
             'diusulkan_at'   => now(),
             'ditinjau_oleh'  => null,
             'ditinjau_at'    => null,
@@ -177,12 +179,12 @@ class TautanIdentitasService
         return $t->fresh();
     }
 
-    /** Kelurahan yang "memiliki" tautan: id_kel kedua anak, atau kelurahan RT pengusul bila keduanya kosong. */
+    /** Kelurahan yang "memiliki" tautan: id_kel kedua anak, atau kelurahan RT pemutus bila keduanya kosong. */
     private function kelurahanTautan(AnakTautan $t): array
     {
         $kel = array_filter([(int) $t->anakA?->id_kel, (int) $t->anakB?->id_kel]);
         if (empty($kel)) {
-            $kel = [(int) $t->pengusul?->rt?->id_kelurahan];
+            $kel = [(int) ($t->rt?->id_kelurahan ?? $t->pengusul?->rt?->id_kelurahan)];
         }
         return array_values(array_unique($kel));
     }
@@ -190,7 +192,7 @@ class TautanIdentitasService
     /** Antrean tautan `diusulkan`, dibatasi kelurahan untuk non-superadmin. */
     public function antreanTautanQuery(User $peninjau): Builder
     {
-        $q = AnakTautan::query()->with(['anakA', 'anakB', 'pengusul.rt'])->where('status', 'diusulkan');
+        $q = AnakTautan::query()->with(['anakA', 'anakB', 'pengusul', 'rt'])->where('status', 'diusulkan');
 
         if (!$peninjau->isSuperAdmin()) {
             $kel = (int) $peninjau->id_kel;
@@ -199,7 +201,7 @@ class TautanIdentitasService
                   ->orWhereHas('anakB', fn ($a) => $a->where('id_kel', $kel))
                   ->orWhere(fn ($x) => $x->whereHas('anakA', fn ($a) => $a->whereNull('id_kel'))
                                           ->whereHas('anakB', fn ($a) => $a->whereNull('id_kel'))
-                                          ->whereHas('pengusul.rt', fn ($r) => $r->where('id_kelurahan', $kel)));
+                                          ->whereHas('rt', fn ($r) => $r->where('id_kelurahan', $kel)));
             });
         }
 

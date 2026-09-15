@@ -65,7 +65,7 @@
                         @if($v->klaim_id_rt) <br><small class="text-muted">klaim: masukkan ke {{ $v->rt->name }}</small> @endif
                     </td>
                     <td>{{ $v->catatan ?: '-' }}</td>
-                    <td><small>{{ $v->pengusul?->name }}<br>{{ $v->diusulkan_at?->format('d/m/Y H:i') }}</small></td>
+                    <td><small>{{ $v->pengusul?->name ?? 'Tautan RT' }}@if($v->pelaksana)<br>pengisi: <b>{{ $v->pelaksana }}</b>@endif<br>{{ $v->diusulkan_at?->format('d/m/Y H:i') }}</small></td>
                     <td>
                         <form method="POST" action="{{ route('admin.verifikasiRt.tinjau', $v) }}" class="form-inline">
                             @csrf
@@ -105,7 +105,7 @@
     <div class="border rounded mb-3">
         <div class="px-3 py-2 bg-light d-flex justify-content-between flex-wrap">
             <span><b>{{ $t->keputusan === 'sama' ? 'SAMA — satu anak' : 'BEDA orang' }}</b> · alasan pindai: {{ $t->via }} · skor {{ $t->skor }}</span>
-            <small class="text-muted">{{ $t->pengusul?->name }} ({{ $t->pengusul?->rt?->name }}) · {{ $t->diusulkan_at?->format('d/m/Y H:i') }}{{ $t->catatan ? ' · "'.$t->catatan.'"' : '' }}</small>
+            <small class="text-muted">{{ $t->pengusul?->name ?? 'Tautan RT' }} ({{ $t->rt?->name ?? $t->pengusul?->rt?->name }}){{ $t->pelaksana ? ' · pengisi: '.$t->pelaksana : '' }} · {{ $t->diusulkan_at?->format('d/m/Y H:i') }}{{ $t->catatan ? ' · "'.$t->catatan.'"' : '' }}</small>
         </div>
         <div class="table-responsive">
             <table class="table table-sm mb-0">

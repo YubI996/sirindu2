@@ -26,6 +26,15 @@ body{ margin:0; font-family:Barlow,system-ui,sans-serif; color:var(--ink); backg
 .rt-pilih p{ margin:0 0 14px; color:var(--muted); line-height:1.5; }
 .rt-pilih select{ font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:10px; width:100%; margin-bottom:12px; }
 .rt-pilih button{ background:var(--green); color:#fff; border:0; border-radius:10px; padding:10px 18px; font:inherit; font-weight:700; cursor:pointer; }
+.rt-modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:50; }
+.rt-modal.show{ display:flex; }
+.rt-modal__box{ background:#fff; border-radius:14px; padding:22px 20px; width:100%; max-width:420px; }
+.rt-modal__box h2{ margin:0 0 6px; font-size:1.15rem; }
+.rt-modal__box p{ margin:0 0 12px; color:var(--muted); line-height:1.5; font-size:.95rem; }
+.rt-modal__box input{ font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:10px; width:100%; margin-bottom:12px; }
+.rt-modal__box button{ background:var(--green); color:#fff; border:0; border-radius:10px; padding:10px 18px; font:inherit; font-weight:700; cursor:pointer; }
+.rt-pengisi{ font-size:.85rem; color:var(--muted); }
+.rt-pengisi a{ color:var(--green); cursor:pointer; text-decoration:underline; }
 .rt-prog{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
 .rt-prog__bar{ height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:8px; }
 .rt-prog__fill{ height:100%; background:var(--green); width:0; transition:width .3s; }
@@ -98,6 +107,9 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
       @else
         {{ $user?->name }}
       @endif
+      @if($butuh_pelaksana)
+        <span class="rt-pengisi" id="pengisi-info">· pengisi: <b id="pengisi-nama">{{ $pelaksana ?? '—' }}</b> <a id="pengisi-ganti">ganti</a></span>
+      @endif
       @if($rt && $rt_list->count() > 1)
         {{-- Akun kelurahan / superadmin: ganti RT tanpa keluar --}}
         <select id="ganti-rt" aria-label="Ganti RT" onchange="location.href='{{ route('rt.verifikasi') }}?rt='+this.value">
@@ -163,6 +175,18 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
 </div>
 <div class="rt-toast" id="toast"></div>
 
+@if($butuh_pelaksana && $rt)
+{{-- Satu akun/tautan dipakai banyak orang: tanya nama pengisi sekali per sesi (tersimpan di sesi server) --}}
+<div class="rt-modal" id="modal-pelaksana" role="dialog" aria-modal="true" aria-labelledby="pelaksana-judul">
+  <form class="rt-modal__box" id="form-pelaksana">
+    <h2 id="pelaksana-judul">Siapa yang mengisi?</h2>
+    <p>Tulis nama Anda (mis. <i>Bu Sari, Ketua RT</i> atau <i>Kader Nia</i>). Nama ini ikut tercatat di setiap keputusan agar puskesmas tahu siapa yang memverifikasi.</p>
+    <input type="text" id="input-pelaksana" maxlength="100" placeholder="Nama pengisi" autocomplete="name" required>
+    <button type="submit">Lanjut</button>
+  </form>
+</div>
+@endif
+
 {{-- Tombol aksi per tab; JS mengklon template ini dan mengisi data-id --}}
 <template id="tpl-aksi-warga">
   <div class="aksi">
@@ -191,6 +215,8 @@ var API_WARGA   = '{{ route("rt.api.warga", request()->only("rt")) }}';
 var API_TANPA   = '{{ route("rt.api.tanpaRt", request()->only("rt")) }}';
 var API_USULKAN = '{{ route('rt.api.usulkan', ['anak' => '__ID__'] + request()->only('rt')) }}';
 var CSRF        = '{{ csrf_token() }}';
+var BUTUH_PELAKSANA = {{ $butuh_pelaksana ? 'true' : 'false' }};
+var PELAKSANA   = @json($pelaksana);
 var API_KANDIDAT = '{{ route("rt.api.kandidat", request()->only("rt")) }}';
 var API_PUTUSKAN = '{{ route("rt.api.putuskan", request()->only("rt")) }}';
 var FIELD_LABEL = { sumber_label:'Sumber', nik:'NIK', nama:'Nama', jk:'JK', tgl_lahir:'Tgl lahir', nama_ibu:'Ibu', nama_ayah:'Ayah', no_kk:'No KK', alamat:'Alamat domisili', alamat_ktp:'Alamat KTP', posyandu:'Posyandu', wilayah:'Kelurahan / RT' };
@@ -303,7 +329,7 @@ function usulkan(id, status, btn){
   btn.disabled = true;
   fetch(API_USULKAN.replace('__ID__', encodeURIComponent(id)), {
     method:'POST', headers:{ 'X-CSRF-TOKEN':CSRF, 'Content-Type':'application/json', Accept:'application/json' },
-    body: JSON.stringify({ status:status, catatan:catatan })
+    body: JSON.stringify({ status:status, catatan:catatan, pelaksana:PELAKSANA })
   })
   .then(tanganiRespons)
   .then(function(j){
@@ -322,7 +348,7 @@ function putuskan(card, keputusan, btn){
   var idA = card.getAttribute('data-a'), idB = card.getAttribute('data-b');
   fetch(API_PUTUSKAN, {
     method:'POST', headers:{ 'X-CSRF-TOKEN':CSRF, 'Content-Type':'application/json', Accept:'application/json' },
-    body: JSON.stringify({ a: idA, b: idB, keputusan: keputusan, catatan: catatan })
+    body: JSON.stringify({ a: idA, b: idB, keputusan: keputusan, catatan: catatan, pelaksana:PELAKSANA })
   })
   .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.message || 'HTTP '+r.status); return j; }); })
   .then(function(){
@@ -344,7 +370,25 @@ document.querySelectorAll('.rt-tab').forEach(function(b){
 });
 document.getElementById('cari').addEventListener('input', render);
 document.getElementById('f-status').addEventListener('change', render);
+// Modal nama pengisi (mode tautan / akun kelurahan): tampil saat masuk bila belum ada, dan sebelum aksi pertama
+function bukaModalPelaksana(){
+  var m = document.getElementById('modal-pelaksana'); if(!m) return;
+  document.getElementById('input-pelaksana').value = PELAKSANA || '';
+  m.classList.add('show'); setTimeout(function(){ document.getElementById('input-pelaksana').focus(); }, 50);
+}
+if(BUTUH_PELAKSANA){
+  document.getElementById('form-pelaksana').addEventListener('submit', function(e){
+    e.preventDefault();
+    var v = document.getElementById('input-pelaksana').value.trim();
+    if(!v){ document.getElementById('input-pelaksana').focus(); return; }
+    PELAKSANA = v; document.getElementById('pengisi-nama').textContent = v;
+    document.getElementById('modal-pelaksana').classList.remove('show');
+  });
+  document.getElementById('pengisi-ganti').addEventListener('click', bukaModalPelaksana);
+  if(!PELAKSANA) bukaModalPelaksana();
+}
 document.getElementById('tabel').addEventListener('click', function(e){
+  if(BUTUH_PELAKSANA && !PELAKSANA && e.target.closest('button[data-keputusan], button[data-status]')){ bukaModalPelaksana(); return; }
   var kb = e.target.closest('button[data-keputusan]');
   if(kb){ putuskan(kb.closest('.pair'), kb.getAttribute('data-keputusan'), kb); return; }
   var btn = e.target.closest('button[data-status]');

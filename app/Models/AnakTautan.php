@@ -32,6 +32,12 @@ class AnakTautan extends Model
         return $this->belongsTo(Anak::class, 'id_anak_b');
     }
 
+    /** RT yang memutus (Sept 2026; dulu diturunkan dari users.id_rt pengusul). */
+    public function rt(): BelongsTo
+    {
+        return $this->belongsTo(Rt::class, 'id_rt');
+    }
+
     public function pengusul(): BelongsTo
     {
         return $this->belongsTo(User::class, 'diusulkan_oleh');

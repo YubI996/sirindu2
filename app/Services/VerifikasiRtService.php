@@ -58,7 +58,7 @@ class VerifikasiRtService
      * Usulan RT. Usulan lama yang masih `diusulkan` dari RT yang sama untuk anak yang sama
      * ditandai `ditolak` ("Digantikan usulan baru") supaya antrean hanya memuat satu usulan per anak.
      */
-    public function usulkan(Anak $anak, Rt $rt, User $oleh, string $status, ?string $catatan = null): VerifikasiAnak
+    public function usulkan(Anak $anak, Rt $rt, ?User $oleh, string $status, ?string $catatan = null, ?string $pelaksana = null): VerifikasiAnak
     {
         if (!in_array($status, VerifikasiAnak::STATUS, true)) {
             throw new InvalidArgumentException("Status verifikasi tidak dikenal: {$status}");
@@ -70,7 +70,7 @@ class VerifikasiRtService
             throw new InvalidArgumentException('"Bukan warga RT ini" hanya untuk anak yang belum ber-RT.');
         }
 
-        return DB::transaction(function () use ($anak, $rt, $oleh, $status, $catatan) {
+        return DB::transaction(function () use ($anak, $rt, $oleh, $status, $catatan, $pelaksana) {
             VerifikasiAnak::where('id_anak', $anak->id)
                 ->where('id_rt', $rt->id)
                 ->where('reviu', 'diusulkan')
@@ -87,7 +87,9 @@ class VerifikasiRtService
                 // Klaim: anak belum ber-RT dinyatakan berdomisili → setelah disetujui, id_rt diisi
                 'klaim_id_rt'    => ($status === 'berdomisili' && $anak->id_rt === null) ? $rt->id : null,
                 'catatan'        => $catatan ?: null,
-                'diusulkan_oleh' => $oleh->id,
+                // Mode tautan: tanpa akun → diusulkan_oleh NULL, nama pengisi di `pelaksana`
+                'diusulkan_oleh' => $oleh?->id,
+                'pelaksana'      => $pelaksana ?: null,
                 'diusulkan_at'   => now(),
                 'reviu'          => 'diusulkan',
             ]);
