@@ -123,7 +123,7 @@ class IdentitasMergeService
                 ->all();
 
             $nilaiLama = [];
-            foreach ([...self::KOLOM, 'sumber_gabungan', 'pj_nama', 'pj_updated_by', 'pj_updated_at'] as $k) {
+            foreach ([...self::KOLOM, 'sumber_gabungan', 'pj_nama', 'pj_nip', 'pj_updated_by', 'pj_updated_at'] as $k) {
                 $nilaiLama[$k] = $keep->getAttribute($k);
             }
 
@@ -177,6 +177,7 @@ class IdentitasMergeService
             ))));
             if (!$keep->pj_nama && $drop->pj_nama) {
                 $update['pj_nama']       = $drop->pj_nama;
+                $update['pj_nip']        = $drop->pj_nip;
                 $update['pj_updated_by'] = $drop->pj_updated_by;
                 $update['pj_updated_at'] = $drop->pj_updated_at;
             }

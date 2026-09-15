@@ -5,16 +5,16 @@ namespace App\Imports;
 use RuntimeException;
 
 /**
- * Parser CSV nama Penanggung Jawab: kolom `kelurahan`, `posyandu` (opsional), `nama_pj`.
+ * Parser CSV PJ: `kelurahan`, `posyandu` (opsional), `nip_pj`, `nama_pj`.
  * Header bebas urutan & huruf besar/kecil, BOM dibuang, pemisah koma atau titik koma.
  * Berkas kecil (puluhan baris) → fgetcsv biasa, tanpa Maatwebsite.
  */
 class PjImport
 {
-    public const KOLOM_WAJIB = ['kelurahan', 'nama_pj'];
+    public const KOLOM_WAJIB = ['kelurahan', 'nip_pj', 'nama_pj'];
 
     /**
-     * @return array{baris: array<int, array{kelurahan:string, posyandu:?string, nama_pj:string, baris:int}>, gagal: string[]}
+     * @return array{baris: array<int, array{kelurahan:string, posyandu:?string, nip_pj:string, nama_pj:string, baris:int}>, gagal: string[]}
      */
     public function baca(string $path): array
     {
@@ -29,10 +29,10 @@ class PjImport
         }
         $headerLine = preg_replace('/^\xEF\xBB\xBF/', '', $headerLine);
         $delim = substr_count($headerLine, ';') > substr_count($headerLine, ',') ? ';' : ',';
-        $header = array_map(fn ($h) => strtolower(trim((string) $h)), str_getcsv($headerLine, $delim));
+        $header = array_map(fn ($h) => strtolower(trim((string) $h)), str_getcsv($headerLine, $delim, '"', '\\'));
 
         $idx = [];
-        foreach (['kelurahan', 'posyandu', 'nama_pj'] as $k) {
+        foreach (['kelurahan', 'posyandu', 'nip_pj', 'nama_pj'] as $k) {
             $i = array_search($k, $header, true);
             if ($i !== false) $idx[$k] = $i;
         }
@@ -54,16 +54,22 @@ class PjImport
             $ambil = fn (string $k) => isset($idx[$k]) ? trim((string) ($row[$idx[$k]] ?? '')) : '';
             $kelurahan = $ambil('kelurahan');
             $namaPj    = $ambil('nama_pj');
+            $nipPj     = $ambil('nip_pj');
             $posyandu  = $ambil('posyandu');
 
-            if ($kelurahan === '' || $namaPj === '') {
-                $gagal[] = "Baris {$no}: kelurahan dan nama_pj wajib diisi.";
+            if ($kelurahan === '' || $namaPj === '' || $nipPj === '') {
+                $gagal[] = "Baris {$no}: kelurahan, nip_pj, dan nama_pj wajib diisi.";
+                continue;
+            }
+            if (!preg_match('/^[0-9]{18}$/', $nipPj) || mb_strlen($namaPj) > 100) {
+                $gagal[] = "Baris {$no}: NIP harus 18 digit utuh dan nama PJ maksimal 100 karakter. Simpan kolom NIP sebagai teks.";
                 continue;
             }
             $baris[] = [
                 'kelurahan' => $kelurahan,
                 'posyandu'  => $posyandu !== '' ? $posyandu : null,
                 'nama_pj'   => $namaPj,
+                'nip_pj'    => $nipPj,
                 'baris'     => $no,
             ];
         }

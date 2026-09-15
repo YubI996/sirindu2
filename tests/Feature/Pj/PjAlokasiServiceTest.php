@@ -33,8 +33,8 @@ class PjAlokasiServiceTest extends TestCase
         $user = User::factory()->create(['type' => 0]);
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['kelurahan' => 'belimbing', 'posyandu' => null, 'nama_pj' => 'Kader A', 'baris' => 2],
-            ['kelurahan' => 'BELIMBING', 'posyandu' => '',   'nama_pj' => 'Kader B', 'baris' => 3],
+            ['kelurahan' => 'belimbing', 'posyandu' => null, 'nama_pj' => 'Kader A', 'nip_pj' => '198703032012011003', 'baris' => 2],
+            ['kelurahan' => 'BELIMBING', 'posyandu' => '',   'nama_pj' => 'Kader B', 'nip_pj' => '198804042013011004', 'baris' => 3],
         ], false, $user->id);
 
         $this->assertSame(5, $r['dialokasikan']);
@@ -56,7 +56,7 @@ class PjAlokasiServiceTest extends TestCase
         $b = $this->stunting('3201000000040012', $kel->id, null); // posyandu lain → tidak kena baris posyandu
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['kelurahan' => 'Kanaan', 'posyandu' => 'Anggrek 2', 'nama_pj' => 'Kader Baru', 'baris' => 2],
+            ['kelurahan' => 'Kanaan', 'posyandu' => 'Anggrek 2', 'nama_pj' => 'Kader Baru', 'nip_pj' => '198905052014011005', 'baris' => 2],
         ], true, User::factory()->create(['type' => 0])->id);
 
         $this->assertSame('Kader Baru', $a->fresh()->pj_nama);
@@ -70,14 +70,36 @@ class PjAlokasiServiceTest extends TestCase
         $a = $this->stunting('3201000000040021', $kel->id);
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['kelurahan' => 'Kelurahan Antah', 'posyandu' => null, 'nama_pj' => 'Kader X', 'baris' => 2],
-            ['kelurahan' => 'Telihan', 'posyandu' => 'Posyandu Tak Ada', 'nama_pj' => 'Kader Y', 'baris' => 3],
-            ['kelurahan' => 'Telihan', 'posyandu' => null, 'nama_pj' => 'Kader Z', 'baris' => 4],
+            ['kelurahan' => 'Kelurahan Antah', 'posyandu' => null, 'nama_pj' => 'Kader X', 'nip_pj' => '199006062015011006', 'baris' => 2],
+            ['kelurahan' => 'Telihan', 'posyandu' => 'Posyandu Tak Ada', 'nama_pj' => 'Kader Y', 'nip_pj' => '199107072016011007', 'baris' => 3],
+            ['kelurahan' => 'Telihan', 'posyandu' => null, 'nama_pj' => 'Kader Z', 'nip_pj' => '199208082017011008', 'baris' => 4],
         ], false, User::factory()->create(['type' => 0])->id);
 
         $this->assertSame('Kader Z', $a->fresh()->pj_nama);
         $this->assertCount(2, $r['gagal']);
         $this->assertStringContainsString('Baris 2', $r['gagal'][0]);
         $this->assertStringContainsString('Baris 3', $r['gagal'][1]);
+    }
+
+    public function test_tiga_kategori_dan_nama_sama_dengan_nip_berbeda(): void
+    {
+        $kel = Kelurahan::factory()->create();
+        $stunting = $this->stunting('3201000000040101', $kel->id);
+        $wasting = $this->stunting('3201000000040102', $kel->id);
+        $underweight = $this->stunting('3201000000040103', $kel->id);
+        $normal = $this->stunting('3201000000040104', $kel->id);
+        $wasting->latestDataAnak->update(['zscore_pb_u' => 0, 'zscore_bb_pb' => -2.5]);
+        $underweight->latestDataAnak->update(['zscore_bb_u' => -2.5]); // dua kategori
+        $normal->latestDataAnak->update(['zscore_pb_u' => 0]);
+        $pj1 = ['kelurahan' => $kel->name, 'posyandu' => null, 'nama_pj' => 'Sari', 'nip_pj' => '198501012010012001', 'baris' => 2];
+        $pj2 = array_replace($pj1, ['nip_pj' => '198602022011012002', 'baris' => 3]);
+        $hasil = app(PjAlokasiService::class)->alokasikan([$pj1, $pj2, $pj1], false, User::factory()->create(['type' => 0])->id);
+        $this->assertSame(3, $hasil['dialokasikan'], 'Anak multi-kategori hanya dialokasikan sekali.');
+        $this->assertSame(2, $hasil['wilayah'][0]['pj'], 'NIP duplikat tidak menggandakan PJ.');
+        $this->assertSame($pj1['nip_pj'], $stunting->fresh()->pj_nip);
+        $this->assertSame($pj2['nip_pj'], $wasting->fresh()->pj_nip);
+        $this->assertSame($pj1['nip_pj'], $underweight->fresh()->pj_nip);
+        $this->assertNull($normal->fresh()->pj_nama);
+        $this->assertNull($normal->fresh()->pj_nip);
     }
 }

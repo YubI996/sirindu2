@@ -6,6 +6,8 @@
 @section('item-active') Penggabungan @endsection
 
 @section('content')
+@include('admin.verifikasi-rt.styles')
+<div class="rt-admin">
 <div class="page-header"><div class="row"><div class="col-md-12"><div class="title">
     <h4>Menunggu penggabungan</h4>
     <p class="text-muted mb-0">Tautan "sama" yang sudah disetujui. Penggabungan memindahkan seluruh pengukuran/imunisasi ke satu baris, mencatat log, dan bisa dibatalkan. Baris Operasi Timbang selalu dipertahankan.</p>
@@ -64,5 +66,6 @@
             </tbody>
         </table>
     </div>
+</div>
 </div>
 @endsection

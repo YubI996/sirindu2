@@ -459,15 +459,15 @@ class TimbangDashboardController extends Controller
     }
 
     /**
-     * Nama PJ yang sudah pernah dipakai di wilayah user — jadi saran (datalist)
-     * agar ejaan nama kader/bidan konsisten antar anak.
+     * Pasangan NIP dan nama PJ di wilayah user untuk saran pengisian.
      */
     private function pjSaran(array $f): array
     {
         $q = DB::table('anak as a')->whereNotNull('a.pj_nama')->where('a.pj_nama', '!=', '');
         $this->applyWilayah($q, $f);
 
-        return $q->distinct()->orderBy('a.pj_nama')->pluck('a.pj_nama')->all();
+        return $q->select('a.pj_nip', 'a.pj_nama')->distinct()->orderBy('a.pj_nama')->orderBy('a.pj_nip')
+            ->get()->map(fn ($pj) => ['nip' => $pj->pj_nip, 'nama' => $pj->pj_nama])->all();
     }
 
     // ==================== HELPERS ====================
@@ -715,7 +715,7 @@ class TimbangDashboardController extends Controller
             ->leftJoin('posyandu as pos', 'a.id_posyandu', '=', 'pos.id')
             ->whereIn('a.id', $ids)
             ->select(
-                'a.id', 'a.nama', 'a.nik', 'a.alamat', 'a.pj_nama',
+                'a.id', 'a.nama', 'a.nik', 'a.alamat', 'a.pj_nama', 'a.pj_nip',
                 'kec.name as kecamatan', 'kel.name as kelurahan',
                 'rt.name as rt', 'pos.name as posyandu'
             )
@@ -729,6 +729,7 @@ class TimbangDashboardController extends Controller
         return [
             'id'        => HashIdService::encode($a->id, 'anak'), // kunci endpoint PJ (route binding hashid)
             'pj_nama'   => $a->pj_nama ?: null,
+            'pj_nip'    => $a->pj_nip ?: null,
             'nama'      => $a->nama,
             'nik'       => $a->nik,
             'alamat'    => $a->alamat ?: '-',

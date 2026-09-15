@@ -4,16 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Verifikasi Warga — {{ $rt?->name ?? 'Pilih RT' }}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('admin/vendors/fonts/barlow/barlow.css') }}">
+<link rel="icon" href="{{ asset('logo/icon-sirindu.png') }}">
 <style>
 :root{ --ink:oklch(0.24 0.02 145); --muted:oklch(0.50 0.015 145); --faint:oklch(0.62 0.012 145);
   --line:oklch(0.90 0.012 145); --bg:oklch(0.98 0.012 145); --card:#fff; --green:oklch(0.48 0.14 145);
   --green-soft:oklch(0.95 0.04 145); --amber:#b45309; --amber-soft:#fef3c7; --red:#b91c1c; --red-soft:#fee2e2; --blue:#1d4ed8; --blue-soft:#dbeafe; }
 *{ box-sizing:border-box; }
-body{ margin:0; font-family:Barlow,system-ui,sans-serif; color:var(--ink); background:var(--bg); }
-.rt-shell{ max-width:1200px; margin:0 auto; padding:16px; }
+body{ margin:0; font-family:Barlow,system-ui,sans-serif; color:var(--ink); background:var(--bg); line-height:1.5; }
+.rt-shell{ max-width:1280px; margin:0 auto; padding:24px; }
+button,input,select{ min-height:40px; }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ outline:3px solid #9ed7b1; outline-offset:3px; }
+h2{ font-family:'Barlow Condensed',Barlow,sans-serif; }
 .rt-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:12px 0 18px; }
 .rt-brand{ display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.06em; }
 .rt-brand img{ width:34px; height:34px; }
@@ -34,7 +36,7 @@ body{ margin:0; font-family:Barlow,system-ui,sans-serif; color:var(--ink); backg
 .rt-modal__box input{ font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:10px; width:100%; margin-bottom:12px; }
 .rt-modal__box button{ background:var(--green); color:#fff; border:0; border-radius:10px; padding:10px 18px; font:inherit; font-weight:700; cursor:pointer; }
 .rt-pengisi{ font-size:.85rem; color:var(--muted); }
-.rt-pengisi a{ color:var(--green); cursor:pointer; text-decoration:underline; }
+.rt-pengisi button{ color:var(--green); cursor:pointer; text-decoration:underline; border:0; background:transparent; font:inherit; padding:0 4px; }
 .rt-prog{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
 .rt-prog__bar{ height:8px; background:var(--line); border-radius:99px; overflow:hidden; margin-top:8px; }
 .rt-prog__fill{ height:100%; background:var(--green); width:0; transition:width .3s; }
@@ -45,7 +47,7 @@ body{ margin:0; font-family:Barlow,system-ui,sans-serif; color:var(--ink); backg
 .rt-tools{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
 .rt-tools input,.rt-tools select{ font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); }
 .rt-tools input{ flex:1; min-width:220px; }
-.rt-hint{ font-size:.85rem; color:var(--muted); margin:0 0 10px; }
+.rt-hint{ font-size:.9rem; color:var(--muted); margin:0 0 18px; max-width:90ch; }
 .rt-wrap{ background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:auto; }
 table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
 .rt-dt th{ position:sticky; top:0; background:oklch(0.96 0.016 145); text-align:left; padding:.55rem .7rem; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); white-space:nowrap; }
@@ -66,6 +68,11 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
 /* Ponsel: tabel warga jadi kartu per anak — tombol keputusan harus terlihat tanpa geser ke samping
    (temuan simulasi persona RT: di 360px hanya kolom No/Sumber/NIK/Nama yang terlihat). */
 @media (max-width: 640px){
+  .rt-shell{padding:16px;}
+  .rt-tools input,.rt-tools select,.rt-modal__box input,.rt-pilih select{font-size:16px;}
+  .rt-top form{margin:0;}
+  .rt-brand{letter-spacing:0;font-size:1rem;}
+  .rt-who{width:100%;line-height:1.7;}
   .rt-top{ padding:8px 0 12px; }
   .rt-who{ width:100%; order:3; }
   .rt-tab{ padding:8px 8px; font-size:.85rem; }
@@ -108,7 +115,7 @@ table.rt-dt{ width:100%; border-collapse:collapse; font-size:.85rem; }
         {{ $user?->name }}
       @endif
       @if($butuh_pelaksana)
-        <span class="rt-pengisi" id="pengisi-info">· pengisi: <b id="pengisi-nama">{{ $pelaksana ?? '—' }}</b> <a id="pengisi-ganti">ganti</a></span>
+        <span class="rt-pengisi" id="pengisi-info">· pengisi: <b id="pengisi-nama">{{ $pelaksana ?? '—' }}</b> <button type="button" id="pengisi-ganti">ganti</button></span>
       @endif
       @if($rt && $rt_list->count() > 1)
         {{-- Akun kelurahan / superadmin: ganti RT tanpa keluar --}}

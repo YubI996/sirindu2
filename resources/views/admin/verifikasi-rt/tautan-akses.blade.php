@@ -6,6 +6,9 @@
 @section('item-active') Tautan Akses RT @endsection
 
 @section('content')
+@include('admin.verifikasi-rt.styles')
+<div class="rt-admin">
+<a class="rt-back" href="{{ route('admin.verifikasiRt.index') }}"><i class="fa fa-arrow-left" aria-hidden="true"></i> Antrean Verifikasi RT</a>
 <div class="page-header">
     <div class="row">
         <div class="col-md-12">
@@ -50,16 +53,18 @@ Tandai tiap anak: masih berdomisili / pindah / meninggal / tidak dikenal. Tautan
 
 @if($kelList->isNotEmpty())
 <div class="card-box mb-3">
-    <form method="GET" class="form-inline">
+    <form method="GET" class="form-inline rt-filter-form">
+        <label class="rt-filter-field"><span>Kelurahan</span>
         <select name="kel" class="form-control mr-2">
             <option value="">Semua kelurahan</option>
             @foreach($kelList as $k)
             <option value="{{ $k->id }}" {{ (int) $kel === (int) $k->id ? 'selected' : '' }}>{{ $k->name }}</option>
             @endforeach
         </select>
+        </label>
         <button class="btn btn-primary">Terapkan</button>
         <a href="{{ route('admin.aksesTautan.index') }}" class="btn btn-link">Reset</a>
-        <span class="ml-auto text-muted">{{ $rtList->count() }} RT · {{ $rtList->filter(fn ($r) => $r->tautanAktif)->count() }} tautan aktif</span>
+        <span class="rt-filter-summary text-muted">{{ $rtList->count() }} RT · {{ $rtList->filter(fn ($r) => $r->tautanAktif)->count() }} tautan aktif</span>
     </form>
 </div>
 @endif
@@ -125,4 +130,5 @@ function salin(id, btn){
     else { document.execCommand('copy'); selesai(); }
 }
 </script>
+</div>
 @endsection

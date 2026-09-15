@@ -7,7 +7,7 @@ use App\Models\Kelurahan;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Alokasi otomatis nama Penanggung Jawab (PJ) dari CSV `kelurahan, posyandu, nama_pj`
+ * Alokasi otomatis Penanggung Jawab (PJ) dari CSV `kelurahan, posyandu, nip_pj, nama_pj`
  * (permintaan klien 15 Sep 2026). Per wilayah (kelurahan, atau kelurahan+posyandu),
  * anak yang saat ini stunting/wasting/underweight — aturan yang sama dengan modal dasbor OT
  * (OtGiziService) — dibagi rata bergilir ke PJ yang terdaftar di wilayah itu, urut CSV.
@@ -22,7 +22,7 @@ class PjAlokasiService
     }
 
     /**
-     * @param  array<int, array{kelurahan:string, posyandu:?string, nama_pj:string, baris:int}> $baris
+     * @param  array<int, array{kelurahan:string, posyandu:?string, nip_pj:string, nama_pj:string, baris:int}> $baris
      * @return array{dialokasikan:int, dilewati:int, wilayah:array<int, array{label:string, pj:int, anak:int, dialokasikan:int, dilewati:int}>, gagal:string[]}
      */
     public function alokasikan(array $baris, bool $timpa, int $userId): array
@@ -32,11 +32,16 @@ class PjAlokasiService
             $kelurahan[FaskesMatcher::normalisasi($k->name)] = ['id' => (int) $k->id, 'nama' => $k->name];
         }
 
-        // Kelompokkan PJ per wilayah, urutan CSV dipertahankan; duplikat nama dalam satu wilayah dibuang.
+        // Identitas PJ berdasarkan NIP; nama sama dengan NIP berbeda tetap dua orang.
         $kelompok = [];
         $gagal = [];
         foreach ($baris as $b) {
             $namaPj = trim((string) ($b['nama_pj'] ?? ''));
+            $nipPj = trim((string) ($b['nip_pj'] ?? ''));
+            if (!preg_match('/^[0-9]{18}$/', $nipPj) || $namaPj === '' || mb_strlen($namaPj) > 100) {
+                $gagal[] = "Baris {$b['baris']}: NIP harus 18 digit dan nama PJ wajib diisi (maksimal 100 karakter).";
+                continue;
+            }
             $kel = $kelurahan[FaskesMatcher::normalisasi((string) ($b['kelurahan'] ?? ''))] ?? null;
             if (!$kel) {
                 $gagal[] = "Baris {$b['baris']}: kelurahan \"{$b['kelurahan']}\" tidak dikenal.";
@@ -60,9 +65,11 @@ class PjAlokasiService
             }
             $key = $kel['id'].'|'.($posId ?? '');
             $kelompok[$key] ??= ['kel' => $kel['id'], 'pos' => $posId, 'label' => $label, 'pj' => []];
-            if (!in_array(mb_strtolower($namaPj), array_map('mb_strtolower', $kelompok[$key]['pj']), true)) {
-                $kelompok[$key]['pj'][] = $namaPj;
+            if (isset($kelompok[$key]['pj'][$nipPj]) && mb_strtolower($kelompok[$key]['pj'][$nipPj]['nama']) !== mb_strtolower($namaPj)) {
+                $gagal[] = "Baris {$b['baris']}: NIP yang sama memiliki nama PJ berbeda dalam wilayah ini.";
+                continue;
             }
+            $kelompok[$key]['pj'][$nipPj] = ['nip' => $nipPj, 'nama' => $namaPj];
         }
 
         $ringkasan = ['dialokasikan' => 0, 'dilewati' => 0, 'wilayah' => [], 'gagal' => $gagal];
@@ -79,9 +86,11 @@ class PjAlokasiService
                 $sasaran = array_values(array_diff($ids, $sudah));
 
                 $n = count($g['pj']);
+                $pj = array_values($g['pj']);
                 foreach ($sasaran as $i => $idAnak) {
                     DB::table('anak')->where('id', $idAnak)->update([
-                        'pj_nama'       => $g['pj'][$i % $n],
+                        'pj_nama'       => $pj[$i % $n]['nama'],
+                        'pj_nip'        => $pj[$i % $n]['nip'],
                         'pj_updated_by' => $userId,
                         'pj_updated_at' => now(),
                     ]);

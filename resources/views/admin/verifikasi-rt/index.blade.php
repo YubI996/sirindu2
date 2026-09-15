@@ -6,6 +6,8 @@
 @section('item-active') Verifikasi RT @endsection
 
 @section('content')
+@include('admin.verifikasi-rt.styles')
+<div class="rt-admin">
 <div class="page-header">
     <div class="row">
         <div class="col-md-12">
@@ -20,57 +22,63 @@
 @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
 @if(session('error'))   <div class="alert alert-danger">{{ session('error') }}</div> @endif
 
-<ul class="nav nav-tabs mb-3">
+<nav class="rt-section-nav" aria-label="Menu verifikasi RT">
+<ul class="nav nav-tabs">
     <li class="nav-item"><a class="nav-link {{ $tab === 'domisili' ? 'active' : '' }}" href="{{ route('admin.verifikasiRt.index') }}">Status domisili <span class="badge badge-light">{{ $antrean->total() }}</span></a></li>
     <li class="nav-item"><a class="nav-link {{ $tab === 'tautan' ? 'active' : '' }}" href="{{ route('admin.verifikasiRt.index', ['tab' => 'tautan']) }}">Tautan identitas <span class="badge badge-light">{{ $antreanTautan->total() }}</span></a></li>
-    @if(auth()->user()->isSuperAdmin() || auth()->user()->id_kel)
-    <li class="nav-item ml-auto"><a class="nav-link" href="{{ route('admin.aksesTautan.index') }}"><i class="material-icons align-middle" style="font-size:18px">link</i> Kelola tautan akses RT</a></li>
-    @endif
 </ul>
+@if(auth()->user()->isSuperAdmin() || auth()->user()->id_kel)
+<a class="btn btn-outline-primary rt-access-link" href="{{ route('admin.aksesTautan.index') }}"><i class="fa fa-link" aria-hidden="true"></i> Kelola tautan akses RT</a>
+@endif
+</nav>
 
 @if($tab === 'domisili')
 <div class="card-box mb-3">
-    <form method="GET" class="form-inline">
+    <form method="GET" class="form-inline rt-filter-form">
+        <label class="rt-filter-field"><span>Wilayah RT</span>
         <select name="rt" class="form-control mr-2">
             <option value="">Semua RT</option>
             @foreach($rtList as $rt)
             <option value="{{ $rt->id }}" {{ (string) $filter['rt'] === (string) $rt->id ? 'selected' : '' }}>{{ $rt->name }}</option>
             @endforeach
         </select>
+        </label>
+        <label class="rt-filter-field"><span>Status domisili</span>
         <select name="status" class="form-control mr-2">
             <option value="">Semua status</option>
             @foreach($label as $k => $v)
             <option value="{{ $k }}" {{ $filter['status'] === $k ? 'selected' : '' }}>{{ $v }}</option>
             @endforeach
         </select>
+        </label>
         <button class="btn btn-primary">Terapkan</button>
         <a href="{{ route('admin.verifikasiRt.index') }}" class="btn btn-link">Reset</a>
-        <span class="ml-auto text-muted">{{ $antrean->total() }} usulan menunggu</span>
+        <span class="rt-filter-summary text-muted">{{ $antrean->total() }} usulan menunggu</span>
     </form>
 </div>
 
 <div class="card-box">
     <div class="table-responsive">
-        <table class="table table-striped table-sm">
+        <table class="table table-striped table-sm rt-review-table">
             <thead>
                 <tr><th>Anak</th><th>Wilayah</th><th>Usulan RT</th><th>Catatan</th><th>Diusulkan</th><th style="width:260px">Tinjauan</th></tr>
             </thead>
             <tbody>
             @forelse($antrean as $v)
                 <tr>
-                    <td>
+                    <td data-label="Anak">
                         <b>{{ $v->anak->nama }}</b><br>
                         <small class="text-muted">NIK {{ $v->anak->nik }} · lahir {{ $v->anak->tgl_lahir }} · sumber {{ $v->anak->sumber }}</small>
                     </td>
-                    <td>{{ $v->rt->name }}<br><small class="text-muted">{{ $v->anak->alamat ?: '-' }}</small></td>
-                    <td>
+                    <td data-label="Wilayah">{{ $v->rt->name }}<br><small class="text-muted">{{ $v->anak->alamat ?: '-' }}</small></td>
+                    <td data-label="Usulan RT">
                         <span class="badge badge-{{ $v->status === 'berdomisili' ? 'success' : ($v->status === 'meninggal' ? 'danger' : 'warning') }}">{{ $label[$v->status] }}</span>
                         @if($v->klaim_id_rt) <br><small class="text-muted">klaim: masukkan ke {{ $v->rt->name }}</small> @endif
                     </td>
-                    <td>{{ $v->catatan ?: '-' }}</td>
-                    <td><small>{{ $v->pengusul?->name ?? 'Tautan RT' }}@if($v->pelaksana)<br>pengisi: <b>{{ $v->pelaksana }}</b>@endif<br>{{ $v->diusulkan_at?->format('d/m/Y H:i') }}</small></td>
-                    <td>
-                        <form method="POST" action="{{ route('admin.verifikasiRt.tinjau', $v) }}" class="form-inline">
+                    <td data-label="Catatan">{{ $v->catatan ?: '-' }}</td>
+                    <td data-label="Diusulkan"><small>{{ $v->pengusul?->name ?? 'Tautan RT' }}@if($v->pelaksana)<br>pengisi: <b>{{ $v->pelaksana }}</b>@endif<br>{{ $v->diusulkan_at?->format('d/m/Y H:i') }}</small></td>
+                    <td data-label="Tinjauan">
+                        <form method="POST" action="{{ route('admin.verifikasiRt.tinjau', $v) }}" class="form-inline rt-review-form">
                             @csrf
                             <input type="hidden" name="rt" value="{{ $filter['rt'] }}">
                             <input type="hidden" name="status" value="{{ $filter['status'] }}">
@@ -81,7 +89,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="text-center text-muted py-4">Tidak ada usulan yang menunggu.</td></tr>
+                <tr><td colspan="6" class="rt-empty"><strong>Tidak ada usulan yang menunggu.</strong>Usulan dari RT akan muncul di sini untuk ditinjau.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -134,4 +142,5 @@
     {{ $antreanTautan->onEachSide(1)->links('pagination::bootstrap-4') }}
 </div>
 @endif
+</div>
 @endsection
