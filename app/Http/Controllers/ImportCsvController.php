@@ -7,6 +7,7 @@ use App\Jobs\ImportCapilJob;
 use App\Jobs\ImportHasilLabJob;
 use App\Jobs\ImportImunisasiJob;
 use App\Jobs\ImportPengukuranJob;
+use App\Jobs\ImportPjJob;
 use App\Jobs\ImportUkurJob;
 use App\Models\ImportLog;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class ImportCsvController extends Controller
         'imunisasi'  => 'Imunisasi',
         'hasil_lab'  => 'Hasil Laboratorium PD3I',
         'ukur'       => 'Operasi Timbang',
+        'pj'         => 'Penanggung Jawab (PJ)',
     ];
 
     /** Nama file template per tipe. */
@@ -38,6 +40,7 @@ class ImportCsvController extends Controller
         'pengukuran' => 'template_pengukuran_berkala.csv',
         'imunisasi'  => 'template_imunisasi.csv',
         'ukur'       => 'template_operasi_timbang.csv',
+        'pj'         => 'template_pj.csv',
     ];
 
     // =========================================================================
@@ -91,6 +94,12 @@ class ImportCsvController extends Controller
         return $this->handleUpload($request, 'ukur', 'file_ukur');
     }
 
+    /** Nama PJ per wilayah — alokasi otomatis (PjAlokasiService); opsi `timpa` dari checkbox form. */
+    public function uploadPj(Request $request)
+    {
+        return $this->handleUpload($request, 'pj', 'file_pj');
+    }
+
     protected function handleUpload(Request $request, string $type, string $inputName)
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
@@ -128,9 +137,14 @@ class ImportCsvController extends Controller
             'imunisasi'  => ImportImunisasiJob::class,
             'hasil_lab'  => ImportHasilLabJob::class,
             'ukur'       => ImportUkurJob::class,
+            'pj'         => ImportPjJob::class,
         };
 
-        $jobClass::dispatch($log);
+        if ($type === 'pj') {
+            ImportPjJob::dispatch($log, $request->boolean('timpa'));
+        } else {
+            $jobClass::dispatch($log);
+        }
 
         $label = self::VALID_TYPES[$type];
 
@@ -176,6 +190,7 @@ class ImportCsvController extends Controller
             'imunisasi'  => ImportImunisasiJob::class,
             'hasil_lab'  => ImportHasilLabJob::class,
             'ukur'       => ImportUkurJob::class,
+            'pj'         => ImportPjJob::class, // ulang tanpa timpa
         };
 
         $jobClass::dispatch($newLog);

@@ -354,6 +354,11 @@
         <span class="material-symbols-outlined">monitor_weight</span>
         Operasi Timbang
     </button>
+    <button class="imp-tab-btn" data-tab="pj"
+        role="tab" aria-selected="false" aria-controls="panel-pj" id="tab-pj">
+        <span class="material-symbols-outlined">assignment_ind</span>
+        Penanggung Jawab
+    </button>
 </div>
 
 {{-- =====================================================================
@@ -517,6 +522,54 @@
                 <button type="submit" class="imp-btn-upload">
                     <span class="material-symbols-outlined">upload</span>
                     Upload &amp; Import
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- =====================================================================
+     PANEL: Penanggung Jawab (PJ) — alokasi otomatis per wilayah
+     ===================================================================== --}}
+<div class="imp-panel" id="panel-pj" role="tabpanel" aria-labelledby="tab-pj">
+    <div class="imp-panel-grid">
+        <div class="imp-guide">
+            <p class="imp-guide__label">Data yang diimpor</p>
+            <p>Daftar nama penanggung jawab (kader/bidan/petugas) per wilayah. Sistem membagi <strong>rata bergilir</strong> anak yang saat ini <strong>stunting, wasting, atau underweight</strong> (kunjungan Operasi Timbang terakhir) ke PJ di wilayah itu. Hasil tetap bisa diubah satu per satu di modal dasbor Operasi Timbang.</p>
+            <div class="imp-guide__rule">
+                <strong>Format CSV</strong>
+                Kolom: <strong>kelurahan</strong>, <strong>posyandu</strong> (boleh kosong = seluruh kelurahan), <strong>nama_pj</strong>. Satu baris per PJ; PJ yang sama boleh muncul di beberapa wilayah.
+            </div>
+            <div class="imp-guide__rule">
+                <strong>Anak yang sudah punya PJ</strong>
+                Dilewati, kecuali centang <em>Timpa PJ yang sudah ada</em>. Nama posyandu dicocokkan otomatis (angka Romawi/Arab, spasi).
+            </div>
+            <a href="{{ route('admin.importCsv.template', 'pj') }}" class="imp-template-link" download>
+                <span class="material-symbols-outlined">download</span>
+                Unduh Template CSV
+            </a>
+        </div>
+        <div class="imp-upload-col">
+            <form method="POST" action="{{ route('admin.importCsv.pj') }}"
+                  enctype="multipart/form-data" class="imp-form" data-type="pj">
+                @csrf
+                <label class="imp-upload-zone" for="file-pj" id="zone-pj">
+                    <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
+                    <span class="imp-upload-zone__label">Klik atau seret file CSV ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .csv &mdash; maksimal 10 MB</span>
+                    <input type="file" id="file-pj" name="file_pj" accept=".csv,text/csv" required>
+                </label>
+                <div class="imp-fname" id="fname-pj">
+                    <span class="material-symbols-outlined">description</span>
+                    <span>Belum ada file dipilih</span>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;margin:10px 0;font-size:.9rem;">
+                    <input type="checkbox" name="timpa" value="1">
+                    Timpa PJ yang sudah ada
+                </label>
+                <button type="submit" class="imp-btn-upload">
+                    <span class="material-symbols-outlined">upload</span>
+                    Upload &amp; Alokasikan
                 </button>
             </form>
         </div>
@@ -851,8 +904,8 @@
     }
 
     /* ── Render helpers ─────────────────────────────────────────── */
-    var typeLabel  = { anak: 'Anak', capil: 'Capil', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi', ukur: 'Op. Timbang' };
-    var typeChip   = { anak: 'imp-chip-anak', capil: 'imp-chip-capil', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi', ukur: 'imp-chip-ukur' };
+    var typeLabel  = { anak: 'Anak', capil: 'Capil', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi', ukur: 'Op. Timbang', pj: 'PJ' };
+    var typeChip   = { anak: 'imp-chip-anak', capil: 'imp-chip-capil', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi', ukur: 'imp-chip-ukur', pj: 'imp-chip-ukur' };
     var stLabel    = { pending: 'Menunggu', processing: 'Diproses', done: 'Selesai', failed: 'Gagal' };
     var stBadge    = { pending: 'imp-badge-pending', processing: 'imp-badge-processing', done: 'imp-badge-done', failed: 'imp-badge-failed' };
     var stIcon     = { pending: 'schedule', processing: 'sync', done: 'check_circle', failed: 'error' };

@@ -128,6 +128,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
         Route::post('imunisasi',  [App\Http\Controllers\ImportCsvController::class, 'uploadImunisasi'])  ->name('admin.importCsv.imunisasi');
         Route::post('hasil-lab',  [App\Http\Controllers\ImportCsvController::class, 'uploadHasilLab'])  ->name('admin.importCsv.hasilLab');
         Route::post('ukur',       [App\Http\Controllers\ImportCsvController::class, 'uploadUkur'])        ->name('admin.importCsv.ukur');
+        Route::post('pj',         [App\Http\Controllers\ImportCsvController::class, 'uploadPj'])          ->name('admin.importCsv.pj');
         Route::post('reimport/{log}', [App\Http\Controllers\ImportCsvController::class, 'reimport'])     ->name('admin.importCsv.reimport');
         Route::get('status',      [App\Http\Controllers\ImportCsvController::class, 'importStatus'])     ->name('admin.importCsv.status');
         Route::delete('log/{log}',[App\Http\Controllers\ImportCsvController::class, 'destroyLog'])       ->name('admin.importCsv.destroyLog');
