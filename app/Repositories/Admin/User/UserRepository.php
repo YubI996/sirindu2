@@ -42,14 +42,26 @@ class UserRepository implements UserRepositoryInterface
     /** Peran RT: wilayah diturunkan dari RT yang dipilih, bukan dari isian form. */
     private function wilayahDariRt($request): array
     {
-        if ($request->role !== 'rt' || !$request->id_rt) {
+        if ($request->role !== 'rt') {
             return [];
+        }
+        if ($request->boolean('rt_sekelurahan')) {
+            $kel = Kelurahan::findOrFail($request->id_kel);
+
+            return [
+                'id_rt' => null,
+                'rt_sekelurahan' => true,
+                'id_kel' => $kel->id,
+                'id_kec' => $kel->id_kecamatan,
+                'id_posyandu' => null,
+            ];
         }
         $rt  = Rt::findOrFail($request->id_rt);
         $kel = Kelurahan::find($rt->id_kelurahan);
 
         return [
             'id_rt'       => $rt->id,
+            'rt_sekelurahan' => false,
             'id_kel'      => $rt->id_kelurahan,
             'id_kec'      => $kel?->id_kecamatan,
             'id_posyandu' => $rt->id_posyandu,
@@ -90,6 +102,7 @@ class UserRepository implements UserRepositoryInterface
             'role'        => $role,
             'faskes_type' => $this->deriveFaskesType($role, $request),
             'id_rt'       => null, // ditimpa wilayahDariRt() untuk peran rt
+            'rt_sekelurahan' => false,
             'id_puskesmas'=> $request->id_puskesmas ?: null,
             'id_rs'       => $request->id_rs ?: null,
         ];

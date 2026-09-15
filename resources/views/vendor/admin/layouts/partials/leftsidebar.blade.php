@@ -18,7 +18,7 @@
 				@if (Auth::user()->isSuperAdmin())
 
 				@php
-					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.verifikasiRt.*', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.pd3i.dashboard', 'admin.timbang.*', 'admin.home', 'super.admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.verifikasiRt.*', 'admin.aksesTautan.*', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.pd3i.dashboard', 'admin.timbang.*', 'admin.home', 'super.admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
 					$export = request()->routeIs('admin.export.*');
@@ -40,7 +40,7 @@
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>
-						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*') ? 'active' : '' }}">Verifikasi RT</a></li>
+						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*', 'admin.aksesTautan.*') ? 'active' : '' }}">Verifikasi RT</a></li>
 					</ul>
 				</li>
 
@@ -138,7 +138,7 @@
 				@else
 
 				@php
-					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.verifikasiRt.*', 'admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.verifikasiRt.*', 'admin.aksesTautan.*', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$export = request()->routeIs('admin.export.*');
 				@endphp
@@ -153,7 +153,7 @@
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>
-						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*') ? 'active' : '' }}">Verifikasi RT</a></li>
+						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*', 'admin.aksesTautan.*') ? 'active' : '' }}">Verifikasi RT</a></li>
 					</ul>
 				</li>
 

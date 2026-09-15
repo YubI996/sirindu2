@@ -6,6 +6,14 @@ use Illuminate\Validation\Rule;
 
 class storeUserRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        // Form edit memakai akhiran x; validasi wilayah yang benar-benar akan disimpan.
+        if ($this->route('id') && $this->has('id_kelx')) {
+            $this->merge(['id_kel' => $this->input('id_kelx')]);
+        }
+    }
+
     public function authorize(): bool
     {
         return auth()->user()?->isSuperAdmin() ?? false;
@@ -27,8 +35,9 @@ class storeUserRequest extends FormRequest
                     : Rule::unique('users', 'email'),
             ],
             'role'         => 'required|in:superadmin,imunisasi_faskes,surveilans_puskesmas,surveilans_rs,rt',
-            // Peran RT: wajib memilih RT; kelurahan/kecamatan diturunkan dari RT (spec verifikasi RT §2)
-            'id_rt'        => [Rule::requiredIf($role === 'rt'), 'nullable', 'integer', 'exists:rt,id'],
+            // Akun RT biasa wajib memilih RT; akun kelurahan wajib memilih kelurahan.
+            'rt_sekelurahan' => 'nullable|boolean',
+            'id_rt'        => [Rule::requiredIf($role === 'rt' && !$this->boolean('rt_sekelurahan')), 'nullable', 'integer', 'exists:rt,id'],
             'faskes_type'  => [
                 Rule::requiredIf($role === 'imunisasi_faskes'),
                 'nullable',
@@ -49,7 +58,7 @@ class storeUserRequest extends FormRequest
                 'nullable', 'integer', 'exists:rumah_sakits,id',
             ],
             'id_kec'       => 'nullable|integer|exists:kecamatan,id',
-            'id_kel'       => 'nullable|integer|exists:kelurahan,id',
+            'id_kel'       => [Rule::requiredIf($role === 'rt' && $this->boolean('rt_sekelurahan')), 'nullable', 'integer', 'exists:kelurahan,id'],
             'id_posyandu'  => 'nullable|integer|exists:posyandu,id',
         ];
     }
@@ -65,6 +74,7 @@ class storeUserRequest extends FormRequest
             'id_rs.required'      => 'Rumah sakit wajib dipilih untuk role ini.',
             'id_kec.exists'       => 'Kecamatan tidak ditemukan.',
             'id_kel.exists'       => 'Kelurahan tidak ditemukan.',
+            'id_kel.required'     => 'Kelurahan wajib dipilih untuk akun RT lingkup kelurahan.',
             'id_puskesmas.exists' => 'Puskesmas tidak ditemukan.',
             'id_rs.exists'        => 'Rumah sakit tidak ditemukan.',
             'id_posyandu.exists'  => 'Posyandu tidak ditemukan.',

@@ -23,6 +23,9 @@
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item"><a class="nav-link {{ $tab === 'domisili' ? 'active' : '' }}" href="{{ route('admin.verifikasiRt.index') }}">Status domisili <span class="badge badge-light">{{ $antrean->total() }}</span></a></li>
     <li class="nav-item"><a class="nav-link {{ $tab === 'tautan' ? 'active' : '' }}" href="{{ route('admin.verifikasiRt.index', ['tab' => 'tautan']) }}">Tautan identitas <span class="badge badge-light">{{ $antreanTautan->total() }}</span></a></li>
+    @if(auth()->user()->isSuperAdmin() || auth()->user()->id_kel)
+    <li class="nav-item ml-auto"><a class="nav-link" href="{{ route('admin.aksesTautan.index') }}"><i class="material-icons align-middle" style="font-size:18px">link</i> Kelola tautan akses RT</a></li>
+    @endif
 </ul>
 
 @if($tab === 'domisili')

@@ -75,10 +75,15 @@
                     </div>
 
                     <hr>
-                    <small class="text-muted">Lokasi alamat (opsional)</small>
+                    <small class="text-muted">Lokasi alamat — kelurahan wajib untuk akun RT lingkup kelurahan.</small>
 
                     {{-- Peran RT: pilih RT lewat cascade Kec → Kel → RT; wilayah user diturunkan dari RT --}}
                     <div class="form-group d-none" id="create_rt_group">
+                        <div class="mb-2">
+                            <input type="hidden" name="rt_sekelurahan" value="0">
+                            <input type="checkbox" name="rt_sekelurahan" value="1" id="create_rt_sekelurahan">
+                            <label for="create_rt_sekelurahan">Akun lingkup kelurahan — memilih RT saat masuk</label>
+                        </div>
                         <label for="create_rt">RT</label>
                         <select id="create_rt" name="id_rt" class="form-control">
                             <option value="">== Pilih Kelurahan dulu ==</option>
@@ -104,6 +109,7 @@
                                 <select id="create_kel" name="id_kel" class="form-control">
                                     <option value="">== Pilih Kelurahan ==</option>
                                 </select>
+                                @error('id_kel') <span class="text-danger">{{ $message }}</span> @enderror
                             </div>
                         </div>
                     </div>
@@ -117,6 +123,7 @@
     </div>
 </div>
 
+@push('js')
 <script>
 (function () {
     function updateCreateFaskesVisibility() {
@@ -147,6 +154,15 @@
     document.getElementById('create_role').addEventListener('change', updateCreateFaskesVisibility);
     document.getElementById('create_faskes_type').addEventListener('change', updateCreateFaskesVisibility);
 
+    function updateCreateRtScope() {
+        const seluruh = document.getElementById('create_rt_sekelurahan').checked;
+        const rt = document.getElementById('create_rt');
+        rt.disabled = seluruh;
+        if (seluruh) rt.value = '';
+    }
+    document.getElementById('create_rt_sekelurahan').addEventListener('change', updateCreateRtScope);
+    updateCreateRtScope();
+
     $('#create_kel').on('change', function () {
         var id = $(this).val();
         $('#create_rt').empty().append('<option value="">== Pilih RT ==</option>');
@@ -158,6 +174,8 @@
 
     $('#create_kec').on('change', function () {
         var id = $(this).val();
+        $('#create_kel').empty().append('<option value="">== Pilih Kelurahan ==</option>').trigger('change');
+        if (!id) { return; }
         $.ajax({
             url: '{{ url("admin/get-kel-dasar-anak") }}' + '/' + id,
             success: function (response) {
@@ -170,3 +188,4 @@
     });
 })();
 </script>
+@endpush

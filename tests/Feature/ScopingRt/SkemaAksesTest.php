@@ -52,4 +52,25 @@ class SkemaAksesTest extends TestCase
         $this->travel(8)->days();
         $this->assertNull(RtAksesTautan::cariToken($kedua['token']), 'kedaluwarsa');
     }
+
+    public function test_gagal_membuat_pengganti_tidak_mencabut_tautan_lama(): void
+    {
+        $rt = Rt::factory()->create();
+        $user = User::factory()->create(['type' => 0]);
+        $lama = RtAksesTautan::buat($rt, $user);
+        $event = 'eloquent.creating: '.RtAksesTautan::class;
+        \Illuminate\Support\Facades\Event::listen($event, function () {
+            throw new \RuntimeException('Simulasi gagal simpan token');
+        });
+        try {
+            RtAksesTautan::buat($rt, $user);
+            $this->fail('Pembuatan seharusnya gagal.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Simulasi gagal simpan token', $e->getMessage());
+        } finally {
+            \Illuminate\Support\Facades\Event::forget($event);
+        }
+        $this->assertNotNull(RtAksesTautan::cariToken($lama['token']));
+        $this->assertSame(1, RtAksesTautan::aktif()->count());
+    }
 }

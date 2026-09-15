@@ -105,6 +105,10 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::post('verifikasi-rt/{verifikasi}/tinjau', [App\Http\Controllers\VerifikasiRtReviuController::class, 'tinjau'])->name('admin.verifikasiRt.tinjau');
     Route::post('verifikasi-rt/tautan/{tautan}/tinjau', [App\Http\Controllers\VerifikasiRtReviuController::class, 'tinjauTautan'])->name('admin.verifikasiRt.tinjauTautan');
     Route::post('verifikasi-rt/pindai', [App\Http\Controllers\VerifikasiRtReviuController::class, 'pindai'])->name('admin.verifikasiRt.pindai');
+    // Tautan akses RT bertoken (scoping akses Sept 2026) — faskes: kelurahannya; superadmin: semua
+    Route::get('verifikasi-rt/tautan-akses', [App\Http\Controllers\AksesTautanAdminController::class, 'index'])->name('admin.aksesTautan.index');
+    Route::post('verifikasi-rt/tautan-akses/{rt}', [App\Http\Controllers\AksesTautanAdminController::class, 'buat'])->name('admin.aksesTautan.buat');
+    Route::post('verifikasi-rt/tautan-akses/{tautan}/cabut', [App\Http\Controllers\AksesTautanAdminController::class, 'cabut'])->name('admin.aksesTautan.cabut');
     // Penggabungan baris anak (spec verifikasi RT §6.3) — superadmin saja (dicek di controller)
     Route::get('verifikasi-rt/gabung', [App\Http\Controllers\MergeIdentitasController::class, 'index'])->name('admin.gabung.index');
     Route::get('verifikasi-rt/gabung/{tautan}', [App\Http\Controllers\MergeIdentitasController::class, 'show'])->name('admin.gabung.show');

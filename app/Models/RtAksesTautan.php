@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -50,17 +51,22 @@ class RtAksesTautan extends Model
     /** @return array{model: self, token: string} token plaintext — tampilkan sekali, jangan disimpan */
     public static function buat(Rt $rt, User $oleh, int $hari = self::HARI_DEFAULT): array
     {
-        static::where('id_rt', $rt->id)->whereNull('dicabut_at')->update(['dicabut_at' => now()]);
+        return DB::transaction(function () use ($rt, $oleh, $hari) {
+            // Kunci induk RT, termasuk saat belum ada token, agar dua pembuatan
+            // bersamaan tidak menghasilkan dua tautan aktif.
+            Rt::whereKey($rt->id)->lockForUpdate()->firstOrFail();
+            static::where('id_rt', $rt->id)->whereNull('dicabut_at')->update(['dicabut_at' => now()]);
 
-        $token = Str::random(40);
-        $model = static::create([
-            'id_rt'          => $rt->id,
-            'token_hash'     => hash('sha256', $token),
-            'kedaluwarsa_at' => now()->addDays($hari),
-            'dibuat_oleh'    => $oleh->id,
-        ]);
+            $token = Str::random(40);
+            $model = static::create([
+                'id_rt'          => $rt->id,
+                'token_hash'     => hash('sha256', $token),
+                'kedaluwarsa_at' => now()->addDays($hari),
+                'dibuat_oleh'    => $oleh->id,
+            ]);
 
-        return ['model' => $model, 'token' => $token];
+            return ['model' => $model, 'token' => $token];
+        });
     }
 
     public static function cariToken(string $token): ?self

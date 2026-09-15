@@ -1,5 +1,11 @@
 # Scoping Akses RT: Akun per Kelurahan + Pemilih RT (A) dan Tautan Bertoken per RT (B) — Implementation Plan
 
+> **Status akhir 15 September 2026: T1–T5 selesai di lokal.** Verifikasi: 694 tes / 2.241 assertion,
+> tanpa failure/error (13 PHPUnit deprecation); migrasi dev dan cek browser selesai.
+> Lihat [laporan verifikasi](../verification-2026-09-15-scoping-rt.md). Rencana dan contoh awal
+> di bawah dipertahankan sebagai riwayat; implementasi final memakai penanda eksplisit
+> `users.rt_sekelurahan`, agar akun per-RT yang RT-nya terhapus tidak memperoleh akses kelurahan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Mengurangi jumlah akun RT (498 RT) tanpa kehilangan jejak: (A) satu akun peran RT per kelurahan yang memilih RT setelah masuk, (B) tautan bertoken per RT yang bisa dibuka tanpa akun. Kedua mode memakai halaman & aturan `/rt/verifikasi` yang sama; setiap usulan menyimpan **nama pengisi** (`pelaksana`). Akun per-RT yang sudah ada tetap berfungsi.

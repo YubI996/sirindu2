@@ -27,6 +27,7 @@ Edit User
 <form method="post" action="{{route('super.admin.updateUser', $user->id)}}">
     @csrf
     <input type="hidden" name="_method" value="PUT">
+    <input type="hidden" name="id_kel" value="{{ $user->id_kel }}">
     <div class="row">
 
         {{-- Nama & Email --}}
@@ -137,7 +138,7 @@ Edit User
         </div>
         <div class="col-md-3 col-sm-12 mt-2">
             <div class="form-group">
-                <label>Kelurahan</label>
+                <label>Kelurahan (saat ini: {{ \App\Models\Kelurahan::find($user->id_kel)?->name ?? 'Belum dipilih' }})</label>
                 <select id="kelx" name="id_kelx" class="form-control" disabled>
                     <option value="">== Pilih Kelurahan ==</option>
                 </select>
@@ -162,13 +163,19 @@ Edit User
         {{-- Peran RT: RT yang diverifikasi; wilayah user diturunkan dari RT ini saat disimpan --}}
         <div class="col-md-3 col-sm-12 mt-2" id="edit_rt_group" style="{{ $user->role === 'rt' ? '' : 'display:none' }}">
             <div class="form-group">
-                <label>RT (peran RT)</label>
-                <select id="rtx" name="id_rt" class="form-control">
+                <div class="mb-2">
+                    <input type="hidden" name="rt_sekelurahan" value="0">
+                    <input type="checkbox" name="rt_sekelurahan" value="1" id="edit_rt_sekelurahan" @checked($user->rt_sekelurahan)>
+                    <label for="edit_rt_sekelurahan">Akun lingkup kelurahan — memilih RT saat masuk</label>
+                </div>
+                <label for="rtx">RT (peran RT)</label>
+                <select id="rtx" name="id_rt" class="form-control" @disabled($user->rt_sekelurahan)>
                     <option value="">== Pilih Kelurahan dulu ==</option>
                     @foreach (\App\Models\Rt::where('id_kelurahan', $user->id_kel)->orderBy('name')->get() as $rt)
                     <option value="{{ $rt->id }}" {{ (int) $user->id_rt === $rt->id ? 'selected' : '' }}>{{ $rt->name }}</option>
                     @endforeach
                 </select>
+                <small class="text-muted">Untuk mengganti kelurahan, centang Ganti Lokasi Alamat lalu pilih kecamatan dan kelurahan.</small>
             </div>
         </div>
 
@@ -181,6 +188,14 @@ Edit User
 @endsection
 @section('custom_scripts')
 <script>
+    function updateEditRtScope() {
+        var seluruh = document.getElementById('edit_rt_sekelurahan').checked;
+        var rt = document.getElementById('rtx');
+        rt.disabled = seluruh;
+        if (seluruh) rt.value = '';
+    }
+    document.getElementById('edit_rt_sekelurahan').addEventListener('change', updateEditRtScope);
+    updateEditRtScope();
     document.getElementById('edit_role').addEventListener('change', function () {
         document.getElementById('edit_rt_group').style.display = this.value === 'rt' ? '' : 'none';
     });
@@ -237,6 +252,8 @@ Edit User
 
         $('#kecx').on('change', function () {
             var id = $(this).val();
+            $('#kelx').empty().append('<option value="">== Pilih Kelurahan ==</option>').trigger('change');
+            if (!id) { return; }
             $.ajax({
                 url: '{{ url("admin/get-kel-dasar-anak") }}' + '/' + id,
                 success: function (response) {
