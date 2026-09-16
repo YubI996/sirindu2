@@ -29,11 +29,23 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
 {
     use ResolvesAnakByTwoOfThree;
 
+    /** Kolom format wide yang bukan kode vaksin; sisanya di header dianggap kode vaksin. */
+    private const KOLOM_BUKAN_VAKSIN = ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'alasan_tidak_imunisasi'];
+
     protected int $userId;
     protected int $successCount = 0;
     protected int $errorCount   = 0;
     protected array $failures   = [];
     protected int $rowOffset    = 0;
+
+    /** Baris data terisi (bukan header/komentar/kosong) yang dibaca — untuk ringkasan. */
+    protected int $rowsRead = 0;
+    /** Baris yang dilewati utuh dengan [PERINGATAN] (identitas kurang, kode vaksin kosong/asing). */
+    protected int $skippedCount = 0;
+    /** id anak yang minimal satu vaksinnya tersimpan; ringkasan menyebut jumlah anak, bukan hanya vaksin. */
+    protected array $anakTersimpan = [];
+    /** Kode vaksin format long yang tak ada di master, unik, urut kemunculan — dilaporkan sekali di akhir. */
+    protected array $kodeTakDikenal = [];
 
     protected ?array $columnMap    = null;
     protected int    $headerRowIdx = 0;
@@ -97,7 +109,9 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
         if ($isFirstChunk) {
             $detected = $this->detectImportHeader($rows);
             if ($detected === null) {
-                $this->failures[] = '[ERROR] Header tidak ditemukan. Pastikan file memiliki baris header (non-#).';
+                $this->failures[] = '[ERROR] Header tidak ditemukan. Baris pertama yang tidak diawali \'#\' harus berisi nama kolom: '
+                    . 'nik_anak, nama_anak, tgl_lahir_anak, lalu satu kolom per kode vaksin (HB0, BCG, POLIO1, …) berisi tanggal pemberian — '
+                    . 'atau kolom kode_vaksin untuk format lama (1 baris per vaksin).';
                 $this->rowOffset += $originalSize;
                 return;
             }
@@ -106,6 +120,7 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
             $this->wideMode = !array_key_exists('kode_vaksin', $this->columnMap);
             if ($this->wideMode) {
                 $this->vaksinColumns = $this->detectVaksinColumns($this->columnMap);
+                $this->laporkanKolomHeader($this->columnMap);
             }
             $rows = $rows->slice($this->headerRowIdx + 1)->values();
         }
@@ -115,6 +130,8 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
 
         foreach ($rows as $index => $row) {
             $rowNum = $this->rowOffset + $index + 1 + ($isFirstChunk ? $baseOffset : 0);
+            if (!$this->barisTerisi($row)) continue; // baris kosong (mis. trailing newline) tak dihitung
+            $this->rowsRead++;
             if ($this->wideMode) {
                 $this->processWideRow($row, $map, $rowNum);
             } else {
@@ -136,44 +153,35 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
         $tglLahirAnakRaw = $this->colVal($row, $map, 'tgl_lahir_anak');
         $tglLahirAnak    = $this->parseDate($tglLahirAnakRaw);
 
-        $idCount = (int)(!empty($nikAnakRaw)) + (int)(!empty($namaAnakRaw)) + (int)($tglLahirAnak !== null);
-        if ($idCount < 2) {
-            if ($idCount > 0) {
-                $this->failures[] = "[PERINGATAN] Baris {$rowNum}: Kurang dari 2 identifier — dilewati.";
-            }
+        if (!$this->identitasCukup($nikAnakRaw, $namaAnakRaw, $tglLahirAnak, $tglLahirAnakRaw, $rowNum)) {
             return;
         }
 
         $kodeVaksin = strtoupper(trim((string) ($this->colVal($row, $map, 'kode_vaksin') ?? '')));
         if (empty($kodeVaksin)) {
-            $this->failures[] = "[PERINGATAN] Baris {$rowNum}: kode_vaksin kosong — dilewati.";
+            $this->failures[] = "[PERINGATAN] Baris {$rowNum}: kolom kode_vaksin kosong — baris dilewati. Isi kode vaksin (mis. HB0, BCG, POLIO1).";
+            $this->skippedCount++;
             return;
         }
 
         try {
             $result = $this->resolveAnakByTwoOfThree($nikAnakRaw, $namaAnakRaw, $tglLahirAnak);
-
-            if ($result['warning']) {
-                $this->failures[] = "[INFO] Baris {$rowNum}: " . $result['warning'];
-            }
+            $label  = $namaAnakRaw ?: $nikAnakRaw;
 
             if ($result['anak'] === null) {
-                $label = $namaAnakRaw ?: $nikAnakRaw;
-                $this->failures[] = match ($result['match']) {
-                    'ambigu'          => "[ERROR] Baris {$rowNum} ({$label}): " . $result['warning'],
-                    'tidak_ditemukan' => "[ERROR] Baris {$rowNum} ({$label}): Anak tidak ditemukan. Pastikan data anak sudah diimport terlebih dahulu.",
-                    default           => "[ERROR] Baris {$rowNum} ({$label}): Anak tidak ditemukan.",
-                };
+                $this->failures[] = $this->pesanAnakTidakDitemukan($result, $rowNum, $label, $nikAnakRaw, $namaAnakRaw, $tglLahirAnak);
                 $this->errorCount++;
                 return;
             }
+            $this->catatInfoPencocokan($result, $rowNum, $label, $nikAnakRaw);
 
             $anak = $result['anak'];
 
             $idVaksin = $this->vaksinCache[$kodeVaksin] ?? null;
             if (!$idVaksin) {
-                $label = $namaAnakRaw ?: $nikAnakRaw;
-                $this->failures[] = "[PERINGATAN] Baris {$rowNum} ({$label}): Kode vaksin '{$kodeVaksin}' tidak ditemukan di master data — dilewati.";
+                $this->failures[] = "[PERINGATAN] Baris {$rowNum} ({$label}): Kode vaksin '{$kodeVaksin}' tidak ditemukan di master data — baris dilewati.";
+                $this->kodeTakDikenal[$kodeVaksin] = true;
+                $this->skippedCount++;
                 return;
             }
 
@@ -193,6 +201,7 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
             );
 
             $this->successCount++;
+            $this->anakTersimpan[$anak->id] = true;
 
         } catch (\Exception $e) {
             $label = $namaAnakRaw ?: $nikAnakRaw;
@@ -226,38 +235,35 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
         $tglLahirAnakRaw = $this->colVal($row, $map, 'tgl_lahir_anak');
         $tglLahirAnak    = $this->parseDate($tglLahirAnakRaw);
 
-        $idCount = (int)(!empty($nikAnakRaw)) + (int)(!empty($namaAnakRaw)) + (int)($tglLahirAnak !== null);
-        if ($idCount < 2) {
-            if ($idCount > 0) {
-                $this->failures[] = "[PERINGATAN] Baris {$rowNum}: Kurang dari 2 identifier — dilewati.";
-            }
+        if (!$this->identitasCukup($nikAnakRaw, $namaAnakRaw, $tglLahirAnak, $tglLahirAnakRaw, $rowNum)) {
             return;
         }
 
         try {
             $result = $this->resolveAnakByTwoOfThree($nikAnakRaw, $namaAnakRaw, $tglLahirAnak);
-
-            if ($result['warning']) {
-                $this->failures[] = "[INFO] Baris {$rowNum}: " . $result['warning'];
-            }
+            $label  = $namaAnakRaw ?: $nikAnakRaw;
 
             if ($result['anak'] === null) {
-                $label = $namaAnakRaw ?: $nikAnakRaw;
-                $this->failures[] = match ($result['match']) {
-                    'ambigu'          => "[ERROR] Baris {$rowNum} ({$label}): " . $result['warning'],
-                    'tidak_ditemukan' => "[ERROR] Baris {$rowNum} ({$label}): Anak tidak ditemukan. Pastikan data anak sudah diimport terlebih dahulu.",
-                    default           => "[ERROR] Baris {$rowNum} ({$label}): Anak tidak ditemukan.",
-                };
+                $this->failures[] = $this->pesanAnakTidakDitemukan($result, $rowNum, $label, $nikAnakRaw, $namaAnakRaw, $tglLahirAnak);
                 $this->errorCount++;
                 return;
             }
+            $this->catatInfoPencocokan($result, $rowNum, $label, $nikAnakRaw);
 
             $anak = $result['anak'];
 
-            // Upsert tiap vaksin yang selnya berisi tanggal valid. Sel kosong dilewati.
+            // Upsert tiap vaksin yang selnya berisi tanggal valid. Sel kosong dilewati;
+            // sel terisi tapi tak terbaca dikumpulkan lalu dilaporkan sekali per baris.
+            $takTerbaca = [];
+            $adaTanggal = false;
             foreach ($this->vaksinColumns as $key => $idVaksin) {
-                $tgl = $this->parseDate($this->colVal($row, $map, $key));
-                if ($tgl === null) continue;
+                $raw = $this->colVal($row, $map, $key);
+                if ($raw === null) continue;
+                $tgl = $this->parseDate($raw);
+                if ($tgl === null) {
+                    $takTerbaca[] = strtoupper($key) . " ('" . trim((string) $raw) . "')";
+                    continue;
+                }
                 Imunisasi::updateOrCreate(
                     ['id_anak' => $anak->id, 'id_jenis_vaksin' => $idVaksin],
                     [
@@ -267,12 +273,24 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
                     ]
                 );
                 $this->successCount++;
+                $this->anakTersimpan[$anak->id] = true;
+                $adaTanggal = true;
+            }
+            if ($takTerbaca !== []) {
+                $this->failures[] = "[PERINGATAN] Baris {$rowNum} ({$label}): tanggal tidak terbaca pada " . implode(', ', $takTerbaca)
+                    . ' — vaksin itu dilewati. Gunakan format YYYY-MM-DD.';
             }
 
             // Kolom trailing alasan_tidak_imunisasi → tulis ke data_anak.
             $alasan = $this->colVal($row, $map, 'alasan_tidak_imunisasi');
             if (!empty($alasan)) {
                 $this->writeAlasanTidakImunisasi($anak, trim((string) $alasan));
+            }
+
+            // Anak ketemu tapi tak ada apa pun yang disimpan: beri tahu, supaya selisih
+            // "baris dibaca" vs "vaksin disimpan" di ringkasan bisa dijelaskan.
+            if (!$adaTanggal && $takTerbaca === [] && empty($alasan) && $this->vaksinColumns !== []) {
+                $this->failures[] = "[INFO] Baris {$rowNum} ({$label}): tidak ada tanggal vaksin maupun alasan_tidak_imunisasi yang terisi — tidak ada yang disimpan untuk baris ini.";
             }
 
         } catch (\Exception $e) {
@@ -325,12 +343,136 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
         return ImportError::message($message);
     }
 
+    // =========================================================================
+    // Pesan untuk petugas — sebut sebab dan cara memperbaikinya
+    // =========================================================================
+
+    /** Ada sel terisi di baris ini? Baris kosong tidak dihitung maupun dilaporkan. */
+    protected function barisTerisi($row): bool
+    {
+        foreach ($row as $v) {
+            if (trim((string) $v) !== '') return true;
+        }
+        return false;
+    }
+
+    /** Daftar kode vaksin master, untuk disebut di pesan header/kode asing. */
+    protected function daftarKodeSah(): string
+    {
+        return implode(', ', array_keys($this->vaksinCache));
+    }
+
+    /**
+     * Format wide: laporkan header yang tidak dikenali. Tanpa satu pun kolom vaksin,
+     * import pasti 0 vaksin — dulu diam saja dan tampak "berhasil".
+     */
+    protected function laporkanKolomHeader(array $map): void
+    {
+        $kutip = fn (string $k) => "'{$k}'";
+
+        if ($this->vaksinColumns === []) {
+            $this->failures[] = '[ERROR] Tidak ada kolom vaksin yang dikenali di header, sehingga tidak ada tanggal imunisasi yang bisa disimpan. '
+                . 'Kolom yang ada: ' . implode(', ', array_map($kutip, array_keys($map))) . '. '
+                . 'Nama kolom vaksin harus sama persis dengan kode master: ' . $this->daftarKodeSah() . '.';
+            return;
+        }
+
+        $takDikenal = [];
+        foreach (array_keys($map) as $key) {
+            if (in_array($key, self::KOLOM_BUKAN_VAKSIN, true) || isset($this->vaksinColumns[$key])) continue;
+            $takDikenal[] = $kutip($key);
+        }
+        if ($takDikenal !== []) {
+            $this->failures[] = '[PERINGATAN] Kolom ' . implode(', ', $takDikenal) . ' tidak dikenali sebagai kode vaksin dan diabaikan. '
+                . 'Kode yang sah: ' . $this->daftarKodeSah() . '.';
+        }
+    }
+
+    /**
+     * Aturan 2-dari-3 (NIK, nama, tgl lahir). Bila kurang: tulis peringatan yang
+     * menyebut kolom mana yang terisi/kosong (dan tgl lahir yang tak terbaca), lalu false.
+     */
+    protected function identitasCukup(string $nik, string $nama, ?string $tglLahir, $tglLahirRaw, int $rowNum): bool
+    {
+        $status = ['nik_anak' => $nik !== '', 'nama_anak' => $nama !== '', 'tgl_lahir_anak' => $tglLahir !== null];
+        if (count(array_filter($status)) >= 2) return true;
+
+        $terisi = array_keys(array_filter($status));
+        $kosong = array_keys(array_filter($status, fn ($ada) => !$ada));
+        $tglTakTerbaca = $tglLahir === null && trim((string) $tglLahirRaw) !== '';
+        if ($tglTakTerbaca) {
+            $kosong = array_values(array_diff($kosong, ['tgl_lahir_anak']));
+        }
+
+        $rincian = 'terisi: ' . ($terisi ? implode(', ', $terisi) : 'tidak ada');
+        if ($kosong) $rincian .= '; kosong: ' . implode(', ', $kosong);
+        if ($tglTakTerbaca) $rincian .= "; tgl_lahir_anak '" . trim((string) $tglLahirRaw) . "' tidak terbaca, pakai YYYY-MM-DD";
+
+        $this->failures[] = "[PERINGATAN] Baris {$rowNum}: identitas anak kurang ({$rincian}). "
+            . 'Isi minimal 2 dari nik_anak, nama_anak, tgl_lahir_anak — baris dilewati.';
+        $this->skippedCount++;
+        return false;
+    }
+
+    /** NIK terisi tapi bukan 15–16 digit angka (mis. "3.2E+15" hasil pembulatan Excel) — mengikuti aturan ResolvesAnakByTwoOfThree. */
+    protected function nikRusak(string $nik): bool
+    {
+        if ($nik === '') return false;
+        $n = substr(trim($nik), 0, 16);
+        return !(ctype_digit($n) && strlen($n) >= 15);
+    }
+
+    protected function pesanAnakTidakDitemukan(array $result, int $rowNum, string $label, string $nik, string $nama, ?string $tglLahir): string
+    {
+        if ($result['match'] === 'ambigu') {
+            return "[ERROR] Baris {$rowNum} ({$label}): " . $result['warning'];
+        }
+
+        $dicari = [];
+        if ($nik !== '' && !$this->nikRusak($nik)) $dicari[] = "NIK {$nik}";
+        if ($nama !== '') $dicari[] = "nama '{$nama}'";
+        if ($tglLahir !== null) $dicari[] = "tgl lahir {$tglLahir}";
+
+        $pesan = "[ERROR] Baris {$rowNum} ({$label}): Anak tidak ditemukan — dicari dengan " . implode(', ', $dicari) . '. '
+            . 'Pastikan data anak sudah diimport lebih dulu, atau periksa ejaan nama dan tanggal lahir.';
+        if ($this->nikRusak($nik)) {
+            $pesan .= " NIK '{$nik}' bukan 15–16 digit angka sehingga tidak dipakai mencari (simpan kolom NIK sebagai teks di Excel agar tidak dibulatkan).";
+        }
+        return $pesan;
+    }
+
+    /** Anak ketemu, tapi lewat jalur cadangan — catat supaya petugas tahu datanya perlu dibetulkan. */
+    protected function catatInfoPencocokan(array $result, int $rowNum, string $label, string $nik): void
+    {
+        if ($result['warning']) {
+            $this->failures[] = "[INFO] Baris {$rowNum}: " . $result['warning'];
+        }
+        if ($this->nikRusak($nik)) {
+            $this->failures[] = "[INFO] Baris {$rowNum} ({$label}): NIK '{$nik}' bukan 15–16 digit angka "
+                . '(simpan kolom NIK sebagai teks di Excel agar tidak dibulatkan); anak dicocokkan lewat nama+tgl_lahir.';
+        }
+    }
+
+    /** Baris pertama di "Lihat detail error": angka-angka yang menjelaskan hitungan di Riwayat Import + arti awalan. */
+    protected function ringkasan(): string
+    {
+        return "Ringkasan: {$this->rowsRead} baris data dibaca, {$this->successCount} vaksin disimpan/diperbarui untuk "
+            . count($this->anakTersimpan) . " anak, {$this->errorCount} baris gagal, {$this->skippedCount} baris dilewati. "
+            . 'Arti awalan: [ERROR] baris gagal disimpan; [PERINGATAN] baris atau sebagian isinya dilewati; [INFO] catatan saja, data tetap tersimpan.';
+    }
+
     public function getResults(): array
     {
+        $catatanAkhir = [];
+        if ($this->kodeTakDikenal !== []) {
+            $catatanAkhir[] = '[INFO] Kode vaksin yang tidak dikenal: ' . implode(', ', array_keys($this->kodeTakDikenal))
+                . '. Kode yang sah: ' . $this->daftarKodeSah() . '.';
+        }
+
         return [
             'success'     => $this->successCount,
             'error_count' => $this->errorCount,
-            'failures'    => $this->failures,
+            'failures'    => array_merge([$this->ringkasan()], $this->failures, $catatanAkhir),
         ];
     }
 }
