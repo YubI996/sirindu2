@@ -205,3 +205,18 @@ Perbaikannya sekadar kasih spasi: `@section('title') Dashboard Imunisasi @endsec
 (pola yang sudah dipakai `pd3i-dashboard.blade.php`). Setelah mengubah blade
 manapun, `php artisan view:clear` dulu sebelum menyimpulkan perubahan tak
 berefek — compiled view lama tetap disajikan sampai di-clear.
+
+### Field Kesmas: NULL = belum diisi, dan hanya field yang dikirim yang disentuh
+
+Kolom Kesmas di `anak`/`data_anak` (spec `docs/superpowers/specs/2026-09-15-data-kesmas-design.md`)
+sengaja **tanpa DEFAULT** — NULL berarti petugas belum mengisi, bukan "Tidak". Jangan
+menambah `->default()` atau backfill 0 ke kolom ini: dasbor akan menampilkan cakupan palsu
+untuk 15.000 anak lama. Boolean per anak memakai select tiga keadaan (`''`/`1`/`0`),
+layanan per kunjungan memakai hidden+checkbox.
+
+`AnakRepository::kolomKesmas()` hanya menulis field yang **ada di request** (`$request->has()`
+di sini mendeteksi keberadaan field, nilainya tetap dibaca `boolean()`). Kalau menambah field
+Kesmas baru: tambah rule-nya di `KesmasRules::anak()`/`kunjungan()` (daftar kolom diambil dari
+`array_keys()` rule itu), opsinya di `config/kesmas.php`, kontrolnya di partial
+`admin/anak/partials/form-*.blade.php` — dan pastikan tidak ada `required`/`min`/`max` di
+dalam kartu collapse (dikunci `FormKesmasBladeTest`).
