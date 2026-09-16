@@ -500,6 +500,10 @@
                 <strong>Pencocokan Anak (2 dari 3)</strong>
                 Isi minimal 2 dari 3 kolom: <strong>NIK</strong>, <strong>nama</strong>, atau <strong>tanggal lahir</strong>. Sistem mencari anak yang cocok sebelum menyimpan data.
             </div>
+            <div class="imp-guide__rule">
+                <strong>Format Tanggal</strong>
+                <strong>YYYY-MM-DD</strong> (mis. 2020-02-15) atau DD-MM-YYYY. Tanda seperti <em>x</em>, angka tunggal, atau tanggal bergaris miring (05/02/2020) <strong>tidak diterima</strong> dan dilaporkan di detail error &mdash; sel itu dilewati, sel lain tetap tersimpan.
+            </div>
             <a href="{{ route('admin.importCsv.template', 'imunisasi') }}" class="imp-template-link" download>
                 <span class="material-symbols-outlined">download</span>
                 Unduh Template CSV

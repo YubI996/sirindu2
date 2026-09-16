@@ -74,15 +74,46 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
     // Parse helpers
     // =========================================================================
 
+    /**
+     * Terima hanya bentuk tanggal yang tak ambigu: YYYY-MM-DD (boleh diikuti jam),
+     * DD-MM-YYYY, atau serial Excel — dan tahunnya masuk akal (1990..tahun depan).
+     * Selain itu null, sehingga masuk peringatan "tanggal tidak terbaca".
+     *
+     * Carbon::parse sengaja TIDAK dipakai langsung: 'x'/'v' (tanda "sudah" dari
+     * petugas) dibaca sebagai hari ini, '1' dan '2020' sebagai serial Excel
+     * 1899/1905, dan '05/02/2020' dibaca gaya AS (2 Mei) — semuanya tersimpan
+     * diam-diam sebagai tanggal pemberian yang salah.
+     */
     protected function parseDate($value): ?string
     {
         if ($value === null || $value === '') return null;
-        if (is_numeric($value)) {
-            try { return Carbon::instance(Date::excelToDateTimeObject((float) $value))->format('Y-m-d'); }
+        if ($value instanceof \DateTimeInterface) {
+            return $this->tanggalMasukAkal(Carbon::instance($value));
+        }
+
+        $s = trim((string) $value);
+        if (is_numeric($s)) {
+            try { return $this->tanggalMasukAkal(Carbon::instance(Date::excelToDateTimeObject((float) $s))); }
             catch (\Exception $e) { return null; }
         }
-        try { return Carbon::parse((string) $value)->format('Y-m-d'); }
-        catch (\Exception $e) { return null; }
+        if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?$/', $s, $m)) {
+            [$y, $bln, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } elseif (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $s, $m)) {
+            [$d, $bln, $y] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } else {
+            return null;
+        }
+        if (!checkdate($bln, $d, $y)) return null; // 31-02-2020 dsb.
+
+        return $this->tanggalMasukAkal(Carbon::create($y, $bln, $d));
+    }
+
+    /** Tolak tahun di luar 1990..tahun depan — sumber lazimnya serial Excel dari angka yang bukan tanggal. */
+    protected function tanggalMasukAkal(Carbon $tgl): ?string
+    {
+        $tahun = (int) $tgl->format('Y');
+        if ($tahun < 1990 || $tahun > (int) now()->format('Y') + 1) return null;
+        return $tgl->format('Y-m-d');
     }
 
     protected function parseStatus($value): string

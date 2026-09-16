@@ -206,6 +206,54 @@ class ImunisasiImportPesanTest extends TestCase
         $this->assertStringStartsWith('Ringkasan: 1 baris data dibaca, 1 vaksin disimpan/diperbarui untuk 1 anak', $pesan[0]);
     }
 
+    public function test_tanda_x_angka_tunggal_dan_tahun_saja_bukan_tanggal(): void
+    {
+        // Dulu: 'x' -> hari ini, '1' -> 1899-12-31, '2020' -> 1905-07-12 (serial Excel) — semua diam-diam.
+        $anak = $this->anak();
+        $pesan = $this->pesan($this->rows(
+            ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'HB0', 'BCG', 'MR1'],
+            ['3201011501200001', 'Budi Santoso', '2020-01-15', 'x', '1', '2020'],
+        ));
+
+        $this->assertDatabaseCount('imunisasi', 0);
+        $p = $this->hanyaYangMemuat($pesan, 'tanggal tidak terbaca');
+        $this->assertCount(1, $p);
+        $this->assertStringContainsString("HB0 ('x')", $p[0]);
+        $this->assertStringContainsString("BCG ('1')", $p[0]);
+        $this->assertStringContainsString("MR1 ('2020')", $p[0]);
+        $this->assertSame($anak->id, Anak::first()->id);
+    }
+
+    public function test_tanggal_garis_miring_ditolak_karena_urutan_hari_bulan_ambigu(): void
+    {
+        // Carbon membaca '05/02/2020' sebagai 2 Mei (gaya AS) padahal petugas bermaksud 5 Februari.
+        $anak = $this->anak();
+        $pesan = $this->pesan($this->rows(
+            ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'HB0'],
+            ['3201011501200001', 'Budi Santoso', '2020-01-15', '05/02/2020'],
+        ));
+
+        $this->assertDatabaseMissing('imunisasi', ['id_anak' => $anak->id]);
+        $p = $this->hanyaYangMemuat($pesan, 'tanggal tidak terbaca');
+        $this->assertCount(1, $p);
+        $this->assertStringContainsString("HB0 ('05/02/2020')", $p[0]);
+    }
+
+    public function test_format_iso_hari_bulan_tahun_dan_serial_excel_diterima(): void
+    {
+        $anak = $this->anak();
+        $pesan = $this->pesan($this->rows(
+            ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'HB0', 'BCG', 'MR1'],
+            ['3201011501200001', 'Budi Santoso', '2020-01-15', '2020-02-15', '16-02-2020', 43878], // 43878 = 2020-02-17
+        ));
+
+        $kode = fn (string $k) => JenisVaksin::where('kode', $k)->value('id');
+        $this->assertDatabaseHas('imunisasi', ['id_anak' => $anak->id, 'id_jenis_vaksin' => $kode('HB0'), 'tanggal_pemberian' => '2020-02-15']);
+        $this->assertDatabaseHas('imunisasi', ['id_anak' => $anak->id, 'id_jenis_vaksin' => $kode('BCG'), 'tanggal_pemberian' => '2020-02-16']);
+        $this->assertDatabaseHas('imunisasi', ['id_anak' => $anak->id, 'id_jenis_vaksin' => $kode('MR1'), 'tanggal_pemberian' => '2020-02-17']);
+        $this->assertSame([], $this->hanyaYangMemuat($pesan, 'tanggal tidak terbaca'));
+    }
+
     public function test_baris_tanpa_tanggal_dan_alasan_diberi_info(): void
     {
         $this->anak();
