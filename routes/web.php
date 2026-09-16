@@ -261,6 +261,14 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.export.pd3i.download');
     });
 
+    // Export Kesmas — spec docs/superpowers/specs/2026-09-15-data-kesmas-design.md §5
+    Route::prefix('export-kesmas')->group(function () {
+        Route::get('/', [App\Http\Controllers\ExportKesmasController::class, 'index'])
+             ->name('admin.export.kesmas.index');
+        Route::get('download', [App\Http\Controllers\ExportKesmasController::class, 'download'])
+             ->name('admin.export.kesmas.download');
+    });
+
     /*------------------------------------------
     Epidemiology Surveillance Routes
     --------------------------------------------*/
