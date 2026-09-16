@@ -322,6 +322,39 @@ class ImunisasiStatusService
     }
 
     /**
+     * Kolom anak yang dibaca logika status/agregat — cukup ini, bukan 70 kolom tabel anak.
+     * Wajib ada 'id' (kunci chunkById) dan 'id_kel' (relasi kel).
+     */
+    private const KOLOM_ANAK_AGREGAT = ['id', 'tgl_lahir', 'jk', 'id_kec', 'id_kel'];
+
+    /**
+     * Jalankan $fn untuk tiap anak hasil $query, dimuat per potongan 500 baris
+     * dengan kolom seperlunya. Populasi se-kota (≥10 rb anak) TIDAK boleh
+     * dihidrasi sekaligus: 70 kolom + relasi imunisasi ≈ 17–80 KB/anak, dan
+     * dasbor memindai populasi enam kali per request — insiden prod 16 Sep 2026
+     * "Allowed memory size of 134217728 bytes exhausted". Memori puncak kini
+     * sebatas satu potongan, berapa pun jumlah anak.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Anak>  $query
+     * @param  callable(Anak): void  $fn
+     * @param  array<int|string, mixed>  $with  relasi yang dimuat per potongan
+     * @return int  jumlah anak yang diproses
+     */
+    private function eachAnak(\Illuminate\Database\Eloquent\Builder $query, callable $fn, array $with = ['imunisasi.jenisVaksin']): int
+    {
+        $jumlah = 0;
+        $query->select(self::KOLOM_ANAK_AGREGAT)->with($with)
+            ->chunkById(500, function ($potongan) use ($fn, &$jumlah) {
+                foreach ($potongan as $anak) {
+                    $fn($anak);
+                    $jumlah++;
+                }
+            });
+
+        return $jumlah;
+    }
+
+    /**
      * Aggregate IDL coverage stats, optionally filtered by wilayah.
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
@@ -333,18 +366,15 @@ class ImunisasiStatusService
     public function getIdlCoverage(array $filters = [], bool $withKejar = false): array
     {
         $query = Anak::query()
-            ->with(['imunisasi.jenisVaksin', 'kel'])
             ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
 
         $this->applyWilayahFilters($query, $filters);
-
-        $anakList = $query->get();
 
         $perKelurahan = [];
         $totalLengkap = 0;
         $butuhKejar   = 0;
 
-        foreach ($anakList as $anak) {
+        $total = $this->eachAnak($query, function (Anak $anak) use (&$perKelurahan, &$totalLengkap, &$butuhKejar, $withKejar) {
             $namaKel = $anak->kel?->name ?? 'Tidak Diketahui';
             $kelId   = $anak->id_kel ?? 0;
 
@@ -372,7 +402,7 @@ class ImunisasiStatusService
                     $butuhKejar++;
                 }
             }
-        }
+        }, ['imunisasi.jenisVaksin', 'kel']);
 
         // Calculate percentages
         foreach ($perKelurahan as &$row) {
@@ -380,8 +410,6 @@ class ImunisasiStatusService
                 ? round(($row['lengkap'] / $row['total']) * 100, 1)
                 : 0.0;
         }
-
-        $total = $anakList->count();
 
         return [
             'total'         => $total,
@@ -402,19 +430,15 @@ class ImunisasiStatusService
      */
     public function getIblCoverage(array $filters = []): array
     {
-        $anakList = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->with('imunisasi.jenisVaksin')
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 24')
-            ->get();
+        $query = $this->applyWilayahFilters(Anak::query(), $filters)
+            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 24');
 
         $lengkap = 0;
-        foreach ($anakList as $anak) {
+        $total = $this->eachAnak($query, function (Anak $anak) use (&$lengkap) {
             if ($this->isIblLengkap($anak)) {
                 $lengkap++;
             }
-        }
-
-        $total = $anakList->count();
+        });
 
         return [
             'total'       => $total,
@@ -478,13 +502,11 @@ class ImunisasiStatusService
         ];
 
         $cohort = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12')
-            ->with('imunisasi.jenisVaksin')
-            ->get();
+            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
 
         $jumlah = array_fill_keys(array_keys($tahapan), 0);
         $idlLengkap = 0;
-        foreach ($cohort as $anak) {
+        $this->eachAnak($cohort, function (Anak $anak) use ($tahapan, &$jumlah, &$idlLengkap) {
             $kodeSudah = $anak->imunisasi->where('status', 'sudah')->pluck('jenisVaksin.kode');
             foreach ($tahapan as $kode => $label) {
                 if ($kodeSudah->contains($kode)) {
@@ -494,7 +516,7 @@ class ImunisasiStatusService
             if ($this->isIdlLengkap($anak)) {
                 $idlLengkap++;
             }
-        }
+        });
 
         $funnel = [];
         foreach ($tahapan as $kode => $label) {
@@ -524,31 +546,34 @@ class ImunisasiStatusService
             ->orderBy('usia_pemberian_min')
             ->get();
 
-        $anakList = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->with('imunisasi.jenisVaksin')
-            ->get();
+        // Satu pass populasi untuk semua antigen (loop dibalik: per anak → per vaksin),
+        // akumulator per id vaksin; hasilnya identik dengan menghitung per vaksin.
+        $sudah = $eligible = array_fill_keys($vaksinList->pluck('id')->all(), 0);
+        $this->eachAnak(
+            $this->applyWilayahFilters(Anak::query(), $filters),
+            function (Anak $anak) use ($vaksinList, &$sudah, &$eligible) {
+                foreach ($vaksinList as $vaksin) {
+                    $record = $anak->imunisasi->firstWhere('id_jenis_vaksin', $vaksin->id);
+                    $status = $this->getVaccineStatus($anak, $vaksin, $record);
+                    if ($status === 'tidak_relevan' || $status === 'belum') {
+                        continue;
+                    }
+                    $eligible[$vaksin->id]++;
+                    if ($status === 'sudah') {
+                        $sudah[$vaksin->id]++;
+                    }
+                }
+            }
+        );
 
         $result = [];
         foreach ($vaksinList as $vaksin) {
-            $sudah = 0;
-            $eligible = 0;
-            foreach ($anakList as $anak) {
-                $record = $anak->imunisasi->firstWhere('id_jenis_vaksin', $vaksin->id);
-                $status = $this->getVaccineStatus($anak, $vaksin, $record);
-                if ($status === 'tidak_relevan' || $status === 'belum') {
-                    continue;
-                }
-                $eligible++;
-                if ($status === 'sudah') {
-                    $sudah++;
-                }
-            }
             $result[] = [
                 'kode'            => $vaksin->kode,
                 'nama'            => $vaksin->nama,
-                'jumlah_sudah'    => $sudah,
-                'jumlah_eligible' => $eligible,
-                'persen'          => $eligible > 0 ? round($sudah / $eligible * 100, 1) : 0.0,
+                'jumlah_sudah'    => $sudah[$vaksin->id],
+                'jumlah_eligible' => $eligible[$vaksin->id],
+                'persen'          => $eligible[$vaksin->id] > 0 ? round($sudah[$vaksin->id] / $eligible[$vaksin->id] * 100, 1) : 0.0,
             ];
         }
 
@@ -570,32 +595,30 @@ class ImunisasiStatusService
         $badutaMin = $ibl->usia_pemberian_min ?? 12;
         $badutaMax = $ibl->usia_pemberian_max ?? 23;
 
-        $anakList = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->select('id', 'id_kec', 'id_kel', 'tgl_lahir')
-            ->get();
-
-        $grandTotal = $anakList->count();
-
         $rtCountByKel = \App\Models\Rt::query()
             ->selectRaw('id_kelurahan, COUNT(*) as jumlah')
             ->groupBy('id_kelurahan')
             ->pluck('jumlah', 'id_kelurahan');
 
         $perKel = [];
-        foreach ($anakList as $anak) {
-            $kelId = $anak->id_kel ?? 0;
-            $usiaBulan = Carbon::parse($anak->tgl_lahir)->diffInMonths(now());
+        $grandTotal = $this->eachAnak(
+            $this->applyWilayahFilters(Anak::query(), $filters),
+            function (Anak $anak) use (&$perKel, $badutaMin, $badutaMax) {
+                $kelId = $anak->id_kel ?? 0;
+                $usiaBulan = Carbon::parse($anak->tgl_lahir)->diffInMonths(now());
 
-            if (!isset($perKel[$kelId])) {
-                $perKel[$kelId] = ['id_kec' => $anak->id_kec, 'bayi' => 0, 'baduta' => 0, 'total' => 0];
-            }
-            $perKel[$kelId]['total']++;
-            if ($usiaBulan <= 11) {
-                $perKel[$kelId]['bayi']++;
-            } elseif ($usiaBulan >= $badutaMin && $usiaBulan <= $badutaMax) {
-                $perKel[$kelId]['baduta']++;
-            }
-        }
+                if (!isset($perKel[$kelId])) {
+                    $perKel[$kelId] = ['id_kec' => $anak->id_kec, 'bayi' => 0, 'baduta' => 0, 'total' => 0];
+                }
+                $perKel[$kelId]['total']++;
+                if ($usiaBulan <= 11) {
+                    $perKel[$kelId]['bayi']++;
+                } elseif ($usiaBulan >= $badutaMin && $usiaBulan <= $badutaMax) {
+                    $perKel[$kelId]['baduta']++;
+                }
+            },
+            with: [] // distribusi populasi murni, tak perlu relasi imunisasi
+        );
 
         $kelurahanNames = \App\Models\Kelurahan::whereIn('id', array_keys($perKel))->pluck('name', 'id');
 
@@ -669,17 +692,14 @@ class ImunisasiStatusService
         foreach (\App\Models\Puskesmas::orderBy('name')->get() as $pkm) {
             $kelIds = \App\Support\WilkerPuskesmas::catchmentKelurahanIds($pkm->name);
 
-            $anakList = $this->applyWilayahFilters(Anak::query(), $filters)
+            $query = $this->applyWilayahFilters(Anak::query(), $filters)
                 ->whereIn('id_kel', $kelIds ?: [0])
-                ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12')
-                ->with('imunisasi.jenisVaksin')
-                ->get();
+                ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
 
-            $sasaran = $anakList->count();
             $lengkap = 0;
             $dpt1 = 0;
             $dpt3 = 0;
-            foreach ($anakList as $anak) {
+            $sasaran = $this->eachAnak($query, function (Anak $anak) use (&$lengkap, &$dpt1, &$dpt3) {
                 if ($this->isIdlLengkap($anak)) {
                     $lengkap++;
                 }
@@ -690,7 +710,7 @@ class ImunisasiStatusService
                 if ($kodeSudah->contains('DPT-HB-HIB3')) {
                     $dpt3++;
                 }
-            }
+            });
 
             $persen = $sasaran > 0 ? round($lengkap / $sasaran * 100, 1) : 0.0;
             $doRate = $dpt1 > 0 ? round(max(0, $dpt1 - $dpt3) / $dpt1 * 100, 1) : 0.0;

@@ -220,3 +220,20 @@ Kesmas baru: tambah rule-nya di `KesmasRules::anak()`/`kunjungan()` (daftar kolo
 `array_keys()` rule itu), opsinya di `config/kesmas.php`, kontrolnya di partial
 `admin/anak/partials/form-*.blade.php` — dan pastikan tidak ada `required`/`min`/`max` di
 dalam kartu collapse (dikunci `FormKesmasBladeTest`).
+
+### Agregat dasbor: JANGAN `Anak::query()->with('imunisasi')->get()` se-kota
+
+Prod ±10 rb anak, `memory_limit` prod 128 MB (bawaan PHP), dev cuma 39 anak
+dengan 512 MB — jadi "memuat semua anak lalu hitung di PHP" selalu lolos di
+dev dan mati di prod (insiden 16 Sep 2026: dasbor imunisasi `Allowed memory
+size of 134217728 bytes exhausted`; 70 kolom + relasi imunisasi ≈ 17–80 KB
+per model, dan halaman itu memindai populasi enam kali per request).
+
+Untuk agregat per anak di `ImunisasiStatusService` pakai `eachAnak($query,
+$fn, $with)` — `select` kolom seperlunya (`KOLOM_ANAK_AGREGAT`) + `chunkById(500)`,
+memori puncak sebatas satu potongan. Kalau logika per anak butuh kolom baru,
+tambahkan ke konstanta itu (model yang di-select sebagian mengembalikan `null`
+tanpa error untuk kolom yang tak ikut). Dikunci
+`ImunisasiDashboardMemoriTest` (2.000 anak, kenaikan memori puncak < 16 MB).
+Untuk agregat yang bisa dihitung SQL (COUNT/GROUP BY) atau cukup `DB::table()`
+dengan sedikit kolom (stdClass ≈ 0,5 KB/baris), itu lebih baik lagi.
