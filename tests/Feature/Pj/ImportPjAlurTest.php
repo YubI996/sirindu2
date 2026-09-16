@@ -65,25 +65,27 @@ class ImportPjAlurTest extends TestCase
         config(['queue.default' => 'database', 'queue.connections.database.queue' => self::QUEUE]);
         $super = User::factory()->create(['type' => 0]);
         $this->actingAs($super);
-        $kelA = Kelurahan::factory()->create();
-        $kelB = Kelurahan::factory()->create();
+        $lestari = Kelurahan::create(['name' => 'Bontang Lestari', 'id_kecamatan' => 3]);
+        $kelLain = Kelurahan::factory()->create();
         $sasaran = [
-            $this->anak('A', $kelA->id, 0, -2.5, 0),
-            $this->anak('B', $kelA->id, 0, 0, -2.5),
-            $this->anak('C', $kelB->id, -2.5, 0, 0),
-            $this->anak('D', $kelB->id, -2.5, -2.5, -2.5),
-            $this->anak('E', $kelB->id, 0, -2.5, 0),
+            $this->anak('A', $lestari->id, 0, -2.5, 0),
+            $this->anak('B', $lestari->id, 0, 0, -2.5),
+            $this->anak('C', $lestari->id, -2.5, 0, 0),
+            $this->anak('D', $lestari->id, -2.5, -2.5, -2.5),
+            $this->anak('E', $lestari->id, 0, -2.5, 0),
         ];
-        $normal = $this->anak('NORMAL', $kelA->id, 0, 0, 0);
-        $lama = $this->anak('LAMA', $kelB->id, 0, -2.5, 0);
+        $normal = $this->anak('NORMAL', $lestari->id, 0, 0, 0);
+        $lama = $this->anak('LAMA', $lestari->id, 0, -2.5, 0);
         $lama->update(['pj_nip' => '197001012000011001', 'pj_nama' => 'PJ Lama']);
+        // Stunting tapi di luar kelurahan sasaran: tak pernah disentuh import, termasuk mode timpa.
+        $luar = $this->anak('LUAR', $kelLain->id, 0, -2.5, 0);
 
         $template = $this->get(route('admin.importCsv.template', 'pj'))->assertOk();
         $csv = file_get_contents($template->baseResponse->getFile()->getPathname());
         $log = $this->unggahDanProses($csv, '0');
         $this->assertSame(5, (int) $log->success_count);
         $this->assertSame(0, (int) $log->failure_count);
-        $this->assertStringContainsString('2 PJ, 6 anak sasaran, 5 dialokasikan, 1 dilewati', implode('; ', $log->failures));
+        $this->assertStringContainsString('2 PJ, 6 anak sasaran di Kel. Bontang Lestari, 5 dialokasikan, 1 dilewati', implode('; ', $log->failures));
         $this->getJson(route('admin.importCsv.status', ['type' => 'pj']))->assertOk()
             ->assertJsonFragment(['id' => $log->id, 'status' => 'done', 'success_count' => 5]);
 
@@ -94,6 +96,7 @@ class ImportPjAlurTest extends TestCase
         }
         $this->assertSame('PJ Lama', $lama->fresh()->pj_nama);
         $this->assertNull($normal->fresh()->pj_nip);
+        $this->assertNull($luar->fresh()->pj_nip);
 
         // Anak D muncul di tiga daftar dengan PJ yang sama.
         foreach (['stunting', 'wasting', 'underweight'] as $kategori) {
@@ -123,5 +126,7 @@ class ImportPjAlurTest extends TestCase
         }
         $this->assertNull($normal->fresh()->pj_nama);
         $this->assertNull($normal->fresh()->pj_nip);
+        $this->assertNull($luar->fresh()->pj_nama);
+        $this->assertNull($luar->fresh()->pj_nip);
     }
 }

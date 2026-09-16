@@ -15,6 +15,12 @@ class PjAlokasiServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Kelurahan sasaran alokasi otomatis (config pj.kelurahan_sasaran). */
+    private function lestari(): Kelurahan
+    {
+        return Kelurahan::create(['name' => 'Bontang Lestari', 'id_kecamatan' => 3]);
+    }
+
     private function stunting(string $nik, int $idKel, ?int $idPos = null, ?string $pj = null): Anak
     {
         $a = Anak::create(['nama' => 'Anak '.$nik, 'nik' => $nik, 'jk' => 1, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(24)->toDateString(),
@@ -24,13 +30,12 @@ class PjAlokasiServiceTest extends TestCase
         return $a;
     }
 
-    public function test_dibagi_rata_lintas_kelurahan_dan_posyandu_dan_lewati_pj_lama(): void
+    public function test_dibagi_rata_lintas_posyandu_dan_lewati_pj_lama(): void
     {
-        $kel = Kelurahan::create(['name' => 'Belimbing', 'id_kecamatan' => 1]);
-        $kelLain = Kelurahan::create(['name' => 'Kanaan', 'id_kecamatan' => 1]);
+        $kel = $this->lestari();
         $pos = Posyandu::factory()->create();
         $anak = [];
-        for ($i = 1; $i <= 5; $i++) $anak[] = $this->stunting('320100000004000'.$i, $i <= 3 ? $kel->id : $kelLain->id, $i % 2 ? $pos->id : null);
+        for ($i = 1; $i <= 5; $i++) $anak[] = $this->stunting('320100000004000'.$i, $kel->id, $i % 2 ? $pos->id : null);
         $sudah = $this->stunting('3201000000040006', $kel->id, null, 'Kader Lama');
         $sudah->update(['pj_nip' => '197001012000011001']);
         $user = User::factory()->create(['type' => 0]);
@@ -55,7 +60,7 @@ class PjAlokasiServiceTest extends TestCase
 
     public function test_timpa_mengganti_pj_lama_dan_mengisi_anak_tanpa_posyandu(): void
     {
-        $kel = Kelurahan::create(['name' => 'Kanaan', 'id_kecamatan' => 1]);
+        $kel = $this->lestari();
         $pos = Posyandu::factory()->create(['name' => 'Anggrek II']);
         $a = $this->stunting('3201000000040011', $kel->id, $pos->id, 'Kader Lama');
         $a->update(['pj_nip' => '197001012000011001']);
@@ -75,7 +80,7 @@ class PjAlokasiServiceTest extends TestCase
 
     public function test_pj_tidak_valid_dilaporkan_dan_tidak_menghentikan_yang_lain(): void
     {
-        $kel = Kelurahan::create(['name' => 'Telihan', 'id_kecamatan' => 1]);
+        $kel = $this->lestari();
         $a = $this->stunting('3201000000040021', $kel->id);
 
         $r = app(PjAlokasiService::class)->alokasikan([
@@ -92,7 +97,7 @@ class PjAlokasiServiceTest extends TestCase
 
     public function test_tiga_kategori_dan_nama_sama_dengan_nip_berbeda(): void
     {
-        $kel = Kelurahan::factory()->create();
+        $kel = $this->lestari();
         $stunting = $this->stunting('3201000000040101', $kel->id);
         $wasting = $this->stunting('3201000000040102', $kel->id);
         $underweight = $this->stunting('3201000000040103', $kel->id);
@@ -114,7 +119,7 @@ class PjAlokasiServiceTest extends TestCase
 
     public function test_tanpa_pj_valid_tidak_mengubah_anak(): void
     {
-        $a = $this->stunting('3201000000040201', Kelurahan::factory()->create()->id);
+        $a = $this->stunting('3201000000040201', $this->lestari()->id);
         $hasil = app(PjAlokasiService::class)->alokasikan([
             ['nip_pj' => '', 'nama_pj' => 'Sari', 'baris' => 2],
         ], true, User::factory()->create(['type' => 0])->id);
@@ -127,7 +132,7 @@ class PjAlokasiServiceTest extends TestCase
 
     public function test_nip_sama_dengan_nama_berbeda_dilaporkan(): void
     {
-        $a = $this->stunting('3201000000040202', Kelurahan::factory()->create()->id);
+        $a = $this->stunting('3201000000040202', $this->lestari()->id);
         $hasil = app(PjAlokasiService::class)->alokasikan([
             ['nip_pj' => '198501012010012001', 'nama_pj' => 'Sari', 'baris' => 2],
             ['nip_pj' => '198501012010012001', 'nama_pj' => 'Rina', 'baris' => 3],
@@ -136,5 +141,43 @@ class PjAlokasiServiceTest extends TestCase
         $this->assertCount(1, $hasil['gagal']);
         $this->assertStringContainsString('Baris 3', $hasil['gagal'][0]);
         $this->assertSame('Sari', $a->fresh()->pj_nama);
+    }
+
+    public function test_hanya_anak_bontang_lestari_yang_dipasangkan(): void
+    {
+        // Ejaan kapital: pencocokan nama kelurahan sasaran tak boleh peka huruf besar/kecil.
+        $lestari = Kelurahan::create(['name' => 'BONTANG LESTARI', 'id_kecamatan' => 3]);
+        $belimbing = Kelurahan::create(['name' => 'Belimbing', 'id_kecamatan' => 1]);
+        $diLestari = $this->stunting('3201000000040301', $lestari->id);
+        $diBelimbing = $this->stunting('3201000000040302', $belimbing->id);
+        $belimbingPjLama = $this->stunting('3201000000040303', $belimbing->id, null, 'Kader Lama');
+
+        $r = app(PjAlokasiService::class)->alokasikan([
+            ['nama_pj' => 'Kader A', 'nip_pj' => '198703032012011003', 'baris' => 2],
+        ], true, User::factory()->create(['type' => 0])->id);
+
+        $this->assertSame('Kader A', $diLestari->fresh()->pj_nama);
+        $this->assertNull($diBelimbing->fresh()->pj_nama, 'Anak di luar Bontang Lestari tidak dipasangkan.');
+        $this->assertSame('Kader Lama', $belimbingPjLama->fresh()->pj_nama, 'PJ lama di luar Bontang Lestari dibiarkan walau mode timpa.');
+        $this->assertSame(1, $r['anak'], 'Hitungan sasaran hanya anak Bontang Lestari.');
+        $this->assertSame(1, $r['dialokasikan']);
+        $this->assertSame(0, $r['dilewati']);
+        $this->assertSame('Bontang Lestari', $r['kelurahan']);
+    }
+
+    public function test_gagal_jelas_bila_kelurahan_sasaran_tidak_ada(): void
+    {
+        $a = $this->stunting('3201000000040311', Kelurahan::create(['name' => 'Belimbing', 'id_kecamatan' => 1])->id);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Bontang Lestari');
+
+        try {
+            app(PjAlokasiService::class)->alokasikan([
+                ['nama_pj' => 'Kader A', 'nip_pj' => '198703032012011003', 'baris' => 2],
+            ], false, User::factory()->create(['type' => 0])->id);
+        } finally {
+            $this->assertNull($a->fresh()->pj_nama, 'Tidak ada anak yang disentuh bila kelurahan sasaran tak ditemukan.');
+        }
     }
 }

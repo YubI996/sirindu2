@@ -535,14 +535,14 @@
     <div class="imp-panel-grid">
         <div class="imp-guide">
             <p class="imp-guide__label">Data yang diimpor</p>
-            <p>Unggah daftar <strong>NIP dan nama penanggung jawab</strong>. Aplikasi memasangkan PJ secara <strong>rata bergilir</strong> ke seluruh anak yang termasuk kategori <strong>stunting, wasting, atau underweight</strong> berdasarkan kunjungan Operasi Timbang terakhir. Setiap anak mendapat satu PJ, termasuk bila anak masuk beberapa kategori. Satu PJ dapat menangani beberapa anak. Hasil dapat diubah di daftar anak pada dasbor Operasi Timbang.</p>
+            <p>Unggah daftar <strong>NIP dan nama penanggung jawab</strong>. Aplikasi memasangkan PJ secara <strong>rata bergilir</strong> ke anak yang termasuk kategori <strong>stunting, wasting, atau underweight</strong> berdasarkan kunjungan Operasi Timbang terakhir &mdash; hanya anak di Kelurahan <strong>{{ config('pj.kelurahan_sasaran') }}</strong>; anak di kelurahan lain tidak disentuh. Setiap anak mendapat satu PJ, termasuk bila anak masuk beberapa kategori. Satu PJ dapat menangani beberapa anak. Hasil dapat diubah di daftar anak pada dasbor Operasi Timbang (pengisian manual di sana tidak dibatasi kelurahan).</p>
             <div class="imp-guide__rule">
                 <strong>Format CSV</strong>
                 Cukup dua kolom: <strong>nip_pj</strong> dan <strong>nama_pj</strong>. Satu baris per PJ; aplikasi menentukan anak yang ditangani. Simpan NIP sebagai <strong>teks 18 digit</strong> di Excel agar tidak dibulatkan atau berubah menjadi notasi ilmiah.
             </div>
             <div class="imp-guide__rule">
                 <strong>Anak yang sudah punya PJ</strong>
-                Dilewati, kecuali centang <em>Timpa PJ yang sudah ada</em> untuk membagi ulang penugasan seluruh anak sasaran menggunakan daftar PJ yang diunggah.
+                Dilewati, kecuali centang <em>Timpa PJ yang sudah ada</em> untuk membagi ulang penugasan seluruh anak sasaran di kelurahan tersebut menggunakan daftar PJ yang diunggah. PJ anak di kelurahan lain tidak ikut diubah.
             </div>
             <a href="{{ route('admin.importCsv.template', 'pj') }}" class="imp-template-link" download>
                 <span class="material-symbols-outlined">download</span>

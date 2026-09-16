@@ -59,7 +59,7 @@ class ImportPjTest extends TestCase
     public function test_job_mengalokasikan_dan_menulis_ringkasan_ke_log(): void
     {
         Storage::fake('local');
-        $kel = Kelurahan::create(['name' => 'Belimbing', 'id_kecamatan' => 1]);
+        $kel = Kelurahan::create(['name' => 'Bontang Lestari', 'id_kecamatan' => 3]);
         $a = Anak::create(['nama' => 'Stunting', 'nik' => '3201000000050001', 'jk' => 1, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => now()->subMonths(24)->toDateString(),
             'status' => 1, 'sumber' => 'operasi_timbang', 'id_kel' => $kel->id]);
         DataAnak::create(['id_anak' => $a->id, 'tgl_kunjungan' => now()->subDays(5)->toDateString(), 'bln' => 24, 'posisi' => 'berdiri', 'tb' => 85, 'bb' => 10,
@@ -76,14 +76,15 @@ class ImportPjTest extends TestCase
         $this->assertSame(1, (int) $log->failure_count);
         $this->assertSame('Kader Sari', $a->fresh()->pj_nama);
         $this->assertSame('198501012010012001', $a->fresh()->pj_nip);
-        $this->assertStringContainsString('1 PJ, 1 anak sasaran, 1 dialokasikan', implode("\n", $log->failures));
+        $this->assertStringContainsString('1 PJ, 1 anak sasaran di Kel. Bontang Lestari, 1 dialokasikan', implode("\n", $log->failures));
     }
 
     public function test_halaman_import_punya_tab_pj_dan_template(): void
     {
         $super = User::factory()->create(['type' => 0]);
         $this->actingAs($super)->get(route('admin.importCsv.index'))->assertOk()
-            ->assertSee('id="tab-pj"', false)->assertSee('name="file_pj"', false)->assertSee('name="timpa"', false);
+            ->assertSee('id="tab-pj"', false)->assertSee('name="file_pj"', false)->assertSee('name="timpa"', false)
+            ->assertSee('hanya anak di Kelurahan <strong>Bontang Lestari</strong>', false); // petugas tahu kelurahan lain tak kebagian
         $template = $this->actingAs($super)->get(route('admin.importCsv.template', 'pj'))->assertOk()
             ->assertHeader('Content-Type', 'text/csv; charset=utf-8');
         $path = $template->baseResponse->getFile()->getPathname();

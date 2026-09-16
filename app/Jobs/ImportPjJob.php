@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Import NIP/nama PJ + alokasi otomatis ke anak sasaran (lihat PjAlokasiService).
+ * Import NIP/nama PJ + alokasi otomatis ke anak sasaran di kelurahan sasaran saja
+ * (lihat PjAlokasiService & config pj.kelurahan_sasaran).
  * Ringkasan alokasi ditulis ke ImportLog.failures agar tampil di Riwayat Import.
  */
 class ImportPjJob implements ShouldQueue
@@ -42,7 +43,7 @@ class ImportPjJob implements ShouldQueue
             $catatan = array_merge(
                 $baca['gagal'],
                 $r['gagal'],
-                ["{$r['pj']} PJ, {$r['anak']} anak sasaran, {$r['dialokasikan']} dialokasikan, {$r['dilewati']} dilewati"],
+                ["{$r['pj']} PJ, {$r['anak']} anak sasaran di Kel. {$r['kelurahan']}, {$r['dialokasikan']} dialokasikan, {$r['dilewati']} dilewati"],
                 ["{$r['dilewati']} anak dilewati karena sudah punya PJ".($this->timpa ? ' (mode timpa)' : ' — centang "Timpa" untuk mengganti')]
             );
 
