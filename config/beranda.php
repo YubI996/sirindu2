@@ -17,9 +17,19 @@
 return [
     'quicklinks' => [
         [
+            // Key 'analytics' dipertahankan (preferensi user tersimpan per key) tapi rutenya
+            // kini dasbor imunisasi hasil redesign — dulu menunjuk halaman analitik lama,
+            // sehingga user faskes yang mengandalkan beranda selalu melihat dasbor kuno.
             'key'   => 'analytics',
             'label' => 'Dashboard Imunisasi',
             'icon'  => 'fa-bar-chart',
+            'route' => 'admin.imunisasiDashboard',
+            'roles' => ['superadmin', 'imunisasi'],
+        ],
+        [
+            'key'   => 'gizi',
+            'label' => 'Dashboard Gizi',
+            'icon'  => 'fa-heartbeat',
             'route' => 'admin.analytics',
             'roles' => ['superadmin', 'imunisasi'],
         ],
