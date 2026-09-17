@@ -79,7 +79,7 @@
 						<span class="micon fa fa-upload"></span><span class="mtext">Import Data</span>
 					</a>
 					<ul class="submenu" {!! $import ? 'style="display:block;"' : '' !!}>
-						<li><a href="{{route('admin.importCsv.index')}}" class="{{ request()->routeIs('admin.importCsv.*') ? 'active' : '' }}">Import CSV</a></li>
+						<li><a href="{{route('admin.importCsv.index')}}" class="{{ request()->routeIs('admin.importCsv.*') ? 'active' : '' }}">Import Data</a></li>
 					</ul>
 				</li>
 

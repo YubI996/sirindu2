@@ -91,7 +91,7 @@ return [
         ],
         [
             'key'   => 'import',
-            'label' => 'Import CSV',
+            'label' => 'Import Data',
             'icon'  => 'fa-upload',
             'route' => 'admin.importCsv.index',
             'roles' => ['superadmin', 'imunisasi'],

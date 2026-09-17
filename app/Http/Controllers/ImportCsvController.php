@@ -104,18 +104,18 @@ class ImportCsvController extends Controller
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
 
+        // Capil khusus Excel (multi-sheet); tipe lain menerima Excel maupun CSV —
+        // pembacanya (Maatwebsite) mengenali format dari ekstensi.
         $isCapil = $type === 'capil';
         $request->validate([
             $inputName => $isCapil
                 ? 'required|file|mimes:xlsx,xls|max:20480'
-                : 'required|file|mimes:csv,txt|max:10240',
+                : 'required|file|mimes:xlsx,xls,csv,txt|max:20480',
         ], [
             "{$inputName}.mimes" => $isCapil
                 ? 'File harus berformat Excel (.xlsx/.xls).'
-                : 'File harus berformat CSV (.csv).',
-            "{$inputName}.max"   => $isCapil
-                ? 'Ukuran file maksimal 20 MB.'
-                : 'Ukuran file maksimal 10 MB.',
+                : 'File harus berformat Excel (.xlsx/.xls) atau CSV (.csv).',
+            "{$inputName}.max"   => 'Ukuran file maksimal 20 MB.',
         ]);
 
         $file     = $request->file($inputName);

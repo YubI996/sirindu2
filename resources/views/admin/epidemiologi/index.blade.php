@@ -772,8 +772,8 @@
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="file_hasil_lab" class="form-label fw-semibold">Pilih File CSV Hasil Lab</label>
-                        <input type="file" name="file_hasil_lab" id="file_hasil_lab" class="form-control" accept=".csv,text/csv" required>
+                        <label for="file_hasil_lab" class="form-label fw-semibold">Pilih File Excel atau CSV Hasil Lab</label>
+                        <input type="file" name="file_hasil_lab" id="file_hasil_lab" class="form-control" accept=".csv,.xlsx,.xls" required>
                         <div class="form-text">Format: .csv. Maksimal ukuran file: 10 MB.</div>
                     </div>
                     {{-- Nomor EPID bergeser saat kasus dihapus (deret dirapatkan). File lab

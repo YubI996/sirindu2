@@ -1,7 +1,7 @@
 @extends('admin::layouts.app')
 
 @section('title') Import Data @endsection
-@section('title-content') Import Data CSV @endsection
+@section('title-content') Import Data @endsection
 @section('item') Import @endsection
 @section('item-active') Data @endsection
 
@@ -322,8 +322,8 @@
         <span class="material-symbols-outlined">upload_file</span>
     </div>
     <div class="imp-header__meta">
-        <h1>Import Data CSV</h1>
-        <p>Unggah file CSV terstandarisasi untuk mengimpor data Anak, Pengukuran Berkala, atau Imunisasi secara massal.</p>
+        <h1>Import Data</h1>
+        <p>Unggah file Excel (.xlsx/.xls) atau CSV terstandarisasi untuk mengimpor data Anak, Pengukuran Berkala, atau Imunisasi secara massal. Di Excel, simpan kolom <strong>NIK sebagai Teks</strong> &mdash; Excel membulatkan angka ke 15 digit, sehingga digit ke-16 NIK berubah jadi 0 sebelum sampai ke aplikasi.</p>
     </div>
 </div>
 
@@ -385,9 +385,9 @@
                 @csrf
                 <label class="imp-upload-zone" for="file-anak" id="zone-anak">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
-                    <span class="imp-upload-zone__label">Klik atau seret file CSV ke sini</span>
-                    <span class="imp-upload-zone__hint">Format .csv &mdash; maksimal 10 MB</span>
-                    <input type="file" id="file-anak" name="file_anak" accept=".csv,text/csv" required>
+                    <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .xlsx/.xls/.csv &mdash; maksimal 20 MB</span>
+                    <input type="file" id="file-anak" name="file_anak" accept=".csv,.xlsx,.xls" required>
                 </label>
                 <div class="imp-fname" id="fname-anak">
                     <span class="material-symbols-outlined">description</span>
@@ -471,9 +471,9 @@
                 @csrf
                 <label class="imp-upload-zone" for="file-pengukuran" id="zone-pengukuran">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
-                    <span class="imp-upload-zone__label">Klik atau seret file CSV ke sini</span>
-                    <span class="imp-upload-zone__hint">Format .csv &mdash; maksimal 10 MB</span>
-                    <input type="file" id="file-pengukuran" name="file_pengukuran" accept=".csv,text/csv" required>
+                    <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .xlsx/.xls/.csv &mdash; maksimal 20 MB</span>
+                    <input type="file" id="file-pengukuran" name="file_pengukuran" accept=".csv,.xlsx,.xls" required>
                 </label>
                 <div class="imp-fname" id="fname-pengukuran">
                     <span class="material-symbols-outlined">description</span>
@@ -502,7 +502,7 @@
             </div>
             <div class="imp-guide__rule">
                 <strong>Format Tanggal</strong>
-                <strong>YYYY-MM-DD</strong> (mis. 2020-02-15) atau DD-MM-YYYY. Tanda seperti <em>x</em>, angka tunggal, atau tanggal bergaris miring (05/02/2020) <strong>tidak diterima</strong> dan dilaporkan di detail error &mdash; sel itu dilewati, sel lain tetap tersimpan.
+                <strong>YYYY-MM-DD</strong> (mis. 2020-02-15) atau DD-MM-YYYY. Tanda seperti <em>x</em>, angka tunggal, atau tanggal bergaris miring (05/02/2020) <strong>tidak diterima</strong> dan dilaporkan di detail error &mdash; sel itu dilewati, sel lain tetap tersimpan. Di file Excel, <strong>sel bertipe tanggal</strong> dibaca benar apa pun tampilannya (7/30/2025 sekalipun); ketentuan di atas berlaku untuk CSV dan sel yang diketik sebagai teks.
             </div>
             <a href="{{ route('admin.importCsv.template', 'imunisasi') }}" class="imp-template-link" download>
                 <span class="material-symbols-outlined">download</span>
@@ -515,9 +515,9 @@
                 @csrf
                 <label class="imp-upload-zone" for="file-imunisasi" id="zone-imunisasi">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
-                    <span class="imp-upload-zone__label">Klik atau seret file CSV ke sini</span>
-                    <span class="imp-upload-zone__hint">Format .csv &mdash; maksimal 10 MB</span>
-                    <input type="file" id="file-imunisasi" name="file_imunisasi" accept=".csv,text/csv" required>
+                    <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .xlsx/.xls/.csv &mdash; maksimal 20 MB</span>
+                    <input type="file" id="file-imunisasi" name="file_imunisasi" accept=".csv,.xlsx,.xls" required>
                 </label>
                 <div class="imp-fname" id="fname-imunisasi">
                     <span class="material-symbols-outlined">description</span>
@@ -541,7 +541,7 @@
             <p class="imp-guide__label">Data yang diimpor</p>
             <p>Unggah daftar <strong>NIP dan nama penanggung jawab</strong>. Aplikasi memasangkan PJ secara <strong>rata bergilir</strong> ke anak yang termasuk kategori <strong>stunting, wasting, atau underweight</strong> berdasarkan kunjungan Operasi Timbang terakhir &mdash; hanya anak di Kelurahan <strong>{{ config('pj.kelurahan_sasaran') }}</strong>; anak di kelurahan lain tidak disentuh. Setiap anak mendapat satu PJ, termasuk bila anak masuk beberapa kategori. Satu PJ dapat menangani beberapa anak. Hasil dapat diubah di daftar anak pada dasbor Operasi Timbang (pengisian manual di sana tidak dibatasi kelurahan).</p>
             <div class="imp-guide__rule">
-                <strong>Format CSV</strong>
+                <strong>Format Berkas</strong>
                 Cukup dua kolom: <strong>nip_pj</strong> dan <strong>nama_pj</strong>. Satu baris per PJ; aplikasi menentukan anak yang ditangani. Simpan NIP sebagai <strong>teks 18 digit</strong> di Excel agar tidak dibulatkan atau berubah menjadi notasi ilmiah.
             </div>
             <div class="imp-guide__rule">
@@ -559,9 +559,9 @@
                 @csrf
                 <label class="imp-upload-zone" for="file-pj" id="zone-pj">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
-                    <span class="imp-upload-zone__label">Klik atau seret file CSV ke sini</span>
-                    <span class="imp-upload-zone__hint">Format .csv &mdash; maksimal 10 MB</span>
-                    <input type="file" id="file-pj" name="file_pj" accept=".csv,text/csv" required>
+                    <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .xlsx/.xls/.csv &mdash; maksimal 20 MB</span>
+                    <input type="file" id="file-pj" name="file_pj" accept=".csv,.xlsx,.xls" required>
                 </label>
                 <div class="imp-fname" id="fname-pj">
                     <span class="material-symbols-outlined">description</span>
@@ -589,7 +589,7 @@
             <p class="imp-guide__label">Data yang diimpor</p>
             <p>Data operasi timbang posyandu: berat, tinggi, LiLA, lingkar kepala, pitting edema, cara ukur, vitamin A, ASI per bulan (0–6), kelas ibu balita, dan MBG.</p>
             <div class="imp-guide__rule">
-                <strong>Format CSV</strong>
+                <strong>Format Berkas</strong>
                 Kolom wajib: <strong>NIK</strong>, <strong>nama_anak</strong>, <strong>TANGGALUKUR</strong>, <strong>BERAT</strong>, <strong>TINGGI</strong>.<br>
                 Usia bulan dihitung otomatis dari data anak.
             </div>
@@ -608,9 +608,9 @@
                 @csrf
                 <label class="imp-upload-zone" for="file-ukur" id="zone-ukur">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
-                    <span class="imp-upload-zone__label">Klik atau seret file CSV ke sini</span>
-                    <span class="imp-upload-zone__hint">Format .csv &mdash; maksimal 10 MB</span>
-                    <input type="file" id="file-ukur" name="file_ukur" accept=".csv,text/csv" required>
+                    <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .xlsx/.xls/.csv &mdash; maksimal 20 MB</span>
+                    <input type="file" id="file-ukur" name="file_ukur" accept=".csv,.xlsx,.xls" required>
                 </label>
                 <div class="imp-fname" id="fname-ukur">
                     <span class="material-symbols-outlined">description</span>
