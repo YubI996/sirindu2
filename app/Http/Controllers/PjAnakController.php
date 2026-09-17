@@ -17,7 +17,7 @@ class PjAnakController extends Controller
         $this->pastikanBolehAksesAnak($anak);
 
         $data = $request->validate([
-            'pj_nama' => 'nullable|string|max:100',
+            'pj_nama' => 'nullable|string|max:'.Anak::PJ_NAMA_MAKS,
         ]);
 
         $nama = trim((string) ($data['pj_nama'] ?? ''));

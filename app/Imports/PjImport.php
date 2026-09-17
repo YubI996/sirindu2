@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Models\Anak;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Maatwebsite\Excel\Excel;
 use Maatwebsite\Excel\Facades\Excel as ExcelFacade;
@@ -53,8 +54,8 @@ class PjImport
             $masalah = [];
             if ($namaPj === '') {
                 $masalah[] = 'Kolom nama_pj wajib diisi.';
-            } elseif (mb_strlen($namaPj) > 100) {
-                $masalah[] = 'Kolom nama_pj maksimal 100 karakter.';
+            } elseif (mb_strlen($namaPj) > Anak::PJ_NAMA_MAKS) {
+                $masalah[] = 'Kolom nama_pj maksimal '.Anak::PJ_NAMA_MAKS.' karakter.';
             }
             if ($masalah !== []) {
                 $gagal[] = "Baris {$no}: ".implode(' ', $masalah);

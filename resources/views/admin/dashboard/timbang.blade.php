@@ -1075,7 +1075,7 @@ function bukaEditorPj(td){
     var row = pjRow(td.getAttribute('data-id'));
     if(!row) return;
     td.innerHTML = '<form class="tb-pj__editor">'
-        +'<label>Nama PJ<input name="pj_nama" class="tb-pj__input" list="pj-saran" maxlength="100" placeholder="Nama penanggung jawab" required></label>'
+        +'<label>Nama PJ<input name="pj_nama" class="tb-pj__input" list="pj-saran" maxlength="{{ \App\Models\Anak::PJ_NAMA_MAKS }}" placeholder="Nama / jabatan penanggung jawab" required></label>'
         +'<div class="tb-pj__actions"><button type="submit">Simpan</button><button type="button" data-pj-batal>Batal</button>'
         +(row.pj_nama ? '<button type="button" data-pj-hapus>Hapus PJ</button>' : '')+'</div>'
         +'<span class="tb-pj__error" role="alert"></span></form>';

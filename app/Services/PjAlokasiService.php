@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\TimbangDashboardController;
+use App\Models\Anak;
 use App\Models\Kelurahan;
 use Illuminate\Support\Facades\DB;
 
@@ -36,8 +37,8 @@ class PjAlokasiService
         $gagal = [];
         foreach ($baris as $b) {
             $namaPj = trim((string) ($b['nama_pj'] ?? ''));
-            if ($namaPj === '' || mb_strlen($namaPj) > 100) {
-                $gagal[] = "Baris {$b['baris']}: nama PJ wajib diisi (maksimal 100 karakter).";
+            if ($namaPj === '' || mb_strlen($namaPj) > Anak::PJ_NAMA_MAKS) {
+                $gagal[] = "Baris {$b['baris']}: nama PJ wajib diisi (maksimal ".Anak::PJ_NAMA_MAKS." karakter).";
                 continue;
             }
             $daftarPj[mb_strtolower($namaPj)] ??= ['nama' => $namaPj];

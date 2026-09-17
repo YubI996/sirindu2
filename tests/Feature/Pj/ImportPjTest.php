@@ -65,7 +65,7 @@ class ImportPjTest extends TestCase
         DataAnak::create(['id_anak' => $a->id, 'tgl_kunjungan' => now()->subDays(5)->toDateString(), 'bln' => 24, 'posisi' => 'berdiri', 'tb' => 85, 'bb' => 10,
             'lla' => 0, 'lk' => 0, 'id_user' => 1, 'zscore_bb_u' => 0, 'zscore_pb_u' => -2.5, 'zscore_bb_pb' => 0, 'sumber' => 'operasi_timbang']);
         $super = User::factory()->create(['type' => 0]);
-        Storage::disk('local')->put('imports/pj/x.csv', "nama_pj\nKader Sari\n\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
+        Storage::disk('local')->put('imports/pj/x.csv', "nama_pj\nKader Sari\n\n".str_repeat('A', Anak::PJ_NAMA_MAKS + 1)."\n");
         $log = ImportLog::create(['user_id' => $super->id, 'filename' => 'x.csv', 'file_path' => 'imports/pj/x.csv', 'type' => 'pj', 'status' => 'pending']);
 
         (new ImportPjJob($log, false))->handle();
@@ -97,12 +97,12 @@ class ImportPjTest extends TestCase
     public function test_pesan_error_hanya_menyebut_kolom_pj_yang_bermasalah(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'pj');
-        file_put_contents($path, "nama_pj\n\n" . str_repeat('A', 101) . "\nAmir\n");
+        file_put_contents($path, "nama_pj\n\n" . str_repeat('A', Anak::PJ_NAMA_MAKS + 1) . "\nAmir\n");
         try {
             $hasil = (new PjImport())->baca($path);
             $this->assertSame([['nama_pj' => 'Amir', 'baris' => 4]], $hasil['baris']);
             // Baris 2 kosong seluruhnya = dilewati diam-diam; yang dilaporkan hanya nama kepanjangan.
-            $this->assertSame(['Baris 3: Kolom nama_pj maksimal 100 karakter.'], $hasil['gagal']);
+            $this->assertSame(['Baris 3: Kolom nama_pj maksimal '.Anak::PJ_NAMA_MAKS.' karakter.'], $hasil['gagal']);
         } finally {
             unlink($path);
         }

@@ -78,7 +78,7 @@ class PjAlokasiServiceTest extends TestCase
         $a = $this->stunting('3201000000040021', $kel->id);
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['nama_pj' => str_repeat('A', 101), 'baris' => 2],
+            ['nama_pj' => str_repeat('A', Anak::PJ_NAMA_MAKS + 1), 'baris' => 2],
             ['nama_pj' => '', 'baris' => 3],
             ['nama_pj' => 'Kader Z', 'baris' => 4],
         ], false, User::factory()->create(['type' => 0])->id);

@@ -16,6 +16,14 @@ class Anak extends Model
     protected $appends = ['hashid'];
     protected $casts = ['sumber_gabungan' => 'array']; // daftar sumber yang pernah dilebur (verifikasi RT §3.2)
 
+    /**
+     * Panjang maksimal `pj_nama` (= lebar kolom DB, migrasi 2026_09_24_000001).
+     * Klien (Sep 2026) mengisi PJ dengan jabatan OPD + "dan Seluruh Staf", bukan
+     * nama orang: terpanjang di daftar mereka 79 karakter, OPD lain bisa >100.
+     * Dipakai validasi controller, import CSV, alokasi, dan maxlength di modal OT.
+     */
+    public const PJ_NAMA_MAKS = 200;
+
     public function kec()
     {
         return $this->belongsTo(Kecamatan::class, 'id_kec', 'id');

@@ -79,8 +79,28 @@ class PenanggungJawabAnakTest extends TestCase
         $anak  = $this->anakOt('3201000000007003');
 
         $this->actingAs($super)
-            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => str_repeat('x', 101)])
+            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => str_repeat('x', Anak::PJ_NAMA_MAKS + 1)])
             ->assertStatus(422);
+    }
+
+    /**
+     * Klien (Sep 2026) mengisi PJ dengan jabatan OPD, bukan nama orang — label
+     * terpanjang di daftar mereka 79 karakter, dan OPD lain bisa lebih panjang lagi.
+     */
+    public function test_pj_berupa_jabatan_opd_panjang_diterima(): void
+    {
+        $super = User::factory()->create(['type' => 0]);
+        $anak  = $this->anakOt('3201000000007011');
+        $jabatan = 'Kepala Badan Perencanaan Pembangunan, Riset,dan Inovasi Daerah dan Seluruh Staf';
+        $this->assertGreaterThan(100, Anak::PJ_NAMA_MAKS);
+
+        $this->actingAs($super)
+            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => $jabatan])
+            ->assertOk()
+            ->assertJsonPath('pj_nama', $jabatan);
+
+        $this->assertSame($jabatan, $anak->refresh()->pj_nama);
+        $this->assertSame($jabatan, Anak::whereKey($anak->id)->value('pj_nama'), 'kolom DB memotong label');
     }
 
     public function test_faskes_tidak_bisa_mengisi_pj_anak_kelurahan_lain(): void
