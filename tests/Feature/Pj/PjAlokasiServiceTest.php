@@ -37,12 +37,11 @@ class PjAlokasiServiceTest extends TestCase
         $anak = [];
         for ($i = 1; $i <= 5; $i++) $anak[] = $this->stunting('320100000004000'.$i, $kel->id, $i % 2 ? $pos->id : null);
         $sudah = $this->stunting('3201000000040006', $kel->id, null, 'Kader Lama');
-        $sudah->update(['pj_nip' => '197001012000011001']);
         $user = User::factory()->create(['type' => 0]);
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['nama_pj' => 'Kader A', 'nip_pj' => '198703032012011003', 'baris' => 2],
-            ['nama_pj' => 'Kader B', 'nip_pj' => '198804042013011004', 'baris' => 3],
+            ['nama_pj' => 'Kader A', 'baris' => 2],
+            ['nama_pj' => 'Kader B', 'baris' => 3],
         ], false, $user->id);
 
         $this->assertSame(5, $r['dialokasikan']);
@@ -50,8 +49,6 @@ class PjAlokasiServiceTest extends TestCase
         $pj = array_map(fn ($a) => $a->fresh()->pj_nama, $anak);
         $this->assertSame(['Kader A', 'Kader B', 'Kader A', 'Kader B', 'Kader A'], $pj);
         $this->assertSame('Kader Lama', $sudah->fresh()->pj_nama);
-        $this->assertSame('197001012000011001', $sudah->fresh()->pj_nip);
-        $this->assertSame(['198703032012011003', '198804042013011004', '198703032012011003', '198804042013011004', '198703032012011003'], array_map(fn ($a) => $a->fresh()->pj_nip, $anak));
         $this->assertSame($user->id, (int) $anak[0]->fresh()->pj_updated_by);
         $this->assertSame([], $r['gagal']);
         $this->assertSame(2, $r['pj']);
@@ -63,17 +60,14 @@ class PjAlokasiServiceTest extends TestCase
         $kel = $this->lestari();
         $pos = Posyandu::factory()->create(['name' => 'Anggrek II']);
         $a = $this->stunting('3201000000040011', $kel->id, $pos->id, 'Kader Lama');
-        $a->update(['pj_nip' => '197001012000011001']);
         $b = $this->stunting('3201000000040012', $kel->id, null);
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['nama_pj' => 'Kader Baru', 'nip_pj' => '198905052014011005', 'baris' => 2],
+            ['nama_pj' => 'Kader Baru', 'baris' => 2],
         ], true, User::factory()->create(['type' => 0])->id);
 
         $this->assertSame('Kader Baru', $a->fresh()->pj_nama);
         $this->assertSame('Kader Baru', $b->fresh()->pj_nama);
-        $this->assertSame('198905052014011005', $a->fresh()->pj_nip);
-        $this->assertSame('198905052014011005', $b->fresh()->pj_nip);
         $this->assertSame(2, $r['dialokasikan']);
         $this->assertSame(0, $r['dilewati']);
     }
@@ -84,9 +78,9 @@ class PjAlokasiServiceTest extends TestCase
         $a = $this->stunting('3201000000040021', $kel->id);
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['nama_pj' => 'Kader X', 'nip_pj' => 'NIP RUSAK', 'baris' => 2],
-            ['nama_pj' => '', 'nip_pj' => '199107072016011007', 'baris' => 3],
-            ['nama_pj' => 'Kader Z', 'nip_pj' => '199208082017011008', 'baris' => 4],
+            ['nama_pj' => str_repeat('A', 101), 'baris' => 2],
+            ['nama_pj' => '', 'baris' => 3],
+            ['nama_pj' => 'Kader Z', 'baris' => 4],
         ], false, User::factory()->create(['type' => 0])->id);
 
         $this->assertSame('Kader Z', $a->fresh()->pj_nama);
@@ -95,7 +89,7 @@ class PjAlokasiServiceTest extends TestCase
         $this->assertStringContainsString('Baris 3', $r['gagal'][1]);
     }
 
-    public function test_tiga_kategori_dan_nama_sama_dengan_nip_berbeda(): void
+    public function test_tiga_kategori_dan_nama_sama_beda_kapital_dihitung_satu_pj(): void
     {
         $kel = $this->lestari();
         $stunting = $this->stunting('3201000000040101', $kel->id);
@@ -105,42 +99,30 @@ class PjAlokasiServiceTest extends TestCase
         $wasting->latestDataAnak->update(['zscore_pb_u' => 0, 'zscore_bb_pb' => -2.5]);
         $underweight->latestDataAnak->update(['zscore_bb_u' => -2.5]); // dua kategori
         $normal->latestDataAnak->update(['zscore_pb_u' => 0]);
-        $pj1 = ['nama_pj' => 'Sari', 'nip_pj' => '198501012010012001', 'baris' => 2];
-        $pj2 = array_replace($pj1, ['nip_pj' => '198602022011012002', 'baris' => 3]);
-        $hasil = app(PjAlokasiService::class)->alokasikan([$pj1, $pj2, $pj1], false, User::factory()->create(['type' => 0])->id);
+        $hasil = app(PjAlokasiService::class)->alokasikan([
+            ['nama_pj' => 'Sari', 'baris' => 2],
+            ['nama_pj' => 'Rina', 'baris' => 3],
+            ['nama_pj' => ' SARI ', 'baris' => 4], // orang yang sama, ejaan beda kapital
+        ], false, User::factory()->create(['type' => 0])->id);
         $this->assertSame(3, $hasil['dialokasikan'], 'Anak multi-kategori hanya dialokasikan sekali.');
-        $this->assertSame(2, $hasil['pj'], 'NIP duplikat tidak menggandakan PJ.');
-        $this->assertSame($pj1['nip_pj'], $stunting->fresh()->pj_nip);
-        $this->assertSame($pj2['nip_pj'], $wasting->fresh()->pj_nip);
-        $this->assertSame($pj1['nip_pj'], $underweight->fresh()->pj_nip);
+        $this->assertSame(2, $hasil['pj'], 'Nama duplikat tidak menggandakan PJ.');
+        $this->assertSame([], $hasil['gagal']);
+        $this->assertSame('Sari', $stunting->fresh()->pj_nama);
+        $this->assertSame('Rina', $wasting->fresh()->pj_nama);
+        $this->assertSame('Sari', $underweight->fresh()->pj_nama);
         $this->assertNull($normal->fresh()->pj_nama);
-        $this->assertNull($normal->fresh()->pj_nip);
     }
 
     public function test_tanpa_pj_valid_tidak_mengubah_anak(): void
     {
         $a = $this->stunting('3201000000040201', $this->lestari()->id);
         $hasil = app(PjAlokasiService::class)->alokasikan([
-            ['nip_pj' => '', 'nama_pj' => 'Sari', 'baris' => 2],
+            ['nama_pj' => '   ', 'baris' => 2],
         ], true, User::factory()->create(['type' => 0])->id);
         $this->assertSame(0, $hasil['dialokasikan']);
         $this->assertSame(0, $hasil['pj']);
         $this->assertCount(1, $hasil['gagal']);
         $this->assertNull($a->fresh()->pj_nama);
-        $this->assertNull($a->fresh()->pj_nip);
-    }
-
-    public function test_nip_sama_dengan_nama_berbeda_dilaporkan(): void
-    {
-        $a = $this->stunting('3201000000040202', $this->lestari()->id);
-        $hasil = app(PjAlokasiService::class)->alokasikan([
-            ['nip_pj' => '198501012010012001', 'nama_pj' => 'Sari', 'baris' => 2],
-            ['nip_pj' => '198501012010012001', 'nama_pj' => 'Rina', 'baris' => 3],
-        ], false, User::factory()->create(['type' => 0])->id);
-        $this->assertSame(1, $hasil['pj']);
-        $this->assertCount(1, $hasil['gagal']);
-        $this->assertStringContainsString('Baris 3', $hasil['gagal'][0]);
-        $this->assertSame('Sari', $a->fresh()->pj_nama);
     }
 
     public function test_hanya_anak_bontang_lestari_yang_dipasangkan(): void
@@ -153,7 +135,7 @@ class PjAlokasiServiceTest extends TestCase
         $belimbingPjLama = $this->stunting('3201000000040303', $belimbing->id, null, 'Kader Lama');
 
         $r = app(PjAlokasiService::class)->alokasikan([
-            ['nama_pj' => 'Kader A', 'nip_pj' => '198703032012011003', 'baris' => 2],
+            ['nama_pj' => 'Kader A', 'baris' => 2],
         ], true, User::factory()->create(['type' => 0])->id);
 
         $this->assertSame('Kader A', $diLestari->fresh()->pj_nama);
@@ -174,7 +156,7 @@ class PjAlokasiServiceTest extends TestCase
 
         try {
             app(PjAlokasiService::class)->alokasikan([
-                ['nama_pj' => 'Kader A', 'nip_pj' => '198703032012011003', 'baris' => 2],
+                ['nama_pj' => 'Kader A', 'baris' => 2],
             ], false, User::factory()->create(['type' => 0])->id);
         } finally {
             $this->assertNull($a->fresh()->pj_nama, 'Tidak ada anak yang disentuh bila kelurahan sasaran tak ditemukan.');

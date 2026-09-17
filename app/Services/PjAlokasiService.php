@@ -7,7 +7,7 @@ use App\Models\Kelurahan;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Pasangkan daftar NIP/nama PJ ke anak sasaran stunting/wasting/underweight
+ * Pasangkan daftar nama PJ ke anak sasaran stunting/wasting/underweight
  * di kelurahan sasaran saja (config pj.kelurahan_sasaran = Bontang Lestari).
  * Sasaran mengikuti kunjungan OT terakhir (OtGiziService); dibagi rata bergilir
  * sesuai urutan CSV, tanpa pengelompokan posyandu. Anak di kelurahan lain tidak
@@ -21,7 +21,7 @@ class PjAlokasiService
     }
 
     /**
-     * @param  array<int, array{nip_pj:string, nama_pj:string, baris:int}> $baris
+     * @param  array<int, array{nama_pj:string, baris:int}> $baris
      * @return array{dialokasikan:int, dilewati:int, pj:int, anak:int, gagal:string[], kelurahan:string}
      *
      * @throws \RuntimeException bila kelurahan sasaran tidak ada di master wilayah —
@@ -31,23 +31,16 @@ class PjAlokasiService
     {
         $kelurahan = $this->kelurahanSasaran();
 
-        // Identitas PJ berdasarkan NIP; nama sama dengan NIP berbeda tetap dua orang.
+        // Identitas PJ = nama (tanpa peduli huruf besar/kecil); ejaan pertama yang dipakai.
         $daftarPj = [];
         $gagal = [];
         foreach ($baris as $b) {
             $namaPj = trim((string) ($b['nama_pj'] ?? ''));
-            $nipPj = trim((string) ($b['nip_pj'] ?? ''));
-            if (!preg_match('/^[0-9]{18}$/', $nipPj) || $namaPj === '' || mb_strlen($namaPj) > 100) {
-                $gagal[] = "Baris {$b['baris']}: NIP harus 18 digit dan nama PJ wajib diisi (maksimal 100 karakter).";
+            if ($namaPj === '' || mb_strlen($namaPj) > 100) {
+                $gagal[] = "Baris {$b['baris']}: nama PJ wajib diisi (maksimal 100 karakter).";
                 continue;
             }
-            if (isset($daftarPj[$nipPj])) {
-                if (mb_strtolower($daftarPj[$nipPj]['nama']) !== mb_strtolower($namaPj)) {
-                    $gagal[] = "Baris {$b['baris']}: NIP yang sama memiliki nama PJ berbeda dalam daftar ini.";
-                }
-                continue;
-            }
-            $daftarPj[$nipPj] = ['nip' => $nipPj, 'nama' => $namaPj];
+            $daftarPj[mb_strtolower($namaPj)] ??= ['nama' => $namaPj];
         }
 
         $pj = array_values($daftarPj);
@@ -69,7 +62,6 @@ class PjAlokasiService
                 $penanggungJawab = $pj[$i % count($pj)];
                 DB::table('anak')->where('id', $idAnak)->update([
                     'pj_nama'       => $penanggungJawab['nama'],
-                    'pj_nip'        => $penanggungJawab['nip'],
                     'pj_updated_by' => $userId,
                     'pj_updated_at' => now(),
                 ]);

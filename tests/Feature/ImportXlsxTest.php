@@ -117,7 +117,7 @@ class ImportXlsxTest extends TestCase
         $this->postJson(route('admin.importCsv.anak'), ['file_anak' => $this->unggahan($anak, 'anak.xlsx', self::MIME_XLSX)])
             ->assertOk()->assertJsonPath('ok', true);
 
-        $pj = $this->buatWorkbook([['nip_pj', 'nama_pj'], [['teks' => '198501012010012001'], 'Kader Sari']]);
+        $pj = $this->buatWorkbook([['nama_pj'], ['Kader Sari']]);
         $this->postJson(route('admin.importCsv.pj'), ['file_pj' => $this->unggahan($pj, 'pj.xlsx', self::MIME_XLSX)])
             ->assertOk()->assertJsonPath('ok', true);
 
@@ -177,25 +177,23 @@ class ImportXlsxTest extends TestCase
     public function test_pj_import_membaca_xlsx_dan_tetap_membaca_csv(): void
     {
         $xlsx = $this->buatWorkbook([
-            ['Nama_PJ', 'NIP_PJ'],
-            ['Kader Sari', ['teks' => '198501012010012001']],
+            ['Keterangan', 'Nama_PJ'],
+            ['posyandu A', 'Kader Sari'],
             [null, null],
-            ['Bidan Rina', ['teks' => '198602022011012002']],
-            ['Kader Angka', 1.98603032012012E+17], // NIP diketik sebagai angka: Excel membulatkannya, harus ditolak dengan petunjuk
+            [null, 'Bidan Rina'],
+            ['tanpa nama', ''],
         ]);
         $r = (new PjImport())->baca($xlsx);
         $this->assertSame(
-            [['Kader Sari', '198501012010012001', 2], ['Bidan Rina', '198602022011012002', 4]],
-            array_map(fn ($b) => [$b['nama_pj'], $b['nip_pj'], $b['baris']], $r['baris'])
+            [['Kader Sari', 2], ['Bidan Rina', 4]],
+            array_map(fn ($b) => [$b['nama_pj'], $b['baris']], $r['baris'])
         );
-        $this->assertCount(1, $r['gagal']);
-        $this->assertStringContainsString('Baris 5', $r['gagal'][0]);
-        $this->assertStringContainsString('Simpan kolom NIP sebagai teks', $r['gagal'][0]);
+        $this->assertSame(['Baris 5: Kolom nama_pj wajib diisi.'], $r['gagal']);
 
         $csv = tempnam(sys_get_temp_dir(), 'pj') . '.csv';
-        file_put_contents($csv, "\xEF\xBB\xBFNama_PJ;NIP_PJ\nKader Sari;198501012010012001\n");
+        file_put_contents($csv, "\xEF\xBB\xBFNama_PJ\nKader Sari\n");
         $this->sementara[] = $csv;
         $r = (new PjImport())->baca($csv);
-        $this->assertSame([['Kader Sari', '198501012010012001', 2]], array_map(fn ($b) => [$b['nama_pj'], $b['nip_pj'], $b['baris']], $r['baris']));
+        $this->assertSame([['Kader Sari', 2]], array_map(fn ($b) => [$b['nama_pj'], $b['baris']], $r['baris']));
     }
 }

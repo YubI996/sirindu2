@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 /**
  * Penanggung jawab (PJ) per anak — diisi inline dari modal daftar anak di
- * dasbor Operasi Timbang. NIP dan nama satu pasangan; keduanya kosong menghapus PJ.
+ * dasbor Operasi Timbang. Hanya nama; nama kosong menghapus PJ.
  */
 class PjAnakController extends Controller
 {
@@ -17,12 +17,7 @@ class PjAnakController extends Controller
         $this->pastikanBolehAksesAnak($anak);
 
         $data = $request->validate([
-            'pj_nama' => 'required_with:pj_nip|nullable|string|max:100',
-            'pj_nip' => ['required_with:pj_nama', 'nullable', 'string', 'regex:/^[0-9]{18}$/'],
-        ], [
-            'pj_nip.required_with' => 'NIP wajib diisi bersama nama PJ.',
-            'pj_nip.regex' => 'NIP harus berisi 18 digit utuh.',
-            'pj_nama.required_with' => 'Nama PJ wajib diisi bersama NIP.',
+            'pj_nama' => 'nullable|string|max:100',
         ]);
 
         $nama = trim((string) ($data['pj_nama'] ?? ''));
@@ -30,7 +25,6 @@ class PjAnakController extends Controller
 
         $anak->forceFill([
             'pj_nama'       => $nama !== '' ? $nama : null,
-            'pj_nip'        => $nama !== '' ? $data['pj_nip'] : null,
             'pj_updated_by' => $user->id,
             'pj_updated_at' => now(),
         ])->save();
@@ -38,7 +32,6 @@ class PjAnakController extends Controller
         return response()->json([
             'id'           => $anak->hashid,
             'pj_nama'      => $anak->pj_nama,
-            'pj_nip'       => $anak->pj_nip,
             'pj_oleh'      => $user->name,
             'pj_updated_at'=> $anak->pj_updated_at?->toDateTimeString(),
         ]);

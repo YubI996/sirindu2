@@ -49,14 +49,13 @@ class PenanggungJawabAnakTest extends TestCase
         $anak  = $this->anakOt('3201000000007001');
 
         $this->actingAs($super)
-            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => '  Kader Sari  ', 'pj_nip' => '198501012010012001'])
+            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => '  Kader Sari  '])
             ->assertOk()
             ->assertJsonPath('pj_nama', 'Kader Sari')
             ->assertJsonPath('pj_oleh', $super->name);
 
         $anak->refresh();
         $this->assertSame('Kader Sari', $anak->pj_nama);
-        $this->assertSame('198501012010012001', $anak->pj_nip);
         $this->assertSame($super->id, (int) $anak->pj_updated_by);
         $this->assertNotNull($anak->pj_updated_at);
     }
@@ -64,7 +63,7 @@ class PenanggungJawabAnakTest extends TestCase
     public function test_pj_kosong_menghapus_pj(): void
     {
         $super = User::factory()->create(['type' => 0]);
-        $anak  = $this->anakOt('3201000000007002', ['pj_nama' => 'Kader Lama', 'pj_nip' => '198001012005011009']);
+        $anak  = $this->anakOt('3201000000007002', ['pj_nama' => 'Kader Lama']);
 
         $this->actingAs($super)
             ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => ''])
@@ -72,7 +71,6 @@ class PenanggungJawabAnakTest extends TestCase
             ->assertJsonPath('pj_nama', null);
 
         $this->assertNull($anak->refresh()->pj_nama);
-        $this->assertNull($anak->refresh()->pj_nip);
     }
 
     public function test_pj_terlalu_panjang_ditolak(): void
@@ -93,7 +91,7 @@ class PenanggungJawabAnakTest extends TestCase
         $anak   = $this->anakOt('3201000000007004', ['id_kel' => $kelB->id]);
 
         $this->actingAs($faskes)
-            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => 'Kader B', 'pj_nip' => '198804042013011004'])
+            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => 'Kader B'])
             ->assertForbidden();
 
         $this->assertNull($anak->refresh()->pj_nama);
@@ -106,7 +104,7 @@ class PenanggungJawabAnakTest extends TestCase
         $anak   = $this->anakOt('3201000000007005', ['id_kel' => $kelA->id]);
 
         $this->actingAs($faskes)
-            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => 'Kader A', 'pj_nip' => '198703032012011003'])
+            ->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => 'Kader A'])
             ->assertOk();
 
         $this->assertSame('Kader A', $anak->refresh()->pj_nama);
@@ -123,7 +121,7 @@ class PenanggungJawabAnakTest extends TestCase
     public function test_daftar_stunting_menyertakan_id_dan_pj(): void
     {
         $super = User::factory()->create(['type' => 0]);
-        $anak  = $this->anakOt('3201000000007007', ['pj_nama' => 'Kader Sari', 'pj_nip' => '198501012010012001']);
+        $anak  = $this->anakOt('3201000000007007', ['pj_nama' => 'Kader Sari']);
 
         $rows = $this->actingAs($super)
             ->getJson(route('admin.timbang.daftar', ['kategori' => 'stunting']))
@@ -133,15 +131,15 @@ class PenanggungJawabAnakTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame($anak->hashid, $rows[0]['id']);
         $this->assertSame('Kader Sari', $rows[0]['pj_nama']);
-        $this->assertSame('198501012010012001', $rows[0]['pj_nip']);
+        $this->assertArrayNotHasKey('pj_nip', $rows[0]);
     }
 
     public function test_daftar_menyertakan_saran_nama_pj_yang_sudah_dipakai(): void
     {
         $super = User::factory()->create(['type' => 0]);
-        $this->anakOt('3201000000007008', ['pj_nama' => 'Kader Sari', 'pj_nip' => '198501012010012001']);
-        $this->anakOt('3201000000007009', ['pj_nama' => 'Bidan Rina', 'pj_nip' => '198602022011012002']);
-        $this->anakOt('3201000000007010', ['pj_nama' => 'Kader Sari', 'pj_nip' => '198501012010012001']);
+        $this->anakOt('3201000000007008', ['pj_nama' => 'Kader Sari']);
+        $this->anakOt('3201000000007009', ['pj_nama' => 'Bidan Rina']);
+        $this->anakOt('3201000000007010', ['pj_nama' => 'Kader Sari']);
         $this->anakOt('3201000000007011');
 
         $saran = $this->actingAs($super)
@@ -149,7 +147,7 @@ class PenanggungJawabAnakTest extends TestCase
             ->assertOk()
             ->json('pj_saran');
 
-        $this->assertSame([['nip' => '198602022011012002', 'nama' => 'Bidan Rina'], ['nip' => '198501012010012001', 'nama' => 'Kader Sari']], $saran);
+        $this->assertSame(['Bidan Rina', 'Kader Sari'], $saran);
     }
 
     public function test_saran_pj_faskes_terbatas_kelurahannya(): void
@@ -157,20 +155,20 @@ class PenanggungJawabAnakTest extends TestCase
         $kelA = $this->kelurahan('Kel A');
         $kelB = $this->kelurahan('Kel B');
         $faskes = User::factory()->create(['type' => 1, 'id_kel' => $kelA->id]);
-        $this->anakOt('3201000000007012', ['id_kel' => $kelA->id, 'pj_nama' => 'Kader A', 'pj_nip' => '198703032012011003']);
-        $this->anakOt('3201000000007013', ['id_kel' => $kelB->id, 'pj_nama' => 'Kader B', 'pj_nip' => '198804042013011004']);
+        $this->anakOt('3201000000007012', ['id_kel' => $kelA->id, 'pj_nama' => 'Kader A']);
+        $this->anakOt('3201000000007013', ['id_kel' => $kelB->id, 'pj_nama' => 'Kader B']);
 
         $saran = $this->actingAs($faskes)
             ->getJson(route('admin.timbang.daftar', ['kategori' => 'stunting']))
             ->assertOk()
             ->json('pj_saran');
 
-        $this->assertSame([['nip' => '198703032012011003', 'nama' => 'Kader A']], $saran);
+        $this->assertSame(['Kader A'], $saran);
     }
 
     public function test_export_kategori_pj_punya_kolom_penanggung_jawab(): void
     {
-        $rows = [['nama' => 'A', 'pj_nama' => 'Kader Sari', 'pj_nip' => '198501012010012001']];
+        $rows = [['nama' => 'A', 'pj_nama' => 'Kader Sari']];
 
         $denganPj = new TimbangDaftarExport($rows, 'Stunting', true);
         $this->assertContains('Penanggung Jawab', $denganPj->headings());
@@ -184,7 +182,7 @@ class PenanggungJawabAnakTest extends TestCase
     public function test_export_endpoint_hanya_menyertakan_pj_untuk_kategori_pj(): void
     {
         $super = User::factory()->create(['type' => 0]);
-        $this->anakOt('3201000000007014', ['pj_nama' => 'Kader Sari', 'pj_nip' => '198501012010012001']);
+        $this->anakOt('3201000000007014', ['pj_nama' => 'Kader Sari']);
 
         Excel::fake();
         $this->travelTo(now()->startOfMinute()); // nama berkas memuat timestamp
@@ -218,27 +216,26 @@ class PenanggungJawabAnakTest extends TestCase
         $this->assertStringNotContainsString('r.Penanggung_Jawab', $src);
     }
 
-    public function test_nip_dan_nama_wajib_berpasangan(): void
+    public function test_nama_saja_cukup_dan_nip_lama_diabaikan(): void
     {
         $super = User::factory()->create(['type' => 0]);
         $anak = $this->anakOt('3201000000007099');
-        foreach ([['pj_nama' => 'Sari'], ['pj_nip' => '198501012010012001'], ['pj_nama' => 'Sari', 'pj_nip' => '198501012010012000.0']] as $data) {
-            $this->actingAs($super)->putJson(route('admin.timbang.pj', $anak), $data)->assertUnprocessable();
-        }
-        $this->assertNull($anak->fresh()->pj_nama);
+        $this->actingAs($super)->putJson(route('admin.timbang.pj', $anak), ['pj_nama' => 'Sari', 'pj_nip' => '198501012010012001'])
+            ->assertOk()->assertJsonPath('pj_nama', 'Sari')->assertJsonMissingPath('pj_nip');
+        $this->assertSame('Sari', $anak->fresh()->pj_nama);
     }
 
-    public function test_export_excel_mempertahankan_18_digit_nip(): void
+    public function test_export_excel_hanya_satu_kolom_pj_tanpa_nip(): void
     {
-        $nip = '001234567890123456';
-        $export = new TimbangDaftarExport([['nama' => 'Contoh', 'pj_nama' => 'Sari', 'pj_nip' => $nip]], 'Stunting', true);
+        $export = new TimbangDaftarExport([['nama' => 'Contoh', 'pj_nama' => 'Sari']], 'Stunting', true);
         $path = tempnam(sys_get_temp_dir(), 'pj-xlsx');
         try {
             file_put_contents($path, Excel::raw($export, \Maatwebsite\Excel\Excel::XLSX));
             $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($path)->getActiveSheet();
-            $this->assertSame('NIP PJ', $sheet->getCell('K1')->getValue());
-            $this->assertSame($nip, $sheet->getCell('K2')->getValue());
-            $this->assertSame('s', $sheet->getCell('K2')->getDataType());
+            $this->assertSame('Penanggung Jawab', $sheet->getCell('K1')->getValue());
+            $this->assertSame('Sari', $sheet->getCell('K2')->getValue());
+            $this->assertNull($sheet->getCell('L1')->getValue());
+            $this->assertNotContains('NIP PJ', $export->headings());
         } finally {
             unlink($path);
         }

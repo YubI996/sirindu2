@@ -268,7 +268,7 @@
 .tb-dt thead th { background:var(--thead); padding:.55rem .7rem; text-align:left; font-size:.66rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); white-space:nowrap; position:sticky; top:0; }
 .tb-dt tbody td { padding:.55rem .7rem; border-top:1px solid var(--line-soft); }
 .tb-dt tbody tr:hover { background:var(--bg); }
-/* Sel Penanggung Jawab — formulir pasangan NIP/nama, Simpan atau Batal. */
+/* Sel Penanggung Jawab — formulir nama PJ, Simpan atau Batal. */
 .tb-pj { min-width:220px; }
 .tb-pj__trigger { display:block; width:100%; text-align:left; background:transparent; border:0; font:inherit; color:inherit; cursor:pointer; padding:4px; border-radius:6px; }
 .tb-pj__trigger:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
@@ -1044,7 +1044,7 @@ function renderDaftar(filterText){
     document.getElementById('daftar-table-wrap').innerHTML = h;
 }
 
-// Penanggung jawab per anak: NIP dan nama disimpan bersama.
+// Penanggung jawab per anak: cukup nama.
 var pjSaranList = [];
 function pjCell(r){
     var kosong = !r.pj_nama;
@@ -1052,7 +1052,6 @@ function pjCell(r){
         +'<button type="button" class="tb-pj__trigger" aria-label="Ubah penanggung jawab '+escHtml(r.nama || '')+'">'
         +'<span class="tb-pj__val'+(kosong ? ' tb-pj__val--kosong' : '')+'">'
         +(kosong ? 'klik untuk isi' : escHtml(r.pj_nama))+'</span>'
-        +(r.pj_nama ? '<span class="tb-pj__meta">NIP '+escHtml(r.pj_nip || 'belum dilengkapi')+'</span>' : '')
         +(r.pj_oleh ? '<span class="tb-pj__meta">oleh '+escHtml(r.pj_oleh)+'</span>' : '')
         +'</button></td>';
 }
@@ -1065,7 +1064,7 @@ function fillPjSaran(list){
     pjSaranList = list || [];
     var dl = document.getElementById('pj-saran');
     if(!dl) return;
-    dl.innerHTML = pjSaranList.filter(function(p){ return p.nip; }).map(function(p){ return '<option value="'+escHtml(p.nip)+'">'+escHtml(p.nama)+'</option>'; }).join('');
+    dl.innerHTML = pjSaranList.filter(function(nama){ return nama; }).map(function(nama){ return '<option value="'+escHtml(nama)+'"></option>'; }).join('');
 }
 function pjRow(id){
     for(var i = 0; i < daftarRows.length; i++){ if(daftarRows[i].id === id) return daftarRows[i]; }
@@ -1076,26 +1075,20 @@ function bukaEditorPj(td){
     var row = pjRow(td.getAttribute('data-id'));
     if(!row) return;
     td.innerHTML = '<form class="tb-pj__editor">'
-        +'<label>NIP PJ<input name="pj_nip" class="tb-pj__input" list="pj-saran" inputmode="numeric" pattern="[0-9]{18}" maxlength="18" placeholder="18 digit NIP" required></label>'
-        +'<label>Nama PJ<input name="pj_nama" class="tb-pj__input" maxlength="100" placeholder="Nama penanggung jawab" required></label>'
+        +'<label>Nama PJ<input name="pj_nama" class="tb-pj__input" list="pj-saran" maxlength="100" placeholder="Nama penanggung jawab" required></label>'
         +'<div class="tb-pj__actions"><button type="submit">Simpan</button><button type="button" data-pj-batal>Batal</button>'
         +(row.pj_nama ? '<button type="button" data-pj-hapus>Hapus PJ</button>' : '')+'</div>'
         +'<span class="tb-pj__error" role="alert"></span></form>';
     var form = td.querySelector('form');
-    form.elements.pj_nip.value = row.pj_nip || '';
     form.elements.pj_nama.value = row.pj_nama || '';
-    form.elements.pj_nip.focus();
-    form.elements.pj_nip.addEventListener('input', function(){
-        var saran = pjSaranList.find(function(p){ return p.nip === form.elements.pj_nip.value; });
-        if(saran) form.elements.pj_nama.value = saran.nama;
-    });
+    form.elements.pj_nama.focus();
     form.addEventListener('submit', function(e){
         e.preventDefault();
-        simpanPj(td, row, {pj_nip:form.elements.pj_nip.value.trim(), pj_nama:form.elements.pj_nama.value.trim()});
+        simpanPj(td, row, {pj_nama:form.elements.pj_nama.value.trim()});
     });
     form.querySelector('[data-pj-batal]').addEventListener('click', function(e){ e.stopPropagation(); td.innerHTML = pjCellInner(row); });
     var hapus = form.querySelector('[data-pj-hapus]');
-    if(hapus) hapus.addEventListener('click', function(){ simpanPj(td, row, {pj_nip:'', pj_nama:''}); });
+    if(hapus) hapus.addEventListener('click', function(){ simpanPj(td, row, {pj_nama:''}); });
     form.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); td.innerHTML = pjCellInner(row); } });
 }
 function simpanPj(td, row, nilai){
@@ -1109,12 +1102,12 @@ function simpanPj(td, row, nilai){
     })
     .then(function(r){ return r.json().then(function(d){ if(!r.ok) throw new Error(d.message || 'Gagal menyimpan PJ. Coba lagi.'); return d; }); })
     .then(function(d){
-        row.pj_nama = d.pj_nama; row.pj_nip = d.pj_nip; row.pj_oleh = d.pj_oleh;
+        row.pj_nama = d.pj_nama; row.pj_oleh = d.pj_oleh;
         td.classList.remove('tb-pj--simpan');
         td.innerHTML = pjCellInner(row);
         // Tambahkan ke saran supaya nama yang sama bisa dipilih untuk anak berikutnya.
-        if(d.pj_nip){
-            fillPjSaran(pjSaranList.filter(function(p){ return p.nip !== d.pj_nip; }).concat([{nip:d.pj_nip,nama:d.pj_nama}]));
+        if(d.pj_nama && pjSaranList.indexOf(d.pj_nama) === -1){
+            fillPjSaran(pjSaranList.concat([d.pj_nama]).sort());
         }
     })
     .catch(function(error){

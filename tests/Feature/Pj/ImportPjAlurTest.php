@@ -19,8 +19,6 @@ class ImportPjAlurTest extends TestCase
     use RefreshDatabase;
 
     private const QUEUE = 'uji-alur-pj';
-    private const SARI = '198501012010012001';
-    private const RINA = '198602022011012002';
 
     private function anak(string $kode, int $kel, float $bbU, float $tbU, float $bbTb): Anak
     {
@@ -76,7 +74,7 @@ class ImportPjAlurTest extends TestCase
         ];
         $normal = $this->anak('NORMAL', $lestari->id, 0, 0, 0);
         $lama = $this->anak('LAMA', $lestari->id, 0, -2.5, 0);
-        $lama->update(['pj_nip' => '197001012000011001', 'pj_nama' => 'PJ Lama']);
+        $lama->update(['pj_nama' => 'PJ Lama']);
         // Stunting tapi di luar kelurahan sasaran: tak pernah disentuh import, termasuk mode timpa.
         $luar = $this->anak('LUAR', $kelLain->id, 0, -2.5, 0);
 
@@ -90,43 +88,38 @@ class ImportPjAlurTest extends TestCase
             ->assertJsonFragment(['id' => $log->id, 'status' => 'done', 'success_count' => 5]);
 
         foreach ($sasaran as $i => $anak) {
-            $this->assertSame($i % 2 ? self::RINA : self::SARI, $anak->fresh()->pj_nip);
             $this->assertSame($i % 2 ? 'Rina' : 'Sari', $anak->fresh()->pj_nama);
             $this->assertSame($super->id, (int) $anak->fresh()->pj_updated_by);
         }
         $this->assertSame('PJ Lama', $lama->fresh()->pj_nama);
-        $this->assertNull($normal->fresh()->pj_nip);
-        $this->assertNull($luar->fresh()->pj_nip);
+        $this->assertNull($normal->fresh()->pj_nama);
+        $this->assertNull($luar->fresh()->pj_nama);
 
         // Anak D muncul di tiga daftar dengan PJ yang sama.
         foreach (['stunting', 'wasting', 'underweight'] as $kategori) {
             $rows = $this->getJson(route('admin.timbang.daftar', ['kategori' => $kategori]))->assertOk()->json('rows');
             $baris = collect($rows)->firstWhere('id', $sasaran[3]->hashid);
-            $this->assertSame(self::RINA, $baris['pj_nip']);
             $this->assertSame('Rina', $baris['pj_nama']);
         }
 
         // Tunjuk ulang PJ anak B lalu baca ulang lewat endpoint yang dipakai UI.
-        $this->putJson(route('admin.timbang.pj', $sasaran[1]), ['pj_nip' => self::SARI, 'pj_nama' => 'Sari'])
-            ->assertOk()->assertJsonPath('pj_nip', self::SARI)->assertJsonPath('pj_nama', 'Sari');
+        $this->putJson(route('admin.timbang.pj', $sasaran[1]), ['pj_nama' => 'Sari'])
+            ->assertOk()->assertJsonPath('pj_nama', 'Sari');
         $rows = $this->getJson(route('admin.timbang.daftar', ['kategori' => 'wasting']))->assertOk()->json('rows');
-        $this->assertSame(self::SARI, collect($rows)->firstWhere('id', $sasaran[1]->hashid)['pj_nip']);
-        $this->assertSame(self::RINA, $sasaran[3]->fresh()->pj_nip);
+        $this->assertSame('Sari', collect($rows)->firstWhere('id', $sasaran[1]->hashid)['pj_nama']);
+        $this->assertSame('Rina', $sasaran[3]->fresh()->pj_nama);
 
         $ulang = $this->unggahDanProses($csv, '0');
         $this->assertSame(0, (int) $ulang->success_count);
         $this->assertStringContainsString('6 dilewati', implode('; ', $ulang->failures));
-        $this->assertSame(self::SARI, $sasaran[1]->fresh()->pj_nip);
+        $this->assertSame('Sari', $sasaran[1]->fresh()->pj_nama);
 
-        $timpa = $this->unggahDanProses("nip_pj,nama_pj\n198703032012011003,Amir\n", '1');
+        $timpa = $this->unggahDanProses("nama_pj\nAmir\n", '1');
         $this->assertSame(6, (int) $timpa->success_count);
         foreach ([...$sasaran, $lama] as $anak) {
-            $this->assertSame('198703032012011003', $anak->fresh()->pj_nip);
             $this->assertSame('Amir', $anak->fresh()->pj_nama);
         }
         $this->assertNull($normal->fresh()->pj_nama);
-        $this->assertNull($normal->fresh()->pj_nip);
         $this->assertNull($luar->fresh()->pj_nama);
-        $this->assertNull($luar->fresh()->pj_nip);
     }
 }

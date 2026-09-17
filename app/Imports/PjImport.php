@@ -8,16 +8,16 @@ use Maatwebsite\Excel\Facades\Excel as ExcelFacade;
 use RuntimeException;
 
 /**
- * Parser daftar PJ: `nip_pj`, `nama_pj`.
+ * Parser daftar PJ: satu kolom `nama_pj` (kolom lain, termasuk `nip_pj` dari template lama, diabaikan).
  * Header bebas urutan & huruf besar/kecil, BOM dibuang, pemisah koma atau titik koma.
  * CSV dibaca fgetcsv biasa (berkas kecil, puluhan baris); .xlsx/.xls lewat Maatwebsite.
  */
 class PjImport
 {
-    public const KOLOM_WAJIB = ['nip_pj', 'nama_pj'];
+    public const KOLOM_WAJIB = ['nama_pj'];
 
     /**
-     * @return array{baris: array<int, array{nip_pj:string, nama_pj:string, baris:int}>, gagal: string[]}
+     * @return array{baris: array<int, array{nama_pj:string, baris:int}>, gagal: string[]}
      */
     public function baca(string $path): array
     {
@@ -48,15 +48,9 @@ class PjImport
                 continue; // baris kosong
             }
             $ambil = fn (string $k) => isset($idx[$k]) ? trim((string) ($row[$idx[$k]] ?? '')) : '';
-            $namaPj    = $ambil('nama_pj');
-            $nipPj     = $ambil('nip_pj');
+            $namaPj = $ambil('nama_pj');
 
             $masalah = [];
-            if ($nipPj === '') {
-                $masalah[] = 'Kolom nip_pj wajib diisi.';
-            } elseif (!preg_match('/^[0-9]{18}$/', $nipPj)) {
-                $masalah[] = 'Kolom nip_pj harus 18 digit utuh. Simpan kolom NIP sebagai teks.';
-            }
             if ($namaPj === '') {
                 $masalah[] = 'Kolom nama_pj wajib diisi.';
             } elseif (mb_strlen($namaPj) > 100) {
@@ -66,11 +60,7 @@ class PjImport
                 $gagal[] = "Baris {$no}: ".implode(' ', $masalah);
                 continue;
             }
-            $baris[] = [
-                'nama_pj'   => $namaPj,
-                'nip_pj'    => $nipPj,
-                'baris'     => $no,
-            ];
+            $baris[] = ['nama_pj' => $namaPj, 'baris' => $no];
         }
         if ($header === null) {
             throw new RuntimeException('Berkas kosong.');
@@ -102,7 +92,7 @@ class PjImport
         fclose($fh);
     }
 
-    /** Baris-baris sheet pertama; sel angka dibaca apa adanya (NIP angka sudah dibulatkan Excel → gagal validasi 18 digit). */
+    /** Baris-baris sheet pertama. */
     private function barisExcel(string $path, string $ekstensi): array
     {
         $tipe = $ekstensi === 'xls' ? Excel::XLS : Excel::XLSX;

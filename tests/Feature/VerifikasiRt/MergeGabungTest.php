@@ -61,7 +61,6 @@ class MergeGabungTest extends TestCase
         $ot  = $this->anak('3201000000018001', ['sumber' => 'operasi_timbang', 'alamat' => 'Jl. OT', 'pj_nama' => null]);
         $cap = $this->anak('3201000000018002', ['nama' => 'Nama Capil', 'no_kk' => '6474000000000018', 'alamat_ktp' => 'Jl. KTP', 'pj_nama' => 'Kader X']);
         $u1 = $this->ukur($ot);
-        $cap->update(['pj_nip' => '198501012010012001']);
         $u2 = $this->ukur($cap, 81);
         $imId = $this->imunisasi($cap);
         $iv = IntervensiGizi::create(['id_anak' => $cap->id, 'jenis' => IntervensiGizi::JENIS[0], 'status' => 'Direncanakan']);
@@ -85,7 +84,6 @@ class MergeGabungTest extends TestCase
         $this->assertSame('operasi_timbang', $keep->sumber, 'sumber OT tidak pernah berubah');
         $this->assertSame(['operasi_timbang', 'capil'], $keep->sumber_gabungan);
         $this->assertSame('Kader X', $keep->pj_nama, 'PJ diisi dari baris yang dihapus karena kosong');
-        $this->assertSame('198501012010012001', $keep->pj_nip);
         $this->assertSame(2, DataAnak::where('id_anak', $keep->id)->count());
         $this->assertSame($keep->id, (int) DB::table('imunisasi')->where('id', $imId)->value('id_anak'));
         $this->assertSame($keep->id, (int) $iv->fresh()->id_anak);
