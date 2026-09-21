@@ -2,11 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\AdminController;
 use App\Models\Anak;
 use App\Models\DataAnak;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use ReflectionMethod;
 use Tests\TestCase;
 
 class ImunisasiAlasanChartDataTest extends TestCase
@@ -15,10 +13,7 @@ class ImunisasiAlasanChartDataTest extends TestCase
 
     private function invoke(array $filters): array
     {
-        $controller = app(AdminController::class);
-        $m = new ReflectionMethod(AdminController::class, 'alasanTidakImunisasiData');
-        $m->setAccessible(true);
-        return $m->invoke($controller, $filters);
+        return app(\App\Services\ImunisasiStatusService::class)->getAlasanTidakImunisasi($filters);
     }
 
     private function anakWithVisits(string $nik, array $visits): Anak
