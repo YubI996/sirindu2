@@ -6,11 +6,15 @@ use App\Models\Anak;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Models\KelompokVaksin;
+use App\Support\FilterWilayahAnak;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ImunisasiStatusService
 {
+    use FilterWilayahAnak;
+
     private const HPV_CODES = ['HPV', 'HPV1', 'HPV2'];
 
     /**
@@ -286,39 +290,6 @@ class ImunisasiStatusService
         }
 
         return true;
-    }
-
-    /**
-     * Terapkan filter wilayah ke query Anak. Semua dimensi yang diisi digabung
-     * dengan AND (bukan saling meniadakan) — cascading filter UI hanya pernah
-     * mengisi satu jalur konsisten (mis. kelurahan yang benar-benar ada di
-     * kecamatan terpilih), jadi hasilnya identik dengan skema lama yang
-     * mutually-exclusive, sekaligus bisa mengombinasikan puskesmas (wilker,
-     * lintas kelurahan) dengan RT tanpa saling menimpa.
-     *
-     * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
-     */
-    private function applyWilayahFilters(\Illuminate\Database\Eloquent\Builder $query, array $filters): \Illuminate\Database\Eloquent\Builder
-    {
-        if (!empty($filters['id_kecamatan'])) {
-            $query->where('id_kec', $filters['id_kecamatan']);
-        }
-        if (!empty($filters['id_kelurahan'])) {
-            $query->where('id_kel', $filters['id_kelurahan']);
-        }
-        if (!empty($filters['id_rt'])) {
-            $query->where('id_rt', $filters['id_rt']);
-        }
-        if (!empty($filters['id_posyandu'])) {
-            $query->where('id_posyandu', $filters['id_posyandu']);
-        }
-        if (!empty($filters['id_puskesmas'])) {
-            $namaPuskesmas = \App\Models\Puskesmas::whereKey($filters['id_puskesmas'])->value('name');
-            $kelIds = $namaPuskesmas ? \App\Support\WilkerPuskesmas::catchmentKelurahanIds($namaPuskesmas) : [];
-            $query->whereIn('id_kel', $kelIds ?: [0]);
-        }
-
-        return $query;
     }
 
     /**
@@ -782,5 +753,44 @@ class ImunisasiStatusService
         }
 
         return $hasil;
+    }
+
+    /**
+     * Sebaran alasan tidak imunisasi dari KUNJUNGAN TERAKHIR tiap anak (wilayah
+     * terfilter); nilai di luar config('imunisasi.alasan_tidak_imunisasi') digabung
+     * ke "Lainnya". Dipakai dasbor imunisasi & dasbor Kesmas.
+     *
+     * @return array<string, int>  alasan => jumlah, urut menurun
+     */
+    public function getAlasanTidakImunisasi(array $filters): array
+    {
+        $maxTgl = DB::table('data_anak as dm')
+            ->join('anak as am', 'dm.id_anak', '=', 'am.id')
+            ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
+            ->whereNotNull('dm.tgl_kunjungan');
+        if (!empty($filters['id_posyandu']))      $maxTgl->where('am.id_posyandu', $filters['id_posyandu']);
+        elseif (!empty($filters['id_kelurahan'])) $maxTgl->where('am.id_kel', $filters['id_kelurahan']);
+        elseif (!empty($filters['id_kecamatan'])) $maxTgl->where('am.id_kec', $filters['id_kecamatan']);
+        $maxTgl->groupBy('dm.id_anak');
+
+        $values = DB::table('data_anak as da')
+            ->joinSub($maxTgl, 'm', function ($j) {
+                $j->on('m.id_anak', '=', 'da.id_anak')->on('m.max_tgl', '=', 'da.tgl_kunjungan');
+            })
+            ->whereNotNull('da.alasan_tidak_imunisasi')
+            ->where('da.alasan_tidak_imunisasi', '!=', '')
+            ->pluck('da.alasan_tidak_imunisasi');
+
+        $known  = config('imunisasi.alasan_tidak_imunisasi', []);
+        $counts = [];
+        foreach ($values as $val) {
+            $val = trim((string) $val);
+            if ($val === '') continue;
+            $bucket = in_array($val, $known, true) ? $val : 'Lainnya';
+            $counts[$bucket] = ($counts[$bucket] ?? 0) + 1;
+        }
+        arsort($counts);
+
+        return $counts;
     }
 }

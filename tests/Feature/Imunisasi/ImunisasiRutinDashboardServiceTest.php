@@ -208,4 +208,21 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         $this->assertSame(1, $coverage['ibl_lengkap']);
         $this->assertEqualsWithDelta(50.0, $coverage['persen'], 0.01);
     }
+
+    public function test_alasan_tidak_imunisasi_dihitung_dari_kunjungan_terakhir_per_anak(): void
+    {
+        $known = config('imunisasi.alasan_tidak_imunisasi', []);
+        $this->assertNotEmpty($known, 'Config alasan harus ada agar bucket "Lainnya" bisa diuji.');
+        $alasanDikenal = $known[0];
+
+        $a = $this->anak();
+        \App\Models\DataAnak::create(['id_anak' => $a->id, 'tgl_kunjungan' => '2026-01-10', 'bln' => 1, 'posisi' => 'L', 'tb' => 50, 'bb' => 4, 'lla' => 10, 'lk' => 35, 'id_user' => 1, 'alasan_tidak_imunisasi' => 'Sembarang teks lama']);
+        \App\Models\DataAnak::create(['id_anak' => $a->id, 'tgl_kunjungan' => '2026-03-10', 'bln' => 3, 'posisi' => 'L', 'tb' => 55, 'bb' => 5, 'lla' => 11, 'lk' => 37, 'id_user' => 1, 'alasan_tidak_imunisasi' => $alasanDikenal]);
+        $b = $this->anak();
+        \App\Models\DataAnak::create(['id_anak' => $b->id, 'tgl_kunjungan' => '2026-02-01', 'bln' => 2, 'posisi' => 'L', 'tb' => 52, 'bb' => 4.5, 'lla' => 10, 'lk' => 36, 'id_user' => 1, 'alasan_tidak_imunisasi' => 'Teks bebas tak dikenal']);
+
+        $hasil = $this->service->getAlasanTidakImunisasi([]);
+
+        $this->assertSame([$alasanDikenal => 1, 'Lainnya' => 1], $hasil, 'Hanya kunjungan TERAKHIR per anak; teks tak dikenal masuk bucket Lainnya.');
+    }
 }
