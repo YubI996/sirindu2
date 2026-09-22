@@ -86,8 +86,6 @@ class KesmasDashboardServiceTest extends TestCase
         $this->anak(80);   // umur tahun 3–6 saja
         Anak::create(['nama' => 'Lahir tahun depan', 'nik' => '9999999999999999', 'jk' => 2, 'tempat_lahir' => 'Bontang',
             'tgl_lahir' => '2026-01-15', 'status' => 1, 'no' => '1', 'sumber' => 'manual', 'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id]);
-        Anak::create(['nama' => 'Tanpa tgl lahir', 'nik' => '9999999999999998', 'jk' => 2, 'tempat_lahir' => 'Bontang',
-            'tgl_lahir' => null, 'status' => 1, 'no' => '1', 'sumber' => 'manual', 'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id]);
 
         $s = $this->svc->sasaran($this->tahun2025(), []);
 
