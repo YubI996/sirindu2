@@ -438,7 +438,7 @@ class TimbangDashboardController extends Controller
 
         return response()->json([
             'kategori' => $kategori,
-            'rows'     => $this->daftarRows($f, $kategori),
+            'rows'     => $this->daftarRows($f, $kategori, $request->boolean('murni')),
             'pj_saran' => $this->pjSaran($f),
         ]);
     }
@@ -447,7 +447,7 @@ class TimbangDashboardController extends Controller
     {
         $f = $this->parseFilters($request);
         $kategori = $request->query('kategori', 'sasaran');
-        $rows = $this->daftarRows($f, $kategori);
+        $rows = $this->daftarRows($f, $kategori, $request->boolean('murni'));
 
         $namaKategori = $this->labelKategori($kategori);
         $file = 'daftar-' . $kategori . '-' . now()->format('Ymd_His') . '.xlsx';
@@ -618,8 +618,12 @@ class TimbangDashboardController extends Controller
         return $flagged;
     }
 
-    /** Bangun baris daftar nama+alamat untuk satu kategori. */
-    private function daftarRows(array $f, string $kategori): array
+    /**
+     * Bangun baris daftar nama+alamat untuk satu kategori.
+     * $murni (underweight/wasting saja): buang anak yang juga stunting
+     * (dan, untuk underweight, juga wasting) — permintaan Dinkes Sept 2026.
+     */
+    private function daftarRows(array $f, string $kategori, bool $murni = false): array
     {
         // BB tidak naik punya jalur sendiri (butuh perbandingan 2 kunjungan).
         if ($kategori === 'bb_tidak_naik') {
@@ -679,13 +683,20 @@ class TimbangDashboardController extends Controller
             );
             $hit = OtGiziService::kena($g, $kategori);
             if ($hit) {
+                $jugaStunting = OtGiziService::kena($g, 'stunting');
+                $jugaWasting  = OtGiziService::kena($g, 'wasting');
+                if ($murni && $kategori === 'underweight' && ($jugaStunting || $jugaWasting)) continue;
+                if ($murni && $kategori === 'wasting' && $jugaStunting) continue;
                 $matchIds[] = $m->id_anak;
                 $label = match ($kategori) {
                     'stunting'    => StatusGiziService::labelTb($g['tb_u']),
                     'underweight' => StatusGiziService::labelBb($g['bb_u']),
                     default       => StatusGiziService::labelBbTb($g['bb_tb']),
                 };
-                $detail[$m->id_anak] = ['indikator' => $label, 'tgl' => $m->tgl_kunjungan];
+                $detail[$m->id_anak] = [
+                    'indikator' => $label, 'tgl' => $m->tgl_kunjungan,
+                    'stunting' => $jugaStunting, 'wasting' => $jugaWasting,
+                ];
             }
         }
 
@@ -698,6 +709,8 @@ class TimbangDashboardController extends Controller
             $rows[] = $this->baseRow($a) + [
                 'indikator'     => $detail[$idAnak]['indikator'] ?? null,
                 'tgl_kunjungan' => $detail[$idAnak]['tgl'] ?? null,
+                'stunting'      => $detail[$idAnak]['stunting'] ?? false, // flag filter "murni" di modal
+                'wasting'       => $detail[$idAnak]['wasting'] ?? false,
             ];
         }
         return $rows;

@@ -263,6 +263,8 @@
 .tb-modal__search { flex:1; min-width:180px; padding:.5rem .75rem; border:1px solid oklch(0.84 0.012 145); border-radius:9px; font-size:.85rem; font-family:inherit; background:var(--bg); color:var(--ink); }
 .tb-modal__search:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .16); }
 .tb-modal__filter { height:38px; padding:0 .6rem; border:1px solid oklch(0.84 0.012 145); border-radius:9px; font-size:.82rem; font-family:inherit; background:var(--bg); color:var(--ink); min-width:130px; }
+.tb-modal__check { display:inline-flex; align-items:center; gap:.4rem; height:38px; padding:0 .6rem; border:1px solid oklch(0.84 0.012 145); border-radius:9px; font-size:.82rem; background:var(--bg); color:var(--ink); cursor:pointer; white-space:nowrap; }
+.tb-modal__check input { accent-color:oklch(0.48 0.14 145); margin:0; }
 .tb-modal__filter:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .16); }
 .tb-dt { width:100%; border-collapse:collapse; font-size:.82rem; }
 .tb-dt thead th { background:var(--thead); padding:.55rem .7rem; text-align:left; font-size:.66rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); white-space:nowrap; position:sticky; top:0; }
@@ -528,6 +530,9 @@
                 <select class="tb-modal__filter" id="daftar-f-kec"><option value="">Semua Kecamatan</option></select>
                 <select class="tb-modal__filter" id="daftar-f-kel"><option value="">Semua Kelurahan</option></select>
                 <select class="tb-modal__filter" id="daftar-f-rt"><option value="">Semua RT</option></select>
+                <label class="tb-modal__check" id="daftar-murni-wrap" style="display:none;">
+                    <input type="checkbox" id="daftar-murni"> <span id="daftar-murni-label"></span>
+                </label>
                 <a class="tb-filter-btn" id="daftar-export" style="background:oklch(0.48 0.14 145);text-decoration:none;" href="#">
                     <span class="material-symbols-outlined">download</span>Export Excel
                 </a>
@@ -1003,8 +1008,22 @@ function initDaftarFilters(){
 }
 function applyDaftarFilter(){ renderDaftar(val('daftar-search')); }
 
+// Checkbox "murni": underweight tanpa stunting & wasting; wasting tanpa stunting.
+var MURNI_LABEL = { underweight:'Tanpa stunting & wasting', wasting:'Tanpa stunting' };
+function daftarMurni(){ return !!MURNI_LABEL[daftarKategori] && document.getElementById('daftar-murni').checked; }
+function filterMurni(rows){
+    if(!daftarMurni()) return rows;
+    return rows.filter(function(r){ return !r.stunting && (daftarKategori === 'wasting' || !r.wasting); });
+}
+function daftarExportHref(){
+    var params = getParams(), sep = params ? '&' : '?';
+    return API_DAFTAR_EXPORT+params+sep+'kategori='+daftarKategori+(daftarMurni() ? '&murni=1' : '');
+}
+
 function renderDaftar(filterText){
-    var rows = daftarRows;
+    var rows = filterMurni(daftarRows);
+    document.getElementById('daftar-count').textContent = rows.length+' anak';
+    document.getElementById('daftar-export').href = daftarExportHref();
     var fk = val('daftar-f-kec'), fl = val('daftar-f-kel'), fr = val('daftar-f-rt');
     if(fk) rows = rows.filter(function(r){ return r.kecamatan === fk; });
     if(fl) rows = rows.filter(function(r){ return r.kelurahan === fl; });
@@ -1130,13 +1149,16 @@ function openDaftar(kategori){
     document.getElementById('daftar-search').value = '';
     document.getElementById('daftar-table-wrap').innerHTML =
         '<div class="tb-loading"><span class="material-symbols-outlined tb-spin">sync</span></div>';
-    document.getElementById('daftar-export').href = API_DAFTAR_EXPORT+params+sep+'kategori='+kategori;
+    var murniWrap = document.getElementById('daftar-murni-wrap');
+    murniWrap.style.display = MURNI_LABEL[kategori] ? '' : 'none';
+    document.getElementById('daftar-murni').checked = false;
+    document.getElementById('daftar-murni-label').textContent = MURNI_LABEL[kategori] || '';
+    document.getElementById('daftar-export').href = daftarExportHref();
     document.getElementById('daftar-modal').classList.add('open');
 
     $.getJSON(API_DAFTAR+params+sep+'kategori='+kategori, function(d){
         daftarRows = d.rows || [];
         fillPjSaran(d.pj_saran);
-        document.getElementById('daftar-count').textContent = daftarRows.length+' anak';
         initDaftarFilters();
         renderDaftar('');
     }).fail(function(){
@@ -1160,6 +1182,7 @@ document.getElementById('daftar-search').addEventListener('input', function(){ r
 document.getElementById('daftar-f-kec').addEventListener('change', function(){ refreshDaftarKel(); applyDaftarFilter(); });
 document.getElementById('daftar-f-kel').addEventListener('change', function(){ refreshDaftarRt(); applyDaftarFilter(); });
 document.getElementById('daftar-f-rt').addEventListener('change', applyDaftarFilter);
+document.getElementById('daftar-murni').addEventListener('change', applyDaftarFilter);
 
 // ── PERINGKAT WILAYAH ─────────────────────────────────────────
 var INDIKATOR_LABEL = { stunting:'Stunting', wasting:'Wasting', gizi_buruk:'Gizi Buruk', underweight:'Underweight' };
