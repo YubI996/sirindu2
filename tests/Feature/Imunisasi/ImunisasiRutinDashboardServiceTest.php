@@ -222,19 +222,21 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         $this->assertFalse($this->service->isIblLengkap($anak));
     }
 
-    public function test_ibl_coverage_dihitung_dari_kohort_24_bulan_ke_atas(): void
+    public function test_cakupan_ibl_penyebutnya_kohort_baduta(): void
     {
-        $lengkap = $this->anak(['tgl_lahir' => now()->subMonths(30)->toDateString()]);
-        $this->beriSemuaVaksinKelompok($lengkap, 'IBL');
+        $lengkap = $this->anak(['tgl_lahir' => '2024-06-10']); // Baduta 2026
+        foreach (['PCV3', 'MR2', 'DPT-HB-HIB4'] as $kode) {
+            $this->beriVaksin($lengkap, $kode);
+        }
+        $this->anak(['tgl_lahir' => '2025-03-31']); // Baduta 2026, belum lengkap
+        $this->anak(['tgl_lahir' => '2025-09-15']); // SI 2026 — bukan penyebut IBL
+        $this->anak(['tgl_lahir' => '2023-01-01']); // di luar Baduta 2026
 
-        $this->anak(['tgl_lahir' => now()->subMonths(30)->toDateString()]); // belum lengkap
-        $this->anak(['tgl_lahir' => now()->subMonths(10)->toDateString()]); // belum masuk kohort (bayi)
+        $coverage = $this->service->getIblCoverage(KohortImunisasi::dari(2026));
 
-        $coverage = $this->service->getIblCoverage();
-
-        $this->assertSame(2, $coverage['total']);
+        $this->assertSame(2, $coverage['total'], 'Penyebut IBL = Baduta tahun terpilih, bukan "anak >= 24 bulan".');
         $this->assertSame(1, $coverage['ibl_lengkap']);
-        $this->assertEqualsWithDelta(50.0, $coverage['persen'], 0.01);
+        $this->assertSame(50.0, $coverage['persen']);
     }
 
     private function lengkapiIdl(Anak $anak): void

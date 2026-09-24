@@ -405,17 +405,21 @@ class ImunisasiStatusService
     }
 
     /**
-     * Aggregate IBL (booster lanjutan baduta) coverage stats, analog dengan
-     * getIdlCoverage() tapi kohortnya anak ≥24 bulan — usia kelompok IBL
-     * (12–23 bulan) sudah lewat sepenuhnya, jadi kelengkapannya bisa dinilai.
+     * Cakupan IBL (booster baduta) atas kohort Baduta tahun terpilih.
+     * Menggantikan penyebut lama "anak ≥ 24 bulan", yang populasinya
+     * mengambang ikut hari ini sehingga angkanya tak bisa dikunci sebagai
+     * capaian tahun tertentu.
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
      * @return array{total: int, ibl_lengkap: int, persen: float}
      */
-    public function getIblCoverage(array $filters = []): array
+    public function getIblCoverage(KohortImunisasi $kohort, array $filters = []): array
     {
-        $query = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 24');
+        $query = $this->scopeKohort(
+            $this->applyWilayahFilters(Anak::query(), $filters),
+            $kohort,
+            'BADUTA'
+        );
 
         $lengkap = 0;
         $total = $this->eachAnak($query, function (Anak $anak) use (&$lengkap) {
