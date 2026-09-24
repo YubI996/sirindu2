@@ -689,15 +689,17 @@ class ImunisasiStatusService
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int}  $filters
      * @return list<array{nama: string, sasaran: int, capaian_idl: int, persen: float, do_rate: float, status: string}>
      */
-    public function getRincianPuskesmas(array $filters = []): array
+    public function getRincianPuskesmas(KohortImunisasi $kohort, array $filters = []): array
     {
         $result = [];
         foreach (\App\Models\Puskesmas::orderBy('name')->get() as $pkm) {
             $kelIds = \App\Support\WilkerPuskesmas::catchmentKelurahanIds($pkm->name);
 
-            $query = $this->applyWilayahFilters(Anak::query(), $filters)
-                ->whereIn('id_kel', $kelIds ?: [0])
-                ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
+            $query = $this->scopeKohort(
+                $this->applyWilayahFilters(Anak::query(), $filters)->whereIn('id_kel', $kelIds ?: [0]),
+                $kohort,
+                'SI'
+            );
 
             $lengkap = 0;
             $dpt1 = 0;

@@ -176,24 +176,30 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         $this->assertTrue(collect($barisBesok['antigen'])->every(fn ($a) => $a['status'] === 'belum'));
     }
 
-    public function test_rincian_puskesmas_mengelompokkan_anak_lewat_catchment_kelurahan(): void
+    public function test_rincian_puskesmas_sasarannya_kohort_si(): void
     {
+        // Data wilayah (kecamatan/kelurahan/puskesmas) bukan bagian setUp() —
+        // di-seed di sini karena hanya test ini yang butuh catchment nyata.
+        $this->seed(\Database\Seeders\KecamatanTableSeeder::class);
+        $this->seed(\Database\Seeders\KelurahanTableSeeder::class);
+        $this->seed(\Database\Seeders\PuskesmasTableSeeder::class);
         \App\Support\WilkerPuskesmas::flushCache(); // hindari cache statis dari test lain di proses PHPUnit yang sama.
-        \App\Models\Puskesmas::factory()->create(['name' => 'Bontang Utara 1']);
-        $kel = \App\Models\Kelurahan::factory()->create(['name' => 'API-API']); // nama kanonik WilkerPuskesmas
 
-        $lengkap = $this->anak(['id_kel' => $kel->id, 'tgl_lahir' => now()->subMonths(24)->toDateString()]);
-        foreach (\App\Models\JenisVaksin::where('id_kelompok_vaksin', \App\Models\KelompokVaksin::where('kode', 'IDL')->value('id'))->pluck('kode') as $kode) {
-            $this->beriVaksin($lengkap, $kode);
-        }
-        $this->anak(['id_kel' => $kel->id, 'tgl_lahir' => now()->subMonths(24)->toDateString()]); // tidak lengkap
+        $kelIds = \App\Support\WilkerPuskesmas::catchmentKelurahanIds(\App\Models\Puskesmas::orderBy('name')->first()->name);
+        $idKel  = $kelIds[0];
 
-        $rincian = collect($this->service->getRincianPuskesmas())->keyBy('nama');
+        $lengkap = $this->anak(['tgl_lahir' => '2025-05-10', 'id_kel' => $idKel]);
+        $this->lengkapiIdl($lengkap);
+        $this->anak(['tgl_lahir' => '2025-06-10', 'id_kel' => $idKel]); // SI, belum lengkap
+        $this->anak(['tgl_lahir' => '2026-03-01', 'id_kel' => $idKel]); // BBL — bukan sasaran
+        $this->anak(['tgl_lahir' => '2024-06-10', 'id_kel' => $idKel]); // Baduta — bukan sasaran
 
-        $this->assertArrayHasKey('Bontang Utara 1', $rincian);
-        $this->assertSame(2, $rincian['Bontang Utara 1']['sasaran']);
-        $this->assertSame(1, $rincian['Bontang Utara 1']['capaian_idl']);
-        $this->assertEqualsWithDelta(50.0, $rincian['Bontang Utara 1']['persen'], 0.01);
+        $rincian = collect($this->service->getRincianPuskesmas(KohortImunisasi::dari(2026)))
+            ->firstWhere('nama', \App\Models\Puskesmas::orderBy('name')->first()->name);
+
+        $this->assertSame(2, $rincian['sasaran'], 'Sasaran puskesmas = kohort SI, bukan "anak >= 12 bulan".');
+        $this->assertSame(1, $rincian['capaian_idl']);
+        $this->assertSame(50.0, $rincian['persen']);
     }
 
     private function beriSemuaVaksinKelompok(\App\Models\Anak $anak, string $kodeKelompok): void
