@@ -4,6 +4,7 @@ namespace Tests\Feature\Imunisasi;
 
 use App\Models\Anak;
 use App\Services\ImunisasiStatusService;
+use App\Support\KohortImunisasi;
 use Database\Seeders\JenisVaksinSeeder;
 use Database\Seeders\KelompokVaksinSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,21 +40,48 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         ], $overrides));
     }
 
-    public function test_sasaran_menghitung_bayi_0_11_bulan_dan_baduta_terpisah(): void
+    public function test_sasaran_memilah_bbl_si_dan_baduta_menurut_kohort(): void
     {
-        $this->anak(['tgl_lahir' => now()->subMonths(5)->toDateString()]);   // bayi, balita
-        $this->anak(['tgl_lahir' => now()->subMonths(9)->toDateString()]);   // bayi, balita
-        $this->anak(['tgl_lahir' => now()->subMonths(18)->toDateString()]);  // baduta (IBL 12-23 bln), balita
-        $this->anak(['tgl_lahir' => now()->subMonths(30)->toDateString()]);  // balita, bukan bayi/baduta
-        $this->anak(['tgl_lahir' => now()->subMonths(70)->toDateString()]);  // di luar balita (>59 bln)
+        $this->anak(['tgl_lahir' => '2025-04-01']); // SI  — hari pertama kohort 2026
+        $this->anak(['tgl_lahir' => '2025-09-15']); // SI
+        $this->anak(['tgl_lahir' => '2026-01-31']); // SI  — hari terakhir SI
+        $this->anak(['tgl_lahir' => '2026-02-01']); // BBL — hari pertama BBL
+        $this->anak(['tgl_lahir' => '2026-03-31']); // BBL — hari terakhir kohort
+        $this->anak(['tgl_lahir' => '2024-06-10']); // Baduta (kohort 2025)
+        $this->anak(['tgl_lahir' => '2025-03-31']); // Baduta — hari terakhir kohort 2025
+        $this->anak(['tgl_lahir' => '2024-03-31']); // di luar semua kelompok
+        $this->anak(['tgl_lahir' => '2026-04-01']); // di luar — sudah kohort 2027
 
-        $sasaran = $this->service->getRingkasanSasaran();
+        $sasaran = $this->service->getRingkasanSasaran(KohortImunisasi::dari(2026));
 
-        $this->assertSame(2, $sasaran['bayi']);
-        $this->assertSame(1, $sasaran['baduta']);
-        $this->assertSame(12, $sasaran['baduta_min'], 'Rentang usia baduta harus ikut dikembalikan, dipakai label kartu di view.');
-        $this->assertSame(23, $sasaran['baduta_max']);
-        $this->assertSame(4, $sasaran['balita'], 'Balita = 0-59 bulan, mencakup bayi & baduta di dalamnya.');
+        $this->assertSame(2, $sasaran['bbl']['jumlah']);
+        $this->assertSame(3, $sasaran['si']['jumlah']);
+        $this->assertSame(2, $sasaran['baduta']['jumlah']);
+        $this->assertSame(2026, $sasaran['tahun']);
+        $this->assertSame(['2026-02-01', '2026-03-31'], $sasaran['bbl']['rentang']);
+    }
+
+    public function test_tanggal_lahir_masa_depan_tidak_masuk_kohort_mana_pun(): void
+    {
+        // Salah ketik petugas. Tidak boleh masuk hitungan, tidak boleh error.
+        $this->anak(['tgl_lahir' => '2030-01-01']);
+        $this->anak(['tgl_lahir' => '2025-09-15']); // SI, pembanding
+
+        $sasaran = $this->service->getRingkasanSasaran(KohortImunisasi::dari(2026));
+
+        $this->assertSame(0, $sasaran['bbl']['jumlah']);
+        $this->assertSame(1, $sasaran['si']['jumlah']);
+        $this->assertSame(0, $sasaran['baduta']['jumlah']);
+    }
+
+    public function test_sasaran_menghormati_filter_wilayah(): void
+    {
+        $this->anak(['tgl_lahir' => '2025-09-15', 'id_kel' => 1]);
+        $this->anak(['tgl_lahir' => '2025-09-15', 'id_kel' => 2]);
+
+        $sasaran = $this->service->getRingkasanSasaran(KohortImunisasi::dari(2026), ['id_kelurahan' => 1]);
+
+        $this->assertSame(1, $sasaran['si']['jumlah']);
     }
 
     private function beriVaksin(Anak $anak, string $kode, string $status = 'sudah', ?string $tanggal = null): void

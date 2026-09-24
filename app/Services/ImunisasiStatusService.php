@@ -7,6 +7,7 @@ use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Models\KelompokVaksin;
 use App\Support\FilterWilayahAnak;
+use App\Support\KohortImunisasi;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -419,38 +420,50 @@ class ImunisasiStatusService
     }
 
     /**
-     * Populasi sasaran saat ini: bayi 0–11 bulan (rentang kelompok IDL),
-     * baduta pada rentang usia kelompok IBL (fallback 12–23 bulan bila
-     * KelompokVaksinSeeder belum dijalankan), dan balita 0–59 bulan
-     * (mencakup bayi & baduta di dalamnya — bukan penjumlahan terpisah).
+     * Batasi query anak ke rentang tanggal lahir satu kelompok kohort.
+     * Ini pengganti seluruh `whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir,
+     * CURDATE()) ...')` di jalur statistik: penyebutnya jadi tetap, tidak
+     * bergeser tiap hari, sehingga angkanya bisa dikunci sebagai capaian
+     * tahun tertentu.
+     *
+     * @template TQuery of \Illuminate\Database\Eloquent\Builder
+     * @param  TQuery  $query
+     * @return TQuery
+     */
+    private function scopeKohort($query, KohortImunisasi $kohort, string $kelompok)
+    {
+        return $query->whereBetween('tgl_lahir', $kohort->rentang($kelompok));
+    }
+
+    /**
+     * Populasi sasaran satu tahun kohort, dipilah BBL / SI / Baduta.
+     * BBL & SI adalah partisi bersih (tiap anak tepat satu kelompok);
+     * Baduta diambil dari kohort tahun sebelumnya secara utuh.
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
-     * @return array{bayi: int, baduta: int, baduta_min: int, baduta_max: int, balita: int}
+     * @return array{tahun: int, label: string,
+     *               bbl: array{jumlah: int, rentang: array{0: string, 1: string}},
+     *               si: array{jumlah: int, rentang: array{0: string, 1: string}},
+     *               baduta: array{jumlah: int, rentang: array{0: string, 1: string}}}
      */
-    public function getRingkasanSasaran(array $filters = []): array
+    public function getRingkasanSasaran(KohortImunisasi $kohort, array $filters = []): array
     {
-        $ibl = KelompokVaksin::where('kode', 'IBL')->first();
-        $badutaMin = $ibl->usia_pemberian_min ?? 12;
-        $badutaMax = $ibl->usia_pemberian_max ?? 23;
+        $kelompok = function (string $nama) use ($kohort, $filters): array {
+            $jumlah = $this->scopeKohort(
+                $this->applyWilayahFilters(Anak::query(), $filters),
+                $kohort,
+                $nama
+            )->count();
 
-        $bayi = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) BETWEEN 0 AND 11')
-            ->count();
-
-        $baduta = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) BETWEEN ? AND ?', [$badutaMin, $badutaMax])
-            ->count();
-
-        $balita = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) BETWEEN 0 AND 59')
-            ->count();
+            return ['jumlah' => $jumlah, 'rentang' => $kohort->rentang($nama)];
+        };
 
         return [
-            'bayi'       => $bayi,
-            'baduta'     => $baduta,
-            'baduta_min' => $badutaMin,
-            'baduta_max' => $badutaMax,
-            'balita'     => $balita,
+            'tahun'  => $kohort->tahun(),
+            'label'  => $kohort->label(),
+            'bbl'    => $kelompok('BBL'),
+            'si'     => $kelompok('SI'),
+            'baduta' => $kelompok('BADUTA'),
         ];
     }
 
