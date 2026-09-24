@@ -605,31 +605,39 @@ ANAK
             'id_posyandu'  => $request->integer('id_posyandu') ?: null,
         ]);
 
-        $service  = app(\App\Services\ImunisasiStatusService::class);
-        // Satu pass populasi: cakupan IDL + hitung "butuh kejar" akurat (lintas semua anak).
-        $coverage = $service->getIdlCoverage($filters, withKejar: true);
-        $butuhKejar = $coverage['butuh_kejar'] ?? 0;
+        // Tahun sasaran: kohort 1 Apr X-1 s.d. 31 Mar X. Input ngawur jatuh ke
+        // default, bukan 500 — lihat KohortImunisasi::tahunTervalidasi().
+        $tahun        = \App\Support\KohortImunisasi::tahunTervalidasi($request->query('tahun'));
+        $pilihanTahun = \App\Support\KohortImunisasi::pilihanTahun();
+        $kohort       = \App\Support\KohortImunisasi::dari($tahun);
 
-        // Agregat dashboard rutin (redesign) — lihat ImunisasiStatusService untuk metodologi tiap angka.
-        $sasaran          = $service->getRingkasanSasaran($filters);
-        $iblCoverage      = $service->getIblCoverage($filters);
-        $funnel           = $service->getFunnelDosis($filters);
-        $cakupanAntigen   = $service->getCakupanAntigen($filters);
-        $kohortWilayah    = $service->getKohortWilayah($filters);
-        $rincianPuskesmas = $service->getRincianPuskesmas($filters);
-        $sasaranHarian    = $service->getSasaranHarianBesok($filters);
+        $service = app(\App\Services\ImunisasiStatusService::class);
+
+        // Statistik & SPM — mengikuti kohort tahun terpilih.
+        $coverage         = $service->getIdlCoverage($kohort, $filters);
+        $sasaran          = $service->getRingkasanSasaran($kohort, $filters);
+        $iblCoverage      = $service->getIblCoverage($kohort, $filters);
+        $funnel           = $service->getFunnelDosis($kohort, $filters);
+        $cakupanAntigen   = $service->getCakupanAntigen($kohort, $filters);
+        $kohortWilayah    = $service->getKohortWilayah($kohort, $filters);
+        $rincianPuskesmas = $service->getRincianPuskesmas($kohort, $filters);
+
+        // Operasional — tanggal berjalan, sengaja TIDAK mengikuti dropdown tahun.
+        $butuhKejar    = $service->getButuhKejar($filters);
+        $sasaranHarian = $service->getSasaranHarianBesok($filters);
 
         $kecamatanList = \App\Models\Kecamatan::orderBy('name')->get();
         $kelurahanList = \App\Models\Kelurahan::orderBy('name')->get();
         $posyanduList  = \App\Models\Posyandu::orderBy('name')->get();
         $puskesmasList = \App\Models\Puskesmas::orderBy('name')->get();
 
-        // Korelasi cakupan IDL vs prevalensi stunting per kelurahan (Paket E).
+        // Korelasi memakai per_kelurahan dari cakupan IDL, jadi sisi imunisasinya
+        // ikut kohort SI. Itu dikehendaki: korelasi termasuk statistik.
         $korelasiData = $this->korelasiStuntingVaksin($filters, $coverage);
         $alasanTidakImunisasi = $service->getAlasanTidakImunisasi($filters);
 
         return view('admin.imunisasi.dashboard', compact(
-            'coverage', 'butuhKejar', 'filters',
+            'coverage', 'butuhKejar', 'filters', 'kohort', 'tahun', 'pilihanTahun',
             'kecamatanList', 'kelurahanList', 'posyanduList', 'puskesmasList', 'korelasiData',
             'alasanTidakImunisasi',
             'sasaran', 'iblCoverage', 'funnel', 'cakupanAntigen', 'kohortWilayah', 'rincianPuskesmas', 'sasaranHarian'

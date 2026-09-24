@@ -163,6 +163,14 @@
 {{-- Filter wilayah --}}
 <form method="GET" action="{{ route('admin.imunisasiDashboard') }}" class="im-filter">
     <div>
+        <label for="filterTahun">Tahun sasaran</label>
+        <select name="tahun" id="filterTahun">
+            @foreach($pilihanTahun as $t)
+                <option value="{{ $t }}" {{ $tahun == $t ? 'selected' : '' }}>{{ $t }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div>
         <label for="filterKec">Kecamatan</label>
         <select name="id_kecamatan" id="filterKec">
             <option value="">Semua kecamatan</option>
@@ -209,38 +217,36 @@
     <button type="button" class="im-tab im-tab--off" disabled title="Belum tersedia">BIAS <span class="im-soon">Segera hadir</span></button>
 </div>
 
-{{-- Data sasaran: murni populasi per kelompok sasaran program (bukan capaian) --}}
-<div class="im-h"><h2>Data sasaran</h2><small>Jumlah anak/wanita terdaftar per kelompok sasaran program imunisasi &middot; bukan ukuran capaian</small></div>
-<div class="im-cards im-cards--5">
+{{-- Data sasaran: populasi kohort tahun terpilih, bukan capaian --}}
+<div class="im-h">
+    <h2>Data sasaran</h2>
+    <small>{{ $sasaran['label'] }} &middot; bukan ukuran capaian</small>
+</div>
+<div class="im-cards">
     <div class="im-card">
-        <div class="im-card__lbl">Bayi 0&ndash;11 bulan</div>
-        <div class="im-card__val im-num">{{ number_format($sasaran['bayi']) }}</div>
-        <div class="im-card__sub">sasaran IDL</div>
-    </div>
-    <div class="im-card">
-        <div class="im-card__lbl">Baduta {{ $sasaran['baduta_min'] }}&ndash;{{ $sasaran['baduta_max'] }} bulan</div>
-        <div class="im-card__val im-num">{{ number_format($sasaran['baduta']) }}</div>
-        <div class="im-card__sub">sasaran IBL</div>
+        <div class="im-card__lbl">BBL &middot; bayi baru lahir</div>
+        <div class="im-card__val im-num">{{ number_format($sasaran['bbl']['jumlah']) }}</div>
+        <div class="im-card__sub">umur 0 &ndash; 1 bln 29 hr &middot; lahir {{ $sasaran['bbl']['rentang'][0] }} s.d. {{ $sasaran['bbl']['rentang'][1] }}</div>
     </div>
     <div class="im-card">
-        <div class="im-card__lbl">Balita 0&ndash;59 bulan</div>
-        <div class="im-card__val im-num">{{ number_format($sasaran['balita']) }}</div>
-        <div class="im-card__sub">mencakup bayi &amp; baduta di atas</div>
+        <div class="im-card__lbl">SI &middot; Surviving Infant</div>
+        <div class="im-card__val im-num">{{ number_format($sasaran['si']['jumlah']) }}</div>
+        <div class="im-card__sub">umur 2 bln &ndash; blm genap 12 bln &middot; lahir {{ $sasaran['si']['rentang'][0] }} s.d. {{ $sasaran['si']['rentang'][1] }}</div>
     </div>
-    <div class="im-card im-card--na">
-        <div class="im-card__lbl">WUS hamil</div>
-        <div class="im-card__val im-num" style="color:var(--faint);">&mdash;</div>
-        <div class="im-card__sub">Data belum tersedia &mdash; sistem ini belum mencatat data ibu/wanita usia subur</div>
-    </div>
-    <div class="im-card im-card--na">
-        <div class="im-card__lbl">WUS tidak hamil</div>
-        <div class="im-card__val im-num" style="color:var(--faint);">&mdash;</div>
-        <div class="im-card__sub">Data belum tersedia &mdash; sistem ini belum mencatat data ibu/wanita usia subur</div>
+    <div class="im-card">
+        <div class="im-card__lbl">Baduta &middot; bawah dua tahun</div>
+        <div class="im-card__val im-num">{{ number_format($sasaran['baduta']['jumlah']) }}</div>
+        <div class="im-card__sub">kohort {{ $sasaran['tahun'] - 1 }} &middot; lahir {{ $sasaran['baduta']['rentang'][0] }} s.d. {{ $sasaran['baduta']['rentang'][1] }}</div>
     </div>
 </div>
+<p class="im-note">
+    BBL dan SI tidak tumpang tindih &mdash; tiap anak masuk tepat satu kelompok, jadi BBL + SI =
+    seluruh kelahiran periode. Anak di luar ketiga kohort ini tidak muncul di bagian statistik mana
+    pun, sehingga jumlah di halaman ini tidak sama dengan jumlah anak terdaftar.
+</p>
 
 {{-- Data capaian: performa per kelompok imunisasi wajib, terpisah jelas dari data sasaran di atas --}}
-<div class="im-h"><h2>Data capaian</h2><small>% kelengkapan terhadap target 95% per kelompok imunisasi wajib &middot; kohort anak yang usianya sudah lewat jendela kelompok tsb</small></div>
+<div class="im-h"><h2>Data capaian</h2><small>% kelengkapan terhadap target 95% &middot; penyebut = kohort {{ $tahun }} (IDL atas SI, IBL atas Baduta)</small></div>
 <div class="im-cards im-cards--3">
     <div class="im-card">
         <div class="im-card__lbl" style="display:flex; align-items:baseline; justify-content:space-between;">
@@ -254,7 +260,7 @@
     </div>
     <div class="im-card">
         <div class="im-card__lbl" style="display:flex; align-items:baseline; justify-content:space-between;">
-            <span>IBL &middot; Baduta {{ $sasaran['baduta_min'] }}&ndash;{{ $sasaran['baduta_max'] }} bln</span>
+            <span>IBL &middot; Baduta kohort {{ $tahun - 1 }}</span>
             <span class="im-badge {{ $iblCoverage['persen'] >= 95 ? 'im-badge--ok' : 'im-badge--warn' }}">{{ $iblCoverage['persen'] >= 95 ? 'On track' : 'Tertinggal' }}</span>
         </div>
         <div class="im-card__val im-num {{ $bucketOf($iblCoverage['persen']) }}">{{ $iblCoverage['persen'] }}%</div>
@@ -268,7 +274,7 @@
             <span class="im-badge {{ $butuhKejar > 0 ? 'im-badge--warn' : 'im-badge--ok' }}">{{ $butuhKejar > 0 ? 'Perlu tindak lanjut' : 'Tidak ada' }}</span>
         </div>
         <div class="im-card__val im-num {{ $butuhKejar > 0 ? 'warn' : 'ok' }}">{{ number_format($butuhKejar) }}</div>
-        <div class="im-card__sub">anak sudah lewat jadwal, belum menerima semua dosis wajibnya</div>
+        <div class="im-card__sub">menurut tanggal hari ini &middot; <strong>tidak mengikuti tahun sasaran</strong></div>
         <div class="im-card__foot">
             <a href="{{ route('admin.earlyWarning') }}" class="im-card__link">Lihat daftar anaknya di Proyeksi &rarr;</a>
         </div>
@@ -289,18 +295,33 @@
             {{ $kec['nama'] }}
             <span class="im-kec__meta">{{ $kec['jumlah_rt'] }} RT</span>
             <span class="im-kec__stats im-num">
-                <span>{{ number_format($kec['bayi']) }} bayi</span>
+                <span>{{ number_format($kec['bbl']) }} BBL</span>
+                <span>{{ number_format($kec['si']) }} SI</span>
                 <span>{{ number_format($kec['baduta']) }} baduta</span>
                 <strong>{{ number_format($kec['total']) }} total</strong>
                 <span style="color:var(--faint);">{{ $kec['persen_kota'] }}% kota</span>
             </span>
         </summary>
         <table>
+            <thead>
+                <tr>
+                    <th>Kelurahan</th>
+                    <th class="r" style="width:70px;">RT</th>
+                    <th class="r" style="width:80px;">BBL</th>
+                    <th class="r" style="width:80px;">SI</th>
+                    <th class="r" style="width:90px;">Baduta</th>
+                    <th class="r" style="width:90px;">Total</th>
+                    <th class="bar">Distribusi</th>
+                    <th class="r" style="width:60px;">% Kota</th>
+                </tr>
+            </thead>
+            <tbody>
             @foreach($kec['kelurahan'] as $kel)
             <tr>
                 <td class="im-kel-nama">{{ $kel['nama'] }}</td>
                 <td class="r" style="width:70px;">{{ $kel['jumlah_rt'] }} RT</td>
-                <td class="r" style="width:90px;">{{ number_format($kel['bayi']) }} bayi</td>
+                <td class="r" style="width:80px;">{{ number_format($kel['bbl']) }} BBL</td>
+                <td class="r" style="width:80px;">{{ number_format($kel['si']) }} SI</td>
                 <td class="r" style="width:100px;">{{ number_format($kel['baduta']) }} baduta</td>
                 <td class="r" style="width:90px;"><strong>{{ number_format($kel['total']) }}</strong></td>
                 <td class="bar">
@@ -309,6 +330,7 @@
                 <td class="r" style="width:60px; color:var(--faint);">{{ $kel['persen_kota'] }}%</td>
             </tr>
             @endforeach
+            </tbody>
         </table>
     </details>
     @endforeach
@@ -334,7 +356,7 @@
 </div>
 
 {{-- Rincian per puskesmas --}}
-<div class="im-h"><h2>Rincian per puskesmas</h2><small>Kohort &ge;12 bulan &middot; wilayah kerja via catchment kelurahan</small></div>
+<div class="im-h"><h2>Rincian per puskesmas</h2><small>Sasaran = kohort SI {{ $tahun }} &middot; wilayah kerja via catchment kelurahan</small></div>
 <div class="im-panel im-panel--flush" style="margin-bottom:1.5rem;">
     <div class="im-scroll" style="overflow-x:auto;">
         <table class="im-table">
@@ -370,19 +392,19 @@
 </div>
 
 {{-- Cakupan per antigen: section wajib ke-3, urut dari yang paling tertinggal --}}
-<div class="im-h"><h2>Cakupan per antigen</h2><small>% dari anak yang usianya sudah lewat jendela pemberian antigen tsb (bukan seluruh populasi) &middot; diurutkan dari yang paling tertinggal &middot; garis putus-putus = target 95%</small></div>
+<div class="im-h"><h2>Cakupan per antigen</h2><small>% terhadap kelompok kohort sesuai jendela antigen &middot; diurutkan dari yang paling tertinggal &middot; garis putus-putus = target 95%</small></div>
 <div class="im-panel" style="margin-bottom:1.5rem;">
     @php $antigenUrut = collect($cakupanAntigen)->sortBy('persen')->values(); @endphp
     @if($antigenUrut->count() > 0)
     <div class="im-antigen">
         @foreach($antigenUrut as $ag)
-        <div class="im-antigen__row" title="{{ $ag['jumlah_sudah'] }} dari {{ $ag['jumlah_eligible'] }} anak yang sudah lewat jendela pemberian {{ $ag['nama'] }}">
+        <div class="im-antigen__row" title="{{ $ag['jumlah_sudah'] }} dari {{ $ag['jumlah_penyebut'] }} anak kelompok {{ $ag['kelompok'] }} kohort {{ $tahun }}">
             <span class="im-antigen__lbl">{{ $ag['nama'] }}</span>
             <div class="im-antigen__track">
                 <div class="im-bar__fill {{ $bucketOf($ag['persen']) }}" style="height:100%; width:{{ min(100,$ag['persen']) }}%"></div>
                 <div class="im-antigen__target"></div>
             </div>
-            <span class="im-antigen__val im-num">{{ $ag['persen'] }}% <small>&middot; {{ number_format($ag['jumlah_sudah']) }}/{{ number_format($ag['jumlah_eligible']) }}</small></span>
+            <span class="im-antigen__val im-num">{{ $ag['persen'] }}% <small>&middot; {{ number_format($ag['jumlah_sudah']) }}/{{ number_format($ag['jumlah_penyebut']) }}</small></span>
         </div>
         @endforeach
     </div>
@@ -397,7 +419,7 @@
 </div>
 
 {{-- Funnel dosis: pelengkap cakupan per antigen, fokus ke rangkaian dosis kunci IDL --}}
-<div class="im-h"><h2>Funnel dosis</h2><small>Kohort &ge;12 bulan &middot; jumlah anak yang sudah menerima tiap dosis, berurutan sesuai jadwal</small></div>
+<div class="im-h"><h2>Funnel dosis</h2><small>Kohort SI {{ $tahun }} &middot; jumlah anak yang sudah menerima tiap dosis, berurutan sesuai jadwal</small></div>
 <div class="im-panel" style="margin-bottom:1.5rem;">
     @if(count($funnel) > 0)
     @php $funnelBase = max(1, $funnel[0]['jumlah']); @endphp
@@ -419,7 +441,7 @@
 <div class="im-h" style="justify-content:space-between; display:flex; width:100%;">
     <div style="display:flex; align-items:baseline; gap:.6rem;">
         <h2>Sasaran hari ini &amp; besok</h2>
-        <small>Anak yang usianya pas jatuh tempo suatu antigen hari itu &middot; status = sudah/belum menerima dosis tsb</small>
+        <small>jadwal menurut tanggal hari ini &middot; <strong>tidak mengikuti tahun sasaran</strong></small>
     </div>
 </div>
 <div class="im-panel im-panel--flush" style="margin-bottom:1.5rem;">
