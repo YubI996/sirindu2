@@ -323,7 +323,7 @@ git commit -m "feat(imunisasi): value object KohortImunisasi — periode 1 Apr�
 
 - [ ] **Step 1: Write the failing test**
 
-Ganti `test_sasaran_menghitung_bayi_0_11_bulan_dan_baduta_terpisah()` yang lama dengan:
+Ganti method `test_sasaran_menghitung_bayi_0_11_bulan_dan_baduta_terpisah()` yang lama dengan:
 
 ```php
     public function test_sasaran_memilah_bbl_si_dan_baduta_menurut_kohort(): void
@@ -721,7 +721,7 @@ git commit -m "feat(imunisasi): cakupan IBL atas kohort Baduta"
 
 - [ ] **Step 1: Write the failing test**
 
-Ganti test funnel yang lama (baris ~82) dengan:
+Ganti method tes funnel yang lama (cari berdasarkan NAMA METHOD, bukan nomor baris — berkas ini sudah disunting Task 2-4) dengan:
 
 ```php
     public function test_funnel_dosis_dihitung_atas_kohort_si(): void
@@ -1137,7 +1137,7 @@ git commit -m "feat(imunisasi): kohort per wilayah dipilah BBL/SI/Baduta"
 
 - [ ] **Step 1: Write the failing test**
 
-Sesuaikan test rincian puskesmas yang lama (baris ~162) menjadi:
+Sesuaikan method tes rincian puskesmas yang lama (cari berdasarkan NAMA METHOD, bukan nomor baris — berkas ini sudah disunting Task 2-6) menjadi:
 
 ```php
     public function test_rincian_puskesmas_sasarannya_kohort_si(): void
@@ -1237,7 +1237,9 @@ class ImunisasiDashboardTahunTest extends TestCase
 
     private function admin(): User
     {
-        return User::factory()->create(['role' => 'admin']);
+        // `type` (0=super-admin, 1=admin) adalah yang dibaca middleware IsAdmin.
+        // Kolom `role` dipakai untuk sub-peran faskes, bukan untuk ini.
+        return User::factory()->create(['type' => 1]);
     }
 
     public function test_tahun_default_adalah_tahun_berjalan(): void
