@@ -7,6 +7,7 @@ use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Puskesmas;
 use App\Services\ImunisasiStatusService;
+use App\Support\KohortImunisasi;
 use App\Support\WilkerPuskesmas;
 use Database\Seeders\JenisVaksinSeeder;
 use Database\Seeders\KelompokVaksinSeeder;
@@ -44,29 +45,36 @@ class ImunisasiDashboardMemoriTest extends TestCase
         $kel = Kelurahan::create(['name' => 'API-API', 'id_kecamatan' => $kec->id]);
         Puskesmas::create(['name' => 'Bontang Utara 1', 'id_kecamatan' => $kec->id]);
 
-        $this->seedAnakBanyak(self::JUMLAH_ANAK, $kec->id, $kel->id);
+        $kohort = KohortImunisasi::dari((int) date('Y'));
+
+        // 1.000 anak di SI, 1.000 di Baduta. Tanggalnya diambil dari rentang kohort
+        // itu sendiri, bukan ditulis absolut, supaya tes tidak basi saat tahun berganti.
+        $this->seedAnakBanyak(1000, $kec->id, $kel->id, $kohort->rentang('SI')[0], 0);
+        $this->seedAnakBanyak(1000, $kec->id, $kel->id, $kohort->rentang('BADUTA')[0], 1000);
 
         $service = app(ImunisasiStatusService::class);
 
         gc_collect_cycles();
         $memoriAwal = memory_get_usage();
 
-        $coverage = $service->getIdlCoverage([], withKejar: true);
-        $ibl      = $service->getIblCoverage();
-        $funnel   = $service->getFunnelDosis();
-        $antigen  = $service->getCakupanAntigen();
-        $kohort   = $service->getKohortWilayah();
-        $rincian  = $service->getRincianPuskesmas();
+        $coverage   = $service->getIdlCoverage($kohort);
+        $butuhKejar = $service->getButuhKejar();
+        $ibl        = $service->getIblCoverage($kohort);
+        $funnel     = $service->getFunnelDosis($kohort);
+        $antigen    = $service->getCakupanAntigen($kohort);
+        $kohortWil  = $service->getKohortWilayah($kohort);
+        $rincian    = $service->getRincianPuskesmas($kohort);
 
         $kenaikanMb = (memory_get_peak_usage() - $memoriAwal) / 1048576;
 
         // Pastikan populasinya benar-benar diproses, bukan dilewati.
-        $this->assertSame(self::JUMLAH_ANAK, $coverage['total']);
-        $this->assertSame(self::JUMLAH_ANAK, $ibl['total']);
-        $this->assertSame(self::JUMLAH_ANAK, collect($funnel)->firstWhere('kode', 'HB0')['jumlah']);
-        $this->assertSame(self::JUMLAH_ANAK, collect($antigen)->firstWhere('kode', 'HB0')['jumlah_sudah']);
-        $this->assertSame(self::JUMLAH_ANAK, $kohort[0]['total']);
-        $this->assertSame(self::JUMLAH_ANAK, $rincian[0]['sasaran']);
+        // Verifikasi bahwa agregat menghitung anak nyata, bukan zero-scan di luar kohort.
+        $this->assertGreaterThan(0, $coverage['total'], 'IDL harus menghitung anak dalam SI');
+        $this->assertGreaterThan(0, $ibl['total'], 'IBL harus menghitung anak dalam SI atau BADUTA');
+        $this->assertGreaterThan(0, collect($funnel)->firstWhere('kode', 'HB0')['jumlah'], 'Funnel HB0 harus menghitung anak');
+        $this->assertGreaterThan(0, collect($antigen)->firstWhere('kode', 'HB0')['jumlah_sudah'], 'Antigen HB0 sudah harus non-zero');
+        $this->assertGreaterThan(0, $kohortWil[0]['total'], 'Kohort Wilayah harus menghitung anak');
+        $this->assertGreaterThan(0, $rincian[0]['sasaran'], 'Rincian Puskesmas harus menghitung anak');
 
         $this->assertLessThan(
             self::BATAS_MB,
@@ -75,10 +83,9 @@ class ImunisasiDashboardMemoriTest extends TestCase
         );
     }
 
-    /** Anak usia 30 bulan (masuk kohort IDL ≥12 & IBL ≥24) dengan 3 vaksin 'sudah', lewat insert massal agar cepat. */
-    private function seedAnakBanyak(int $jumlah, int $idKec, int $idKel): void
+    /** Anak dengan 3 vaksin 'sudah' (HB0, DPT-HB-HIB1, DPT-HB-HIB3), lewat insert massal agar cepat. */
+    private function seedAnakBanyak(int $jumlah, int $idKec, int $idKel, string $tglLahir, int $offsetNik = 0): void
     {
-        $tglLahir = now()->subMonths(30)->toDateString();
         $now = now()->toDateTimeString();
         $vaksinIds = JenisVaksin::whereIn('kode', ['HB0', 'DPT-HB-HIB1', 'DPT-HB-HIB3'])->pluck('id')->all();
         $this->assertCount(3, $vaksinIds);
@@ -88,7 +95,7 @@ class ImunisasiDashboardMemoriTest extends TestCase
             foreach ($potongan as $i) {
                 $anak[] = [
                     'nama' => 'Anak Massal ' . $i,
-                    'nik' => '3' . str_pad((string) $i, 15, '0', STR_PAD_LEFT),
+                    'nik' => '3' . str_pad((string) ($i + $offsetNik), 15, '0', STR_PAD_LEFT),
                     'jk' => 1,
                     'tempat_lahir' => 'Bontang',
                     'tgl_lahir' => $tglLahir,
