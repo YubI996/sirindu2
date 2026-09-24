@@ -237,6 +237,59 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         $this->assertEqualsWithDelta(50.0, $coverage['persen'], 0.01);
     }
 
+    private function lengkapiIdl(Anak $anak): void
+    {
+        foreach (['HB0', 'BCG', 'POLIO1', 'POLIO2', 'DPT-HB-HIB1', 'PCV1', 'POLIO3', 'DPT-HB-HIB2',
+                  'PCV2', 'POLIO4', 'IPV1', 'DPT-HB-HIB3', 'IPV2', 'MR1', 'RV1', 'RV2'] as $kode) {
+            $this->beriVaksin($anak, $kode);
+        }
+    }
+
+    public function test_cakupan_idl_penyebutnya_kohort_si(): void
+    {
+        $siLengkap = $this->anak(['tgl_lahir' => '2025-05-10']);
+        $this->lengkapiIdl($siLengkap);
+        $this->anak(['tgl_lahir' => '2025-06-10']);  // SI, belum lengkap
+        $this->anak(['tgl_lahir' => '2026-03-01']);  // BBL — bukan penyebut IDL
+        $this->anak(['tgl_lahir' => '2024-06-10']);  // Baduta — bukan penyebut IDL
+
+        $coverage = $this->service->getIdlCoverage(KohortImunisasi::dari(2026));
+
+        $this->assertSame(2, $coverage['total'], 'Penyebut IDL = SI saja.');
+        $this->assertSame(1, $coverage['idl_lengkap']);
+        $this->assertSame(50.0, $coverage['persen']);
+        $this->assertArrayNotHasKey('butuh_kejar', $coverage, 'butuh_kejar pindah ke method operasional sendiri.');
+    }
+
+    public function test_cakupan_idl_kohort_kosong_menghasilkan_nol_bukan_error(): void
+    {
+        $this->anak(['tgl_lahir' => '2025-06-10', 'id_kel' => 1]);
+
+        $coverage = $this->service->getIdlCoverage(KohortImunisasi::dari(2026), ['id_kelurahan' => 99]);
+
+        $this->assertSame(0, $coverage['total']);
+        $this->assertSame(0.0, $coverage['persen']);
+        $this->assertFalse(is_nan($coverage['persen']), 'Penyebut nol tidak boleh menghasilkan NAN di JSON grafik.');
+    }
+
+    public function test_butuh_kejar_tidak_berubah_saat_tahun_kohort_diganti(): void
+    {
+        // Angka operasional: dihitung atas tanggal berjalan, sengaja TIDAK
+        // mengikuti dropdown tahun. Kartunya menaut ke halaman Proyeksi yang
+        // juga memakai tanggal berjalan — kalau ikut kohort, keduanya tak
+        // akan pernah cocok. CURDATE() dievaluasi MySQL, jadi tanggalnya
+        // relatif (now()), bukan absolut seperti test kohort di atas.
+        $this->anak(['tgl_lahir' => now()->subMonths(18)->toDateString()]);
+        $this->anak(['tgl_lahir' => now()->subMonths(30)->toDateString()]);
+
+        $acuan = $this->service->getButuhKejar();
+
+        foreach ([2026, 2025, 2024] as $tahun) {
+            $this->service->getIdlCoverage(KohortImunisasi::dari($tahun));
+            $this->assertSame($acuan, $this->service->getButuhKejar(), "butuh_kejar bergeser saat kohort {$tahun} dihitung.");
+        }
+    }
+
     public function test_alasan_tidak_imunisasi_dihitung_dari_kunjungan_terakhir_per_anak(): void
     {
         $known = config('imunisasi.alasan_tidak_imunisasi', []);

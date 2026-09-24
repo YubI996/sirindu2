@@ -327,36 +327,31 @@ class ImunisasiStatusService
     }
 
     /**
-     * Aggregate IDL coverage stats, optionally filtered by wilayah.
+     * Cakupan IDL atas kohort SI tahun terpilih. Penyebutnya SI karena itulah
+     * denominator doktrin program untuk imunisasi dasar lengkap — bukan
+     * "semua anak ≥ 12 bulan", yang ikut menyeret anak 4–5 tahun.
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
-     * @param  bool  $withKejar  Sertakan hitung "butuh_kejar" (kejar IDL/IBL) di pass yang sama,
-     *                           agar dashboard tak perlu memindai populasi dua kali.
-     * @return array{total: int, idl_lengkap: int, persen: float, butuh_kejar: int,
+     * @return array{total: int, idl_lengkap: int, persen: float,
      *               per_kelurahan: array<string, array{nama: string, total: int, lengkap: int, persen: float}>}
      */
-    public function getIdlCoverage(array $filters = [], bool $withKejar = false): array
+    public function getIdlCoverage(KohortImunisasi $kohort, array $filters = []): array
     {
-        $query = Anak::query()
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
-
-        $this->applyWilayahFilters($query, $filters);
+        $query = $this->scopeKohort(
+            $this->applyWilayahFilters(Anak::query(), $filters),
+            $kohort,
+            'SI'
+        );
 
         $perKelurahan = [];
         $totalLengkap = 0;
-        $butuhKejar   = 0;
 
-        $total = $this->eachAnak($query, function (Anak $anak) use (&$perKelurahan, &$totalLengkap, &$butuhKejar, $withKejar) {
+        $total = $this->eachAnak($query, function (Anak $anak) use (&$perKelurahan, &$totalLengkap) {
             $namaKel = $anak->kel?->name ?? 'Tidak Diketahui';
             $kelId   = $anak->id_kel ?? 0;
 
             if (!isset($perKelurahan[$kelId])) {
-                $perKelurahan[$kelId] = [
-                    'nama'    => $namaKel,
-                    'total'   => 0,
-                    'lengkap' => 0,
-                    'persen'  => 0.0,
-                ];
+                $perKelurahan[$kelId] = ['nama' => $namaKel, 'total' => 0, 'lengkap' => 0, 'persen' => 0.0];
             }
 
             $perKelurahan[$kelId]['total']++;
@@ -365,31 +360,48 @@ class ImunisasiStatusService
                 $perKelurahan[$kelId]['lengkap']++;
                 $totalLengkap++;
             }
-
-            // Hitung "butuh kejar" di pass yang sama (akurat, lintas seluruh populasi).
-            // Pakai versi ringan (flag saja) — tanpa membangun jadwal & string tanggal.
-            if ($withKejar) {
-                $kejar = $this->kejarFlags($anak);
-                if ($kejar['kejar_idl'] || $kejar['kejar_ibl']) {
-                    $butuhKejar++;
-                }
-            }
         }, ['imunisasi.jenisVaksin', 'kel']);
 
-        // Calculate percentages
         foreach ($perKelurahan as &$row) {
-            $row['persen'] = $row['total'] > 0
-                ? round(($row['lengkap'] / $row['total']) * 100, 1)
-                : 0.0;
+            $row['persen'] = $row['total'] > 0 ? round(($row['lengkap'] / $row['total']) * 100, 1) : 0.0;
         }
 
         return [
             'total'         => $total,
             'idl_lengkap'   => $totalLengkap,
             'persen'        => $total > 0 ? round(($totalLengkap / $total) * 100, 1) : 0.0,
-            'butuh_kejar'   => $butuhKejar,
             'per_kelurahan' => $perKelurahan,
         ];
+    }
+
+    /**
+     * Jumlah anak yang perlu dikejar IDL/IBL menurut TANGGAL BERJALAN.
+     *
+     * Angka operasional — sengaja TIDAK menerima KohortImunisasi. Kartunya di
+     * dasbor menaut ke halaman Proyeksi (admin.earlyWarning) yang menghitung
+     * dengan tanggal berjalan; kalau angka ini dikohortkan, kartu dan daftar
+     * yang ditautnya tidak akan pernah cocok, tanpa error apa pun.
+     *
+     * Populasinya sengaja sama dengan sebelum pemisahan (anak ≥ 12 bulan) agar
+     * nilainya tidak bergeser. Memperluasnya ke bayi < 12 bulan adalah
+     * keputusan terpisah.
+     *
+     * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
+     */
+    public function getButuhKejar(array $filters = []): int
+    {
+        $query = $this->applyWilayahFilters(Anak::query(), $filters)
+            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
+
+        $butuh = 0;
+        $this->eachAnak($query, function (Anak $anak) use (&$butuh) {
+            $kejar = $this->kejarFlags($anak);
+            if ($kejar['kejar_idl'] || $kejar['kejar_ibl']) {
+                $butuh++;
+            }
+        });
+
+        return $butuh;
     }
 
     /**
