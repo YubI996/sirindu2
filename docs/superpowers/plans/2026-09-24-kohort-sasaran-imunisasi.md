@@ -999,6 +999,12 @@ git commit -m "feat(imunisasi): penyebut cakupan antigen mengikuti jendela usia 
 ```php
     public function test_kohort_wilayah_memilah_bbl_si_baduta_per_kelurahan(): void
     {
+        // Tabel wilayah KOSONG di sirindu_testing — tanpa seeder ini
+        // Kecamatan::find(1) null dan tes error sebelum menguji apa pun.
+        // Di-seed di sini saja karena cuma tes ini yang butuh wilayah nyata.
+        $this->seed(\Database\Seeders\KecamatanTableSeeder::class);
+        $this->seed(\Database\Seeders\KelurahanTableSeeder::class);
+
         $this->anak(['tgl_lahir' => '2025-09-15', 'id_kec' => 1, 'id_kel' => 1]); // SI
         $this->anak(['tgl_lahir' => '2026-03-01', 'id_kec' => 1, 'id_kel' => 1]); // BBL
         $this->anak(['tgl_lahir' => '2024-06-10', 'id_kec' => 1, 'id_kel' => 1]); // Baduta
