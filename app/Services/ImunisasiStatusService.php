@@ -531,38 +531,85 @@ class ImunisasiStatusService
     }
 
     /**
-     * Cakupan tiap antigen rutin (kategori Wajib/Booster — antigen BIAS
-     * kategori "Tambahan" sengaja dikecualikan, di luar skop dashboard ini).
-     * Penyebut per antigen = anak yang usianya SUDAH melewati jendela
-     * pemberian antigen tsb (statusnya bukan 'belum' atau 'tidak_relevan'),
-     * konsisten dengan metodologi isIdlLengkap()/getVaccineStatus() — bukan
-     * seluruh populasi, supaya bayi yang jadwalnya belum tiba tak menurunkan
-     * angka secara menyesatkan.
+     * Kelompok kohort yang jadi penyebut satu antigen, ditentukan dari
+     * `usia_pemberian_max` (satuan HARI) — bukan daftar kode yang ditulis
+     * tangan, supaya antigen baru otomatis kebagian.
+     *
+     *   ≤  59 hari  → SELURUH kohort  (HB0, BCG, Polio 1)
+     *   ≤ 364 hari  → SI              (RV1 … MR1)
+     *     lainnya   → BADUTA          (PCV3, MR2, DPT-HB-Hib 4)
+     *
+     * Penyebut antigen bayi baru lahir sengaja SELURUH kohort, bukan kelompok
+     * BBL: HB0 diberikan 0–7 hari setelah lahir, jadi setiap anak dalam
+     * periode menerimanya. Kalau penyebutnya kelompok BBL (yang hanya berisi
+     * kelahiran Februari–Maret), HB0 milik ±10 bulan kelahiran lain tidak
+     * masuk pembilang maupun penyebut mana pun.
+     */
+    private function kelompokPenyebutAntigen(int $usiaPemberianMax): string
+    {
+        return match (true) {
+            $usiaPemberianMax <= 59  => 'SELURUH',
+            $usiaPemberianMax <= 364 => 'SI',
+            default                  => 'BADUTA',
+        };
+    }
+
+    /** Titik masuk pengujian untuk kelompokPenyebutAntigen(). */
+    public function kelompokPenyebutAntigenUntukUji(int $usiaPemberianMax): string
+    {
+        return $this->kelompokPenyebutAntigen($usiaPemberianMax);
+    }
+
+    /**
+     * Cakupan tiap antigen rutin atas kohort tahun terpilih. Penyebutnya
+     * kelompok kohort yang sesuai jendela antigen (lihat
+     * kelompokPenyebutAntigen), MENGGANTIKAN metodologi lama "anak yang
+     * jendela usianya sudah lewat". Konsekuensinya semua persen turun untuk
+     * kohort berjalan — itu memang perilaku cakupan tahunan.
+     *
+     * Satu pass populasi atas gabungan BADUTA ∪ SELURUH, yang kebetulan
+     * bersambung: [1 Apr X-2 .. 31 Mar X].
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
-     * @return list<array{kode: string, nama: string, jumlah_sudah: int, jumlah_eligible: int, persen: float}>
+     * @return list<array{kode: string, nama: string, kelompok: string, jumlah_sudah: int, jumlah_penyebut: int, persen: float}>
      */
-    public function getCakupanAntigen(array $filters = []): array
+    public function getCakupanAntigen(KohortImunisasi $kohort, array $filters = []): array
     {
         $vaksinList = JenisVaksin::aktif()
             ->where('kategori', '!=', 'Tambahan')
             ->orderBy('usia_pemberian_min')
             ->get();
 
-        // Satu pass populasi untuk semua antigen (loop dibalik: per anak → per vaksin),
-        // akumulator per id vaksin; hasilnya identik dengan menghitung per vaksin.
-        $sudah = $eligible = array_fill_keys($vaksinList->pluck('id')->all(), 0);
+        $kelompokVaksin = [];
+        foreach ($vaksinList as $vaksin) {
+            $kelompokVaksin[$vaksin->id] = $this->kelompokPenyebutAntigen((int) $vaksin->usia_pemberian_max);
+        }
+
+        [$awal] = $kohort->rentang('BADUTA');
+        [, $akhir] = $kohort->rentang('SELURUH');
+
+        $sudah = $penyebut = array_fill_keys($vaksinList->pluck('id')->all(), 0);
+
         $this->eachAnak(
-            $this->applyWilayahFilters(Anak::query(), $filters),
-            function (Anak $anak) use ($vaksinList, &$sudah, &$eligible) {
+            $this->applyWilayahFilters(Anak::query(), $filters)
+                ->whereBetween('tgl_lahir', [$awal, $akhir]),
+            function (Anak $anak) use ($vaksinList, $kelompokVaksin, $kohort, &$sudah, &$penyebut) {
+                $anggota = $kohort->kelompokDari((string) $anak->tgl_lahir);
+
                 foreach ($vaksinList as $vaksin) {
-                    $record = $anak->imunisasi->firstWhere('id_jenis_vaksin', $vaksin->id);
-                    $status = $this->getVaccineStatus($anak, $vaksin, $record);
-                    if ($status === 'tidak_relevan' || $status === 'belum') {
+                    if (!in_array($kelompokVaksin[$vaksin->id], $anggota, true)) {
                         continue;
                     }
-                    $eligible[$vaksin->id]++;
-                    if ($status === 'sudah') {
+
+                    $record = $anak->imunisasi->firstWhere('id_jenis_vaksin', $vaksin->id);
+
+                    if ($this->getVaccineStatus($anak, $vaksin, $record) === 'tidak_relevan') {
+                        continue;
+                    }
+
+                    $penyebut[$vaksin->id]++;
+
+                    if ($record && $record->status === 'sudah') {
                         $sudah[$vaksin->id]++;
                     }
                 }
@@ -571,12 +618,14 @@ class ImunisasiStatusService
 
         $result = [];
         foreach ($vaksinList as $vaksin) {
+            $n = $penyebut[$vaksin->id];
             $result[] = [
                 'kode'            => $vaksin->kode,
                 'nama'            => $vaksin->nama,
+                'kelompok'        => $kelompokVaksin[$vaksin->id],
                 'jumlah_sudah'    => $sudah[$vaksin->id],
-                'jumlah_eligible' => $eligible[$vaksin->id],
-                'persen'          => $eligible[$vaksin->id] > 0 ? round($sudah[$vaksin->id] / $eligible[$vaksin->id] * 100, 1) : 0.0,
+                'jumlah_penyebut' => $n,
+                'persen'          => $n > 0 ? round($sudah[$vaksin->id] / $n * 100, 1) : 0.0,
             ];
         }
 

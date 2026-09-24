@@ -115,20 +115,59 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         $this->assertSame(0, $funnel['DPT-HB-HIB3']['jumlah']);
     }
 
-    public function test_cakupan_antigen_hanya_menghitung_anak_yang_sudah_lewat_jendela_dan_kecuali_kategori_tambahan(): void
+    public function test_penyebut_antigen_mengikuti_jendela_usia_pemberian(): void
     {
-        // BCG: usia_pemberian_max = 30 hari. Anak 6 bulan sudah lewat jendela → eligible.
-        $sudah = $this->anak(['tgl_lahir' => now()->subMonths(6)->toDateString()]);
-        $this->beriVaksin($sudah, 'BCG');
+        $si     = $this->anak(['tgl_lahir' => '2025-05-10']); // SI + SELURUH
+        $bbl    = $this->anak(['tgl_lahir' => '2026-03-01']); // BBL + SELURUH
+        $baduta = $this->anak(['tgl_lahir' => '2024-06-10']); // BADUTA
 
-        $belumWaktu = $this->anak(['tgl_lahir' => now()->toDateString()]); // baru lahir, BCG belum jatuh tempo (belum lewat 30 hari)
+        $this->beriVaksin($si, 'HB0');
+        $this->beriVaksin($bbl, 'HB0');
+        $this->beriVaksin($si, 'DPT-HB-HIB1');
+        $this->beriVaksin($baduta, 'PCV3');
 
-        $cakupan = collect($this->service->getCakupanAntigen())->keyBy('kode');
+        $cakupan = collect($this->service->getCakupanAntigen(KohortImunisasi::dari(2026)))->keyBy('kode');
 
-        $this->assertArrayHasKey('BCG', $cakupan);
-        $this->assertSame(1, $cakupan['BCG']['jumlah_sudah']);
-        $this->assertSame(1, $cakupan['BCG']['jumlah_eligible']);
-        $this->assertArrayNotHasKey('HPV1', $cakupan, 'Antigen kategori Tambahan (BIAS) tidak ikut dihitung di dashboard rutin.');
+        // HB0 (max 7 hr) -> seluruh kelahiran periode = BBL + SI = 2 anak.
+        $this->assertSame('SELURUH', $cakupan['HB0']['kelompok']);
+        $this->assertSame(2, $cakupan['HB0']['jumlah_penyebut']);
+        $this->assertSame(2, $cakupan['HB0']['jumlah_sudah']);
+
+        // DPT1 (max 90 hr) -> SI saja = 1 anak.
+        $this->assertSame('SI', $cakupan['DPT-HB-HIB1']['kelompok']);
+        $this->assertSame(1, $cakupan['DPT-HB-HIB1']['jumlah_penyebut']);
+
+        // PCV3 (max 395 hr) -> Baduta = 1 anak.
+        $this->assertSame('BADUTA', $cakupan['PCV3']['kelompok']);
+        $this->assertSame(1, $cakupan['PCV3']['jumlah_penyebut']);
+        $this->assertSame(100.0, $cakupan['PCV3']['persen']);
+    }
+
+    public function test_rv1_yang_jendelanya_melintasi_batas_masuk_si(): void
+    {
+        // RV1 jendelanya 42-70 hari, melintasi batas 59. Dengan aturan batas
+        // ATAS ia masuk SI — benar, karena baru bisa dinilai setelah 70 hari.
+        $cakupan = collect($this->service->getCakupanAntigen(KohortImunisasi::dari(2026)))->keyBy('kode');
+
+        $this->assertSame('SI', $cakupan['RV1']['kelompok']);
+    }
+
+    public function test_pemetaan_kelompok_tepat_di_batas_59_60_364_365(): void
+    {
+        $peta = fn (int $maxHari) => $this->service->kelompokPenyebutAntigenUntukUji($maxHari);
+
+        $this->assertSame('SELURUH', $peta(59));
+        $this->assertSame('SI',      $peta(60));
+        $this->assertSame('SI',      $peta(364));
+        $this->assertSame('BADUTA',  $peta(365));
+    }
+
+    public function test_antigen_kategori_tambahan_tetap_dikecualikan(): void
+    {
+        $kode = collect($this->service->getCakupanAntigen(KohortImunisasi::dari(2026)))->pluck('kode');
+
+        $this->assertNotContains('HPV1', $kode);
+        $this->assertNotContains('DT', $kode);
     }
 
     public function test_kohort_wilayah_menghitung_jumlah_rt_dan_populasi_per_kelurahan(): void
