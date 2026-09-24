@@ -300,7 +300,7 @@ final class KohortImunisasi
 Run: `php artisan test tests/Unit/Support/KohortImunisasiTest.php`
 Expected: PASS — 11 tests
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Support/KohortImunisasi.php tests/Unit/Support/KohortImunisasiTest.php
@@ -437,7 +437,7 @@ Tambah `use App\Support\KohortImunisasi;` di `ImunisasiStatusService`, lalu tamb
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php --filter="sasaran|masa_depan"`
 Expected: PASS — 3 tests
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/ImunisasiStatusService.php tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php
@@ -615,7 +615,7 @@ Pada `getIdlCoverage()`: ganti tanda tangan, buang seluruh jalur `$withKejar`, g
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php --filter="idl_penyebutnya|kohort_kosong|butuh_kejar"`
 Expected: PASS — 3 tests
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/ImunisasiStatusService.php tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php
@@ -700,7 +700,7 @@ Expected: FAIL — jumlah `total` masih memakai `TIMESTAMPDIFF >= 24`
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php --filter=test_cakupan_ibl_penyebutnya_kohort_baduta`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/ImunisasiStatusService.php tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php
@@ -778,7 +778,7 @@ Sisa badan method tidak berubah.
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php --filter=test_funnel_dosis_dihitung_atas_kohort_si`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/ImunisasiStatusService.php tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php
@@ -975,7 +975,7 @@ Expected: FAIL — kunci `kelompok` belum ada; `kelompokPenyebutAntigenUntukUji(
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php --filter="penyebut_antigen|rv1_yang|tepat_di_batas|tambahan_tetap"`
 Expected: PASS — 4 tests
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/ImunisasiStatusService.php tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php
@@ -1122,7 +1122,7 @@ Lalu di bagian penyusunan hasil, ganti tiap `'bayi' => ...` / `$kecBayi` menjadi
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php --filter=test_kohort_wilayah_memilah_bbl_si_baduta_per_kelurahan`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/ImunisasiStatusService.php tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php
@@ -1194,7 +1194,7 @@ Sisa badan method tidak berubah.
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php --filter=test_rincian_puskesmas_sasarannya_kohort_si`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Services/ImunisasiStatusService.php tests/Feature/Imunisasi/ImunisasiRutinDashboardServiceTest.php
@@ -1365,7 +1365,7 @@ Ganti badan `imunisasiDashboard()`:
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiDashboardTahunTest.php`
 Expected: PASS — 11 tests (7 dari data provider)
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add app/Http/Controllers/AdminController.php tests/Feature/Imunisasi/ImunisasiDashboardTahunTest.php
@@ -1557,7 +1557,7 @@ Keluaran harus kosong.
 Run: `php artisan view:clear` lalu `php artisan test tests/Feature/Imunisasi/ImunisasiDashboardTahunTest.php`
 Expected: PASS — 14 tests
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add resources/views/admin/imunisasi/dashboard.blade.php tests/Feature/Imunisasi/ImunisasiDashboardTahunTest.php
@@ -1576,7 +1576,33 @@ git commit -m "feat(imunisasi): dasbor tampilkan kohort BBL/SI/Baduta & tandai b
 - Consumes: seluruh method dari Task 2–8
 - Produces: tidak ada API baru
 
-- [ ] **Step 1: Perbarui test memori**
+- [ ] **Step 1: Pindahkan tanggal lahir fixture ke DALAM kohort**
+
+Ini wajib dikerjakan lebih dulu, kalau tidak seluruh tes ini jadi hampa. Fixture sekarang memberi
+2.000 anak satu tanggal lahir `now()->subMonths(30)`. Per 2026 itu jatuh **sebelum** 1 April X-2,
+yakni di luar BBL, SI, SELURUH, dan BADUTA sekaligus — jadi tiap agregat memindai **nol baris** dan
+ambang memori terlampaui oleh ketiadaan pekerjaan, bukan oleh pekerjaan yang hemat.
+
+Turunkan tanggalnya dari kohortnya sendiri supaya selalu sah di tahun mana pun (jangan tulis tanggal
+absolut — itu akan basi tahun depan), dan bagi populasinya supaya kelompok SI maupun Baduta
+sama-sama terbebani:
+
+```php
+        $kohort = \App\Support\KohortImunisasi::dari((int) date('Y'));
+
+        // 1.000 anak di SI, 1.000 di Baduta. Tanggalnya diambil dari rentang kohort
+        // itu sendiri, bukan ditulis absolut, supaya tes tidak basi saat tahun berganti.
+        $this->buatAnakMassal(1000, $kohort->rentang('SI')[0]);
+        $this->buatAnakMassal(1000, $kohort->rentang('BADUTA')[0]);
+```
+
+Ubah helper pembuat anak massal agar menerima tanggal lahir sebagai parameter, ganti pemanggilnya,
+dan perbarui komentar "usia 30 bulan (masuk kohort IDL ≥12 & IBL ≥24)" yang sudah tidak berlaku.
+Setelah diubah, **buktikan fixture-nya benar-benar terpindai**: assert salah satu agregat
+mengembalikan angka bukan nol (mis. `getIdlCoverage($kohort)['total']` sama dengan 1.000), supaya
+kehampaan yang sama tak bisa kembali diam-diam.
+
+- [ ] **Step 2: Perbarui tanda tangan di test memori**
 
 ```php
         $kohort = \App\Support\KohortImunisasi::dari((int) date('Y'));
@@ -1592,17 +1618,17 @@ git commit -m "feat(imunisasi): dasbor tampilkan kohort BBL/SI/Baduta & tandai b
 
 Ambang kenaikan memori puncak tetap `< 16 MB` walau kini ada satu pass tambahan (`getButuhKejar`). Jangan naikkan ambangnya — kalau terlampaui, itu sinyal ada query yang lupa lewat `eachAnak()`.
 
-- [ ] **Step 2: Jalankan test memori**
+- [ ] **Step 3: Jalankan test memori**
 
 Run: `php artisan test tests/Feature/Imunisasi/ImunisasiDashboardMemoriTest.php`
 Expected: PASS — kenaikan memori puncak < 16 MB dengan 2.000 anak
 
-- [ ] **Step 3: Jalankan seluruh suite imunisasi**
+- [ ] **Step 4: Jalankan seluruh suite imunisasi**
 
 Run: `php artisan test tests/Feature/Imunisasi tests/Unit/Support/KohortImunisasiTest.php`
 Expected: PASS semua. Ingat: jangan jalankan proses tes lain bersamaan — `sirindu_testing` dipakai bersama.
 
-- [ ] **Step 4: Ukur pergeseran angka di data nyata**
+- [ ] **Step 5: Ukur pergeseran angka di data nyata**
 
 Spec sengaja tidak menebak besaran pergeseran; dev cuma punya 39 anak. Jalankan pembanding ini di salinan data prod (bukan di prod langsung), catat hasilnya, dan laporkan ke pemilik produk SEBELUM rilis:
 
@@ -1622,7 +1648,7 @@ printf(\"Butuh kejar (operasional) %d\n\", \$s->getButuhKejar());
 
 Bandingkan dengan angka dasbor sebelum perubahan. Yang perlu dijawab: berapa persen IDL bergeser, dan apakah pergeseran itu bisa dijelaskan sepenuhnya oleh penyempitan penyebut. Kalau ada selisih yang tidak bisa dijelaskan, **hentikan rilis** dan telusuri — jangan anggap angka baru otomatis benar.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add tests/Feature/Imunisasi/ImunisasiDashboardMemoriTest.php docs/superpowers/plans/2026-09-24-verifikasi-angka-kohort.md
