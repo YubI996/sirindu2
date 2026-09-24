@@ -484,14 +484,14 @@ class ImunisasiStatusService
     }
 
     /**
-     * Funnel jumlah anak (kohort ≥12 bulan) yang sudah menerima tiap dosis
-     * kunci, dari HB0 sampai IDL lengkap — untuk melihat di titik mana
-     * populasi paling banyak "bocor".
+     * Funnel jumlah anak (kohort SI) yang sudah menerima tiap dosis kunci,
+     * dari HB0 sampai IDL lengkap — untuk melihat di titik mana populasi
+     * paling banyak "bocor".
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
      * @return list<array{kode: string, label: string, jumlah: int}>
      */
-    public function getFunnelDosis(array $filters = []): array
+    public function getFunnelDosis(KohortImunisasi $kohort, array $filters = []): array
     {
         $tahapan = [
             'HB0'          => 'HB0',
@@ -501,8 +501,11 @@ class ImunisasiStatusService
             'MR1'          => 'Campak-Rubela',
         ];
 
-        $cohort = $this->applyWilayahFilters(Anak::query(), $filters)
-            ->whereRaw('TIMESTAMPDIFF(MONTH, tgl_lahir, CURDATE()) >= 12');
+        $cohort = $this->scopeKohort(
+            $this->applyWilayahFilters(Anak::query(), $filters),
+            $kohort,
+            'SI'
+        );
 
         $jumlah = array_fill_keys(array_keys($tahapan), 0);
         $idlLengkap = 0;

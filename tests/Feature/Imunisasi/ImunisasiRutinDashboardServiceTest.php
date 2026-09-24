@@ -96,22 +96,23 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         ]);
     }
 
-    public function test_funnel_dosis_menghitung_jumlah_sudah_per_antigen_berurutan(): void
+    public function test_funnel_dosis_dihitung_atas_kohort_si(): void
     {
-        $anak1 = $this->anak(['tgl_lahir' => now()->subMonths(24)->toDateString()]);
-        $this->beriVaksin($anak1, 'HB0');
-        $this->beriVaksin($anak1, 'DPT-HB-HIB1');
-        $this->beriVaksin($anak1, 'DPT-HB-HIB3');
+        $si = $this->anak(['tgl_lahir' => '2025-05-10']);
+        $this->beriVaksin($si, 'HB0');
+        $this->beriVaksin($si, 'DPT-HB-HIB1');
 
-        $anak2 = $this->anak(['tgl_lahir' => now()->subMonths(24)->toDateString()]);
-        $this->beriVaksin($anak2, 'HB0');
-        $this->beriVaksin($anak2, 'DPT-HB-HIB1');
+        $badutaDiabaikan = $this->anak(['tgl_lahir' => '2024-06-10']);
+        $this->beriVaksin($badutaDiabaikan, 'HB0');
 
-        $funnel = collect($this->service->getFunnelDosis())->keyBy('kode');
+        $bblDiabaikan = $this->anak(['tgl_lahir' => '2026-03-01']);
+        $this->beriVaksin($bblDiabaikan, 'HB0');
 
-        $this->assertSame(2, $funnel['HB0']['jumlah']);
-        $this->assertSame(2, $funnel['DPT-HB-HIB1']['jumlah']);
-        $this->assertSame(1, $funnel['DPT-HB-HIB3']['jumlah']);
+        $funnel = collect($this->service->getFunnelDosis(KohortImunisasi::dari(2026)))->keyBy('kode');
+
+        $this->assertSame(1, $funnel['HB0']['jumlah'], 'Hanya anak SI yang masuk funnel.');
+        $this->assertSame(1, $funnel['DPT-HB-HIB1']['jumlah']);
+        $this->assertSame(0, $funnel['DPT-HB-HIB3']['jumlah']);
     }
 
     public function test_cakupan_antigen_hanya_menghitung_anak_yang_sudah_lewat_jendela_dan_kecuali_kategori_tambahan(): void
