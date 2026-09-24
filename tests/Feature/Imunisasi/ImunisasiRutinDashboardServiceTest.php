@@ -170,21 +170,26 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
         $this->assertNotContains('DT', $kode);
     }
 
-    public function test_kohort_wilayah_menghitung_jumlah_rt_dan_populasi_per_kelurahan(): void
+    public function test_kohort_wilayah_memilah_bbl_si_baduta_per_kelurahan(): void
     {
-        $kec = \App\Models\Kecamatan::factory()->create(['name' => 'Bontang Utara']);
-        $kel = \App\Models\Kelurahan::factory()->create(['id_kecamatan' => $kec->id, 'name' => 'Api-Api']);
-        \App\Models\Rt::factory()->count(3)->create(['id_kelurahan' => $kel->id]);
+        // Tabel wilayah KOSONG di sirindu_testing — tanpa seeder ini
+        // Kecamatan::find(1) null dan tes error sebelum menguji apa pun.
+        // Di-seed di sini saja karena cuma tes ini yang butuh wilayah nyata.
+        $this->seed(\Database\Seeders\KecamatanTableSeeder::class);
+        $this->seed(\Database\Seeders\KelurahanTableSeeder::class);
 
-        $this->anak(['id_kec' => $kec->id, 'id_kel' => $kel->id, 'tgl_lahir' => now()->subMonths(5)->toDateString()]); // bayi
-        $this->anak(['id_kec' => $kec->id, 'id_kel' => $kel->id, 'tgl_lahir' => now()->subMonths(18)->toDateString()]); // baduta
+        $this->anak(['tgl_lahir' => '2025-09-15', 'id_kec' => 1, 'id_kel' => 1]); // SI
+        $this->anak(['tgl_lahir' => '2026-03-01', 'id_kec' => 1, 'id_kel' => 1]); // BBL
+        $this->anak(['tgl_lahir' => '2024-06-10', 'id_kec' => 1, 'id_kel' => 1]); // Baduta
+        $this->anak(['tgl_lahir' => '2024-03-31', 'id_kec' => 1, 'id_kel' => 1]); // di luar kohort
 
-        $kohort = collect($this->service->getKohortWilayah())->keyBy('nama');
+        $kohort = collect($this->service->getKohortWilayah(KohortImunisasi::dari(2026)));
+        $baris  = $kohort->firstWhere('nama', \App\Models\Kecamatan::find(1)->name);
 
-        $this->assertArrayHasKey('Bontang Utara', $kohort);
-        $kelurahanList = collect($kohort['Bontang Utara']['kelurahan'])->keyBy('nama');
-        $this->assertSame(3, $kelurahanList['Api-Api']['jumlah_rt']);
-        $this->assertSame(2, $kelurahanList['Api-Api']['total']);
+        $this->assertSame(1, $baris['bbl']);
+        $this->assertSame(1, $baris['si']);
+        $this->assertSame(1, $baris['baduta']);
+        $this->assertSame(3, $baris['total'], 'Anak di luar kohort tidak ikut terhitung.');
     }
 
     public function test_sasaran_harian_besok_mengelompokkan_antigen_jatuh_tempo_per_anak(): void

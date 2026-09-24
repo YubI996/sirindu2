@@ -633,39 +633,43 @@ class ImunisasiStatusService
     }
 
     /**
-     * Kohort populasi (bayi + baduta) per kecamatan → kelurahan, dengan jumlah
+     * Kohort populasi (BBL + SI + Baduta) per kecamatan → kelurahan, dengan jumlah
      * RT terdaftar dan porsi terhadap total kota. Ini murni distribusi
      * populasi (sasaran), BUKAN cakupan/kelengkapan imunisasi.
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
-     * @return list<array{nama: string, jumlah_rt: int, bayi: int, baduta: int, total: int, persen_kota: float,
-     *               kelurahan: list<array{nama: string, jumlah_rt: int, bayi: int, baduta: int, total: int, persen_kota: float}>}>
+     * @return list<array{nama: string, jumlah_rt: int, bbl: int, si: int, baduta: int, total: int, persen_kota: float,
+     *               kelurahan: list<array{nama: string, jumlah_rt: int, bbl: int, si: int, baduta: int, total: int, persen_kota: float}>}>
      */
-    public function getKohortWilayah(array $filters = []): array
+    public function getKohortWilayah(KohortImunisasi $kohort, array $filters = []): array
     {
-        $ibl = KelompokVaksin::where('kode', 'IBL')->first();
-        $badutaMin = $ibl->usia_pemberian_min ?? 12;
-        $badutaMax = $ibl->usia_pemberian_max ?? 23;
-
         $rtCountByKel = \App\Models\Rt::query()
             ->selectRaw('id_kelurahan, COUNT(*) as jumlah')
             ->groupBy('id_kelurahan')
             ->pluck('jumlah', 'id_kelurahan');
 
+        [$awal] = $kohort->rentang('BADUTA');
+        [, $akhir] = $kohort->rentang('SELURUH');
+
         $perKel = [];
         $grandTotal = $this->eachAnak(
-            $this->applyWilayahFilters(Anak::query(), $filters),
-            function (Anak $anak) use (&$perKel, $badutaMin, $badutaMax) {
+            $this->applyWilayahFilters(Anak::query(), $filters)
+                ->whereBetween('tgl_lahir', [$awal, $akhir]),
+            function (Anak $anak) use (&$perKel, $kohort) {
                 $kelId = $anak->id_kel ?? 0;
-                $usiaBulan = Carbon::parse($anak->tgl_lahir)->diffInMonths(now());
+                $anggota = $kohort->kelompokDari((string) $anak->tgl_lahir);
 
                 if (!isset($perKel[$kelId])) {
-                    $perKel[$kelId] = ['id_kec' => $anak->id_kec, 'bayi' => 0, 'baduta' => 0, 'total' => 0];
+                    $perKel[$kelId] = ['id_kec' => $anak->id_kec, 'bbl' => 0, 'si' => 0, 'baduta' => 0, 'total' => 0];
                 }
+
                 $perKel[$kelId]['total']++;
-                if ($usiaBulan <= 11) {
-                    $perKel[$kelId]['bayi']++;
-                } elseif ($usiaBulan >= $badutaMin && $usiaBulan <= $badutaMax) {
+
+                if (in_array('BBL', $anggota, true)) {
+                    $perKel[$kelId]['bbl']++;
+                } elseif (in_array('SI', $anggota, true)) {
+                    $perKel[$kelId]['si']++;
+                } elseif (in_array('BADUTA', $anggota, true)) {
                     $perKel[$kelId]['baduta']++;
                 }
             },
@@ -677,7 +681,7 @@ class ImunisasiStatusService
         $result = [];
         foreach (\App\Models\Kecamatan::orderBy('name')->get() as $kec) {
             $kelurahanRows = [];
-            $kecTotal = $kecBayi = $kecBaduta = $kecRt = 0;
+            $kecTotal = $kecBbl = $kecSi = $kecBaduta = $kecRt = 0;
 
             foreach ($perKel as $kelId => $row) {
                 if ((int) $row['id_kec'] !== $kec->id) {
@@ -687,15 +691,17 @@ class ImunisasiStatusService
                 $kelurahanRows[] = [
                     'nama'        => $kelurahanNames[$kelId] ?? 'Tidak diketahui',
                     'jumlah_rt'   => $jumlahRt,
-                    'bayi'        => $row['bayi'],
+                    'bbl'         => $row['bbl'],
+                    'si'          => $row['si'],
                     'baduta'      => $row['baduta'],
                     'total'       => $row['total'],
                     'persen_kota' => $grandTotal > 0 ? round($row['total'] / $grandTotal * 100, 1) : 0.0,
                 ];
-                $kecTotal += $row['total'];
-                $kecBayi += $row['bayi'];
+                $kecTotal  += $row['total'];
+                $kecBbl    += $row['bbl'];
+                $kecSi     += $row['si'];
                 $kecBaduta += $row['baduta'];
-                $kecRt += $jumlahRt;
+                $kecRt     += $jumlahRt;
             }
 
             if (empty($kelurahanRows)) {
@@ -705,7 +711,8 @@ class ImunisasiStatusService
             $result[] = [
                 'nama'        => $kec->name,
                 'jumlah_rt'   => $kecRt,
-                'bayi'        => $kecBayi,
+                'bbl'         => $kecBbl,
+                'si'          => $kecSi,
                 'baduta'      => $kecBaduta,
                 'total'       => $kecTotal,
                 'persen_kota' => $grandTotal > 0 ? round($kecTotal / $grandTotal * 100, 1) : 0.0,
