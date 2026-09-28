@@ -1,6 +1,6 @@
 # Serah-terima — Kohort Sasaran Imunisasi
 
-Tanggal: 2026-09-24 · Status: **dilanjutkan; perbaikan mandiri selesai, I3/I5 menunggu keputusan produk, verifikasi salinan produksi belum dilakukan**
+Tanggal: 2026-09-24 (diperbarui 28 Sep 2026) · Status: **seluruh temuan reviu selesai & lolos reviu independen; tersisa satu gerbang: pengukuran salinan produksi belum dilakukan**
 
 ## Pembaruan sesi lanjutan — 24 September 2026
 
@@ -15,19 +15,22 @@ Permintaan pemilik produk: lanjutkan pekerjaan. Pembaruan ini menjadi status ter
   tidak diubah; batas ini juga dicatat di prosedur verifikasi.
 - **Temuan tambahan diperbaiki:** subteks IDL/IBL masih menyebut anak ≥12/≥24 bulan. Kini label
   IDL menyebut SI tahun terpilih dan subteks kedua kartu menyebut kelompok penyebut sebenarnya.
-- **Belum:** I3 (penanganan batas usia NULL/di luar Baduta) dan I5 (nasib placeholder WUS).
-  Pertanyaan keputusan sudah dikirim. Belum ada jawaban pada saat catatan ini ditulis;
-  implementasi kedua kebijakan belum diubah. Rekomendasi: keluarkan antigen tersebut dari
-  cakupan dengan catatan terlihat, dan pulihkan kartu WUS sebagai penanda data belum tersedia.
+- **I3 & I5 SUDAH DIPUTUSKAN DAN DITERAPKAN (28 Sep 2026, commit `9fb27b3`).** Pemilik produk
+  memilih kedua rekomendasi. I3: `kelompokPenyebutAntigen()` kini mengembalikan `null` untuk batas
+  usia NULL atau > 730 hari, antigen itu dikeluarkan dari blok cakupan, dan halaman menampilkan
+  catatan yang menyebut namanya beserta cara membenahinya di Master Data Vaksin. I5: kedua kartu
+  WUS dipulihkan sebagai penanda N/A dan baris kartu kembali ke `im-cards--5`.
 - **Verifikasi:** `php artisan test tests/Feature/Imunisasi tests/Unit/Support/KohortImunisasiTest.php`
-  lulus **47 tes / 156 assertion** (139,54 detik), satu proses. Tes memori tetap di bawah 16 MB.
+  lulus **53 tes / 170 assertion** setelah I3/I5 masuk (sebelumnya 47/156), satu proses. Tes memori tetap di bawah 16 MB.
   Ada peringatan deprecation metadata doc-comment PHPUnit yang sudah ada sebelumnya.
   `git diff --check` bersih; `php artisan view:clear` berhasil.
-- **Reviu lokal atas diff perbaikan:** label penyebut dicocokkan ke service; contoh API lama di
-  prosedur dicocokkan ke `086b58a`. Belum dilakukan reviu independen atas seluruh perbaikan
-  I1–I5 karena keputusan I3/I5 belum masuk.
-- Perubahan sesi lanjutan masih di working tree, belum di-commit. WIP pemilik tetap dipertahankan;
-  branch backup dan workspace ledger belum dihapus karena pekerjaan belum selesai.
+- **Reviu independen SUDAH dilakukan (28 Sep 2026)** atas seluruh gelombang perbaikan
+  (`9fa8aa1..9fb27b3`): I1–I5 dan M6/M7/M8/M12/M13/M14 semuanya diverdict ADDRESSED, dengan catatan
+  bahwa tesnya akan gagal bila perbaikannya dibalik, dan batas 730 hari diperiksa aritmetikanya.
+- Seluruh perbaikan sudah di-commit sebagai `9fb27b3`. Penataan stage dikerjakan pengendali dengan
+  memecah `AdminController.php` per hunk, sehingga 29 berkas WIP pemilik tetap utuh di working tree.
+  Branch backup `sdd-backup-2323897` dan workspace ledger belum dihapus karena gerbang rilis
+  (pengukuran data produksi) masih terbuka.
 - **Gerbang rilis tetap tertutup:** salinan produksi belum diukur. Lokasi salinan sudah ditanyakan.
   Prosedur yang telah dikoreksi berada di `2026-09-24-verifikasi-angka-kohort.md`; jalankan sebelum
   deploy, dengan snapshot, filter, akses, dan tanggal PHP/MySQL yang sama pada kedua versi.
