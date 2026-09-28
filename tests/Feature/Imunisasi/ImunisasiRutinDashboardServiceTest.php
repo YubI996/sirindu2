@@ -154,12 +154,52 @@ class ImunisasiRutinDashboardServiceTest extends TestCase
 
     public function test_pemetaan_kelompok_tepat_di_batas_59_60_364_365(): void
     {
-        $peta = fn (int $maxHari) => $this->service->kelompokPenyebutAntigenUntukUji($maxHari);
+        $peta = fn (?int $maxHari) => $this->service->kelompokPenyebutAntigenUntukUji($maxHari);
 
         $this->assertSame('SELURUH', $peta(59));
         $this->assertSame('SI',      $peta(60));
         $this->assertSame('SI',      $peta(364));
         $this->assertSame('BADUTA',  $peta(365));
+    }
+
+    public function test_pemetaan_kelompok_null_dan_batas_atas_730_731(): void
+    {
+        $peta = fn (?int $maxHari) => $this->service->kelompokPenyebutAntigenUntukUji($maxHari);
+
+        $this->assertNull($peta(null), 'usia_pemberian_max kosong tak bisa diklasifikasi.');
+        $this->assertSame('BADUTA', $peta(730), 'Batas atas Baduta ada di 730 hari.');
+        $this->assertNull($peta(731), 'Lewat 730 hari tak punya kelompok kohort yang adil.');
+    }
+
+    public function test_antigen_tanpa_usia_pemberian_max_dikecualikan_dari_cakupan_dan_dilaporkan(): void
+    {
+        \App\Models\JenisVaksin::create([
+            'kode' => 'ANTIGEN-TANPA-BATAS',
+            'nama' => 'Antigen Tanpa Batas Usia',
+            'kategori' => 'Wajib',
+            'usia_pemberian_min' => 60,
+            'usia_pemberian_max' => null,
+            'interval_hari' => null,
+            'catchup_max_hari' => null,
+            'bisa_dikejar' => true,
+            'aktif' => true,
+        ]);
+        ImunisasiStatusService::flushCache();
+        $service = app(ImunisasiStatusService::class);
+
+        $kode = collect($service->getCakupanAntigen(KohortImunisasi::dari(2026)))->pluck('kode');
+        $this->assertNotContains(
+            'ANTIGEN-TANPA-BATAS',
+            $kode,
+            'Antigen tanpa usia_pemberian_max harus dikecualikan dari cakupan, bukan mendarat di SELURUH.'
+        );
+
+        $this->assertContains('Antigen Tanpa Batas Usia', $service->getAntigenTanpaPenyebut());
+    }
+
+    public function test_get_antigen_tanpa_penyebut_kosong_saat_master_data_belum_diubah(): void
+    {
+        $this->assertSame([], $this->service->getAntigenTanpaPenyebut());
     }
 
     public function test_antigen_kategori_tambahan_tetap_dikecualikan(): void

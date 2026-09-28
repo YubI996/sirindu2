@@ -24,6 +24,7 @@
 .im-h{ display:flex; align-items:baseline; gap:.6rem; margin:0 0 .85rem; }
 .im-h h2{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:1.18rem; letter-spacing:.01em; margin:0; color:var(--ink); }
 .im-h small{ color:var(--faint); font-size:.8rem; }
+.im-note{ margin:0 0 1.6rem; color:var(--muted); font-size:.85rem; font-weight:400; line-height:1.6; }
 
 /* Filter bar */
 .im-filter{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:.75rem; margin-bottom:1.4rem; }
@@ -222,7 +223,7 @@
     <h2>Data sasaran</h2>
     <small>{{ $sasaran['label'] }} &middot; bukan ukuran capaian</small>
 </div>
-<div class="im-cards">
+<div class="im-cards im-cards--5">
     <div class="im-card">
         <div class="im-card__lbl">BBL &middot; bayi baru lahir</div>
         <div class="im-card__val im-num">{{ number_format($sasaran['bbl']['jumlah']) }}</div>
@@ -238,11 +239,25 @@
         <div class="im-card__val im-num">{{ number_format($sasaran['baduta']['jumlah']) }}</div>
         <div class="im-card__sub">kohort {{ $sasaran['tahun'] - 1 }} &middot; lahir {{ $sasaran['baduta']['rentang'][0] }} s.d. {{ $sasaran['baduta']['rentang'][1] }}</div>
     </div>
+    <div class="im-card im-card--na">
+        <div class="im-card__lbl">WUS hamil</div>
+        <div class="im-card__val im-num" style="color:var(--faint);">&mdash;</div>
+        <div class="im-card__sub">Data belum tersedia &mdash; sistem ini belum mencatat data ibu/wanita usia subur</div>
+    </div>
+    <div class="im-card im-card--na">
+        <div class="im-card__lbl">WUS tidak hamil</div>
+        <div class="im-card__val im-num" style="color:var(--faint);">&mdash;</div>
+        <div class="im-card__sub">Data belum tersedia &mdash; sistem ini belum mencatat data ibu/wanita usia subur</div>
+    </div>
 </div>
 <p class="im-note">
     BBL dan SI tidak tumpang tindih &mdash; tiap anak masuk tepat satu kelompok, jadi BBL + SI =
     seluruh kelahiran periode. Anak di luar ketiga kohort ini tidak muncul di bagian statistik mana
     pun, sehingga jumlah di halaman ini tidak sama dengan jumlah anak terdaftar.
+    Cakupan kini dihitung terhadap kohort tahunan, termasuk anak yang jadwal vaksinnya belum tiba.
+    Karena itu, cakupan antigen dan IDL tahun berjalan dapat berada di bawah target dan meningkat
+    seiring anak mencapai usia pemberian serta menerima vaksin. Penurunan angka setelah perubahan
+    metode ini tidak serta-merta berarti penurunan kinerja layanan.
 </p>
 
 {{-- Data capaian: performa per kelompok imunisasi wajib, terpisah jelas dari data sasaran di atas --}}
@@ -250,12 +265,12 @@
 <div class="im-cards im-cards--3">
     <div class="im-card">
         <div class="im-card__lbl" style="display:flex; align-items:baseline; justify-content:space-between;">
-            <span>IDL &middot; Bayi 0&ndash;11 bln</span>
+            <span>IDL &middot; SI kohort {{ $tahun }}</span>
             <span class="im-badge {{ $persenIdl >= 95 ? 'im-badge--ok' : 'im-badge--warn' }}">{{ $persenIdl >= 95 ? 'On track' : 'Tertinggal' }}</span>
         </div>
         <div class="im-card__val im-num {{ $bucketOf($persenIdl) }}">{{ $persenIdl }}%</div>
         <div class="im-bar"><div class="im-bar__fill {{ $bucketOf($persenIdl) }}" style="width:{{ min(100,$persenIdl) }}%"></div></div>
-        <div class="im-card__sub">{{ number_format($idlLengkap) }} dari {{ number_format($totalAnak) }} anak &ge;12 bulan</div>
+        <div class="im-card__sub">{{ number_format($idlLengkap) }} dari {{ number_format($totalAnak) }} anak kelompok SI</div>
         <div class="im-card__foot" style="color:var(--faint); font-size:.76rem;">Imunisasi Dasar Lengkap</div>
     </div>
     <div class="im-card">
@@ -265,7 +280,7 @@
         </div>
         <div class="im-card__val im-num {{ $bucketOf($iblCoverage['persen']) }}">{{ $iblCoverage['persen'] }}%</div>
         <div class="im-bar"><div class="im-bar__fill {{ $bucketOf($iblCoverage['persen']) }}" style="width:{{ min(100,$iblCoverage['persen']) }}%"></div></div>
-        <div class="im-card__sub">{{ number_format($iblCoverage['ibl_lengkap']) }} dari {{ number_format($iblCoverage['total']) }} anak &ge;24 bulan</div>
+        <div class="im-card__sub">{{ number_format($iblCoverage['ibl_lengkap']) }} dari {{ number_format($iblCoverage['total']) }} anak kelompok Baduta</div>
         <div class="im-card__foot" style="color:var(--faint); font-size:.76rem;">Booster DPT-HB-Hib + PCV + Campak-Rubela</div>
     </div>
     <div class="im-card">
@@ -282,12 +297,12 @@
 </div>
 
 {{-- Kohort per kecamatan & kelurahan --}}
-<div class="im-h"><h2>Kohort per kecamatan &amp; kelurahan</h2><small>Populasi sasaran (bukan cakupan) &middot; klik kecamatan untuk detail kelurahan</small></div>
+<div class="im-h"><h2>Kohort per kecamatan &amp; kelurahan</h2><small>Sasaran BBL, SI, dan Baduta tahun {{ $tahun }} (bukan cakupan) &middot; klik kecamatan untuk detail kelurahan</small></div>
 <div class="im-panel im-panel--flush" style="margin-bottom:1.5rem;">
     @if(count($kohortWilayah) > 0)
     <div class="im-kohort-head">
         <h2>Wilayah</h2>
-        <span style="font-size:.78rem; color:var(--faint);">RT &middot; Bayi &middot; Baduta &middot; Total &middot; Porsi kota</span>
+        <span style="font-size:.78rem; color:var(--faint);">RT &middot; BBL &middot; SI &middot; Baduta &middot; Total &middot; % Kota</span>
     </div>
     @foreach($kohortWilayah as $kec)
     <details class="im-kec">
@@ -340,7 +355,7 @@
 </div>
 
 {{-- Sasaran per kecamatan --}}
-<div class="im-h"><h2>Sasaran per kecamatan</h2><small>Porsi populasi anak terdaftar &mdash; bukan capaian</small></div>
+<div class="im-h"><h2>Sasaran per kecamatan</h2><small>Porsi sasaran BBL, SI, dan Baduta tahun {{ $tahun }} &mdash; bukan capaian</small></div>
 <div class="im-panel" style="margin-bottom:1.5rem;">
     @forelse($kohortWilayah as $kec)
     <div style="margin-bottom:.85rem;">
@@ -417,6 +432,15 @@
     <div class="im-empty"><strong>Tidak ada data</strong></div>
     @endif
 </div>
+@if(!empty($antigenDilewati))
+<p class="im-note">
+    {{ count($antigenDilewati) }} antigen dilewatkan dari cakupan di atas karena batas usia
+    pemberian belum diisi di master vaksin, sehingga tidak bisa ditentukan kelompok kohort
+    penyebutnya: {{ implode(', ', $antigenDilewati) }}. Lengkapi
+    <em>usia pemberian maksimal</em> antigen tersebut di Master Data Vaksin agar ikut
+    dihitung.
+</p>
+@endif
 
 {{-- Funnel dosis: pelengkap cakupan per antigen, fokus ke rangkaian dosis kunci IDL --}}
 <div class="im-h"><h2>Funnel dosis</h2><small>Kohort SI {{ $tahun }} &middot; jumlah anak yang sudah menerima tiap dosis, berurutan sesuai jadwal</small></div>

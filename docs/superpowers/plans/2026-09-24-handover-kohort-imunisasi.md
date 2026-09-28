@@ -1,6 +1,39 @@
 # Serah-terima — Kohort Sasaran Imunisasi
 
-Tanggal: 2026-09-24 · Status: **implementasi selesai, reviu akhir minta perbaikan, dijeda atas permintaan pemilik produk**
+Tanggal: 2026-09-24 · Status: **dilanjutkan; perbaikan mandiri selesai, I3/I5 menunggu keputusan produk, verifikasi salinan produksi belum dilakukan**
+
+## Pembaruan sesi lanjutan — 24 September 2026
+
+Permintaan pemilik produk: lanjutkan pekerjaan. Pembaruan ini menjadi status terkini;
+§1–7 di bawah dipertahankan sebagai catatan handover awal, bukan daftar status terbaru.
+
+- **Selesai:** I1 (label wilayah dan tahun kohort), I2 (penjelasan dampak metode di halaman),
+  I4 (prosedur verifikasi ditulis ulang), M6 (grid tiga kolom), M7 (gaya catatan),
+  M12 (fixture tepat 2.000 anak / 6.000 imunisasi), M14 (tes nyata controller → view lintas tahun).
+- **M8 ditangani sesuai saran minimum:** komentar pada `isKelompokLengkap()` menjelaskan bahwa
+  pembilang masih dapat berubah karena waktu untuk vaksin yang tidak dapat dikejar. Kebijakannya
+  tidak diubah; batas ini juga dicatat di prosedur verifikasi.
+- **Temuan tambahan diperbaiki:** subteks IDL/IBL masih menyebut anak ≥12/≥24 bulan. Kini label
+  IDL menyebut SI tahun terpilih dan subteks kedua kartu menyebut kelompok penyebut sebenarnya.
+- **Belum:** I3 (penanganan batas usia NULL/di luar Baduta) dan I5 (nasib placeholder WUS).
+  Pertanyaan keputusan sudah dikirim. Belum ada jawaban pada saat catatan ini ditulis;
+  implementasi kedua kebijakan belum diubah. Rekomendasi: keluarkan antigen tersebut dari
+  cakupan dengan catatan terlihat, dan pulihkan kartu WUS sebagai penanda data belum tersedia.
+- **Verifikasi:** `php artisan test tests/Feature/Imunisasi tests/Unit/Support/KohortImunisasiTest.php`
+  lulus **47 tes / 156 assertion** (139,54 detik), satu proses. Tes memori tetap di bawah 16 MB.
+  Ada peringatan deprecation metadata doc-comment PHPUnit yang sudah ada sebelumnya.
+  `git diff --check` bersih; `php artisan view:clear` berhasil.
+- **Reviu lokal atas diff perbaikan:** label penyebut dicocokkan ke service; contoh API lama di
+  prosedur dicocokkan ke `086b58a`. Belum dilakukan reviu independen atas seluruh perbaikan
+  I1–I5 karena keputusan I3/I5 belum masuk.
+- Perubahan sesi lanjutan masih di working tree, belum di-commit. WIP pemilik tetap dipertahankan;
+  branch backup dan workspace ledger belum dihapus karena pekerjaan belum selesai.
+- **Gerbang rilis tetap tertutup:** salinan produksi belum diukur. Lokasi salinan sudah ditanyakan.
+  Prosedur yang telah dikoreksi berada di `2026-09-24-verifikasi-angka-kohort.md`; jalankan sebelum
+  deploy, dengan snapshot, filter, akses, dan tanggal PHP/MySQL yang sama pada kedua versi.
+
+Langkah selanjutnya: terapkan keputusan I3/I5 setelah jawaban diterima, lengkapi tes kebijakannya,
+jalankan kembali suite terkait, lakukan reviu atas seluruh perbaikan, lalu ukur data salinan produksi.
 
 Dokumen ini untuk siapa pun (orang atau sesi lain) yang melanjutkan pekerjaan ini. Ia menjelaskan di
 mana semuanya berada, apa yang sudah beres, apa yang belum, dan keputusan apa yang diambil tanpa

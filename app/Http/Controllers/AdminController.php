@@ -619,6 +619,7 @@ ANAK
         $iblCoverage      = $service->getIblCoverage($kohort, $filters);
         $funnel           = $service->getFunnelDosis($kohort, $filters);
         $cakupanAntigen   = $service->getCakupanAntigen($kohort, $filters);
+        $antigenDilewati  = $service->getAntigenTanpaPenyebut();
         $kohortWilayah    = $service->getKohortWilayah($kohort, $filters);
         $rincianPuskesmas = $service->getRincianPuskesmas($kohort, $filters);
 
@@ -640,7 +641,7 @@ ANAK
             'coverage', 'butuhKejar', 'filters', 'kohort', 'tahun', 'pilihanTahun',
             'kecamatanList', 'kelurahanList', 'posyanduList', 'puskesmasList', 'korelasiData',
             'alasanTidakImunisasi',
-            'sasaran', 'iblCoverage', 'funnel', 'cakupanAntigen', 'kohortWilayah', 'rincianPuskesmas', 'sasaranHarian'
+            'sasaran', 'iblCoverage', 'funnel', 'cakupanAntigen', 'antigenDilewati', 'kohortWilayah', 'rincianPuskesmas', 'sasaranHarian'
         ));
     }
 

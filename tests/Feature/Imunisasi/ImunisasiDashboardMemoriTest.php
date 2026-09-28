@@ -51,6 +51,8 @@ class ImunisasiDashboardMemoriTest extends TestCase
         // itu sendiri, bukan ditulis absolut, supaya tes tidak basi saat tahun berganti.
         $this->seedAnakBanyak(1000, $kec->id, $kel->id, $kohort->rentang('SI')[0], 0);
         $this->seedAnakBanyak(1000, $kec->id, $kel->id, $kohort->rentang('BADUTA')[0], 1000);
+        $this->assertDatabaseCount('anak', self::JUMLAH_ANAK);
+        $this->assertDatabaseCount('imunisasi', self::JUMLAH_ANAK * 3);
 
         $service = app(ImunisasiStatusService::class);
 
@@ -70,7 +72,7 @@ class ImunisasiDashboardMemoriTest extends TestCase
         // Pastikan populasinya benar-benar diproses, bukan dilewati.
         // Verifikasi bahwa agregat menghitung anak nyata, bukan zero-scan di luar kohort.
         $this->assertGreaterThan(0, $coverage['total'], 'IDL harus menghitung anak dalam SI');
-        $this->assertGreaterThan(0, $ibl['total'], 'IBL harus menghitung anak dalam SI atau BADUTA');
+        $this->assertGreaterThan(0, $ibl['total'], 'IBL harus menghitung anak dalam BADUTA');
         $this->assertGreaterThan(0, collect($funnel)->firstWhere('kode', 'HB0')['jumlah'], 'Funnel HB0 harus menghitung anak');
         $this->assertGreaterThan(0, collect($antigen)->firstWhere('kode', 'HB0')['jumlah_sudah'], 'Antigen HB0 sudah harus non-zero');
         $this->assertGreaterThan(0, $kohortWil[0]['total'], 'Kohort Wilayah harus menghitung anak');
@@ -110,7 +112,9 @@ class ImunisasiDashboardMemoriTest extends TestCase
         }
 
         $imunisasi = [];
-        foreach (DB::table('anak')->where('nama', 'like', 'Anak Massal %')->pluck('id') as $idAnak) {
+        $nikAwal = '3' . str_pad((string) ($offsetNik + 1), 15, '0', STR_PAD_LEFT);
+        $nikAkhir = '3' . str_pad((string) ($offsetNik + $jumlah), 15, '0', STR_PAD_LEFT);
+        foreach (DB::table('anak')->whereBetween('nik', [$nikAwal, $nikAkhir])->pluck('id') as $idAnak) {
             foreach ($vaksinIds as $idVaksin) {
                 $imunisasi[] = [
                     'id_anak' => $idAnak,

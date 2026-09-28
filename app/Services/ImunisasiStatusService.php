@@ -273,6 +273,10 @@ class ImunisasiStatusService
             ->pluck('id_jenis_vaksin')
             ->all();
 
+        // Penyebut statistik sudah tetap menurut kohort, tetapi kelengkapan masih
+        // memakai hari ini untuk melewati vaksin yang tidak bisa dikejar (HB0).
+        // Pembilang bisa berubah saat jendelanya tutup tanpa catatan vaksin baru;
+        // tinjau kebijakan ini sebelum menambah antigen non-catchable lainnya.
         $usiaSaatIni = Carbon::parse($anak->tgl_lahir)->diffInDays(now());
 
         foreach ($kelompok->jenisVaksin as $vaksin) {
@@ -535,29 +539,65 @@ class ImunisasiStatusService
      * `usia_pemberian_max` (satuan HARI) — bukan daftar kode yang ditulis
      * tangan, supaya antigen baru otomatis kebagian.
      *
+     *   NULL        → tak bisa diklasifikasi (lihat getAntigenTanpaPenyebut)
      *   ≤  59 hari  → SELURUH kohort  (HB0, BCG, Polio 1)
      *   ≤ 364 hari  → SI              (RV1 … MR1)
-     *     lainnya   → BADUTA          (PCV3, MR2, DPT-HB-Hib 4)
+     *   ≤ 730 hari  → BADUTA          (PCV3, MR2, DPT-HB-Hib 4)
+     *   > 730 hari  → tak bisa diklasifikasi
      *
      * Penyebut antigen bayi baru lahir sengaja SELURUH kohort, bukan kelompok
      * BBL: HB0 diberikan 0–7 hari setelah lahir, jadi setiap anak dalam
      * periode menerimanya. Kalau penyebutnya kelompok BBL (yang hanya berisi
      * kelahiran Februari–Maret), HB0 milik ±10 bulan kelahiran lain tidak
      * masuk pembilang maupun penyebut mana pun.
+     *
+     * `usia_pemberian_max` boleh NULL di skema (nullable di migration & form
+     * master data) — operator bisa menyimpan antigen aktif non-Tambahan tanpa
+     * batas usia. `(int) null === 0` lolos aturan `<= 59` diam-diam kalau
+     * dipaksakan jadi int, mendarat di SELURUH (penyebut paling lebar, paling
+     * menekan angka cakupan) — karena itu NULL ditolak eksplisit, bukan
+     * di-cast. Batas atas 730 dipilih karena anak Baduta paling tua ±24 bulan
+     * saat dinilai, dan antigen rutin tertua yang ada (DPT-HB-Hib 4) sudah
+     * berakhir di 720 hari — antigen yang jadwalnya lewat 730 hari tak punya
+     * kelompok kohort yang adil untuk mengukurnya.
      */
-    private function kelompokPenyebutAntigen(int $usiaPemberianMax): string
+    private function kelompokPenyebutAntigen(?int $usiaPemberianMax): ?string
     {
         return match (true) {
-            $usiaPemberianMax <= 59  => 'SELURUH',
-            $usiaPemberianMax <= 364 => 'SI',
-            default                  => 'BADUTA',
+            $usiaPemberianMax === null => null,
+            $usiaPemberianMax <= 59    => 'SELURUH',
+            $usiaPemberianMax <= 364   => 'SI',
+            $usiaPemberianMax <= 730   => 'BADUTA',
+            default                    => null,
         };
     }
 
     /** Titik masuk pengujian untuk kelompokPenyebutAntigen(). */
-    public function kelompokPenyebutAntigenUntukUji(int $usiaPemberianMax): string
+    public function kelompokPenyebutAntigenUntukUji(?int $usiaPemberianMax): ?string
     {
         return $this->kelompokPenyebutAntigen($usiaPemberianMax);
+    }
+
+    /**
+     * Nama antigen aktif, non-Tambahan, yang `usia_pemberian_max`-nya tak
+     * bisa diklasifikasi ke kelompok kohort mana pun (NULL atau > 730 hari)
+     * — lihat kelompokPenyebutAntigen(). Query master data murni, TIDAK
+     * memindai populasi anak, supaya bisa dipanggil bebas di controller
+     * tanpa menambah beban dasbor.
+     *
+     * @return list<string>
+     */
+    public function getAntigenTanpaPenyebut(): array
+    {
+        return JenisVaksin::aktif()
+            ->where('kategori', '!=', 'Tambahan')
+            ->where(function ($q) {
+                $q->whereNull('usia_pemberian_max')
+                    ->orWhere('usia_pemberian_max', '>', 730);
+            })
+            ->orderBy('usia_pemberian_min')
+            ->pluck('nama')
+            ->all();
     }
 
     /**
@@ -569,6 +609,10 @@ class ImunisasiStatusService
      *
      * Satu pass populasi atas gabungan BADUTA ∪ SELURUH, yang kebetulan
      * bersambung: [1 Apr X-2 .. 31 Mar X].
+     *
+     * Antigen yang tak bisa diklasifikasi (lihat kelompokPenyebutAntigen,
+     * getAntigenTanpaPenyebut) DIKECUALIKAN dari hasil sepenuhnya, bukan
+     * ditampilkan dengan penyebut yang salah.
      *
      * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
      * @return list<array{kode: string, nama: string, kelompok: string, jumlah_sudah: int, jumlah_penyebut: int, persen: float}>
@@ -582,8 +626,16 @@ class ImunisasiStatusService
 
         $kelompokVaksin = [];
         foreach ($vaksinList as $vaksin) {
-            $kelompokVaksin[$vaksin->id] = $this->kelompokPenyebutAntigen((int) $vaksin->usia_pemberian_max);
+            $klasifikasi = $this->kelompokPenyebutAntigen(
+                $vaksin->usia_pemberian_max === null ? null : (int) $vaksin->usia_pemberian_max
+            );
+            if ($klasifikasi === null) {
+                continue; // tak bisa diklasifikasi — dikecualikan, lihat getAntigenTanpaPenyebut()
+            }
+            $kelompokVaksin[$vaksin->id] = $klasifikasi;
         }
+
+        $vaksinList = $vaksinList->filter(fn ($v) => array_key_exists($v->id, $kelompokVaksin))->values();
 
         [$awal] = $kohort->rentang('BADUTA');
         [, $akhir] = $kohort->rentang('SELURUH');
