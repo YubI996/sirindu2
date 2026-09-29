@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SpmCapaian;
 use App\Models\SpmKategori;
 use App\Support\CapaianSpm;
 use App\Traits\MemakaiTahunSpm;
@@ -121,6 +122,56 @@ class MasterDataSpmController extends Controller
         $kategori->update($validated);
 
         return response()->json(['success' => true, 'message' => 'Kategori SPM berhasil diperbarui']);
+    }
+
+    /**
+     * Simpan sasaran + capaian TW I–IV untuk satu tahun (upsert).
+     *
+     * Keempat kunci tw1..tw4 SELALU ditulis ulang, termasuk sebagai NULL.
+     * Kalau hanya kunci yang terisi yang diteruskan, angka yang dihapus
+     * petugas di form akan dipertahankan oleh updateOrCreate dan tidak bisa
+     * dibatalkan dari UI. NULL = triwulan belum dilaporkan, 0 = capaiannya nol.
+     */
+    public function angka(Request $request, $id)
+    {
+        $kategori = SpmKategori::findOrFail($id);
+
+        $validated = $request->validate([
+            'tahun'   => ['required', 'integer', 'min:' . (int) config('spm.tahun_min'), 'max:' . ((int) now()->year + 1)],
+            'sasaran' => ['required', 'numeric', 'min:0'],
+            'tw1'     => ['nullable', 'numeric', 'min:0'],
+            'tw2'     => ['nullable', 'numeric', 'min:0'],
+            'tw3'     => ['nullable', 'numeric', 'min:0'],
+            'tw4'     => ['nullable', 'numeric', 'min:0'],
+            'catatan' => ['nullable', 'string'],
+        ]);
+
+        $nilai = [
+            'sasaran' => (float) $validated['sasaran'],
+            'catatan' => $this->kosongJadiNull($request->input('catatan')),
+        ];
+
+        foreach (['tw1', 'tw2', 'tw3', 'tw4'] as $tw) {
+            $isi = $this->kosongJadiNull($request->input($tw));
+            $nilai[$tw] = $isi === null ? null : (float) $isi;
+        }
+
+        SpmCapaian::updateOrCreate(
+            ['id_kategori' => $kategori->id, 'tahun' => (int) $validated['tahun']],
+            $nilai,
+        );
+
+        return response()->json(['success' => true, 'message' => 'Angka SPM tersimpan']);
+    }
+
+    /** '' dan null sama-sama berarti "tidak diisi". */
+    private function kosongJadiNull($nilai)
+    {
+        if ($nilai === null) {
+            return null;
+        }
+
+        return trim((string) $nilai) === '' ? null : $nilai;
     }
 
     public function toggleStatus($id)
