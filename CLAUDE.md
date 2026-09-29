@@ -269,3 +269,33 @@ jejaknya. Karena itu kelas Import yang membaca kolom tanggal memakai
 
 Dikunci `tests/Unit/Support/TanggalBerkasTest.php` dan
 `tests/Feature/Imports/FormatTanggalImportTest.php`.
+
+### SPM manual: NULL triwulan, dan prorata yang mengikuti laporan
+
+Modul SPM (`spm_kategori` + `spm_capaian`, spec
+`docs/superpowers/specs/2026-09-29-dasbor-spm-design.md`) berisi angka yang **diisi tangan**,
+bukan dihitung dari data anak — beda dari kartu SPM K1–K4 di dasbor Kesmas. Kategorinya bebas;
+aplikasi tidak tahu maknanya.
+
+- **`tw1..tw4` nullable tanpa DEFAULT.** NULL = triwulan belum dilaporkan, 0 = capaiannya nol.
+  Endpoint `angka` **selalu** menulis ulang keempat kunci termasuk sebagai NULL; kalau hanya
+  yang terisi yang dikirim, `updateOrCreate` mempertahankan angka lama dan salah ketik yang
+  sudah dihapus petugas tidak bisa dibatalkan dari UI. Dikunci
+  `SimpanAngkaSpmTest::test_mengosongkan_kembali_triwulan_yang_terisi_menghapus_nilainya`.
+- **Prorata diukur terhadap triwulan yang DILAPORKAN (`twTerisi`), bukan triwulan kalender.**
+  Kategori yang baru lapor s.d. TW II pada bulan September tidak dicap gagal. Keterlambatan
+  laporan adalah penanda terpisah (`laporanTertinggal()`, `twKosong()`). Kalau prorata dipatok
+  ke kalender, setiap laporan yang telat terlihat seperti kegagalan program — dan itu jauh
+  lebih sering.
+- **Rata-rata dasbor = rata-rata aritmetik persen antar kategori, tanpa pembobotan**, dan
+  kategori yang belum dilaporkan **tidak** dihitung 0. Satuan antar kategori berbeda, jadi
+  `Σ kumulatif ÷ Σ sasaran` tidak bermakna (1.000 orang + 40 posyandu bukan 1.040 apa pun).
+- `CapaianSpm` dan `RingkasanSpm` **tidak boleh** memanggil `config()`/`now()` — unit test
+  proyek ini memakai `PHPUnit\Framework\TestCase` polos tanpa boot aplikasi. Ambang dari
+  `config('spm.ambang')` diteruskan controller lewat trait `App\Traits\MemakaiTahunSpm` dan
+  parameter, bukan diambil di dalam value object.
+- **Tinggi grafik Chart.js ada di kontainernya, bukan di atribut `height` `<canvas>`.** Dengan
+  `maintainAspectRatio:false` atribut itu diabaikan dan grafik memanjang melewati satu layar.
+  Pola ini berlaku untuk dasbor mana pun yang memakai opsi tersebut.
+- **Yajra DataTables sudah meng-escape kolom non-`rawColumns`.** Menambah `e()` di `editColumn`
+  membuat double-escape: nama kategori tercetak `&lt;script&gt;` harfiah di tabel.
