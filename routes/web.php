@@ -178,6 +178,10 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::put('update-imunisasi-detail/{id}', [App\Http\Controllers\AdminController::class, 'updateImunisasiDetail'])->name('admin.updateImunisasiDetail');
     Route::delete('delete-imunisasi/{id}', [App\Http\Controllers\AdminController::class, 'deleteImunisasiDetail'])->name('admin.deleteImunisasiDetail');
     Route::get('imunisasi-dashboard', [App\Http\Controllers\AdminController::class, 'imunisasiDashboard'])->name('admin.imunisasiDashboard');
+
+    // Dasbor SPM — spec docs/superpowers/specs/2026-09-29-dasbor-spm-design.md §5
+    Route::get('spm-dashboard', [App\Http\Controllers\SpmDashboardController::class, 'index'])
+         ->name('admin.spm.dashboard');
     //Data Export Anak
     Route::get('export', [App\Http\Controllers\AdminController::class, 'exportView'])->name('admin.exportView');
     Route::post('formViewExport', [App\Http\Controllers\AdminController::class, 'formViewExport'])->name('admin.formViewExport');
