@@ -239,6 +239,25 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.masterdata.penduduk.destroy');
     });
 
+    Route::prefix('master-data/spm')->group(function () {
+        Route::get('/', [App\Http\Controllers\MasterDataSpmController::class, 'index'])
+             ->name('admin.masterdata.spm.index');
+        Route::get('get-data', [App\Http\Controllers\MasterDataSpmController::class, 'getData'])
+             ->name('admin.masterdata.spm.getData');
+        Route::post('store', [App\Http\Controllers\MasterDataSpmController::class, 'store'])
+             ->name('admin.masterdata.spm.store');
+        Route::put('update/{id}', [App\Http\Controllers\MasterDataSpmController::class, 'update'])
+             ->name('admin.masterdata.spm.update');
+        Route::put('angka/{id}', [App\Http\Controllers\MasterDataSpmController::class, 'angka'])
+             ->name('admin.masterdata.spm.angka');
+        Route::patch('toggle-status/{id}', [App\Http\Controllers\MasterDataSpmController::class, 'toggleStatus'])
+             ->name('admin.masterdata.spm.toggleStatus');
+        Route::delete('destroy/{id}', [App\Http\Controllers\MasterDataSpmController::class, 'destroy'])
+             ->name('admin.masterdata.spm.destroy');
+        Route::patch('restore/{id}', [App\Http\Controllers\MasterDataSpmController::class, 'restore'])
+             ->name('admin.masterdata.spm.restore');
+    });
+
     /*------------------------------------------
     Export Data Routes
     --------------------------------------------*/
