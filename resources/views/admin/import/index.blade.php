@@ -393,6 +393,7 @@
                     <span class="material-symbols-outlined">description</span>
                     <span>Belum ada file dipilih</span>
                 </div>
+                                @include('admin.partials.pilihan-format-tanggal', ['id' => 'format-tanggal-anak'])
                 <button type="submit" class="imp-btn-upload">
                     <span class="material-symbols-outlined">upload</span>
                     Upload &amp; Import
@@ -479,6 +480,7 @@
                     <span class="material-symbols-outlined">description</span>
                     <span>Belum ada file dipilih</span>
                 </div>
+                                @include('admin.partials.pilihan-format-tanggal', ['id' => 'format-tanggal-pengukuran'])
                 <button type="submit" class="imp-btn-upload">
                     <span class="material-symbols-outlined">upload</span>
                     Upload &amp; Import
@@ -523,6 +525,7 @@
                     <span class="material-symbols-outlined">description</span>
                     <span>Belum ada file dipilih</span>
                 </div>
+                                @include('admin.partials.pilihan-format-tanggal', ['id' => 'format-tanggal-imunisasi'])
                 <button type="submit" class="imp-btn-upload">
                     <span class="material-symbols-outlined">upload</span>
                     Upload &amp; Import
@@ -616,6 +619,7 @@
                     <span class="material-symbols-outlined">description</span>
                     <span>Belum ada file dipilih</span>
                 </div>
+                                @include('admin.partials.pilihan-format-tanggal', ['id' => 'format-tanggal-ukur'])
                 <button type="submit" class="imp-btn-upload">
                     <span class="material-symbols-outlined">upload</span>
                     Upload &amp; Import

@@ -125,9 +125,10 @@ Anak
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="file_kohort" class="form-label fw-semibold">Pilih File Excel Kohort Puskesmas</label>
-                        <input type="file" name="file_kohort" id="file_kohort" class="form-control" accept=".xlsx" required>
-                        <small class="form-text text-muted">Format: .xlsx. Maksimal 20 MB. Sheet "balita" akan diproses.</small>
+                        <input type="file" name="file_kohort" id="file_kohort" class="form-control" accept=".xlsx,.xls" required>
+                        <small class="form-text text-muted">Format: .xlsx atau .xls. Maksimal 20 MB. Sheet "balita" akan diproses.</small>
                     </div>
+                    @include('admin.partials.pilihan-format-tanggal', ['id' => 'format-tanggal-kohort'])
                     <div class="alert alert-info small mb-0">
                         <strong>Catatan:</strong>
                         <ul class="mb-0 mt-1">

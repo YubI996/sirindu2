@@ -237,3 +237,35 @@ tanpa error untuk kolom yang tak ikut). Dikunci
 `ImunisasiDashboardMemoriTest` (2.000 anak, kenaikan memori puncak < 16 MB).
 Untuk agregat yang bisa dihitung SQL (COUNT/GROUP BY) atau cukup `DB::table()`
 dengan sedikit kolom (stdClass ≈ 0,5 KB/baris), itu lebih baik lagi.
+
+### Tanggal berkas import: `05/02/2020` tak terbaca tanpa tahu urutannya
+
+`Carbon::parse('05/02/2020')` mengembalikan **2 Mei** — gaya AS, tanpa peringatan apa
+pun. Berkas Indonesia yang wajar tersimpan sebagai tanggal yang salah dan tak ada
+jejaknya. Karena itu kelas Import yang membaca kolom tanggal memakai
+`App\Support\TanggalBerkas` lewat trait `App\Traits\MembacaTanggalBerkas`, **bukan**
+`Carbon::parse()`.
+
+- Petugas memilih di form (`format_tanggal`: `auto` | `dmy` | `mdy`), tersimpan di
+  `import_logs.format_tanggal` — supaya **reimport** membaca berkas yang sama dengan
+  cara yang sama, dan riwayat bisa menjawab "dulu dibaca sebagai format apa".
+- `auto` = disimpulkan dari isi berkas oleh `kunciFormatTanggal()` di awal
+  `collection()`: ketemu `25/02` → hari di depan. Baris disimpan sambil berjalan, jadi
+  bukti yang baru muncul di potongan ke-3 tak bisa menarik kembali baris yang sudah
+  masuk — **potongan pertama itulah batas buktinya**, dan itu disengaja.
+- Berkas yang seluruh tanggalnya masih bisa dua arti **menghentikan import**
+  (`FormatTanggalAmbigu`), bukan ditebak. Sel tanggal Excel, serial Excel, `2020-01-15`,
+  dan `2020/01/15` tak pernah ambigu → pilihan format tak terpakai di sana.
+- Pilihan tegas yang bertabrakan dengan isi (`25/12/2025` dibaca sebagai bulan 25)
+  menghasilkan `null` → baris masuk daftar peringatan, **tidak** ditukar diam-diam.
+- Nama bulan (`15-Jan-2020`) dan tahun dua digit (`05/02/20`) sengaja tidak didukung;
+  dulu lolos lewat `Carbon::parse`, sekarang jadi peringatan baris. Jangan menambahkan
+  fallback `Carbon::parse` untuk "menyelamatkan" bentuk lain — itu pintu masuk `'x'`
+  (tanda "sudah" dari petugas) terbaca sebagai hari ini dan `'2020'` sebagai serial
+  Excel 1905.
+- Masih memakai `Carbon::parse`: `CapilImport`, `HasilLabImport`,
+  `OperasiTimbangImport`, `OtFinalRegistriImport` (dua terakhir dipanggil dari artisan,
+  tanpa form). Kalau menyentuh salah satunya, pindahkan sekalian.
+
+Dikunci `tests/Unit/Support/TanggalBerkasTest.php` dan
+`tests/Feature/Imports/FormatTanggalImportTest.php`.

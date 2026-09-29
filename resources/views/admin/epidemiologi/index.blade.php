@@ -844,6 +844,7 @@
                         <input type="file" name="file_import" id="file_import" class="form-control" accept=".xlsx,.xls,.csv" required>
                         <div class="form-text">Format: .xlsx, .xls, atau .csv. Maksimal ukuran file: 20 MB.</div>
                     </div>
+                    @include('admin.partials.pilihan-format-tanggal', ['id' => 'format-tanggal-pd3i'])
                     <div class="alert alert-info small mb-0">
                         <strong>Catatan:</strong>
                         <ul class="mb-0 mt-1">
