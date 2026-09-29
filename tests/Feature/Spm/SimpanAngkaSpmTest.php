@@ -165,6 +165,35 @@ class SimpanAngkaSpmTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('tahun');
     }
 
+    public function test_angka_kelewat_besar_ditolak_sebagai_galat_isian(): void
+    {
+        // decimal(14,2) mentok di 999.999.999.999,99. Salah ketik 13 digit
+        // harus jadi pesan di bawah kolomnya, bukan QueryException 500 yang
+        // muncul sebagai "Terjadi kesalahan" tanpa keterangan apa pun.
+        $url = route('admin.masterdata.spm.angka', $this->kategori->id);
+
+        $this->actingAs($this->superAdmin)
+            ->putJson($url, $this->payload(['sasaran' => '10000000000000']))
+            ->assertStatus(422)->assertJsonValidationErrors('sasaran');
+
+        $this->actingAs($this->superAdmin)
+            ->putJson($url, $this->payload(['tw1' => '10000000000000']))
+            ->assertStatus(422)->assertJsonValidationErrors('tw1');
+
+        $this->assertSame(0, SpmCapaian::count());
+    }
+
+    public function test_batas_atas_yang_masih_sah_tetap_diterima(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->putJson(route('admin.masterdata.spm.angka', $this->kategori->id), $this->payload([
+                'sasaran' => '999999999999.99',
+            ]))
+            ->assertStatus(200);
+
+        $this->assertSame(999999999999.99, SpmCapaian::first()->sasaran);
+    }
+
     public function test_admin_biasa_tidak_bisa_menyimpan_angka(): void
     {
         $admin = User::factory()->create(['type' => 1]);

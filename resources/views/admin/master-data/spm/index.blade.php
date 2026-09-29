@@ -3,6 +3,7 @@
 <link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/dataTables.bootstrap4.min.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ asset('admin/src/plugins/datatables/css/responsive.bootstrap4.min.css') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 @endpush
 @push('js')
@@ -219,7 +220,8 @@
                         <th>TW IV</th>
                         <th>Kumulatif</th>
                         <th>%</th>
-                        <th>Status</th>
+                        <th>Capaian</th>
+                        <th>Keadaan</th>
                         <th style="text-align:center;">Aksi</th>
                     </tr>
                 </thead>
@@ -345,7 +347,19 @@
 <script>
 $(document).ready(function () {
     var TAHUN = {{ $tahun }};
-    var angkaKosong = function (v) { return (v === null || v === undefined) ? '—' : v; };
+
+    // Tampilan angka gaya Indonesia; desimal hanya kalau nilainya memang pecahan.
+    // Ini fungsi `render` DataTables, jadi hanya memengaruhi tampilan — nilai
+    // mentah untuk modal tetap diambil dari endpoint detail, bukan dari sini.
+    var angkaKosong = function (v) {
+        if (v === null || v === undefined || v === '') { return '—'; }
+        var n = parseFloat(v);
+        if (isNaN(n)) { return v; }
+        return n.toLocaleString('id-ID', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: (n % 1 === 0) ? 0 : 2
+        });
+    };
 
     var table = $('#spmTable').DataTable({
         processing: true,
@@ -361,10 +375,13 @@ $(document).ready(function () {
             { data: 'tw4', name: 'spm_capaian.tw4', render: angkaKosong },
             { data: 'kumulatif', name: 'kumulatif', orderable: false, searchable: false, render: angkaKosong },
             { data: 'persen_badge', name: 'persen_badge', orderable: false, searchable: false },
-            { data: 'status_badge', name: 'status_badge', orderable: false, searchable: false },
+            { data: 'capaian_badge', name: 'capaian_badge', orderable: false, searchable: false },
+            { data: 'keadaan_badge', name: 'keadaan_badge', orderable: false, searchable: false },
             { data: 'action', name: 'action', orderable: false, searchable: false }
         ],
-        order: [[0, 'asc']],
+        // Kosong = pakai urutan dari server (urutan lalu nama), supaya kolom
+        // "Urutan Tampil" di modal benar-benar berpengaruh di halaman ini juga.
+        order: [],
         pageLength: 25,
         language: { url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/id.json' }
     });
@@ -380,17 +397,26 @@ $(document).ready(function () {
         $('#formModal').modal('show');
     });
 
+    // Nilai untuk mengisi modal SELALU dari endpoint detail, tidak pernah dari
+    // baris DataTables: baris itu sudah di-escape, dan memakainya berarti teks
+    // bebas ditulis balik ke DB dalam bentuk ter-escape lalu menumpuk tiap
+    // kali disimpan (& -> &amp; -> &amp;amp;).
+    function ambilDetail(id) {
+        return $.getJSON('{{ route("admin.masterdata.spm.detail", ":id") }}'.replace(':id', id), { tahun: TAHUN });
+    }
+
     $(document).on('click', '.btn-edit', function () {
-        var row = table.row($(this).closest('tr')).data();
         clearErrors();
-        $('#form_id').val(row.id);
-        $('#form_nama').val($('<div>').html(row.nama).text());
-        $('#form_satuan').val($('<div>').html(row.satuan).text());
-        $('#form_urutan').val(row.urutan);
-        $('#form_keterangan').val(row.keterangan);
-        $('#form_aktif').prop('checked', row.is_active == 1);
-        $('#formModalTitle').text('Edit Kategori SPM');
-        $('#formModal').modal('show');
+        ambilDetail($(this).data('id')).done(function (res) {
+            $('#form_id').val(res.kategori.id);
+            $('#form_nama').val(res.kategori.nama);
+            $('#form_satuan').val(res.kategori.satuan);
+            $('#form_urutan').val(res.kategori.urutan);
+            $('#form_keterangan').val(res.kategori.keterangan);
+            $('#form_aktif').prop('checked', !!res.kategori.is_active);
+            $('#formModalTitle').text('Edit Kategori SPM');
+            $('#formModal').modal('show');
+        }).fail(tampilkanGalat);
     });
 
     $('#btnSimpan').on('click', function () {
@@ -419,17 +445,18 @@ $(document).ready(function () {
     });
 
     $(document).on('click', '.btn-angka', function () {
-        var row = table.row($(this).closest('tr')).data();
         clearErrors();
-        $('#angka_id').val(row.id);
-        $('#angkaNamaKategori').text($('<div>').html(row.nama).text());
-        $('#angka_sasaran').val(row.sasaran);
-        $('#angka_tw1').val(row.tw1);
-        $('#angka_tw2').val(row.tw2);
-        $('#angka_tw3').val(row.tw3);
-        $('#angka_tw4').val(row.tw4);
-        $('#angka_catatan').val(row.catatan);
-        $('#angkaModal').modal('show');
+        ambilDetail($(this).data('id')).done(function (res) {
+            $('#angka_id').val(res.kategori.id);
+            $('#angkaNamaKategori').text(res.kategori.nama);
+            $('#angka_sasaran').val(res.angka.sasaran);
+            $('#angka_tw1').val(res.angka.tw1);
+            $('#angka_tw2').val(res.angka.tw2);
+            $('#angka_tw3').val(res.angka.tw3);
+            $('#angka_tw4').val(res.angka.tw4);
+            $('#angka_catatan').val(res.angka.catatan);
+            $('#angkaModal').modal('show');
+        }).fail(tampilkanGalat);
     });
 
     $('#btnSimpanAngka').on('click', function () {
@@ -464,10 +491,12 @@ $(document).ready(function () {
 
     var idHapus = null;
     $(document).on('click', '.btn-delete', function () {
-        var row = table.row($(this).closest('tr')).data();
-        idHapus = row.id;
-        $('#deleteNama').text($('<div>').html(row.nama).text());
-        $('#deleteModal').modal('show');
+        var id = $(this).data('id');
+        ambilDetail(id).done(function (res) {
+            idHapus = id;
+            $('#deleteNama').text(res.kategori.nama);
+            $('#deleteModal').modal('show');
+        }).fail(tampilkanGalat);
     });
 
     $('#confirmDelete').on('click', function () {

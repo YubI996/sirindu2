@@ -191,6 +191,40 @@ class SpmDashboardTest extends TestCase
         $response->assertDontSee(route('admin.masterdata.spm.index'), false);
     }
 
+    public function test_angka_pecahan_ditampilkan_apa_adanya_bukan_dibulatkan(): void
+    {
+        // Kolom decimal(14,2) dipilih spec supaya sasaran bisa berupa persen
+        // atau pecahan. Kalau tampilannya dibulatkan sementara persen dihitung
+        // dari nilai asli, petugas yang mengecek 24 ÷ 96 akan menyimpulkan
+        // dasbornya salah hitung.
+        $this->kategori('Cakupan IDL', ['sasaran' => 95.5, 'tw1' => 23.75]);
+
+        $response = $this->actingAs(User::factory()->create(['type' => 0]))
+            ->get(route('admin.spm.dashboard'))
+            ->assertStatus(200);
+
+        $response->assertSee('95,5')->assertSee('23,75');
+    }
+
+    public function test_angka_bulat_tidak_diberi_desimal_palsu(): void
+    {
+        $this->kategori('Pelayanan A', ['sasaran' => 1200, 'tw1' => 320]);
+
+        $response = $this->actingAs(User::factory()->create(['type' => 0]))
+            ->get(route('admin.spm.dashboard'))
+            ->assertStatus(200);
+
+        $response->assertSee('1.200')->assertDontSee('1.200,00');
+    }
+
+    public function test_halaman_memuat_font_barlow(): void
+    {
+        $this->actingAs(User::factory()->create(['type' => 0]))
+            ->get(route('admin.spm.dashboard'))
+            ->assertStatus(200)
+            ->assertSee('family=Barlow', false);
+    }
+
     public function test_judul_dan_breadcrumb_terisi(): void
     {
         $this->actingAs(User::factory()->create(['type' => 0]))

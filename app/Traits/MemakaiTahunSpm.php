@@ -32,7 +32,21 @@ trait MemakaiTahunSpm
         return ($tahun < $min || $tahun > $max) ? (int) now()->year : $tahun;
     }
 
-    /** Tahun yang punya data + tahun ini, terbaru dulu. */
+    /**
+     * Rentang penuh tahun_min..tahun ini+1, terbaru dulu — untuk master data
+     * (spec §4). Harus rentang, bukan "tahun yang punya data": sasaran tahun
+     * depan hanya bisa dibuat dari halaman yang tahunnya sudah terpilih, jadi
+     * daftar berbasis data membuat tahun baru mustahil dijangkau dari UI.
+     */
+    protected function tahunOpsiPenuh(): array
+    {
+        $tahun = range((int) config('spm.tahun_min'), (int) now()->year + 1);
+        rsort($tahun);
+
+        return $tahun;
+    }
+
+    /** Tahun yang punya data + tahun ini, terbaru dulu — untuk dasbor (spec §5). */
     protected function tahunOpsi(): array
     {
         $tahun = SpmCapaian::query()->distinct()->pluck('tahun')->map(fn ($t) => (int) $t)->all();

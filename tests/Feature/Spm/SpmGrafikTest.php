@@ -38,6 +38,36 @@ class SpmGrafikTest extends TestCase
         $this->assertSame(['Pelayanan Rendah', 'Pelayanan Sedang', 'Pelayanan Tinggi'], array_column($batang, 'nama'));
     }
 
+    public function test_urutan_batang_mengikuti_laju_bukan_persen_mentah(): void
+    {
+        // Persen tanpa triwulan acuannya tidak bermakna — itu seluruh dasar
+        // modul ini. Panel "paling tertinggal di atas" tidak boleh menaruh
+        // kategori merah DI BAWAH kategori kuning hanya karena persennya lebih besar.
+        $september = \Carbon\CarbonImmutable::create(now()->year, 9, 10);
+        \Carbon\CarbonImmutable::setTestNow($september);
+        \Carbon\Carbon::setTestNow($september);
+
+        try {
+            // Baru lapor TW I: 20/100 = 20%, prorata 25 → rasio 0,80 = tertinggal.
+            $this->kategori('Lapor TW I saja', ['sasaran' => 100, 'tw1' => 20]);
+            // Lapor sampai TW IV: 50/100 = 50%, prorata 100 → rasio 0,50 = kritis.
+            $this->kategori('Lapor sampai TW IV', [
+                'sasaran' => 100, 'tw1' => 20, 'tw2' => 10, 'tw3' => 10, 'tw4' => 10,
+            ]);
+
+            $batang = $this->buka()->viewData('grafik')['batang'];
+
+            $this->assertSame(
+                ['Lapor sampai TW IV', 'Lapor TW I saja'],
+                array_column($batang, 'nama'),
+                'yang kritis (rasio 0,50) harus di atas yang tertinggal (rasio 0,80) walau persennya lebih besar',
+            );
+        } finally {
+            \Carbon\CarbonImmutable::setTestNow();
+            \Carbon\Carbon::setTestNow();
+        }
+    }
+
     public function test_kategori_tanpa_persen_ditaruh_terakhir(): void
     {
         $this->kategori('Pelayanan Rendah', ['sasaran' => 100, 'tw1' => 10]);

@@ -29,7 +29,7 @@ class MasterDataSpmController extends Controller
     {
         return view('admin.master-data.spm.index', [
             'tahun'     => $this->tahunTervalidasi($request),
-            'tahunOpsi' => $this->tahunOpsi(),
+            'tahunOpsi' => $this->tahunOpsiPenuh(),
         ]);
     }
 
@@ -52,7 +52,9 @@ class MasterDataSpmController extends Controller
                 'spm_capaian.tw3',
                 'spm_capaian.tw4',
                 'spm_capaian.catatan',
-            ]);
+            ])
+            ->orderBy('spm_kategori.urutan')
+            ->orderBy('spm_kategori.nama');
 
         $hitung = fn ($row) => CapaianSpm::dari(
             $row->sasaran,
@@ -73,7 +75,7 @@ class MasterDataSpmController extends Controller
                     ? '<span class="text-muted">—</span>'
                     : '<strong>' . number_format($persen, 1, ',', '.') . '%</strong>';
             })
-            ->addColumn('status_badge', function ($row) use ($hitung, $status) {
+            ->addColumn('capaian_badge', function ($row) use ($hitung, $status) {
                 $capaian = $hitung($row);
                 $meta    = $status[$capaian->status()];
                 $badge   = '<span class="badge ' . $meta['badge'] . '">' . e($meta['label']) . '</span>';
@@ -83,6 +85,18 @@ class MasterDataSpmController extends Controller
                 }
 
                 return $badge;
+            })
+            // Keadaan BARIS (aktif/nonaktif/dihapus) — beda dari capaian_badge yang
+            // menyatakan ketercapaian SPM. Tanpa kolom ini tombol toggle bekerja
+            // buta: satu-satunya umpan balik cuma toast 1,5 detik.
+            ->addColumn('keadaan_badge', function ($row) {
+                if ($row->trashed()) {
+                    return '<span class="badge bg-danger">Dihapus</span>';
+                }
+
+                return $row->is_active
+                    ? '<span class="badge bg-success">Aktif</span>'
+                    : '<span class="badge bg-secondary">Tidak Aktif</span>';
             })
             ->addColumn('action', function ($row) {
                 if ($row->trashed()) {
@@ -96,8 +110,44 @@ class MasterDataSpmController extends Controller
                     . '<button class="btn btn-sm btn-danger btn-delete" data-id="' . $row->id . '" title="Hapus"><i class="fa fa-trash"></i></button>'
                     . '</div>';
             })
-            ->rawColumns(['persen_badge', 'status_badge', 'action'])
+            ->rawColumns(['persen_badge', 'capaian_badge', 'keadaan_badge', 'action'])
             ->make(true);
+    }
+
+    /**
+     * Nilai MENTAH satu kategori + angka tahun terpilih, untuk mengisi modal.
+     *
+     * Ada endpoint tersendiri karena baris DataTables sudah di-escape Yajra:
+     * memakainya untuk mengisi ulang form berarti teks bebas ditulis balik ke
+     * DB dalam bentuk ter-escape, dan menumpuk tiap kali disimpan
+     * (& -> &amp; -> &amp;amp;). Satu sumber mentah mengalahkan lima tempat
+     * yang masing-masing harus ingat meng-unescape.
+     */
+    public function detail(Request $request, $id)
+    {
+        $kategori = SpmKategori::withTrashed()->findOrFail($id);
+        $tahun    = $this->tahunTervalidasi($request);
+        $angka    = $kategori->capaianTahun($tahun);
+
+        return response()->json([
+            'kategori' => [
+                'id'         => $kategori->id,
+                'nama'       => $kategori->nama,
+                'satuan'     => $kategori->satuan,
+                'keterangan' => $kategori->keterangan,
+                'urutan'     => $kategori->urutan,
+                'is_active'  => $kategori->is_active,
+            ],
+            'tahun' => $tahun,
+            'angka' => [
+                'sasaran' => $angka->sasaran ?? null,
+                'tw1'     => $angka->tw1 ?? null,
+                'tw2'     => $angka->tw2 ?? null,
+                'tw3'     => $angka->tw3 ?? null,
+                'tw4'     => $angka->tw4 ?? null,
+                'catatan' => $angka->catatan ?? null,
+            ],
+        ]);
     }
 
     public function store(Request $request)
@@ -138,11 +188,14 @@ class MasterDataSpmController extends Controller
 
         $validated = $request->validate([
             'tahun'   => ['required', 'integer', 'min:' . (int) config('spm.tahun_min'), 'max:' . ((int) now()->year + 1)],
-            'sasaran' => ['required', 'numeric', 'min:0'],
-            'tw1'     => ['nullable', 'numeric', 'min:0'],
-            'tw2'     => ['nullable', 'numeric', 'min:0'],
-            'tw3'     => ['nullable', 'numeric', 'min:0'],
-            'tw4'     => ['nullable', 'numeric', 'min:0'],
+            // Batas atas = kapasitas decimal(14,2). Tanpa ini salah ketik 13 digit
+            // lolos validasi, ditolak MySQL, dan muncul sebagai "Terjadi kesalahan"
+            // tanpa menyebut kolom mana yang bermasalah.
+            'sasaran' => ['required', 'numeric', 'min:0', 'max:999999999999.99'],
+            'tw1'     => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'tw2'     => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'tw3'     => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
+            'tw4'     => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
             'catatan' => ['nullable', 'string'],
         ]);
 

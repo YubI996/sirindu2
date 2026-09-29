@@ -196,7 +196,7 @@ class MasterDataSpmTest extends TestCase
 
         $this->assertCount(1, $data);
         $this->assertNull($data[0]['sasaran']);
-        $this->assertStringContainsString('Belum dilaporkan', $data[0]['status_badge']);
+        $this->assertStringContainsString('Belum dilaporkan', $data[0]['capaian_badge']);
     }
 
     public function test_tahun_ngawur_jatuh_ke_tahun_ini_tanpa_error(): void
@@ -209,6 +209,120 @@ class MasterDataSpmTest extends TestCase
                 ->assertStatus(200)
                 ->assertJsonCount(1, 'data');
         }
+    }
+
+    public function test_detail_mengembalikan_nilai_mentah_bukan_yang_sudah_di_escape(): void
+    {
+        // Modal mengisi ulang form dari sini. Kalau yang dipakai adalah nilai
+        // hasil escape DataTables, teks bebas ditulis balik ke DB dalam bentuk
+        // ter-escape dan menumpuk tiap kali disimpan (& -> &amp; -> &amp;amp;).
+        $kategori = SpmKategori::create([
+            'nama'       => 'Pelayanan "Khusus" & Lansia',
+            'satuan'     => 'orang',
+            'keterangan' => 'Gabungan <b>dua</b> program & rujukan',
+        ]);
+        SpmCapaian::create([
+            'id_kategori' => $kategori->id,
+            'tahun'       => 2026,
+            'sasaran'     => 100,
+            'tw1'         => 10,
+            'catatan'     => 'Stok vaksin & alat terlambat',
+        ]);
+
+        $json = $this->actingAs($this->superAdmin)
+            ->getJson(route('admin.masterdata.spm.detail', ['id' => $kategori->id, 'tahun' => 2026]))
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertSame('Pelayanan "Khusus" & Lansia', $json['kategori']['nama']);
+        $this->assertSame('Gabungan <b>dua</b> program & rujukan', $json['kategori']['keterangan']);
+        $this->assertSame('Stok vaksin & alat terlambat', $json['angka']['catatan']);
+        // Angka datang sebagai float (model meng-cast), siap dipakai <input type=number>.
+        $this->assertSame(10.0, (float) $json['angka']['tw1']);
+    }
+
+    public function test_detail_tahun_tanpa_angka_mengembalikan_angka_kosong(): void
+    {
+        $kategori = SpmKategori::create(['nama' => 'Pelayanan TB', 'satuan' => 'orang']);
+
+        $json = $this->actingAs($this->superAdmin)
+            ->getJson(route('admin.masterdata.spm.detail', ['id' => $kategori->id, 'tahun' => 2026]))
+            ->assertStatus(200)
+            ->json();
+
+        $this->assertNull($json['angka']['sasaran']);
+        $this->assertNull($json['angka']['tw1']);
+    }
+
+    public function test_detail_ditolak_untuk_admin_biasa(): void
+    {
+        $kategori = SpmKategori::create(['nama' => 'Pelayanan TB', 'satuan' => 'orang']);
+
+        $this->actingAs($this->adminBiasa)
+            ->getJson(route('admin.masterdata.spm.detail', ['id' => $kategori->id]))
+            ->assertStatus(403);
+    }
+
+    public function test_pilihan_tahun_mencakup_tahun_depan_walau_belum_ada_datanya(): void
+    {
+        // Tanpa ini, sasaran tahun depan mustahil diisi: tahunnya tak pernah
+        // muncul di dropdown, dan barisnya hanya bisa dibuat dari halaman
+        // yang tahunnya itu.
+        $depan = now()->year + 1;
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('admin.masterdata.spm.index'))
+            ->assertStatus(200)
+            ->assertSee('<option value="' . $depan . '"', false)
+            ->assertSee('<option value="' . config('spm.tahun_min') . '"', false);
+    }
+
+    public function test_tahun_terpilih_selalu_ada_di_daftar(): void
+    {
+        $depan = now()->year + 1;
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('admin.masterdata.spm.index', ['tahun' => $depan]))
+            ->assertStatus(200)
+            ->assertSee('<option value="' . $depan . '" selected', false);
+    }
+
+    public function test_keadaan_baris_terlihat_aktif_nonaktif_dan_dihapus(): void
+    {
+        SpmKategori::create(['nama' => 'Pelayanan Aktif', 'satuan' => 'orang', 'is_active' => true]);
+        SpmKategori::create(['nama' => 'Pelayanan Nonaktif', 'satuan' => 'orang', 'is_active' => false]);
+        SpmKategori::create(['nama' => 'Pelayanan Dihapus', 'satuan' => 'orang'])->delete();
+
+        $data = collect($this->actingAs($this->superAdmin)
+            ->getJson(route('admin.masterdata.spm.getData', ['tahun' => 2026]))
+            ->json('data'))
+            ->keyBy('nama');
+
+        $this->assertStringContainsString('Aktif', $data['Pelayanan Aktif']['keadaan_badge']);
+        $this->assertStringContainsString('Tidak Aktif', $data['Pelayanan Nonaktif']['keadaan_badge']);
+        $this->assertStringContainsString('Dihapus', $data['Pelayanan Dihapus']['keadaan_badge']);
+    }
+
+    public function test_urutan_menentukan_urutan_baris(): void
+    {
+        // Dibuat Alfa dulu supaya urutan sisip (Alfa, Zeta) BERBEDA dari urutan
+        // yang diharapkan (Zeta, Alfa) — kalau tidak, tesnya lulus tanpa kode apa pun.
+        SpmKategori::create(['nama' => 'Alfa', 'satuan' => 'orang', 'urutan' => 2]);
+        SpmKategori::create(['nama' => 'Zeta', 'satuan' => 'orang', 'urutan' => 1]);
+
+        $data = $this->actingAs($this->superAdmin)
+            ->getJson(route('admin.masterdata.spm.getData', ['tahun' => 2026]))
+            ->json('data');
+
+        $this->assertSame(['Zeta', 'Alfa'], array_column($data, 'nama'), 'urutan harus menang atas abjad');
+    }
+
+    public function test_halaman_memuat_font_barlow(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->get(route('admin.masterdata.spm.index'))
+            ->assertStatus(200)
+            ->assertSee('family=Barlow', false);
     }
 
     public function test_nama_kategori_berisi_html_tidak_lolos_mentah(): void

@@ -1,6 +1,7 @@
 @extends('admin::layouts.app')
 @push('styles')
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 @endpush
 @section('title') Dasbor SPM @endsection
@@ -65,7 +66,23 @@
 </style>
 
 @php
-    $angka = fn ($nilai, $desimal = 0) => $nilai === null ? '—' : number_format($nilai, $desimal, ',', '.');
+    /*
+     * Desimal ditampilkan hanya kalau nilainya memang pecahan. Kolomnya
+     * decimal(14,2) justru supaya sasaran boleh berupa persen atau pecahan —
+     * membulatkan tampilannya sementara persen dihitung dari nilai asli membuat
+     * petugas yang mengecek 24 ÷ 96 menyimpulkan dasbornya salah hitung.
+     */
+    $angka = function ($nilai, $desimal = null) {
+        if ($nilai === null) {
+            return '—';
+        }
+
+        if ($desimal === null) {
+            $desimal = fmod((float) $nilai, 1.0) == 0.0 ? 0 : 2;
+        }
+
+        return number_format($nilai, $desimal, ',', '.');
+    };
 @endphp
 
 <div class="spm-page">
@@ -205,11 +222,11 @@
                                     <strong>{{ $kategori->nama }}</strong>
                                     <div style="font-size:0.72rem; color:var(--spm-muted);">{{ $kategori->satuan }}</div>
                                 </td>
-                                <td class="spm-angka">{{ $angka($capaian->sasaran(), 0) }}</td>
+                                <td class="spm-angka">{{ $angka($capaian->sasaran()) }}</td>
                                 @foreach ([1, 2, 3, 4] as $n)
-                                    <td class="spm-angka">{{ $angka($capaian->tw($n), 0) }}</td>
+                                    <td class="spm-angka">{{ $angka($capaian->tw($n)) }}</td>
                                 @endforeach
-                                <td class="spm-angka"><strong>{{ $angka($capaian->kumulatif(), 0) }}</strong></td>
+                                <td class="spm-angka"><strong>{{ $angka($capaian->kumulatif()) }}</strong></td>
                                 <td>
                                     <div class="spm-bar">
                                         <div class="spm-bar__isi" style="width: {{ $lebar }}%; background: {{ $meta['warna'] }};"></div>
@@ -231,7 +248,7 @@
                                         <span class="spm-chip bg-secondary" style="margin-top:4px;">TW {{ $kosong }} kosong</span>
                                     @endforeach
                                 </td>
-                                <td class="spm-angka">{{ $angka($capaian->selisih(), 0) }}</td>
+                                <td class="spm-angka">{{ $angka($capaian->selisih()) }}</td>
                             </tr>
                             @if (!empty($kategori->catatan))
                                 <tr class="spm-catatan">

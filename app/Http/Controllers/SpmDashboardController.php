@@ -89,6 +89,7 @@ class SpmDashboardController extends Controller
             $batang[] = [
                 'nama'   => $item['kategori']->nama,
                 'persen' => $capaian->persen(),
+                'laju'   => $capaian->rasioLaju(),
                 'status' => $status,
                 'warna'  => config("spm.status.{$status}.warna"),
             ];
@@ -105,19 +106,24 @@ class SpmDashboardController extends Controller
             ];
         }
 
-        // Paling tertinggal di atas; yang belum punya persen ditaruh terakhir.
+        // Paling tertinggal di atas, diukur dengan LAJU (kumulatif ÷ prorata),
+        // bukan persen mentah. Persen tanpa triwulan acuannya tidak bermakna:
+        // 20% yang baru lapor TW I lebih sehat daripada 50% yang sudah lapor
+        // empat triwulan, jadi mengurutkan dengan persen menaruh kategori merah
+        // di bawah kategori kuning — persis kebalikan dari judul panelnya.
+        // Batangnya tetap menampilkan persen; yang berubah hanya urutannya.
         usort($batang, function ($a, $b) {
-            if ($a['persen'] === null && $b['persen'] === null) {
+            if ($a['laju'] === null && $b['laju'] === null) {
                 return strcmp($a['nama'], $b['nama']);
             }
-            if ($a['persen'] === null) {
+            if ($a['laju'] === null) {
                 return 1;
             }
-            if ($b['persen'] === null) {
+            if ($b['laju'] === null) {
                 return -1;
             }
 
-            return $a['persen'] <=> $b['persen'];
+            return $a['laju'] <=> $b['laju'];
         });
 
         return ['batang' => $batang, 'garis' => $garis];

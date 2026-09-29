@@ -248,6 +248,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.masterdata.spm.index');
         Route::get('get-data', [App\Http\Controllers\MasterDataSpmController::class, 'getData'])
              ->name('admin.masterdata.spm.getData');
+        Route::get('detail/{id}', [App\Http\Controllers\MasterDataSpmController::class, 'detail'])
+             ->name('admin.masterdata.spm.detail');
         Route::post('store', [App\Http\Controllers\MasterDataSpmController::class, 'store'])
              ->name('admin.masterdata.spm.store');
         Route::put('update/{id}', [App\Http\Controllers\MasterDataSpmController::class, 'update'])
