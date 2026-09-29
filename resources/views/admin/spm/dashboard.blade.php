@@ -55,6 +55,10 @@
     .spm-chip.bg-danger    { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
     .spm-chip.bg-secondary { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
 
+    /* Chart.js dengan maintainAspectRatio:false mengambil tinggi dari SINI,
+       bukan dari atribut height pada <canvas>. */
+    .spm-kanvas { position: relative; width: 100%; }
+
     .spm-catatan td { background: #fffdf5; font-size: 0.78rem; color: #78350f; border-top: none; }
     .spm-empty { padding: 48px 24px; text-align: center; color: var(--spm-muted); }
     .spm-empty__judul { font-size: 1.1rem; font-weight: 700; color: var(--spm-text); margin-bottom: 6px; }
@@ -129,6 +133,40 @@
         </div>
 
         <div class="spm-panel">
+            <div class="spm-panel__header">Ketercapaian per Kategori — paling tertinggal di atas</div>
+            <div style="padding: 18px 22px;">
+                {{-- Tinggi WAJIB di kontainer, bukan di atribut canvas: dengan
+                     maintainAspectRatio:false Chart.js mengabaikan atribut height
+                     dan mengikuti kontainer, sehingga grafik memanjang tanpa batas. --}}
+                <div class="spm-kanvas" style="height: {{ max(180, count($grafik['batang']) * 34) }}px;">
+                    <canvas id="spmBatang"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="spm-panel">
+            <div class="spm-panel__header">Laju Kumulatif per Triwulan</div>
+            <div style="padding: 18px 22px;">
+                <div style="margin-bottom: 14px;">
+                    <label for="spmPilihKategori" style="font-weight:700; font-size:0.8125rem; margin-right:8px;">Kategori</label>
+                    <select id="spmPilihKategori" style="height:38px; padding:0 12px; border-radius:10px; border:1.5px solid var(--spm-border); font-family:'Barlow',sans-serif; font-weight:600;">
+                        @foreach ($grafik['garis'] as $g)
+                            <option value="{{ $g['id'] }}">{{ $g['nama'] }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="spm-kanvas" style="height: 300px;">
+                    <canvas id="spmGaris"></canvas>
+                </div>
+                <p style="font-size:0.75rem; color:var(--spm-muted); margin-top:10px;">
+                    Garis putus-putus = target penuh tiap triwulan (25/50/75/100% sasaran).
+                    Titik kumulatif berhenti di triwulan terakhir yang dilaporkan — triwulan yang belum masuk
+                    tidak digambar sebagai nol.
+                </p>
+            </div>
+        </div>
+
+        <div class="spm-panel">
             <div class="spm-panel__header">Rincian per Kategori</div>
             <div class="table-responsive">
                 <table class="spm-table">
@@ -156,7 +194,11 @@
                                 $meta     = $statusMeta[$status];
                                 $persen   = $capaian->persen();
                                 $lebar    = $persen === null ? 0 : min(100, max(0, $persen));
-                                $prorata  = $capaian->sasaran() > 0 ? min(100, $capaian->twTerisi() * 25) : null;
+                                // Tanda prorata hanya bermakna kalau sudah ada triwulan
+                                // yang dilaporkan DAN sasarannya lebih dari nol.
+                                $prorata  = ($capaian->sasaran() > 0 && $capaian->twTerisi() > 0)
+                                    ? min(100, $capaian->twTerisi() * 25)
+                                    : null;
                             @endphp
                             <tr>
                                 <td>
@@ -204,3 +246,97 @@
     @endif
 </div>
 @endsection
+
+@if (count($baris) > 0)
+@section('custom_scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    var data = @json($grafik);
+
+    var batang = new Chart(document.getElementById('spmBatang').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: data.batang.map(function (d) { return d.nama; }),
+            datasets: [{
+                label: 'Capaian (%)',
+                data: data.batang.map(function (d) { return d.persen === null ? 0 : d.persen; }),
+                backgroundColor: data.batang.map(function (d) { return d.warna; }),
+                borderRadius: 6,
+                barThickness: 18
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            var d = data.batang[ctx.dataIndex];
+                            if (d.persen === null) { return 'Belum dilaporkan'; }
+                            return d.persen.toFixed(1).replace('.', ',') + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { beginAtZero: true, ticks: { callback: function (v) { return v + '%'; } } },
+                y: { ticks: { font: { family: 'Barlow', size: 11 } } }
+            }
+        }
+    });
+
+    var ctxGaris = document.getElementById('spmGaris').getContext('2d');
+    var garis = null;
+
+    function gambarGaris(id) {
+        var pilihan = data.garis.filter(function (g) { return String(g.id) === String(id); })[0];
+        if (!pilihan) { return; }
+
+        if (garis) { garis.destroy(); }
+
+        garis = new Chart(ctxGaris, {
+            type: 'line',
+            data: {
+                labels: ['TW I', 'TW II', 'TW III', 'TW IV'],
+                datasets: [
+                    {
+                        label: 'Kumulatif (' + pilihan.satuan + ')',
+                        data: pilihan.kumulatif,
+                        borderColor: '#047857',
+                        backgroundColor: 'rgba(4, 120, 87, 0.12)',
+                        tension: 0.25,
+                        fill: true,
+                        spanGaps: false
+                    },
+                    {
+                        label: 'Target prorata',
+                        data: pilihan.prorata,
+                        borderColor: '#64748b',
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { family: 'Barlow' } } } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    var pemilih = document.getElementById('spmPilihKategori');
+    if (pemilih) {
+        gambarGaris(pemilih.value);
+        pemilih.addEventListener('change', function () { gambarGaris(this.value); });
+    }
+})();
+</script>
+@endsection
+@endif

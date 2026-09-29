@@ -93,6 +93,33 @@ class SpmDashboardTest extends TestCase
         $this->assertSame(1, $response->viewData('ringkasan')['belum']);
     }
 
+    public function test_kategori_belum_dilaporkan_tidak_menggambar_tanda_prorata(): void
+    {
+        // Tanda prorata di posisi 0% dengan tooltip "Target s.d. TW 0" tidak
+        // berarti apa-apa — belum ada triwulan yang dilaporkan.
+        $this->kategori('Pelayanan Belum', ['sasaran' => 90]);
+
+        $html = $this->actingAs(User::factory()->create(['type' => 0]))
+            ->get(route('admin.spm.dashboard'))
+            ->assertStatus(200)
+            ->getContent();
+
+        $this->assertStringNotContainsString('Target s.d. TW 0', $html);
+        // Nama kelasnya tetap ada di blok CSS — yang harus absen adalah elemennya.
+        $this->assertStringNotContainsString('<span class="spm-bar__prorata"', $html);
+    }
+
+    public function test_kategori_yang_sudah_melapor_menggambar_tanda_prorata(): void
+    {
+        $this->kategori('Pelayanan A', ['sasaran' => 1000, 'tw1' => 200, 'tw2' => 150]);
+
+        $this->actingAs(User::factory()->create(['type' => 0]))
+            ->get(route('admin.spm.dashboard'))
+            ->assertStatus(200)
+            ->assertSee('left: 50%', false)
+            ->assertSee('Target s.d. TW 2');
+    }
+
     public function test_kategori_nonaktif_tidak_ikut(): void
     {
         $this->kategori('Pelayanan Nonaktif', ['sasaran' => 100, 'tw1' => 10], false);
