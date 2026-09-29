@@ -25,7 +25,40 @@ class MasterDataSpmTest extends TestCase
 
     public function test_superadmin_bisa_membuka_halaman(): void
     {
-        $this->markTestSkipped('View dibuat di Task 5 — unskip di sana.');
+        SpmKategori::create(['nama' => 'Pelayanan Balita', 'satuan' => 'anak']);
+
+        $response = $this->actingAs($this->superAdmin)
+            ->get(route('admin.masterdata.spm.index'));
+
+        $response->assertStatus(200)
+            ->assertSee('Master Data SPM')
+            ->assertSee('spmTable', false)
+            ->assertSee('angkaModal', false)
+            ->assertSee('Tambah Kategori');
+    }
+
+    public function test_halaman_memakai_tahun_dari_query_string(): void
+    {
+        SpmCapaian::create([
+            'id_kategori' => SpmKategori::create(['nama' => 'Pelayanan TB', 'satuan' => 'orang'])->id,
+            'tahun'       => 2025,
+            'sasaran'     => 500,
+        ]);
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('admin.masterdata.spm.index', ['tahun' => 2025]))
+            ->assertStatus(200)
+            ->assertSee('<option value="2025" selected', false);
+    }
+
+    public function test_breadcrumb_dan_judul_terisi(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->get(route('admin.masterdata.spm.index'))
+            ->assertStatus(200)
+            ->assertSee('Master Data')      // @yield('item')
+            ->assertSee('SPM')              // @yield('item-active')
+            ->assertDontSee('@endsection'); // jebakan directive nempel
     }
 
     public function test_admin_biasa_ditolak(): void
