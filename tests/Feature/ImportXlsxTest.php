@@ -6,6 +6,7 @@ use App\Imports\ImunisasiImport;
 use App\Imports\PjImport;
 use App\Jobs\ImportAnakJob;
 use App\Jobs\ImportImunisasiJob;
+use App\Jobs\ImportKohortJob;
 use App\Jobs\ImportPjJob;
 use App\Models\Anak;
 use App\Models\ImportLog;
@@ -195,5 +196,52 @@ class ImportXlsxTest extends TestCase
         $this->sementara[] = $csv;
         $r = (new PjImport())->baca($csv);
         $this->assertSame([['Kader Sari', 2]], array_map(fn ($b) => [$b['nama_pj'], $b['baris']], $r['baris']));
+    }
+
+    public function test_controller_menerima_xlsx_dan_xls_untuk_import_kohort(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $this->actingAs(User::factory()->create(['type' => 0]));
+
+        foreach (['xlsx' => self::MIME_XLSX, 'xls' => self::MIME_XLS] as $ekstensi => $mime) {
+            $wb = $this->buatWorkbook([
+                ['No', 'NIK', 'Nama', 'Tgl Lahir'],
+                [1, ['teks' => '3201011501200001'], 'Budi Santoso', ['tgl' => '2020-01-15']],
+            ], $ekstensi);
+
+            $this->post(route('admin.importKohort'), [
+                'file_kohort' => $this->unggahan($wb, "kohort.{$ekstensi}", $mime),
+            ])->assertRedirect(route('admin.anak'))->assertSessionHasNoErrors();
+        }
+
+        $this->assertSame(2, ImportLog::where('type', 'kohort')->count());
+        Queue::assertPushed(ImportKohortJob::class, 2);
+    }
+
+    public function test_import_kohort_menolak_berkas_bukan_excel(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $this->actingAs(User::factory()->create(['type' => 0]));
+
+        $this->post(route('admin.importKohort'), [
+            'file_kohort' => UploadedFile::fake()->create('kohort.pdf', 10, 'application/pdf'),
+        ])->assertSessionHasErrors(['file_kohort']);
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_form_kohort_menerima_excel(): void
+    {
+        $this->actingAs(User::factory()->create(['type' => 0]));
+
+        $html = $this->get(route('admin.anak'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '~id="file_kohort"[^>]*accept="[^"]*\.xls"~',
+            $html,
+            'Input #file_kohort harus menerima .xls selain .xlsx'
+        );
     }
 }

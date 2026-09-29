@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\FormatTanggalAmbigu;
 use App\Imports\ImunisasiImport;
 use App\Models\Anak;
 use App\Models\JenisVaksin;
@@ -190,7 +191,7 @@ class ImunisasiImportPesanTest extends TestCase
         $anak = $this->anak();
         $pesan = $this->pesan($this->rows(
             ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'HB0', 'BCG', 'MR1'],
-            ['3201011501200001', 'Budi Santoso', '2020-01-15', '2020-01-15', '15/02/2020', '-'],
+            ['3201011501200001', 'Budi Santoso', '2020-01-15', '2020-01-15', '15-02-20', '-'],
         ));
 
         $this->assertDatabaseHas('imunisasi', ['id_anak' => $anak->id, 'id_jenis_vaksin' => JenisVaksin::where('kode', 'HB0')->value('id')]);
@@ -200,7 +201,8 @@ class ImunisasiImportPesanTest extends TestCase
         $p = $this->hanyaYangMemuat($pesan, 'tanggal tidak terbaca');
         $this->assertCount(1, $p, 'Satu pesan per baris, bukan per sel.');
         $this->assertStringStartsWith('[PERINGATAN] Baris 2 (Budi Santoso)', $p[0]);
-        $this->assertStringContainsString("BCG ('15/02/2020')", $p[0]);
+        // Tahun dua digit sengaja tidak didukung — dulu lolos lewat Carbon::parse.
+        $this->assertStringContainsString("BCG ('15-02-20')", $p[0]);
         $this->assertStringContainsString("MR1 ('-')", $p[0]);
         $this->assertStringContainsString('YYYY-MM-DD', $p[0]);
         $this->assertStringStartsWith('Ringkasan: 1 baris data dibaca, 1 vaksin disimpan/diperbarui untuk 1 anak', $pesan[0]);
@@ -224,19 +226,43 @@ class ImunisasiImportPesanTest extends TestCase
         $this->assertSame($anak->id, Anak::first()->id);
     }
 
-    public function test_tanggal_garis_miring_ditolak_karena_urutan_hari_bulan_ambigu(): void
+    public function test_berkas_yang_urutan_tanggalnya_tak_terbukti_menghentikan_import(): void
     {
-        // Carbon membaca '05/02/2020' sebagai 2 Mei (gaya AS) padahal petugas bermaksud 5 Februari.
+        // '05/02/2020' bisa berarti 5 Februari atau 2 Mei, dan tak ada tanggal
+        // lain di berkas yang membuktikan urutannya. Carbon membacanya diam-diam
+        // sebagai 2 Mei (gaya AS); di sini berkasnya ditolak, bukan ditebak —
+        // petugas memilih format tegas di form import lalu mengulang.
         $anak = $this->anak();
-        $pesan = $this->pesan($this->rows(
-            ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'HB0'],
-            ['3201011501200001', 'Budi Santoso', '2020-01-15', '05/02/2020'],
-        ));
+
+        try {
+            $this->pesan($this->rows(
+                ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'HB0'],
+                ['3201011501200001', 'Budi Santoso', '2020-01-15', '05/02/2020'],
+            ));
+            $this->fail('Berkas yang urutan tanggalnya tak terbukti seharusnya menghentikan import.');
+        } catch (FormatTanggalAmbigu $e) {
+            $this->assertStringContainsString('05/02/2020', $e->getMessage());
+            $this->assertStringContainsString('Hari/Bulan/Tahun', $e->getMessage());
+        }
 
         $this->assertDatabaseMissing('imunisasi', ['id_anak' => $anak->id]);
-        $p = $this->hanyaYangMemuat($pesan, 'tanggal tidak terbaca');
-        $this->assertCount(1, $p);
-        $this->assertStringContainsString("HB0 ('05/02/2020')", $p[0]);
+    }
+
+    public function test_urutan_tanggal_yang_terbukti_dari_berkas_dipakai_apa_adanya(): void
+    {
+        // Satu sel membuktikan urutannya (25 > 12 -> hari di depan), jadi
+        // '05/02/2020' di baris lain ikut dibaca 5 Februari, bukan 2 Mei.
+        $anak = $this->anak();
+        $this->pesan($this->rows(
+            ['nik_anak', 'nama_anak', 'tgl_lahir_anak', 'HB0', 'BCG'],
+            ['3201011501200001', 'Budi Santoso', '2020-01-15', '25/02/2020', '05/02/2020'],
+        ));
+
+        $this->assertDatabaseHas('imunisasi', [
+            'id_anak'          => $anak->id,
+            'id_jenis_vaksin'  => JenisVaksin::where('kode', 'BCG')->value('id'),
+            'tanggal_pemberian' => '2020-02-05',
+        ]);
     }
 
     public function test_format_iso_hari_bulan_tahun_dan_serial_excel_diterima(): void

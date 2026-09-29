@@ -11,6 +11,7 @@ class ImportLog extends Model
         'filename',
         'file_path',
         'type',
+        'format_tanggal',
         'status',
         'success_count',
         'failure_count',

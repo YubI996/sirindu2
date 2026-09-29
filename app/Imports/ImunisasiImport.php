@@ -7,6 +7,7 @@ use App\Models\DataAnak;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Support\ImportError;
+use App\Traits\MembacaTanggalBerkas;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -27,6 +28,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  */
 class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
 {
+    use MembacaTanggalBerkas;
+
     use ResolvesAnakByTwoOfThree;
 
     /** Kolom format wide yang bukan kode vaksin; sisanya di header dianggap kode vaksin. */
@@ -86,34 +89,18 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
      */
     protected function parseDate($value): ?string
     {
-        if ($value === null || $value === '') return null;
-        if ($value instanceof \DateTimeInterface) {
-            return $this->tanggalMasukAkal(Carbon::instance($value));
-        }
-
-        $s = trim((string) $value);
-        if (is_numeric($s)) {
-            try { return $this->tanggalMasukAkal(Carbon::instance(Date::excelToDateTimeObject((float) $s))); }
-            catch (\Exception $e) { return null; }
-        }
-        if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?$/', $s, $m)) {
-            [$y, $bln, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
-        } elseif (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $s, $m)) {
-            [$d, $bln, $y] = [(int) $m[1], (int) $m[2], (int) $m[3]];
-        } else {
-            return null;
-        }
-        if (!checkdate($bln, $d, $y)) return null; // 31-02-2020 dsb.
-
-        return $this->tanggalMasukAkal(Carbon::create($y, $bln, $d));
+        return $this->tanggalMasukAkal($this->bacaTanggal($value));
     }
 
     /** Tolak tahun di luar 1990..tahun depan — sumber lazimnya serial Excel dari angka yang bukan tanggal. */
-    protected function tanggalMasukAkal(Carbon $tgl): ?string
+    protected function tanggalMasukAkal(?string $tgl): ?string
     {
-        $tahun = (int) $tgl->format('Y');
+        if ($tgl === null) return null;
+
+        $tahun = (int) substr($tgl, 0, 4);
         if ($tahun < 1990 || $tahun > (int) now()->format('Y') + 1) return null;
-        return $tgl->format('Y-m-d');
+
+        return $tgl;
     }
 
     protected function parseStatus($value): string
@@ -134,6 +121,8 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
 
     public function collection(Collection $rows)
     {
+        $this->kunciFormatTanggal($rows->flatten()->all());
+
         $isFirstChunk = $this->rowOffset === 0;
         $originalSize = count($rows);
 

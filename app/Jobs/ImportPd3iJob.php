@@ -41,7 +41,7 @@ class ImportPd3iJob implements ShouldQueue
                 throw new \RuntimeException("File tidak ditemukan: {$this->importLog->file_path}");
             }
 
-            $import = new Pd3iImport($this->importLog->user_id);
+            $import = (new Pd3iImport($this->importLog->user_id))->setFormatTanggal($this->importLog->format_tanggal);
             Excel::import($import, $path);
 
             $results = $import->getResults();

@@ -9,6 +9,7 @@ use App\Models\JenisVaksin;
 use App\Models\Rt;
 use App\Services\NikDummyService;
 use App\Support\ImportError;
+use App\Traits\MembacaTanggalBerkas;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -29,6 +30,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  */
 class KohortImport implements ToCollection, WithStartRow, WithChunkReading, WithCalculatedFormulas
 {
+    use MembacaTanggalBerkas;
+
     use ResolvesWilayah;
 
     protected int $userId;
@@ -102,20 +105,7 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
 
     protected function parseDate($value): ?string
     {
-        if ($value === null || $value === '') return null;
-        if (is_string($value) && str_starts_with($value, '#')) return null;
-        if (is_numeric($value)) {
-            try {
-                return Carbon::instance(Date::excelToDateTimeObject((float) $value))->format('Y-m-d');
-            } catch (\Exception $e) {
-                return null;
-            }
-        }
-        try {
-            return Carbon::parse((string) $value)->format('Y-m-d');
-        } catch (\Exception $e) {
-            return null;
-        }
+        return $this->bacaTanggal($value);
     }
 
     protected function parseBoolean($value): ?bool
@@ -245,6 +235,8 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
 
     public function collection(Collection $rows)
     {
+        $this->kunciFormatTanggal($rows->flatten()->all());
+
         $isFirstChunk = $this->rowOffset === 0;
         $originalChunkSize = count($rows);
         $columnMap = null;

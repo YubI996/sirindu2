@@ -10,6 +10,7 @@ use App\Jobs\ImportPengukuranJob;
 use App\Jobs\ImportPjJob;
 use App\Jobs\ImportUkurJob;
 use App\Models\ImportLog;
+use App\Support\TanggalBerkas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -111,7 +112,9 @@ class ImportCsvController extends Controller
             $inputName => $isCapil
                 ? 'required|file|mimes:xlsx,xls|max:20480'
                 : 'required|file|mimes:xlsx,xls,csv,txt|max:20480',
+            'format_tanggal' => TanggalBerkas::ATURAN,
         ], [
+            'format_tanggal.in'  => 'Format penanggalan tidak dikenal.',
             "{$inputName}.mimes" => $isCapil
                 ? 'File harus berformat Excel (.xlsx/.xls).'
                 : 'File harus berformat Excel (.xlsx/.xls) atau CSV (.csv).',
@@ -123,11 +126,12 @@ class ImportCsvController extends Controller
         $path     = $file->store("imports/{$type}");
 
         $log = ImportLog::create([
-            'user_id'   => auth()->id(),
-            'filename'  => $filename,
-            'file_path' => $path,
-            'type'      => $type,
-            'status'    => 'pending',
+            'user_id'        => auth()->id(),
+            'filename'       => $filename,
+            'file_path'      => $path,
+            'type'           => $type,
+            'status'         => 'pending',
+            'format_tanggal' => $request->input('format_tanggal') ?: TanggalBerkas::OTOMATIS,
         ]);
 
         $jobClass = match ($type) {
@@ -176,11 +180,13 @@ class ImportCsvController extends Controller
         }
 
         $newLog = ImportLog::create([
-            'user_id'   => auth()->id(),
-            'filename'  => $log->filename,
-            'file_path' => $log->file_path,
-            'type'      => $log->type,
-            'status'    => 'pending',
+            'user_id'        => auth()->id(),
+            'filename'       => $log->filename,
+            'file_path'      => $log->file_path,
+            'type'           => $log->type,
+            'status'         => 'pending',
+            // Berkas yang sama harus dibaca dengan cara yang sama.
+            'format_tanggal' => $log->format_tanggal,
         ]);
 
         $jobClass = match ($log->type) {

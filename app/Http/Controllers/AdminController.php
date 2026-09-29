@@ -91,8 +91,15 @@ ANAK
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
 
+        // Kohort selalu berupa workbook Excel (banyak sheet + header bertingkat);
+        // pembacanya (Maatwebsite) mengenali format dari ekstensi, .xls ikut terbaca.
         $request->validate([
-            'file_kohort' => 'required|file|mimes:xlsx|max:20480',
+            'file_kohort'    => 'required|file|mimes:xlsx,xls|max:20480',
+            'format_tanggal' => \App\Support\TanggalBerkas::ATURAN,
+        ], [
+            'file_kohort.mimes' => 'File harus berformat Excel (.xlsx/.xls).',
+            'file_kohort.max'   => 'Ukuran file maksimal 20 MB.',
+            'format_tanggal.in' => 'Format penanggalan tidak dikenal.',
         ]);
 
         $file     = $request->file('file_kohort');
@@ -100,11 +107,12 @@ ANAK
         $path     = $file->store('imports/kohort');
 
         $log = ImportLog::create([
-            'user_id'   => auth()->id(),
-            'filename'  => $filename,
-            'file_path' => $path,
-            'type'      => 'kohort',
-            'status'    => 'pending',
+            'user_id'        => auth()->id(),
+            'filename'       => $filename,
+            'file_path'      => $path,
+            'type'           => 'kohort',
+            'status'         => 'pending',
+            'format_tanggal' => $request->input('format_tanggal') ?: \App\Support\TanggalBerkas::OTOMATIS,
         ]);
 
         ImportKohortJob::dispatch($log);

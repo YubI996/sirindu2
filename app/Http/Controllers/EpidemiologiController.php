@@ -806,7 +806,10 @@ class EpidemiologiController extends Controller
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
 
         $request->validate([
-            'file_import' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+            'file_import'    => 'required|file|mimes:xlsx,xls,csv|max:20480',
+            'format_tanggal' => \App\Support\TanggalBerkas::ATURAN,
+        ], [
+            'format_tanggal.in' => 'Format penanggalan tidak dikenal.',
         ]);
 
         $file     = $request->file('file_import');
@@ -814,10 +817,11 @@ class EpidemiologiController extends Controller
         $path     = $file->store('imports/pd3i');
 
         $log = ImportLog::create([
-            'user_id'   => auth()->id(),
-            'filename'  => $filename,
-            'file_path' => $path,
-            'status'    => 'pending',
+            'user_id'        => auth()->id(),
+            'filename'       => $filename,
+            'file_path'      => $path,
+            'status'         => 'pending',
+            'format_tanggal' => $request->input('format_tanggal') ?: \App\Support\TanggalBerkas::OTOMATIS,
         ]);
 
         ImportPd3iJob::dispatch($log);
@@ -839,11 +843,13 @@ class EpidemiologiController extends Controller
         }
 
         $newLog = ImportLog::create([
-            'user_id'   => auth()->id(),
-            'filename'  => $log->filename,
-            'file_path' => $log->file_path,
-            'type'      => 'pd3i',
-            'status'    => 'pending',
+            'user_id'        => auth()->id(),
+            'filename'       => $log->filename,
+            'file_path'      => $log->file_path,
+            'type'           => 'pd3i',
+            'status'         => 'pending',
+            // Berkas yang sama harus dibaca dengan cara yang sama.
+            'format_tanggal' => $log->format_tanggal,
         ]);
 
         ImportPd3iJob::dispatch($newLog);

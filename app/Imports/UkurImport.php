@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\DataAnak;
 use App\Support\ImportError;
+use App\Traits\MembacaTanggalBerkas;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -25,6 +26,8 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  */
 class UkurImport implements ToCollection, WithStartRow, WithChunkReading
 {
+    use MembacaTanggalBerkas;
+
     use ResolvesAnakByTwoOfThree;
 
     protected int $userId;
@@ -50,13 +53,7 @@ class UkurImport implements ToCollection, WithStartRow, WithChunkReading
 
     protected function parseDate($value): ?string
     {
-        if ($value === null || $value === '') return null;
-        if (is_numeric($value)) {
-            try { return Carbon::instance(Date::excelToDateTimeObject((float) $value))->format('Y-m-d'); }
-            catch (\Exception $e) { return null; }
-        }
-        try { return Carbon::parse((string) $value)->format('Y-m-d'); }
-        catch (\Exception $e) { return null; }
+        return $this->bacaTanggal($value);
     }
 
     protected function parseBoolean($value): ?bool
@@ -94,6 +91,8 @@ class UkurImport implements ToCollection, WithStartRow, WithChunkReading
 
     public function collection(Collection $rows)
     {
+        $this->kunciFormatTanggal($rows->flatten()->all());
+
         $isFirstChunk = $this->rowOffset === 0;
         $originalSize = count($rows);
 

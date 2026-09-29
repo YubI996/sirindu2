@@ -6,6 +6,7 @@ use App\Models\SurveillanceCase;
 use App\Models\JenisKasusEpidemiologi;
 use App\Services\NikDummyService;
 use App\Support\ImportError;
+use App\Traits\MembacaTanggalBerkas;
 use App\Traits\ResolvesWilayah;
 use App\Traits\ResolvesRumahSakit;
 use Illuminate\Support\Collection;
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\Log;
  */
 class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
 {
+    use MembacaTanggalBerkas;
+
     use ResolvesWilayah, ResolvesRumahSakit;
 
     protected int $userId;
@@ -141,6 +144,8 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
      */
     public function collection(Collection $rows)
     {
+        $this->kunciFormatTanggal($rows->flatten()->all());
+
         // Cache lokal hanya untuk referensi cepat dalam closure — resolver ada di method class
 
         // --- T003: US3 — Deteksi file kosong ---
@@ -157,21 +162,7 @@ class Pd3iImport implements ToCollection, WithStartRow, WithChunkReading
         // T002: Helper parseDate
         // Menangani: numeric Excel date, string tanggal, atau kosong → null
         // =====================================================================
-        $parseDate = function ($value) {
-            if ($value === null || $value === '') return null;
-            if (is_numeric($value)) {
-                try {
-                    return Carbon::instance(Date::excelToDateTimeObject((float) $value))->format('Y-m-d');
-                } catch (\Exception $e) {
-                    return null;
-                }
-            }
-            try {
-                return Carbon::parse((string) $value)->format('Y-m-d');
-            } catch (\Exception $e) {
-                return null;
-            }
-        };
+        $parseDate = fn ($value) => $this->bacaTanggal($value);
 
         // =====================================================================
         // T003: Helper parseBoolean

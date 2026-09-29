@@ -34,7 +34,7 @@ class ImportAnakJob implements ShouldQueue
                 throw new \RuntimeException("File tidak ditemukan: {$this->importLog->file_path}");
             }
 
-            $import  = new AnakImport($this->importLog->user_id);
+            $import  = (new AnakImport($this->importLog->user_id))->setFormatTanggal($this->importLog->format_tanggal);
             app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
             app(PrioritasGiziService::class)->refreshAll();
             // Data anak berubah → segarkan kandidat tautan identitas untuk halaman RT (spec verifikasi RT §5)

@@ -34,7 +34,7 @@ class ImportImunisasiJob implements ShouldQueue
                 throw new \RuntimeException("File tidak ditemukan: {$this->importLog->file_path}");
             }
 
-            $import  = new ImunisasiImport($this->importLog->user_id);
+            $import  = (new ImunisasiImport($this->importLog->user_id))->setFormatTanggal($this->importLog->format_tanggal);
             app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
             app(PrioritasGiziService::class)->refreshAll();
             $results = $import->getResults();
