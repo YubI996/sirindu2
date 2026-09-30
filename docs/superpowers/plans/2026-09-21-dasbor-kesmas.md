@@ -1799,14 +1799,14 @@ Memindahkan token & komponen `.im-*` dasar dari dasbor imunisasi ke berkas bersa
 
 **Files:**
 - Create: `public/css/dasbor-base.css`
-- Modify: `resources/views/admin/imunisasi/dashboard.blade.php` (baris 9–68 blok `<style>`)
+- Modify: `resources/views/admin/imunisasi/dashboard.blade.php` (baris 9–69 blok `<style>`)
 
 **Interfaces:**
 - Produces: kelas `.im-page` (token `--green`, `--green-d`, `--green-dk`, `--amber`, `--amber-bg`, `--red`, `--red-d`, `--red-bg`, `--ink`, `--muted`, `--faint`, `--line`, `--bg`, `--card`; font Barlow), `.im-num`, `.im-h`, `.im-filter`, `.im-btn`(`--primary|--ghost|--sm`), `.im-tabs`/`.im-tab`, `.im-cards`(`--2|--3|--5`), `.im-card`, `.im-card__lbl|__val|__sub|__foot|__link`, `.im-badge`(`--ok|--warn`).
 
 - [ ] **Step 1: Salin blok CSS**
 
-Buka `resources/views/admin/imunisasi/dashboard.blade.php`. Baris 10 adalah `@import url('https://fonts.googleapis.com/css2?family=Barlow…')`, baris 68 adalah `.im-badge--warn{ background:var(--red-bg); color:var(--red-d); }`. Buat `public/css/dasbor-base.css` berisi **persis** baris 10–68 (verifikasi: baris pertama berkas baru diawali `@import url(`, baris terakhir diawali `.im-badge--warn`). Tambahkan komentar di baris paling atas **setelah** `@import` (CSS mewajibkan `@import` paling awal):
+Buka `resources/views/admin/imunisasi/dashboard.blade.php`. Baris 10 adalah `@import url('https://fonts.googleapis.com/css2?family=Barlow…')`, baris **69** adalah `.im-badge--warn{ background:var(--red-bg); color:var(--red-d); }` (baris 70 kosong, 71 `/* Day tabs`). Buat `public/css/dasbor-base.css` berisi **persis** baris 10–69 (verifikasi: baris pertama berkas baru diawali `@import url(`, baris terakhir diawali `.im-badge--warn`). Tambahkan komentar di baris paling atas **setelah** `@import` (CSS mewajibkan `@import` paling awal):
 
 ```css
 /* Token & komponen dasar dasbor SIRINDU (.im-*) — dipakai dasbor imunisasi & Kesmas.
@@ -1815,7 +1815,7 @@ Buka `resources/views/admin/imunisasi/dashboard.blade.php`. Baris 10 adalah `@im
 
 - [ ] **Step 2: Ganti blok di dasbor imunisasi**
 
-Hapus baris 10–68 dari `dashboard.blade.php` (blok `<style>` tetap ada berisi aturan khusus halaman mulai `/* Day tabs …`). Tambahkan sebelum `@section('content')`:
+Hapus baris 10–69 dari `dashboard.blade.php` (blok `<style>` tetap ada berisi aturan khusus halaman mulai `/* Day tabs …`). Tambahkan sebelum `@section('content')`:
 
 ```blade
 @push('styles')
@@ -2030,6 +2030,7 @@ use App\Models\Posyandu;
 use App\Models\Puskesmas;
 use App\Services\ImunisasiStatusService;
 use App\Services\KesmasDashboardService;
+use App\Support\KohortImunisasi;
 use App\Support\PeriodeKesmas;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -2072,8 +2073,8 @@ class KesmasDashboardController extends Controller
             'sdidtk'  => $svc->sdidtk($periode, $filters),
             'ckg'     => $svc->ckg($periode, $filters),
             'layanan' => $svc->layananLingkungan($periode, $filters),
-            'idl'     => $imun->getIdlCoverage($filters),
-            'ibl'     => $imun->getIblCoverage($filters),
+            'idl'     => $imun->getIdlCoverage(KohortImunisasi::dari($periode->tahun()), $filters),
+            'ibl'     => $imun->getIblCoverage(KohortImunisasi::dari($periode->tahun()), $filters),
             'alasan'  => array_slice($imun->getAlasanTidakImunisasi($filters), 0, 4, true),
             'kecamatanList' => Kecamatan::orderBy('name')->get(),
             'kelurahanList' => Kelurahan::orderBy('name')->get(),
@@ -2314,14 +2315,16 @@ class KesmasDashboardController extends Controller
 - [ ] **Step 6: Menu sidebar**
 
 Di `leftsidebar.blade.php`:
-1. Baris 21 (cabang super-admin) dan baris 142 (cabang admin): tambahkan `'admin.kesmas.*', ` tepat setelah `'admin.imunisasiDashboard', ` di dalam `request()->routeIs(...)`.
-2. Setelah baris 36 dan setelah baris 153 (keduanya `<li><a href="{{route('admin.imunisasiDashboard')}}" …>Imunisasi</a></li>`) tambahkan:
+Nomor baris di bawah berlaku untuk basis ae80222 (bergeser +3 dari plan asli karena entri menu SPM). **Cari berdasarkan isi, bukan nomor baris.** Berkas ini punya TIGA blok peran; blok "FASKES SURVEILANS" (sekitar baris 109) **tidak** mendapat menu Kesmas — perannya ditolak controller.
+
+1. Baris 21 (cabang super-admin) dan baris 145 (cabang admin): tambahkan `'admin.kesmas.*', ` tepat setelah `'admin.imunisasiDashboard', ` di dalam `request()->routeIs(...)`.
+2. Setelah baris 36 dan setelah baris 156 (keduanya `<li><a href="{{route('admin.imunisasiDashboard')}}" …>Imunisasi</a></li>`) tambahkan:
 
 ```blade
 						<li><a href="{{route('admin.kesmas.dashboard')}}" class="{{ request()->routeIs('admin.kesmas.*') ? 'active' : '' }}">Kesmas</a></li>
 ```
 
-(Lakukan penyisipan baris 153 lebih dulu supaya nomor baris 36 tidak bergeser.)
+(Lakukan penyisipan baris 156 lebih dulu supaya nomor baris 36 tidak bergeser.)
 
 - [ ] **Step 7: Jalankan, pastikan lulus**
 
@@ -2515,7 +2518,7 @@ Expected: FAIL — "Blok 'spm-balita' tidak ditemukan".
                     @php $s = $spm['bayi']['sub'][$k]; @endphp
                     <span class="km-sub {{ $tone($s['persen']) }}" title="{{ $fmt($s['n']) }} dari {{ $fmt($s['sasaran']) }}">{{ $lbl }}: {{ $pct($s['persen']) }}</span>
                 @endforeach
-                <span class="km-sub {{ $tone($idl['persen'] ?: null) }}" title="Status saat ini, tidak mengikuti periode">IDL: {{ $idl['total'] > 0 ? $pct($idl['persen']) : '—' }}</span>
+                <span class="km-sub {{ $tone($idl['persen'] ?: null) }}" title="Kohort SI {{ $periode->tahun() }}, tidak mengikuti semester/triwulan">IDL: {{ $idl['total'] > 0 ? $pct($idl['persen']) : '—' }}</span>
             </div>
             <div class="km-foot">Sisa belum lengkap: <b>{{ $fmt($spm['bayi']['sisa']) }} bayi</b>
                 @if($spm['bayi']['sasaran'] > 0)<span>({{ $pct(round($spm['bayi']['sisa'] / $spm['bayi']['sasaran'] * 100, 1)) }})</span>@endif</div>
@@ -2533,7 +2536,7 @@ Expected: FAIL — "Blok 'spm-balita' tidak ditemukan".
                     @php $s = $spm['anak_balita']['sub'][$k]; @endphp
                     <span class="km-sub {{ $tone($s['persen']) }}" title="{{ $fmt($s['n']) }} dari {{ $fmt($s['sasaran']) }}">{{ $lbl }}: {{ $pct($s['persen']) }}</span>
                 @endforeach
-                <span class="km-sub {{ $tone($ibl['persen'] ?: null) }}" title="Status saat ini, tidak mengikuti periode">IBL: {{ $ibl['total'] > 0 ? $pct($ibl['persen']) : '—' }}</span>
+                <span class="km-sub {{ $tone($ibl['persen'] ?: null) }}" title="Kohort Baduta {{ $periode->tahun() }}, tidak mengikuti semester/triwulan">IBL: {{ $ibl['total'] > 0 ? $pct($ibl['persen']) : '—' }}</span>
             </div>
             <div class="km-foot">Kesenjangan target: <b>{{ $fmt($spm['anak_balita']['gap']) }} anak</b>
                 @if($spm['anak_balita']['sasaran'] > 0)<span>({{ $pct(round($spm['anak_balita']['gap'] / $spm['anak_balita']['sasaran'] * 100, 1)) }})</span>@endif</div>
@@ -2597,7 +2600,7 @@ Expected: FAIL — "Blok 'spm-balita' tidak ditemukan".
 
         <article class="im-card" data-blok="idl">
             <div class="im-h" style="margin-bottom:.2rem;"><h2>Imunisasi Dasar &amp; Lanjut</h2></div>
-            <div class="im-card__sub">Cakupan IDL (≥12 bln) &amp; IBL (≥24 bln) — status saat ini, tidak mengikuti periode</div>
+            <div class="im-card__sub">Cakupan IDL (kohort SI) &amp; IBL (kohort Baduta) {{ $periode->tahun() }} — mengikuti tahun, bukan semester/triwulan</div>
             <div class="km-donut">
                 <canvas id="idlDonut" width="120" height="120" role="img" aria-label="IDL lengkap {{ $idl['total'] > 0 ? $pct($idl['persen']) : '—' }}"></canvas>
                 <div class="km-legend im-num">
