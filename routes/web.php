@@ -294,6 +294,14 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.export.kesmas.download');
     });
 
+    // Dasbor Kesmas — spec docs/superpowers/specs/2026-09-21-dasbor-kesmas-design.md
+    Route::prefix('kesmas-dashboard')->group(function () {
+        Route::get('/', [App\Http\Controllers\KesmasDashboardController::class, 'index'])
+             ->name('admin.kesmas.dashboard');
+        Route::get('api/registri', [App\Http\Controllers\KesmasDashboardController::class, 'registri'])
+             ->name('admin.kesmas.registri');
+    });
+
     /*------------------------------------------
     Epidemiology Surveillance Routes
     --------------------------------------------*/
