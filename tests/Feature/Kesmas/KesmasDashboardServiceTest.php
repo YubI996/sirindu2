@@ -44,7 +44,18 @@ class KesmasDashboardServiceTest extends TestCase
         return PeriodeKesmas::dari(2025, 'tahun');
     }
 
-    /** Anak yang berumur $umurBln bulan tepat pada 31 Des 2025. */
+    /**
+     * Anak yang berumur $umurBln bulan tepat pada 31 Des 2025.
+     *
+     * WAJIB `subMonthsNoOverflow`: `subMonths` meluber ke bulan berikutnya bila
+     * bulan tujuan lebih pendek dari 31 hari, jadi 31 Des dikurangi 3 bulan
+     * jatuh di 1 Okt — TIMESTAMPDIFF-nya 2 bulan, bukan 3. Umur yang meleset
+     * satu bulan tidak pernah memunculkan error; ia cuma memindahkan anak ke
+     * sisi lain sebuah ambang (mis. pembebasan Vit A untuk bayi < 6 bulan) dan
+     * membuat tes lulus atas alasan yang salah. Terdampak: n = 1, 3, 6, 8, 10,
+     * 15, dst. Batas kelompok (11, 12, 23, 24, 35, 36, 59, 60, 72, 83) kebetulan
+     * jatuh di bulan 31 hari sehingga aman — jangan bersandar pada kebetulan itu.
+     */
     private function anak(int $umurBln, array $extra = []): Anak
     {
         static $n = 0;
@@ -52,7 +63,7 @@ class KesmasDashboardServiceTest extends TestCase
 
         return Anak::create(array_merge([
             'nama' => 'Anak Uji ' . $n, 'nik' => str_pad((string) $n, 16, '0', STR_PAD_LEFT), 'jk' => 1,
-            'tempat_lahir' => 'Bontang', 'tgl_lahir' => Carbon::create(2025, 12, 31)->subMonths($umurBln)->toDateString(),
+            'tempat_lahir' => 'Bontang', 'tgl_lahir' => Carbon::create(2025, 12, 31)->subMonthsNoOverflow($umurBln)->toDateString(),
             'status' => 1, 'no' => '1', 'sumber' => 'manual',
             'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id,
         ], $extra));
@@ -327,6 +338,44 @@ class KesmasDashboardServiceTest extends TestCase
         $tk = $this->svc->pemantauanTk($this->tahun2025(), []);
 
         $this->assertSame(2, $tk['perhatian'], 'ntobT & underweight');
+    }
+
+    /**
+     * `kunjunganTerakhirSub()` mengembalikan (id_anak, max_tgl); join ke
+     * `data_anak` atas kedua kolom itu memulangkan DUA baris untuk anak yang
+     * dua kali ditimbang di hari yang sama — nyata terjadi saat posyandu
+     * menginput ulang. Tanpa `distinct()` anak itu dihitung dua kali dan
+     * `perhatian` bisa melebihi `sasaran`, tanpa error apa pun. Task 6 memakai
+     * ulang subquery yang sama, jadi jaminan ini dikunci di sini.
+     */
+    public function test_dua_kunjungan_di_hari_sama_tidak_menghitung_anak_dua_kali(): void
+    {
+        $anak = $this->anak(20);
+        $this->kunjungan($anak, '2025-06-15', ['ntob' => 'T']);
+        $this->kunjungan($anak, '2025-06-15', ['ntob' => 'T']); // entri ganda hari yang sama
+
+        $tk = $this->svc->pemantauanTk($this->tahun2025(), []);
+
+        $this->assertSame(1, $tk['sasaran']);
+        $this->assertSame(1, $tk['perhatian'], 'satu anak tetap satu, walau dua baris kunjungan');
+    }
+
+    /**
+     * Varian yang lebih jahat: dua baris di hari yang sama saling bertentangan.
+     * Anak tetap dihitung sekali; "perhatian" menang karena satu baris pun
+     * yang bertanda T sudah cukup untuk ditengok petugas. Spec diam soal ini,
+     * jadi perilakunya dikunci di sini supaya tidak bergeser diam-diam.
+     */
+    public function test_dua_kunjungan_hari_sama_yang_bertentangan_tetap_satu_anak(): void
+    {
+        $anak = $this->anak(20);
+        $this->kunjungan($anak, '2025-06-15', ['ntob' => 'N']);
+        $this->kunjungan($anak, '2025-06-15', ['ntob' => 'T']);
+
+        $tk = $this->svc->pemantauanTk($this->tahun2025(), []);
+
+        $this->assertSame(1, $tk['sasaran']);
+        $this->assertSame(1, $tk['perhatian']);
     }
 
     // ── SDIDTK ─────────────────────────────────────────────────────────────
