@@ -164,4 +164,133 @@ class KesmasDashboardService
             ],
         ];
     }
+
+    /** Subquery `m`: tanggal kunjungan terakhir per anak DI DALAM periode. */
+    private function kunjunganTerakhirSub(PeriodeKesmas $p): Builder
+    {
+        return DB::table('data_anak')
+            ->selectRaw('id_anak, MAX(tgl_kunjungan) as max_tgl')
+            ->whereBetween('tgl_kunjungan', [$p->awal()->toDateString(), $p->akhir()->toDateString()])
+            ->groupBy('id_anak');
+    }
+
+    /** Kartu K4: 0–72 bln dengan ≥T8 timbang & ≥T2 DDTKA; "perlu perhatian" dari kunjungan terakhir. */
+    public function pemantauanTk(PeriodeKesmas $p, array $filters): array
+    {
+        $r = $this->dariSasaran($p, $filters)
+            ->leftJoinSub($this->kunjunganSub($p), 'k', 'k.id_anak', '=', 's.id')
+            ->selectRaw(
+                'SUM(umur BETWEEN 0 AND 72) as sasaran, '
+                . 'SUM(umur BETWEEN 0 AND 72 AND COALESCE(n_timbang,0) >= ? AND COALESCE(n_ddtka,0) >= ?) as lengkap',
+                [$p->syarat(8), $p->syarat(2)]
+            )->first();
+        $sasaran = (int) $r->sasaran;
+        $lengkap = (int) $r->lengkap;
+
+        // KMS kuning/merah: BB tidak naik (ntob T) atau BB/U ≤ -2 SD pada kunjungan terakhir dalam periode.
+        $perhatian = $this->dariSasaran($p, $filters)
+            ->joinSub($this->kunjunganTerakhirSub($p), 'm', 'm.id_anak', '=', 's.id')
+            ->join('data_anak as da', function ($j) {
+                $j->on('da.id_anak', '=', 'm.id_anak')->on('da.tgl_kunjungan', '=', 'm.max_tgl');
+            })
+            ->where('s.umur', '<=', 72)
+            ->where(function ($w) {
+                $w->whereRaw("UPPER(TRIM(da.ntob)) = 'T'")->orWhere('da.zscore_bb_u', '<=', -2.01);
+            })
+            ->distinct()->count('s.id');
+
+        return ['sasaran' => $sasaran, 'lengkap' => $lengkap, 'persen' => self::persen($lengkap, $sasaran), 'perhatian' => $perhatian];
+    }
+
+    /** Cakupan SDIDTK per kelompok umur: anak dengan ≥1 kunjungan ber-ddtka dalam periode. */
+    public function sdidtk(PeriodeKesmas $p, array $filters): array
+    {
+        $ddtka = DB::table('data_anak')->select('id_anak')->distinct()
+            ->whereBetween('tgl_kunjungan', [$p->awal()->toDateString(), $p->akhir()->toDateString()])
+            ->whereNotNull('ddtka')->whereRaw("TRIM(ddtka) <> ''");
+
+        $sel = [];
+        foreach (self::KELOMPOK as $kode => [$min, $max]) {
+            $sel[] = "SUM(umur BETWEEN {$min} AND {$max}) as {$kode}_sasaran";
+            $sel[] = "SUM(umur BETWEEN {$min} AND {$max} AND d.id_anak IS NOT NULL) as {$kode}_ya";
+        }
+        $r = (array) $this->dariSasaran($p, $filters)
+            ->leftJoinSub($ddtka, 'd', 'd.id_anak', '=', 's.id')
+            ->selectRaw(implode(', ', $sel))->first();
+
+        $kelompok = [];
+        $totalSasaran = 0;
+        $totalYa = 0;
+        $fokus = null;
+        foreach (self::KELOMPOK as $kode => [$min, $max, $label, $domain]) {
+            $sasaran = (int) $r["{$kode}_sasaran"];
+            $ya      = (int) $r["{$kode}_ya"];
+            $persen  = self::persen($ya, $sasaran);
+            $kelompok[$kode] = [
+                'label' => $label, 'domain' => $domain, 'min' => $min, 'max' => $max,
+                'sasaran' => $sasaran, 'realisasi' => $ya, 'persen' => $persen,
+            ];
+            $totalSasaran += $sasaran;
+            $totalYa      += $ya;
+            if ($persen !== null && ($fokus === null || (100 - $persen) > $fokus['gap'])) {
+                $fokus = ['kelompok' => $kode, 'label' => $label, 'min' => $min, 'max' => $max, 'gap' => round(100 - $persen, 1)];
+            }
+        }
+
+        return [
+            'kelompok' => $kelompok,
+            'total'    => ['sasaran' => $totalSasaran, 'realisasi' => $totalYa, 'persen' => self::persen($totalYa, $totalSasaran)],
+            'fokus'    => $fokus,
+        ];
+    }
+
+    /** CKG (Cek Kesehatan Gratis) per umur tahun + footer gigi/rujukan. */
+    public function ckg(PeriodeKesmas $p, array $filters): array
+    {
+        [$a, $z] = [$p->awal()->toDateString(), $p->akhir()->toDateString()];
+
+        $ckg = DB::table('data_anak')->select('id_anak')->distinct()->whereBetween('tgl_penanda_ckg', [$a, $z]);
+        $r = (array) $this->dariSasaran($p, $filters)
+            ->leftJoinSub($ckg, 'c', 'c.id_anak', '=', 's.id')
+            ->selectRaw(
+                'SUM(umur BETWEEN 0 AND 11) as t0, SUM(umur BETWEEN 0 AND 11 AND c.id_anak IS NOT NULL) as t0_ya, '
+                . 'SUM(umur BETWEEN 12 AND 23) as t1, SUM(umur BETWEEN 12 AND 23 AND c.id_anak IS NOT NULL) as t1_ya, '
+                . 'SUM(umur BETWEEN 24 AND 35) as t2, SUM(umur BETWEEN 24 AND 35 AND c.id_anak IS NOT NULL) as t2_ya, '
+                . 'SUM(umur BETWEEN 36 AND 83) as t3, SUM(umur BETWEEN 36 AND 83 AND c.id_anak IS NOT NULL) as t3_ya'
+            )->first();
+
+        $gigi = DB::table('data_anak as da')
+            ->joinSub($this->sasaranSub($p, $filters), 's', 's.id', '=', 'da.id_anak')
+            ->where('s.umur', '<=', 83)
+            ->whereBetween('da.tgl_kunjungan', [$a, $z])
+            ->whereNotNull('da.pemeriksaan_gigi')
+            ->selectRaw("COUNT(*) as terisi, SUM(da.pemeriksaan_gigi = 'Sehat') as sehat")
+            ->first();
+
+        $rujuk = DB::table('data_anak as da')
+            ->joinSub($this->sasaranSub($p, $filters), 's', 's.id', '=', 'da.id_anak')
+            ->where('s.umur', '<=', 83)
+            ->whereBetween('da.tgl_kunjungan', [$a, $z])
+            ->where('da.rujukan', 'Dokter gigi')
+            ->distinct()->count('da.id_anak');
+
+        $baris = fn (string $label, string $k) => [
+            'label' => $label, 'sasaran' => (int) $r[$k], 'realisasi' => (int) $r["{$k}_ya"],
+            'persen' => self::persen((int) $r["{$k}_ya"], (int) $r[$k]),
+        ];
+
+        return [
+            'kelompok' => [
+                't0' => $baris('Bayi baru lahir (< 1 tahun)', 't0'),
+                't1' => $baris('Usia 1 tahun', 't1'),
+                't2' => $baris('Usia 2 tahun', 't2'),
+                't3' => $baris('Usia 3–6 tahun', 't3'),
+            ],
+            'gigi' => [
+                'terisi' => (int) $gigi->terisi, 'sehat' => (int) $gigi->sehat,
+                'persen_sehat' => self::persen((int) $gigi->sehat, (int) $gigi->terisi),
+            ],
+            'rujuk_gigi' => $rujuk,
+        ];
+    }
 }

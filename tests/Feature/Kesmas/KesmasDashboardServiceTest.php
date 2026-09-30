@@ -285,4 +285,104 @@ class KesmasDashboardServiceTest extends TestCase
         $this->assertNull($spm['balita']['persen']);
         $this->assertNull($spm['bayi']['sub']['timbang']['persen']);
     }
+
+    // ── K4 Pemantauan lengkap T&K ──────────────────────────────────────────
+
+    public function test_pemantauan_tk_mencakup_prasekolah_dan_hanya_timbang_plus_ddtka(): void
+    {
+        $pra = $this->anak(65);
+        $this->kunjunganBulanan($pra, 6, 1);
+        $this->kunjungan($pra, '2025-07-15', ['ddtka' => 'Sesuai']);
+        $this->kunjungan($pra, '2025-08-15', ['ddtka' => 'Sesuai']); // 8 timbang, 2 ddtka, tanpa vit A → lengkap
+
+        $bayi = $this->anak(8);
+        $this->kunjunganBulanan($bayi, 8, 5); // 8 timbang tanpa ddtka → tidak
+
+        $tk = $this->svc->pemantauanTk($this->tahun2025(), []);
+
+        $this->assertSame(2, $tk['sasaran']);
+        $this->assertSame(1, $tk['lengkap']);
+        $this->assertSame(50.0, $tk['persen']);
+    }
+
+    public function test_perlu_perhatian_dari_kunjungan_terakhir_dalam_periode(): void
+    {
+        $ntobT = $this->anak(20);
+        $this->kunjungan($ntobT, '2025-03-15', ['ntob' => 'N']);
+        $this->kunjungan($ntobT, '2025-06-15', ['ntob' => ' t ']); // terakhir: T (huruf kecil + spasi)
+
+        $sembuh = $this->anak(20);
+        $this->kunjungan($sembuh, '2025-03-15', ['ntob' => 'T']);
+        $this->kunjungan($sembuh, '2025-06-15', ['ntob' => 'N']); // terakhir N → tidak
+
+        $underweight = $this->anak(20);
+        $this->kunjungan($underweight, '2025-06-15', ['zscore_bb_u' => -2.5]);
+
+        $batas = $this->anak(20);
+        $this->kunjungan($batas, '2025-06-15', ['zscore_bb_u' => -2.0]); // > -2.01 → normal
+
+        $lama = $this->anak(20);
+        $this->kunjungan($lama, '2024-06-15', ['ntob' => 'T']); // di luar periode
+
+        $tk = $this->svc->pemantauanTk($this->tahun2025(), []);
+
+        $this->assertSame(2, $tk['perhatian'], 'ntobT & underweight');
+    }
+
+    // ── SDIDTK ─────────────────────────────────────────────────────────────
+
+    public function test_sdidtk_per_kelompok_umur_dengan_fokus_gap_terbesar(): void
+    {
+        $b1 = $this->anak(5);  $this->kunjungan($b1, '2025-03-01', ['ddtka' => 'Sesuai']);
+        $b2 = $this->anak(9);  $this->kunjungan($b2, '2025-03-01'); // tanpa ddtka
+        $d1 = $this->anak(15); $this->kunjungan($d1, '2025-04-01', ['ddtka' => 'Meragukan']);
+        $this->kunjungan($d1, '2025-05-01', ['ddtka' => 'Sesuai']); // 2 kunjungan = tetap 1 anak
+        $l1 = $this->anak(30);
+        $l2 = $this->anak(40);
+        $l3 = $this->anak(50); $this->kunjungan($l3, '2024-12-01', ['ddtka' => 'Sesuai']); // di luar periode
+        $p1 = $this->anak(65); $this->kunjungan($p1, '2025-09-01', ['ddtka' => 'Sesuai']);
+
+        $s = $this->svc->sdidtk($this->tahun2025(), []);
+
+        $this->assertSame([2, 1, 50.0], [$s['kelompok']['bayi']['sasaran'], $s['kelompok']['bayi']['realisasi'], $s['kelompok']['bayi']['persen']]);
+        $this->assertSame([1, 1, 100.0], [$s['kelompok']['baduta']['sasaran'], $s['kelompok']['baduta']['realisasi'], $s['kelompok']['baduta']['persen']]);
+        $this->assertSame([3, 0, 0.0], [$s['kelompok']['balita']['sasaran'], $s['kelompok']['balita']['realisasi'], $s['kelompok']['balita']['persen']]);
+        $this->assertSame([1, 1, 100.0], [$s['kelompok']['prasekolah']['sasaran'], $s['kelompok']['prasekolah']['realisasi'], $s['kelompok']['prasekolah']['persen']]);
+        $this->assertSame('Kemandirian & KPSP', $s['kelompok']['baduta']['domain']);
+        $this->assertSame(['sasaran' => 7, 'realisasi' => 3, 'persen' => 42.9], $s['total']);
+        $this->assertSame('balita', $s['fokus']['kelompok']);
+        $this->assertSame(100.0, $s['fokus']['gap']);
+        $this->assertSame([24, 59], [$s['fokus']['min'], $s['fokus']['max']]);
+    }
+
+    public function test_sdidtk_tanpa_sasaran_fokus_null(): void
+    {
+        $s = $this->svc->sdidtk($this->tahun2025(), []);
+
+        $this->assertNull($s['fokus']);
+        $this->assertNull($s['total']['persen']);
+    }
+
+    // ── CKG ────────────────────────────────────────────────────────────────
+
+    public function test_ckg_per_umur_tahun_dan_footer_gigi(): void
+    {
+        $t0 = $this->anak(3);  $this->kunjungan($t0, '2025-10-01', ['tgl_penanda_ckg' => '2025-10-01', 'pemeriksaan_gigi' => 'Sehat']);
+        $t0b = $this->anak(10); // tanpa CKG
+        $t1 = $this->anak(15); $this->kunjungan($t1, '2025-02-01', ['tgl_penanda_ckg' => '2024-12-20']); // CKG tahun lalu
+        $t2 = $this->anak(30); $this->kunjungan($t2, '2025-05-01', ['tgl_penanda_ckg' => '2025-05-01', 'pemeriksaan_gigi' => 'Karies', 'rujukan' => 'Dokter gigi']);
+        $this->kunjungan($t2, '2025-11-01', ['pemeriksaan_gigi' => 'Karies', 'rujukan' => 'Dokter gigi']); // anak yang sama → rujuk tetap 1
+        $t3 = $this->anak(70); $this->kunjungan($t3, '2025-06-01', ['tgl_penanda_ckg' => '2025-06-01', 'rujukan' => 'Rumah sakit']);
+        $t3b = $this->anak(80); $this->kunjungan($t3b, '2025-06-01');
+
+        $c = $this->svc->ckg($this->tahun2025(), []);
+
+        $this->assertSame([2, 1], [$c['kelompok']['t0']['sasaran'], $c['kelompok']['t0']['realisasi']]);
+        $this->assertSame([1, 0], [$c['kelompok']['t1']['sasaran'], $c['kelompok']['t1']['realisasi']]);
+        $this->assertSame([1, 1], [$c['kelompok']['t2']['sasaran'], $c['kelompok']['t2']['realisasi']]);
+        $this->assertSame([2, 1], [$c['kelompok']['t3']['sasaran'], $c['kelompok']['t3']['realisasi']], '36–83 bln: anak 70 & 80');
+        $this->assertSame('Usia 3–6 tahun', $c['kelompok']['t3']['label']);
+        $this->assertSame(['terisi' => 3, 'sehat' => 1, 'persen_sehat' => 33.3], $c['gigi']);
+        $this->assertSame(1, $c['rujuk_gigi']);
+    }
 }
