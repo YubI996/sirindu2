@@ -1,4 +1,3 @@
-```blade
 @extends('admin::layouts.app')
 @section('title') Dashboard Kesmas @endsection
 @section('title-content') Dashboard Kesmas @endsection
@@ -17,6 +16,50 @@
 .km-chip{ height:30px; padding:0 .8rem; border-radius:99px; border:1px solid var(--line); background:var(--card); font-family:inherit; font-weight:600; font-size:.78rem; color:var(--ink); cursor:pointer; }
 .km-chip[aria-pressed="true"]{ background:var(--green-dk); border-color:var(--green-dk); color:#fff; }
 .km-chip:focus-visible{ outline:2px solid oklch(0.60 0.15 145 / .5); outline-offset:2px; }
+/* Kartu SPM */
+.km-kicker{ display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
+.km-pill{ font-size:.66rem; font-weight:700; padding:.15rem .5rem; border-radius:99px; background:oklch(0.95 0.012 145); color:var(--muted); white-space:nowrap; }
+.km-pill--ok{ background:oklch(0.94 0.06 145); color:var(--green-dk); }
+.km-pill--mid{ background:var(--amber-bg); color:var(--amber); }
+.km-pill--low{ background:var(--red-bg); color:var(--red-d); }
+.km-title{ font-weight:700; font-size:1.02rem; line-height:1.25; color:var(--ink); }
+.km-big{ display:flex; align-items:baseline; gap:.4rem; flex-wrap:wrap; }
+.km-big .n{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:2rem; line-height:1; color:var(--ink); }
+.km-big .d{ color:var(--faint); font-size:.9rem; }
+.km-big .p{ font-weight:700; font-size:1rem; margin-left:auto; }
+.km-big .p.ok{ color:var(--green-dk); } .km-big .p.mid{ color:var(--amber); } .km-big .p.low{ color:var(--red-d); } .km-big .p.na{ color:var(--faint); }
+.km-prog{ height:7px; border-radius:99px; background:oklch(0.93 0.012 145); overflow:hidden; }
+.km-prog > span{ display:block; height:100%; border-radius:99px; background:var(--green-d); }
+.km-prog > span.mid{ background:var(--amber); } .km-prog > span.low{ background:var(--red-d); }
+.km-subs{ display:flex; flex-wrap:wrap; gap:.35rem; }
+.km-subs .km-sub{ font-size:.7rem; font-weight:600; padding:.16rem .5rem; border-radius:6px; border:1px solid var(--line); background:oklch(0.985 0.008 145); color:var(--ink); margin-top:0; }
+.km-subs .km-sub.ok{ border-color:oklch(0.85 0.08 145); color:var(--green-dk); } .km-subs .km-sub.mid{ border-color:oklch(0.85 0.09 70); color:var(--amber); } .km-subs .km-sub.low{ border-color:oklch(0.85 0.09 25); color:var(--red-d); }
+.km-foot{ margin-top:auto; font-size:.78rem; color:var(--muted); display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+.km-foot b{ color:var(--ink); }
+.km-foot .warn{ color:var(--red-d); font-weight:700; }
+.km-foot--grid{ display:grid; grid-template-columns:1fr 1fr; gap:.5rem; align-items:start; }
+.km-foot__big{ font-size:1.1rem; }
+.km-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--red); }
+/* Baris SDIDTK / CKG */
+.km-row{ display:grid; grid-template-columns:1fr auto; gap:.15rem .6rem; align-items:baseline; padding:.45rem 0; border-top:1px solid var(--line); }
+.km-row:first-of-type{ border-top:0; }
+.km-row .lbl{ font-size:.85rem; font-weight:600; color:var(--ink); }
+.km-row .dom{ font-size:.72rem; color:var(--faint); }
+.km-row .val{ font-size:.82rem; color:var(--muted); white-space:nowrap; }
+.km-row .val b{ color:var(--ink); }
+.km-row .km-prog{ grid-column:1 / -1; height:6px; }
+.km-row.hl .lbl{ color:var(--green-dk); }
+.km-callout{ margin-top:.8rem; padding:.7rem .85rem; border-radius:10px; background:var(--amber-bg); color:oklch(0.35 0.10 70); font-size:.8rem; line-height:1.45; }
+.km-callout b{ color:oklch(0.30 0.11 70); }
+.km-empty{ padding:1rem; border:1px dashed var(--line); border-radius:10px; color:var(--muted); font-size:.85rem; text-align:center; }
+/* IDL */
+.km-donut{ display:flex; gap:1rem; align-items:center; }
+.km-donut canvas{ width:120px !important; height:120px !important; }
+.km-legend{ font-size:.8rem; color:var(--muted); display:flex; flex-direction:column; gap:.3rem; }
+.km-legend b{ color:var(--ink); }
+.km-alasan{ margin:.6rem 0 0; padding:0; list-style:none; font-size:.8rem; }
+.km-alasan li{ display:flex; justify-content:space-between; gap:.5rem; padding:.28rem 0; border-top:1px solid var(--line); }
+.km-alasan li b{ color:var(--ink); }
 @media(max-width:700px){ .km-head h1{ font-size:1.35rem; } }
 </style>
 @endpush
@@ -59,10 +102,32 @@
         @endforeach
     </div>
 
+    @include('admin.kesmas.partials._spm')
+
+    @include('admin.kesmas.partials._sdidtk-ckg-idl')
+
 </div>
 @endsection
 
 @push('js')
+@if($idl['total'] > 0)
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    var el = document.getElementById('idlDonut');
+    if (!el || typeof Chart === 'undefined') return;
+    new Chart(el.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['IDL lengkap', 'Belum lengkap'],
+            datasets: [{ data: [{{ (int) $idl['idl_lengkap'] }}, {{ (int) ($idl['total'] - $idl['idl_lengkap']) }}],
+                backgroundColor: ['#2f7d4f', '#e4e8e4'], borderWidth: 0 }]
+        },
+        options: { cutout: '72%', plugins: { legend: { display: false } }, responsive: false }
+    });
+})();
+</script>
+@endif
 <script>
 (function () {
     var URL_KEL_BY_KEC = '{{ url("admin/get-kel-dasar-anak") }}';
