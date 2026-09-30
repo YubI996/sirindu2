@@ -414,6 +414,79 @@ class KesmasDashboardServiceTest extends TestCase
 
     // ── CKG ────────────────────────────────────────────────────────────────
 
+    // ── Layanan & Lingkungan ───────────────────────────────────────────────
+
+    public function test_layanan_per_kunjungan_pembagi_hanya_anak_yang_terisi(): void
+    {
+        $ya = $this->anak(20);
+        $this->kunjungan($ya, '2025-02-01', ['kn1' => 0, 'mbg' => 1]);
+        $this->kunjungan($ya, '2025-05-01', ['kn1' => 1]);            // pernah 1 → ya
+        $tidak = $this->anak(20);
+        $this->kunjungan($tidak, '2025-02-01', ['kn1' => 0]);          // terisi, tidak
+        $kosong = $this->anak(20);
+        $this->kunjungan($kosong, '2025-02-01');                       // kn1 NULL → belum diisi
+        $tanpaKunjungan = $this->anak(20);
+        $lama = $this->anak(20);
+        $this->kunjungan($lama, '2024-02-01', ['kn1' => 1]);           // di luar periode → belum diisi
+
+        $l = $this->svc->layananLingkungan($this->tahun2025(), []);
+
+        $this->assertSame(5, $l['sasaran']);
+        $kn1 = $l['layanan']['baris']['kn1'];
+        $this->assertSame(['ya' => 1, 'terisi' => 2, 'persen' => 50.0, 'belum_diisi' => 3], array_intersect_key($kn1, array_flip(['ya', 'terisi', 'persen', 'belum_diisi'])));
+        $this->assertSame('KN1', $kn1['badge']);
+        $this->assertSame(['ya' => 1, 'terisi' => 1, 'belum_diisi' => 4], array_intersect_key($l['layanan']['baris']['mbg'], array_flip(['ya', 'terisi', 'belum_diisi'])));
+        $this->assertNull($l['layanan']['baris']['pkat']['persen']);
+        $this->assertTrue($l['layanan']['ada_data']);
+        $this->assertCount(9, $l['layanan']['baris']);
+    }
+
+    public function test_skrining_neonatal_pada_bayi_dan_sanitasi_pada_0_72(): void
+    {
+        $this->anak(3, ['skrining_shk' => 'normal', 'pemeriksaan_hepatitis_b' => 'reaktif', 'air_bersih' => 1, 'jamban_sehat' => 0, 'merokok_keluarga' => 1]);
+        $this->anak(9, ['skrining_shk' => 'tidak_normal', 'air_bersih' => 1]);
+        $this->anak(11, ['skrining_shk' => 'belum']);
+        $this->anak(30, ['skrining_shk' => 'normal', 'merokok_keluarga' => 0]); // bukan bayi → skrining tak dihitung, sanitasi ya
+        $this->anak(5);                                                          // semua NULL
+        $this->anak(80, ['air_bersih' => 1]);                                    // > 72 bln → tidak ikut sanitasi
+
+        $l = $this->svc->layananLingkungan($this->tahun2025(), []);
+
+        $this->assertSame(4, $l['bayi']);
+        $shk = $l['skrining']['baris']['skrining_shk'];
+        $this->assertSame(3, $shk['terisi']);
+        $this->assertSame(1, $shk['belum_diisi']);
+        $this->assertSame(1, $shk['sebaran']['normal']['n']);
+        $this->assertSame(1, $shk['sebaran']['tidak_normal']['n']);
+        $this->assertSame(1, $shk['sebaran']['belum']['n']);
+        $this->assertSame(33.3, $shk['sebaran']['normal']['persen']);
+        $this->assertSame('Tidak normal', $shk['sebaran']['tidak_normal']['label']);
+        $this->assertSame(1, $l['skrining']['baris']['pemeriksaan_hepatitis_b']['sebaran']['reaktif']['n']);
+        $this->assertSame(0, $l['skrining']['baris']['skrining_g6pd']['terisi']);
+        $this->assertTrue($l['skrining']['ada_data']);
+
+        $this->assertSame(5, $l['sasaran'], '0–72 bln');
+        $air = $l['sanitasi']['baris']['air_bersih'];
+        $this->assertSame(['ya' => 2, 'terisi' => 2, 'persen' => 100.0, 'belum_diisi' => 3], array_intersect_key($air, array_flip(['ya', 'terisi', 'persen', 'belum_diisi'])));
+        $rokok = $l['sanitasi']['baris']['merokok_keluarga'];
+        $this->assertSame([1, 2, 50.0, true], [$rokok['ya'], $rokok['terisi'], $rokok['persen'], $rokok['terbalik']]);
+        $this->assertSame(0, $l['sanitasi']['baris']['jamban_sehat']['ya']);
+        $this->assertSame(1, $l['sanitasi']['baris']['jamban_sehat']['terisi']);
+    }
+
+    public function test_layanan_lingkungan_tanpa_data_ada_data_false(): void
+    {
+        $this->anak(20);
+        $this->kunjungan($this->anak(5), '2025-03-01');
+
+        $l = $this->svc->layananLingkungan($this->tahun2025(), []);
+
+        $this->assertFalse($l['layanan']['ada_data']);
+        $this->assertFalse($l['skrining']['ada_data']);
+        $this->assertFalse($l['sanitasi']['ada_data']);
+        $this->assertSame(2, $l['sanitasi']['baris']['air_bersih']['belum_diisi']);
+    }
+
     public function test_ckg_per_umur_tahun_dan_footer_gigi(): void
     {
         $t0 = $this->anak(3);  $this->kunjungan($t0, '2025-10-01', ['tgl_penanda_ckg' => '2025-10-01', 'pemeriksaan_gigi' => 'Sehat']);

@@ -293,4 +293,103 @@ class KesmasDashboardService
             'rujuk_gigi' => $rujuk,
         ];
     }
+
+    /**
+     * Seksi "Layanan & Lingkungan" (§3): pembagi = anak yang datanya TERISI (IS NOT NULL);
+     * NULL berarti belum ditanya, bukan "tidak" — jumlah belum_diisi selalu ikut dikembalikan.
+     */
+    public function layananLingkungan(PeriodeKesmas $p, array $filters): array
+    {
+        [$a, $z] = [$p->awal()->toDateString(), $p->akhir()->toDateString()];
+
+        // 1) Layanan per kunjungan: per anak MAX(kolom = 1) → pernah ya; MAX(kolom IS NOT NULL) → terisi.
+        $layananDef = config('kesmas.layanan');
+        $kolom = array_keys($layananDef);
+        $perAnak = DB::table('data_anak')
+            ->selectRaw('id_anak, ' . implode(', ', array_map(
+                fn ($k) => "MAX({$k} = 1) as {$k}_ya, MAX({$k} IS NOT NULL) as {$k}_isi", $kolom
+            )))
+            ->whereBetween('tgl_kunjungan', [$a, $z])
+            ->groupBy('id_anak');
+        $r = (array) $this->dariSasaran($p, $filters)
+            ->leftJoinSub($perAnak, 'l', 'l.id_anak', '=', 's.id')
+            ->where('s.umur', '<=', 72)
+            ->selectRaw('COUNT(*) as sasaran, ' . implode(', ', array_map(
+                fn ($k) => "SUM(COALESCE({$k}_ya,0)) as {$k}_ya, SUM(COALESCE({$k}_isi,0)) as {$k}_isi", $kolom
+            )))
+            ->first();
+        $sasaran = (int) $r['sasaran'];
+        $layanan = [];
+        $adaLayanan = false;
+        foreach ($layananDef as $k => $def) {
+            $ya  = (int) $r["{$k}_ya"];
+            $isi = (int) $r["{$k}_isi"];
+            $adaLayanan = $adaLayanan || $isi > 0;
+            $layanan[$k] = [
+                'label' => $def['label'], 'badge' => $def['badge'],
+                'ya' => $ya, 'terisi' => $isi, 'persen' => self::persen($ya, $isi), 'belum_diisi' => $sasaran - $isi,
+            ];
+        }
+
+        // 2) Skrining neonatal — bayi 0–11 bulan (kolom enum di tabel anak).
+        $skriningDef = [
+            'skrining_shk'            => ['SHK (hipotiroid kongenital)', 'skrining'],
+            'skrining_shak'           => ['SHAK (hiperplasia adrenal)', 'skrining'],
+            'skrining_g6pd'           => ['G6PD', 'skrining'],
+            'pemeriksaan_hepatitis_b' => ['Hepatitis B', 'hepatitis_b'],
+        ];
+        $sel = ['COUNT(*) as bayi'];
+        foreach ($skriningDef as $k => [, $opsi]) {
+            $sel[] = "SUM({$k} IS NOT NULL) as {$k}_isi";
+            foreach (array_keys(config("kesmas.{$opsi}")) as $nilai) {
+                $sel[] = "SUM({$k} = '{$nilai}') as {$k}_{$nilai}";
+            }
+        }
+        $rs = (array) $this->dariSasaran($p, $filters)->whereBetween('s.umur', [0, 11])->selectRaw(implode(', ', $sel))->first();
+        $bayi = (int) $rs['bayi'];
+        $skrining = [];
+        $adaSkrining = false;
+        foreach ($skriningDef as $k => [$label, $opsi]) {
+            $isi = (int) $rs["{$k}_isi"];
+            $adaSkrining = $adaSkrining || $isi > 0;
+            $sebaran = [];
+            foreach (config("kesmas.{$opsi}") as $nilai => $labelNilai) {
+                $n = (int) $rs["{$k}_{$nilai}"];
+                $sebaran[$nilai] = ['label' => $labelNilai, 'n' => $n, 'persen' => self::persen($n, $isi)];
+            }
+            $skrining[$k] = ['label' => $label, 'terisi' => $isi, 'sebaran' => $sebaran, 'belum_diisi' => $bayi - $isi];
+        }
+
+        // 3) Sanitasi rumah — 0–72 bulan. 'terbalik' = nilai tinggi berarti buruk (warna dibalik di view).
+        $sanitasiDef = [
+            'air_bersih'       => ['Akses air bersih', false],
+            'jamban_sehat'     => ['Jamban sehat', false],
+            'merokok_keluarga' => ['Ada anggota keluarga merokok', true],
+        ];
+        $sel = ['COUNT(*) as sasaran'];
+        foreach (array_keys($sanitasiDef) as $k) {
+            $sel[] = "SUM({$k} IS NOT NULL) as {$k}_isi";
+            $sel[] = "SUM({$k} = 1) as {$k}_ya";
+        }
+        $rn = (array) $this->dariSasaran($p, $filters)->where('s.umur', '<=', 72)->selectRaw(implode(', ', $sel))->first();
+        $sanitasi = [];
+        $adaSanitasi = false;
+        foreach ($sanitasiDef as $k => [$label, $terbalik]) {
+            $isi = (int) $rn["{$k}_isi"];
+            $ya  = (int) $rn["{$k}_ya"];
+            $adaSanitasi = $adaSanitasi || $isi > 0;
+            $sanitasi[$k] = [
+                'label' => $label, 'ya' => $ya, 'terisi' => $isi, 'persen' => self::persen($ya, $isi),
+                'belum_diisi' => (int) $rn['sasaran'] - $isi, 'terbalik' => $terbalik,
+            ];
+        }
+
+        return [
+            'sasaran'  => $sasaran,
+            'bayi'     => $bayi,
+            'layanan'  => ['baris' => $layanan, 'ada_data' => $adaLayanan],
+            'skrining' => ['baris' => $skrining, 'ada_data' => $adaSkrining],
+            'sanitasi' => ['baris' => $sanitasi, 'ada_data' => $adaSanitasi],
+        ];
+    }
 }
