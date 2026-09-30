@@ -1070,11 +1070,25 @@ ANAK
         // }
     }
 
+    /**
+     * Export seluruh data anak + kunjungan.
+     *
+     * Barisnya dialirkan lewat generator, BUKAN `AllData::all()`. VIEW `alldata`
+     * berisi satu baris per kunjungan (anak × data_anak), jadi di produksi
+     * jumlahnya berkali lipat jumlah anak — sementara `all()` menghidrasi
+     * semuanya sekaligus jadi model Eloquent 38 kolom. Di dev (ratusan baris,
+     * memory_limit 512 MB) itu selalu lolos; di prod ia menabrak batas memori,
+     * persis seperti insiden dasbor imunisasi 16 Sep 2026. `lazyById()` memecah
+     * bacaan jadi potongan 1.000 baris dan FastExcel menulisnya satu per satu,
+     * sehingga memori puncak sebatas satu potongan berapa pun besar datanya.
+     *
+     * `da.id` (primary key data_anak) dipakai sebagai kunci potongan karena ia
+     * unik di view ini — `lazyById` pada kolom tak unik diam-diam melewati atau
+     * mengulang baris.
+     */
     public function exportAllExcel()
     {
-        //return Excel::download(new AllExport, 'all-data-anak.xlsx');
-        // $datax= AllData::all();
-        return (new FastExcel(AllData::all()))->download(
+        return (new FastExcel($this->barisAllData()))->download(
             'all-data-anak.xlsx',
             function ($data) {
                 return [
@@ -1111,6 +1125,21 @@ ANAK
                 ];
             },
         );
+    }
+
+    /**
+     * Baris VIEW `alldata` sebagai generator, dibaca per 1.000 baris.
+     *
+     * Sengaja `DB::table()` dan bukan model: stdClass ±0,5 KB/baris, sedangkan
+     * model Eloquent puluhan KB. FastExcel menerima array|Generator|Collection
+     * (LazyCollection TIDAK termasuk), jadi LazyCollection dari lazyById()
+     * dibungkus ulang jadi generator di sini.
+     */
+    private function barisAllData(): \Generator
+    {
+        foreach (DB::table('alldata')->lazyById(1000, 'id') as $baris) {
+            yield $baris;
+        }
     }
 
     /*------------------------------------------
