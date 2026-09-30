@@ -332,6 +332,15 @@ class KesmasDashboardService
         }
 
         // 2) Skrining neonatal — bayi 0–11 bulan (kolom enum di tabel anak).
+        //
+        // Daftar barisnya ditulis di sini, TIDAK dibaca dari config seperti $layananDef
+        // di atas, karena label dan flag 'terbalik' memang belum punya rumah di
+        // config/kesmas.php (di sana hanya ada daftar OPSI tiap field). Konsekuensinya:
+        // menambah field skrining/sanitasi baru ke migrasi + config TIDAK otomatis
+        // memunculkannya di dasbor — barisnya hilang diam-diam, tanpa error. Kalau
+        // menambah satu, sentuh ketiganya: $skriningDef/$sanitasiDef di sini,
+        // KOLOM_KESMAS_ANAK (agar kolomnya ikut di-select subquery `s`), dan
+        // config/kesmas.php untuk daftar opsinya.
         $skriningDef = [
             'skrining_shk'            => ['SHK (hipotiroid kongenital)', 'skrining'],
             'skrining_shak'           => ['SHAK (hiperplasia adrenal)', 'skrining'],

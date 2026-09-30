@@ -487,6 +487,54 @@ class KesmasDashboardServiceTest extends TestCase
         $this->assertSame(2, $l['sanitasi']['baris']['air_bersih']['belum_diisi']);
     }
 
+    /**
+     * Ketiga seksi harus menghormati filter wilayah. Kalau salah satu jalur
+     * lupa meneruskan $filters, petugas puskesmas akan melihat angka SE-KOTA
+     * di halaman yang seharusnya hanya wilayahnya — salah, meyakinkan, dan
+     * tanpa satu pun error. Layanan datang dari data_anak lewat join, skrining
+     * dan sanitasi dari kolom anak; ketiganya diuji terpisah karena jalur
+     * query-nya berbeda.
+     */
+    public function test_layanan_lingkungan_mengikuti_filter_wilayah(): void
+    {
+        $sini = $this->anak(5, ['air_bersih' => 1, 'skrining_shk' => 'normal']);
+        $this->kunjungan($sini, '2025-06-15', ['kn1' => 1]);
+
+        $sana = $this->anak(5, ['id_kel' => $this->kelLain->id, 'air_bersih' => 1, 'skrining_shk' => 'normal']);
+        $this->kunjungan($sana, '2025-06-15', ['kn1' => 1]);
+
+        $semua = $this->svc->layananLingkungan($this->tahun2025(), []);
+        $this->assertSame(2, $semua['sasaran']);
+        $this->assertSame(2, $semua['bayi']);
+        $this->assertSame(2, $semua['layanan']['baris']['kn1']['ya']);
+        $this->assertSame(2, $semua['skrining']['baris']['skrining_shk']['terisi']);
+        $this->assertSame(2, $semua['sanitasi']['baris']['air_bersih']['ya']);
+
+        $satu = $this->svc->layananLingkungan($this->tahun2025(), ['id_kelurahan' => $this->kel->id]);
+        $this->assertSame(1, $satu['sasaran']);
+        $this->assertSame(1, $satu['bayi']);
+        $this->assertSame(1, $satu['layanan']['baris']['kn1']['ya'], 'layanan ikut filter');
+        $this->assertSame(1, $satu['skrining']['baris']['skrining_shk']['terisi'], 'skrining ikut filter');
+        $this->assertSame(1, $satu['sanitasi']['baris']['air_bersih']['ya'], 'sanitasi ikut filter');
+    }
+
+    /**
+     * Wilayah tanpa satu anak pun: semua pembagi 0, jadi setiap persen WAJIB
+     * null (tampil "—"), bukan 0.0 — 0 % berarti "diukur, hasilnya nol", dan
+     * itu bukan yang terjadi di sini.
+     */
+    public function test_layanan_lingkungan_tanpa_sasaran_semua_persen_null(): void
+    {
+        $l = $this->svc->layananLingkungan($this->tahun2025(), ['id_kecamatan' => $this->kec->id + 1000]);
+
+        $this->assertSame(0, $l['sasaran']);
+        $this->assertSame(0, $l['bayi']);
+        $this->assertNull($l['layanan']['baris']['kn1']['persen']);
+        $this->assertNull($l['skrining']['baris']['skrining_shk']['sebaran']['normal']['persen']);
+        $this->assertNull($l['sanitasi']['baris']['air_bersih']['persen']);
+        $this->assertSame(0, $l['sanitasi']['baris']['air_bersih']['belum_diisi']);
+    }
+
     public function test_ckg_per_umur_tahun_dan_footer_gigi(): void
     {
         $t0 = $this->anak(3);  $this->kunjungan($t0, '2025-10-01', ['tgl_penanda_ckg' => '2025-10-01', 'pemeriksaan_gigi' => 'Sehat']);
