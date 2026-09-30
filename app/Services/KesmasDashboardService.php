@@ -2,10 +2,15 @@
 
 namespace App\Services;
 
+use App\Models\Anak;
+use App\Models\Kelurahan;
+use App\Models\Posyandu;
+use App\Models\Rt;
 use App\Support\FilterWilayahAnak;
 use App\Support\PeriodeKesmas;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Agregat dasbor Kesmas — spec docs/superpowers/specs/2026-09-21-dasbor-kesmas-design.md §2–3.
@@ -400,5 +405,185 @@ class KesmasDashboardService
             'skrining' => ['baris' => $skrining, 'ada_data' => $adaSkrining],
             'sanitasi' => ['baris' => $sanitasi, 'ada_data' => $adaSanitasi],
         ];
+    }
+
+    /** Rentang umur (bulan) untuk chip usia — registri & penyorotan SDIDTK. */
+    public const USIA = [
+        'semua' => [0, 72], 'bayi' => [0, 11], 'baduta' => [12, 23], 'balita' => [24, 59], 'prasekolah' => [60, 72],
+    ];
+
+    public const STATUS_GIZI = ['semua', 'normal', 'stunted', 'underweight', 'wasted', 'perhatian'];
+
+    /**
+     * Badge gizi satu kata dari hasil StatusGiziService::enumEppgbm(): kategori
+     * TERBURUK dengan urutan wasted > underweight > stunted > lebih > normal.
+     * Semua dimensi null → null ("belum diisi"), BUKAN "normal".
+     *
+     * @param  array{bb_u: ?string, tb_u: ?string, bb_tb: ?string}  $z
+     * @return ?array{kode: string, label: string, tone: string}
+     */
+    public static function kategoriGizi(array $z): ?array
+    {
+        $urutan = [
+            'severely_wasted'      => ['bb_tb', 'Gizi buruk', 'bad'],
+            'wasted'               => ['bb_tb', 'Gizi kurang', 'bad'],
+            'severely_underweight' => ['bb_u', 'BB sangat kurang', 'bad'],
+            'underweight'          => ['bb_u', 'BB kurang', 'warn'],
+            'severely_stunted'     => ['tb_u', 'Sangat pendek', 'bad'],
+            'stunted'              => ['tb_u', 'Pendek', 'warn'],
+            'obese'                => ['bb_tb', 'Obesitas', 'warn'],
+            'overweight'           => ['bb_tb', 'Gizi lebih', 'warn'],
+            'risiko_lebih'         => ['bb_tb', 'Risiko gizi lebih', 'warn'],
+        ];
+        foreach ($urutan as $kode => [$dimensi, $label, $tone]) {
+            if (($z[$dimensi] ?? null) === $kode) {
+                return ['kode' => $kode, 'label' => $label, 'tone' => $tone];
+            }
+        }
+        foreach (['bb_tb', 'bb_u', 'tb_u'] as $dimensi) {
+            if (($z[$dimensi] ?? null) !== null) {
+                return ['kode' => 'normal', 'label' => 'Gizi baik', 'tone' => 'ok'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Registri longitudinal (§3.1): $perPage baris/halaman (bawaan 20), urut nama.
+     * Sasaran = anak di kelompok $usia (umur pada akhir periode). Paginasi di SQL;
+     * model Anak dimuat hanya untuk id di halaman ini (3 kolom + relasi imunisasi).
+     *
+     * Kunjungan terakhir = tanggal terbesar dalam periode; bila satu anak punya dua
+     * kunjungan pada tanggal itu (posyandu mengetik ulang), id terbesar yang menang,
+     * dan anak tetap SATU baris (jadi total & offset tidak bergeser).
+     *
+     * Query per panggilan: count + halaman + Anak + imunisasi + ≤3 nama wilayah —
+     * tidak bergantung pada $perPage.
+     */
+    public function registri(PeriodeKesmas $p, array $filters, string $usia = 'semua', string $q = '', string $statusGizi = 'semua', int $page = 1, int $perPage = 20): array
+    {
+        [$min, $max] = self::USIA[$usia] ?? self::USIA['semua'];
+        $akhir   = $p->akhir()->toDateString();
+        $page    = max(1, $page);
+        $perPage = min(100, max(1, $perPage));
+
+        // id kunjungan terakhir per anak dalam periode (dua kunjungan setanggal → id terbesar).
+        $terakhir = DB::table('data_anak as d2')
+            ->joinSub($this->kunjunganTerakhirSub($p), 'm', function ($j) {
+                $j->on('m.id_anak', '=', 'd2.id_anak')->on('m.max_tgl', '=', 'd2.tgl_kunjungan');
+            })
+            ->selectRaw('d2.id_anak, MAX(d2.id) as id_kunjungan')
+            ->groupBy('d2.id_anak');
+
+        $base = DB::table('anak as a')
+            ->leftJoinSub($terakhir, 't', 't.id_anak', '=', 'a.id')
+            ->leftJoin('data_anak as da', 'da.id', '=', 't.id_kunjungan')
+            ->whereNotNull('a.tgl_lahir')
+            ->where('a.tgl_lahir', '<=', $akhir)
+            ->whereRaw('TIMESTAMPDIFF(MONTH, a.tgl_lahir, ?) BETWEEN ? AND ?', [$akhir, $min, $max]);
+        $this->applyWilayahFilters($base, $filters, 'a');
+        if ($q !== '') {
+            // Terikat sebagai parameter; % _ \ dari pengguna dibaca harfiah, bukan wildcard.
+            $like = '%' . addcslashes($q, '%_\\') . '%';
+            $base->where(function ($w) use ($like) {
+                $w->where('a.nama', 'like', $like)->orWhere('a.nik', 'like', $like)
+                  ->orWhere('a.nama_ibu', 'like', $like)->orWhere('a.nama_ayah', 'like', $like);
+            });
+        }
+        $this->applyStatusGizi($base, $statusGizi);
+
+        $total = (clone $base)->count('a.id');
+        $rows  = $base
+            ->selectRaw(
+                'a.id, a.nama, a.nik, a.jk, a.tgl_lahir, a.nama_ibu, a.nama_ayah, a.id_kel, a.id_rt, a.id_posyandu, '
+                . 'TIMESTAMPDIFF(MONTH, a.tgl_lahir, ?) as umur, da.tgl_kunjungan, da.bb, da.tb, da.lk, da.ntob, '
+                . 'da.zscore_bb_u, da.zscore_pb_u, da.zscore_bb_pb, da.catatan_pengukuran',
+                [$akhir]
+            )
+            ->orderBy('a.nama')->orderBy('a.id')
+            ->forPage($page, $perPage)
+            ->get();
+
+        $anakModels = Anak::select(['id', 'tgl_lahir', 'jk'])->whereIn('id', $rows->pluck('id'))->with('imunisasi')->get()->keyBy('id');
+        $namaKel = Kelurahan::whereIn('id', $rows->pluck('id_kel')->filter()->unique())->pluck('name', 'id');
+        $namaRt  = Rt::whereIn('id', $rows->pluck('id_rt')->filter()->unique())->pluck('name', 'id');
+        $namaPos = Posyandu::whereIn('id', $rows->pluck('id_posyandu')->filter()->unique())->pluck('name', 'id');
+        $imun = app(ImunisasiStatusService::class);
+        $gizi = app(StatusGiziService::class);
+
+        $data = [];
+        foreach ($rows as $i => $r) {
+            $anak = $anakModels[$r->id];
+            $umur = (int) $r->umur;
+            $kunjungan = null;
+            if ($r->tgl_kunjungan !== null) {
+                $z = $gizi->enumEppgbm(
+                    $r->zscore_bb_u !== null ? (float) $r->zscore_bb_u : null,
+                    $r->zscore_pb_u !== null ? (float) $r->zscore_pb_u : null,
+                    $r->zscore_bb_pb !== null ? (float) $r->zscore_bb_pb : null,
+                );
+                $kunjungan = [
+                    'tgl' => $r->tgl_kunjungan, 'bb' => $r->bb, 'tb' => $r->tb, 'lk' => $r->lk,
+                    'bb_tidak_naik' => strtoupper(trim((string) $r->ntob)) === 'T',
+                    'gizi' => self::kategoriGizi($z),
+                ];
+            }
+            $data[] = [
+                'no'         => ($page - 1) * $perPage + $i + 1,
+                'id'         => $r->id,
+                'nama'       => $r->nama,
+                'nik'        => $r->nik,
+                'jk'         => (int) $r->jk === 1 ? 'L' : 'P',
+                'umur_bln'   => $umur,
+                'tgl_lahir'  => $r->tgl_lahir,
+                'nama_ibu'   => $r->nama_ibu,
+                'nama_ayah'  => $r->nama_ayah,
+                'kelurahan'  => $namaKel[$r->id_kel] ?? null,
+                'rt'         => $namaRt[$r->id_rt] ?? null,
+                'posyandu'   => $namaPos[$r->id_posyandu] ?? null,
+                'kunjungan'  => $kunjungan,
+                'idl'        => $umur < 12 ? 'belum_usia' : ($imun->isIdlLengkap($anak) ? 'lengkap' : 'belum'),
+                'ibl'        => $umur < 24 ? 'belum_usia' : ($imun->isIblLengkap($anak) ? 'lengkap' : 'belum'),
+                'catatan'    => $r->catatan_pengukuran !== null && trim($r->catatan_pengukuran) !== '' ? Str::limit(trim($r->catatan_pengukuran), 80) : null,
+                'url_detail' => route('admin.showAnak', $anak->hashid),
+            ];
+        }
+
+        return [
+            'data'      => $data,
+            'total'     => $total,
+            'page'      => $page,
+            'last_page' => max(1, (int) ceil($total / $perPage)),
+            'per_page'  => $perPage,
+        ];
+    }
+
+    /**
+     * Filter status gizi pada kunjungan terakhir (alias `da`). Ambang sama dengan
+     * StatusGiziService::enumEppgbm: ≤ -2.01 = kurang; TB/U ≤ -6.01 = outlier (bukan stunted).
+     */
+    private function applyStatusGizi(Builder $q, string $status): void
+    {
+        $stunted     = fn ($w) => $w->where('da.zscore_pb_u', '>', -6.01)->where('da.zscore_pb_u', '<=', -2.01);
+        $underweight = fn ($w) => $w->where('da.zscore_bb_u', '<=', -2.01);
+        $wasted      = fn ($w) => $w->where('da.zscore_bb_pb', '<=', -2.01);
+        $perhatian   = fn ($w) => $w->whereRaw("UPPER(TRIM(da.ntob)) = 'T'")->orWhere('da.zscore_bb_u', '<=', -2.01);
+
+        match ($status) {
+            'stunted'     => $q->where($stunted),
+            'underweight' => $q->where($underweight),
+            'wasted'      => $q->where($wasted),
+            'perhatian'   => $q->where($perhatian),
+            // normal = punya kunjungan dengan ≥ 1 z-score terisi dan tidak masuk kategori mana pun.
+            // Kunjungan tanpa z-score sama sekali = "belum diisi" (badge null), bukan normal.
+            'normal'      => $q->whereNotNull('da.id')
+                ->where(fn ($w) => $w->whereNotNull('da.zscore_pb_u')->orWhereNotNull('da.zscore_bb_u')->orWhereNotNull('da.zscore_bb_pb'))
+                ->where(fn ($w) => $w->whereNull('da.zscore_pb_u')->orWhere('da.zscore_pb_u', '<=', -6.01)->orWhere('da.zscore_pb_u', '>', -2.01))
+                ->where(fn ($w) => $w->whereNull('da.zscore_bb_u')->orWhere('da.zscore_bb_u', '>', -2.01))
+                ->where(fn ($w) => $w->whereNull('da.zscore_bb_pb')->orWhere('da.zscore_bb_pb', '>', -2.01))
+                ->where(fn ($w) => $w->whereNull('da.ntob')->orWhereRaw("UPPER(TRIM(da.ntob)) <> 'T'")),
+            default       => null,
+        };
     }
 }

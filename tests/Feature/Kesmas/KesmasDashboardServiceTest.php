@@ -6,12 +6,18 @@ use App\Models\Anak;
 use App\Models\DataAnak;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
+use App\Models\Posyandu;
+use App\Models\Puskesmas;
+use App\Models\Rt;
 use App\Services\ImunisasiStatusService;
 use App\Services\KesmasDashboardService;
 use App\Support\PeriodeKesmas;
 use App\Support\WilkerPuskesmas;
 use Carbon\Carbon;
+use Database\Seeders\JenisVaksinSeeder;
+use Database\Seeders\KelompokVaksinSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -554,5 +560,228 @@ class KesmasDashboardServiceTest extends TestCase
         $this->assertSame('Usia 3–6 tahun', $c['kelompok']['t3']['label']);
         $this->assertSame(['terisi' => 3, 'sehat' => 1, 'persen_sehat' => 33.3], $c['gigi']);
         $this->assertSame(1, $c['rujuk_gigi']);
+    }
+
+    // ── Registri per anak (spec §3.1) ─────────────────────────────────────
+
+    /** Master vaksin untuk isIdlLengkap()/isIblLengkap() — hanya tes registri yang butuh. */
+    private function seedVaksin(): void
+    {
+        $this->seed(JenisVaksinSeeder::class);
+        $this->seed(KelompokVaksinSeeder::class);
+        ImunisasiStatusService::flushCache();
+    }
+
+    /** Anak lengkap dengan nama, orang tua, dan wilayah sampai RT/posyandu. */
+    private function anakRegistri(string $nama, int $umurBln, array $extra = []): Anak
+    {
+        static $wilayah = null;
+        if ($wilayah === null || ! Rt::find($wilayah['rt'])) {
+            $pkm = Puskesmas::create(['name' => 'Bontang Selatan 1', 'id_kecamatan' => $this->kec->id]);
+            $pos = Posyandu::create(['name' => 'Melati I', 'id_puskesmas' => $pkm->id]);
+            $rt  = Rt::create(['name' => '05', 'id_kelurahan' => $this->kel->id, 'id_posyandu' => $pos->id]);
+            $wilayah = ['rt' => $rt->id, 'pos' => $pos->id];
+        }
+
+        return $this->anak($umurBln, array_merge([
+            'nama' => $nama, 'nama_ibu' => 'Ibu ' . $nama, 'nama_ayah' => 'Ayah ' . $nama,
+            'id_rt' => $wilayah['rt'], 'id_posyandu' => $wilayah['pos'],
+        ], $extra));
+    }
+
+    public function test_registri_baris_memuat_identitas_wilayah_kunjungan_terakhir_dan_status_imunisasi(): void
+    {
+        $this->seedVaksin();
+        $a = $this->anakRegistri('Budi', 30);
+        $this->kunjungan($a, '2025-03-10', ['bb' => 9, 'zscore_pb_u' => -2.5]);
+        $this->kunjungan($a, '2025-09-10', ['bb' => 10.2, 'tb' => 81, 'lk' => 46.5, 'ntob' => 'N',
+            'zscore_bb_u' => -1.0, 'zscore_pb_u' => -2.2, 'zscore_bb_pb' => 0.3, 'catatan_pengukuran' => 'Nafsu makan baik']);
+        $this->kunjungan($a, '2026-01-05', ['bb' => 99]); // di luar periode → bukan "terakhir"
+
+        $r = $this->svc->registri($this->tahun2025(), []);
+
+        $this->assertSame(1, $r['total']);
+        $b = $r['data'][0];
+        $this->assertSame(1, $b['no']);
+        $this->assertSame('Budi', $b['nama']);
+        $this->assertSame('L', $b['jk']);
+        $this->assertSame(30, $b['umur_bln']);
+        $this->assertSame('Ibu Budi', $b['nama_ibu']);
+        $this->assertSame(['Berbas Tengah', '05', 'Melati I'], [$b['kelurahan'], $b['rt'], $b['posyandu']]);
+        $this->assertSame('2025-09-10', $b['kunjungan']['tgl']);
+        $this->assertEquals(10.2, $b['kunjungan']['bb']);
+        $this->assertSame('stunted', $b['kunjungan']['gizi']['kode']);
+        $this->assertSame('Pendek', $b['kunjungan']['gizi']['label']);
+        $this->assertFalse($b['kunjungan']['bb_tidak_naik']);
+        $this->assertSame('Nafsu makan baik', $b['catatan']);
+        $this->assertSame('belum', $b['idl'], '30 bln tanpa vaksin → IDL belum');
+        $this->assertSame('belum', $b['ibl']);
+        $this->assertSame(route('admin.showAnak', $a->hashid), $b['url_detail']);
+    }
+
+    public function test_registri_belum_masuk_usia_dan_anak_tanpa_kunjungan(): void
+    {
+        $this->seedVaksin();
+        $this->anakRegistri('Bayi', 5);     // <12 → IDL belum_usia, <24 → IBL belum_usia
+        $this->anakRegistri('Baduta', 15);
+
+        $r = $this->svc->registri($this->tahun2025(), []);
+
+        $bayi = collect($r['data'])->firstWhere('nama', 'Bayi');
+        $this->assertSame(['belum_usia', 'belum_usia'], [$bayi['idl'], $bayi['ibl']]);
+        $this->assertNull($bayi['kunjungan'], 'tanpa kunjungan = null, bukan objek berisi nol');
+        $baduta = collect($r['data'])->firstWhere('nama', 'Baduta');
+        $this->assertSame(['belum', 'belum_usia'], [$baduta['idl'], $baduta['ibl']]);
+    }
+
+    public function test_registri_paginasi_20_per_halaman_urut_nama(): void
+    {
+        $this->seedVaksin();
+        for ($i = 1; $i <= 23; $i++) {
+            $this->anakRegistri(sprintf('Anak %02d', $i), 20);
+        }
+
+        $h1 = $this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', 1);
+        $h2 = $this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', 2);
+
+        $this->assertSame([23, 20, 2, 1], [$h1['total'], $h1['per_page'], $h1['last_page'], $h1['page']]);
+        $this->assertCount(20, $h1['data']);
+        $this->assertSame('Anak 01', $h1['data'][0]['nama']);
+        $this->assertCount(3, $h2['data']);
+        $this->assertSame(21, $h2['data'][0]['no']);
+        $this->assertSame('Anak 21', $h2['data'][0]['nama']);
+    }
+
+    public function test_registri_kunjungan_setanggal_tidak_menggandakan_anak_dan_id_terbesar_menang(): void
+    {
+        $this->seedVaksin();
+        $a = $this->anakRegistri('Ganda', 30);
+        $this->kunjungan($a, '2025-09-10', ['bb' => 9.1, 'zscore_bb_u' => 0, 'catatan_pengukuran' => 'entri pertama']);
+        $this->kunjungan($a, '2025-09-10', ['bb' => 9.9, 'zscore_bb_u' => -2.5, 'catatan_pengukuran' => 'entri koreksi']); // id lebih besar
+        $this->anakRegistri('Zeta', 30);
+
+        $r = $this->svc->registri($this->tahun2025(), []);
+
+        $this->assertSame(2, $r['total'], 'dihitung per anak, bukan per kunjungan');
+        $this->assertCount(2, $r['data']);
+        $this->assertSame([1, 2], array_column($r['data'], 'no'));
+        $g = collect($r['data'])->firstWhere('nama', 'Ganda');
+        $this->assertEquals(9.9, $g['kunjungan']['bb'], 'kunjungan setanggal: id terbesar (entri koreksi) yang menang');
+        $this->assertSame('entri koreksi', $g['catatan']);
+        $this->assertSame('underweight', $g['kunjungan']['gizi']['kode']);
+
+        // Dengan halaman kecil, duplikat tak menggeser halaman berikutnya.
+        $h2 = $this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', 2, 1);
+        $this->assertSame(2, $h2['last_page']);
+        $this->assertSame('Zeta', $h2['data'][0]['nama']);
+    }
+
+    public function test_registri_cari_nama_nik_dan_orang_tua(): void
+    {
+        $this->seedVaksin();
+        $this->anakRegistri('Citra Dewi', 20, ['nik' => '6474012345678901', 'nama_ibu' => 'Ratna']);
+        $this->anakRegistri('Dani', 20, ['nik' => '6474099999999999', 'nama_ayah' => 'Bambang Ratnadi']);
+        $this->anakRegistri('Eka', 20, ['nik' => '6474088888888888']);
+
+        $this->assertSame(1, $this->svc->registri($this->tahun2025(), [], 'semua', 'citra')['total']);
+        $this->assertSame(1, $this->svc->registri($this->tahun2025(), [], 'semua', '2345678')['total']);
+        $this->assertSame(2, $this->svc->registri($this->tahun2025(), [], 'semua', 'Ratna')['total'], 'nama ibu & nama ayah');
+        $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', 'zzz')['total']);
+    }
+
+    public function test_registri_cari_tidak_rentan_injeksi_dan_wildcard_dibaca_harfiah(): void
+    {
+        $this->seedVaksin();
+        $this->anakRegistri('Aman', 20);
+
+        $injeksi = "x' OR '1'='1";
+        $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', $injeksi)['total']);
+        $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', '%')['total'], '% bukan wildcard');
+        $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', '_')['total'], '_ bukan wildcard');
+        $this->assertSame(1, $this->svc->registri($this->tahun2025(), [], 'semua', 'Aman')['total'], 'tabel & data utuh');
+    }
+
+    public function test_registri_filter_usia_dan_wilayah(): void
+    {
+        $this->seedVaksin();
+        $this->anakRegistri('Bayi', 5);
+        $this->anakRegistri('Balita', 30);
+        $this->anak(30, ['nama' => 'Lain', 'id_kel' => $this->kelLain->id]);
+        $this->anakRegistri('Tua', 80);
+
+        $this->assertSame(3, $this->svc->registri($this->tahun2025(), [])['total'], '0–72 saja');
+        $this->assertSame(1, $this->svc->registri($this->tahun2025(), [], 'bayi')['total']);
+        $this->assertSame(2, $this->svc->registri($this->tahun2025(), [], 'balita')['total']);
+        $this->assertSame(1, $this->svc->registri($this->tahun2025(), ['id_kelurahan' => $this->kelLain->id], 'balita')['total']);
+        $lain = $this->svc->registri($this->tahun2025(), ['id_kelurahan' => $this->kelLain->id])['data'][0];
+        $this->assertNull($lain['rt']);
+        $this->assertNull($lain['posyandu']);
+    }
+
+    public function test_registri_filter_status_gizi(): void
+    {
+        $this->seedVaksin();
+        $stunted = $this->anakRegistri('Stunted', 30);
+        $this->kunjungan($stunted, '2025-05-01', ['zscore_pb_u' => -2.3, 'zscore_bb_u' => -1, 'zscore_bb_pb' => 0]);
+        $under = $this->anakRegistri('Underweight', 30);
+        $this->kunjungan($under, '2025-05-01', ['zscore_pb_u' => -1, 'zscore_bb_u' => -2.2, 'zscore_bb_pb' => -1]);
+        $wasted = $this->anakRegistri('Wasted', 30);
+        $this->kunjungan($wasted, '2025-05-01', ['zscore_pb_u' => -1, 'zscore_bb_u' => -1, 'zscore_bb_pb' => -3.5]);
+        $ntob = $this->anakRegistri('Tidak naik', 30);
+        $this->kunjungan($ntob, '2025-05-01', ['zscore_pb_u' => 0, 'zscore_bb_u' => 0, 'zscore_bb_pb' => 0, 'ntob' => 'T']);
+        $normal = $this->anakRegistri('Normal', 30);
+        $this->kunjungan($normal, '2025-05-01', ['zscore_pb_u' => 0, 'zscore_bb_u' => 0, 'zscore_bb_pb' => 0, 'ntob' => 'N']);
+        $tanpaZ = $this->anakRegistri('Tanpa z-score', 30);
+        $this->kunjungan($tanpaZ, '2025-05-01', ['ntob' => 'N']); // kunjungan ada, belum ada z-score
+        $this->anakRegistri('Tanpa kunjungan', 30);
+
+        $nama = fn (string $status) => collect($this->svc->registri($this->tahun2025(), [], 'semua', '', $status)['data'])->pluck('nama')->sort()->values()->all();
+
+        $this->assertSame(['Stunted'], $nama('stunted'));
+        $this->assertSame(['Underweight'], $nama('underweight'));
+        $this->assertSame(['Wasted'], $nama('wasted'));
+        $this->assertSame(['Tidak naik', 'Underweight'], $nama('perhatian'));
+        $this->assertSame(['Normal'], $nama('normal'), 'z-score kosong ≠ "normal": belum diisi bukan berarti sehat');
+        $this->assertCount(7, $this->svc->registri($this->tahun2025(), [])['data'], 'semua = termasuk yang belum ada kunjungan');
+
+        $w = collect($this->svc->registri($this->tahun2025(), [])['data'])->firstWhere('nama', 'Wasted');
+        $this->assertSame(['severely_wasted', 'Gizi buruk', 'bad'], array_values($w['kunjungan']['gizi']));
+        $t = collect($this->svc->registri($this->tahun2025(), [])['data'])->firstWhere('nama', 'Tidak naik');
+        $this->assertTrue($t['kunjungan']['bb_tidak_naik']);
+        $this->assertSame('normal', $t['kunjungan']['gizi']['kode']);
+        $z = collect($this->svc->registri($this->tahun2025(), [])['data'])->firstWhere('nama', 'Tanpa z-score');
+        $this->assertNull($z['kunjungan']['gizi'], 'tanpa z-score → gizi null (belum diisi), bukan "normal"');
+    }
+
+    public function test_registri_jumlah_query_tetap_tidak_bergantung_ukuran_halaman(): void
+    {
+        $this->seedVaksin();
+        for ($i = 1; $i <= 12; $i++) {
+            $a = $this->anakRegistri(sprintf('Q %02d', $i), 30);
+            $this->kunjungan($a, '2025-05-01', ['zscore_bb_u' => 0]);
+        }
+        $this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', 1, 2); // hangatkan cache statis
+
+        $hitung = function (int $perPage): int {
+            $n = 0;
+            DB::listen(function () use (&$n) { $n++; });
+            $this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', 1, $perPage);
+
+            return $n;
+        };
+
+        $kecil = $hitung(2);
+        $besar = $hitung(12);
+        $this->assertSame($kecil, $besar, 'tidak ada N+1');
+        $this->assertLessThanOrEqual(8, $besar);
+    }
+
+    public function test_kategori_gizi_memilih_yang_terburuk(): void
+    {
+        $this->assertSame('wasted', KesmasDashboardService::kategoriGizi(['bb_u' => 'underweight', 'tb_u' => 'stunted', 'bb_tb' => 'wasted'])['kode']);
+        $this->assertSame('underweight', KesmasDashboardService::kategoriGizi(['bb_u' => 'underweight', 'tb_u' => 'stunted', 'bb_tb' => 'normal'])['kode']);
+        $this->assertSame('overweight', KesmasDashboardService::kategoriGizi(['bb_u' => 'normal', 'tb_u' => 'normal', 'bb_tb' => 'overweight'])['kode']);
+        $this->assertSame(['normal', 'Gizi baik', 'ok'], array_values(KesmasDashboardService::kategoriGizi(['bb_u' => 'normal', 'tb_u' => 'tinggi', 'bb_tb' => 'normal'])));
+        $this->assertNull(KesmasDashboardService::kategoriGizi(['bb_u' => null, 'tb_u' => null, 'bb_tb' => null]));
     }
 }
