@@ -226,6 +226,97 @@ class KesmasDashboardControllerTest extends TestCase
         $idl = $this->blok($html, 'idl');
         $this->assertStringContainsString('idlDonut', $idl);
         $this->assertStringContainsString(route('admin.imunisasiDashboard'), $idl);
+        $this->assertStringContainsString(e(route('admin.imunisasiDashboard', ['tahun' => 2025])), $idl);
         $this->assertStringNotContainsString('status saat ini', $idl);
+    }
+
+    public function test_halaman_memuat_kerangka_registri(): void
+    {
+        $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard'))->assertOk()->getContent();
+        $blok = $this->blok($html, 'registri');
+
+        $this->assertStringContainsString('id="registriBody"', $blok);
+        $this->assertStringContainsString('aria-live="polite"', $blok);
+        $this->assertStringContainsString('<label for="registriCari"', $blok);
+        $this->assertStringContainsString('<label for="registriGizi"', $blok);
+        $this->assertStringContainsString(route('admin.kesmas.registri'), $html);
+    }
+
+    public function test_endpoint_registri_memakai_filter_dan_mengembalikan_bentuk_json(): void
+    {
+        $budi = $this->anak('Budi', '2023-06-30', ['nama_ibu' => 'Ibu Budi']);
+        $this->kunjungan($budi, '2025-09-10', ['zscore_bb_u' => -2.5]);
+        $this->anak('Citra', '2025-07-31');
+
+        $hasil = $this->actingAs($this->admin)
+            ->getJson(route('admin.kesmas.registri', [
+                'tahun' => 2025, 'periode' => 'tahun', 'usia' => 'balita',
+                'q' => '  Ibu Budi  ', 'status_gizi' => 'perhatian', 'id_kelurahan' => $this->kel->id,
+            ]))
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['*' => ['no', 'nama', 'nik', 'jk', 'umur_bln', 'kelurahan', 'rt', 'posyandu', 'kunjungan', 'idl', 'ibl', 'catatan', 'url_detail']], 'total', 'page', 'last_page', 'per_page'])
+            ->json();
+
+        $this->assertSame(1, $hasil['total']);
+        $this->assertSame(20, $hasil['per_page']);
+        $this->assertSame('Budi', $hasil['data'][0]['nama']);
+        $this->assertSame('underweight', $hasil['data'][0]['kunjungan']['gizi']['kode']);
+    }
+
+    public function test_endpoint_registri_menolak_filter_tidak_valid(): void
+    {
+        foreach (['status_gizi' => 'gemuk', 'page' => 0, 'usia' => 'remaja', 'q' => str_repeat('a', 101)] as $key => $value) {
+            $this->actingAs($this->admin)->getJson(route('admin.kesmas.registri', [$key => $value]))
+                ->assertUnprocessable()->assertJsonValidationErrors($key);
+        }
+    }
+
+    public function test_layanan_lingkungan_menampilkan_pembagi_terisi_dan_belum_diisi(): void
+    {
+        $a = $this->anak('Terisi', '2024-06-30', ['air_bersih' => 1, 'merokok_keluarga' => 1]); // 18 bln
+        $this->kunjungan($a, '2025-03-01', ['kn1' => 1, 'mtbs' => 0]);
+        $this->anak('Kosong', '2024-06-30');
+        $b = $this->anak('Bayi', '2025-09-30', ['skrining_shk' => 'tidak_normal']); // 3 bln
+
+        $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard', ['tahun' => 2025]))->getContent();
+        $blok = $this->blok($html, 'layanan');
+
+        $this->assertStringContainsString('KN1', $blok);
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8">' . $blok);
+        $xpath = new \DOMXPath($dom);
+        $baris = function (string $kode) use ($xpath): string {
+            $nodes = $xpath->query('//*[@data-baris="' . $kode . '"]');
+            $this->assertSame(1, $nodes->length, "Baris {$kode} harus unik");
+
+            return preg_replace('/\s+/u', ' ', $nodes->item(0)->textContent);
+        };
+        $kn1 = $baris('kn1');
+        $this->assertStringContainsString('1 / 1 (100,0 %)', $kn1);
+        $this->assertStringContainsString('2 anak belum diisi', $kn1, 'sasaran 3 − terisi 1');
+        $this->assertStringContainsString('0 / 1 (0,0 %)', $baris('mtbs'));
+        $this->assertStringContainsString('0 / 0 (—)', $baris('pkat'), 'pembagi 0 → strip');
+        $shk = $baris('skrining_shk');
+        $this->assertStringContainsString('Tidak normal 1', $shk);
+        $this->assertStringContainsString('0 bayi belum diisi', $shk);
+        $air = $baris('air_bersih');
+        $this->assertStringContainsString('100,0 %', $air);
+        $this->assertStringContainsString('2 anak belum diisi', $air);
+        $this->assertStringContainsString('class="km-bar terbalik" data-baris="merokok_keluarga"', $blok);
+    }
+
+    public function test_layanan_lingkungan_tanpa_data_menampilkan_empty_state(): void
+    {
+        $this->anak('Polos', '2024-06-30');
+
+        $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard', ['tahun' => 2025]))->getContent();
+        $blok = $this->blok($html, 'layanan');
+
+        $this->assertSame(3, substr_count($blok, 'Belum ada data'), 'tiga panel empty-state');
+        $this->assertStringContainsString('lengkapi lewat Edit Anak', $blok);
+        $this->assertStringNotContainsString('0,0 %', $blok);
+        $this->assertStringContainsString('1 anak belum diisi untuk setiap layanan', $blok);
+        $this->assertStringContainsString('0 bayi belum diisi untuk setiap skrining', $blok);
+        $this->assertStringContainsString('1 anak belum diisi untuk setiap indikator sanitasi', $blok);
     }
 }

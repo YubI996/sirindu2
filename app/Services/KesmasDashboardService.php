@@ -170,13 +170,20 @@ class KesmasDashboardService
         ];
     }
 
-    /** Subquery `m`: tanggal kunjungan terakhir per anak DI DALAM periode. */
+    /** Satu kunjungan terakhir per anak dalam periode; koreksi setanggal memakai ID terbesar. */
     private function kunjunganTerakhirSub(PeriodeKesmas $p): Builder
     {
-        return DB::table('data_anak')
+        $tanggal = DB::table('data_anak')
             ->selectRaw('id_anak, MAX(tgl_kunjungan) as max_tgl')
             ->whereBetween('tgl_kunjungan', [$p->awal()->toDateString(), $p->akhir()->toDateString()])
             ->groupBy('id_anak');
+
+        return DB::table('data_anak as d2')
+            ->joinSub($tanggal, 'm', function ($j) {
+                $j->on('m.id_anak', '=', 'd2.id_anak')->on('m.max_tgl', '=', 'd2.tgl_kunjungan');
+            })
+            ->selectRaw('d2.id_anak, MAX(d2.id) as id_kunjungan')
+            ->groupBy('d2.id_anak');
     }
 
     /** Kartu K4: 0–72 bln dengan ≥T8 timbang & ≥T2 DDTKA; "perlu perhatian" dari kunjungan terakhir. */
@@ -194,10 +201,8 @@ class KesmasDashboardService
 
         // KMS kuning/merah: BB tidak naik (ntob T) atau BB/U ≤ -2 SD pada kunjungan terakhir dalam periode.
         $perhatian = $this->dariSasaran($p, $filters)
-            ->joinSub($this->kunjunganTerakhirSub($p), 'm', 'm.id_anak', '=', 's.id')
-            ->join('data_anak as da', function ($j) {
-                $j->on('da.id_anak', '=', 'm.id_anak')->on('da.tgl_kunjungan', '=', 'm.max_tgl');
-            })
+            ->joinSub($this->kunjunganTerakhirSub($p), 't', 't.id_anak', '=', 's.id')
+            ->join('data_anak as da', 'da.id', '=', 't.id_kunjungan')
             ->where('s.umur', '<=', 72)
             ->where(function ($w) {
                 $w->whereRaw("UPPER(TRIM(da.ntob)) = 'T'")->orWhere('da.zscore_bb_u', '<=', -2.01);
@@ -468,16 +473,8 @@ class KesmasDashboardService
         $page    = max(1, $page);
         $perPage = min(100, max(1, $perPage));
 
-        // id kunjungan terakhir per anak dalam periode (dua kunjungan setanggal → id terbesar).
-        $terakhir = DB::table('data_anak as d2')
-            ->joinSub($this->kunjunganTerakhirSub($p), 'm', function ($j) {
-                $j->on('m.id_anak', '=', 'd2.id_anak')->on('m.max_tgl', '=', 'd2.tgl_kunjungan');
-            })
-            ->selectRaw('d2.id_anak, MAX(d2.id) as id_kunjungan')
-            ->groupBy('d2.id_anak');
-
         $base = DB::table('anak as a')
-            ->leftJoinSub($terakhir, 't', 't.id_anak', '=', 'a.id')
+            ->leftJoinSub($this->kunjunganTerakhirSub($p), 't', 't.id_anak', '=', 'a.id')
             ->leftJoin('data_anak as da', 'da.id', '=', 't.id_kunjungan')
             ->whereNotNull('a.tgl_lahir')
             ->where('a.tgl_lahir', '<=', $akhir)

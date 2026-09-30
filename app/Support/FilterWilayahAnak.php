@@ -15,6 +15,9 @@ use App\Models\Puskesmas;
  */
 trait FilterWilayahAnak
 {
+    /** Resolusi wilayah sekali per ID pada instance service untuk request ini. */
+    private array $catchmentPuskesmas = [];
+
     /**
      * @template TQuery of \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      * @param  TQuery  $query
@@ -39,8 +42,12 @@ trait FilterWilayahAnak
             $query->where($kolom('id_posyandu'), $filters['id_posyandu']);
         }
         if (!empty($filters['id_puskesmas'])) {
-            $namaPuskesmas = Puskesmas::whereKey($filters['id_puskesmas'])->value('name');
-            $kelIds = $namaPuskesmas ? WilkerPuskesmas::catchmentKelurahanIds($namaPuskesmas) : [];
+            $id = (int) $filters['id_puskesmas'];
+            if (!array_key_exists($id, $this->catchmentPuskesmas)) {
+                $namaPuskesmas = Puskesmas::whereKey($id)->value('name');
+                $this->catchmentPuskesmas[$id] = $namaPuskesmas ? WilkerPuskesmas::catchmentKelurahanIds($namaPuskesmas) : [];
+            }
+            $kelIds = $this->catchmentPuskesmas[$id];
             $query->whereIn($kolom('id_kel'), $kelIds ?: [0]);
         }
 

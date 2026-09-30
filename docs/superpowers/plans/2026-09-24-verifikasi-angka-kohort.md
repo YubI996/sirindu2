@@ -15,7 +15,9 @@ Otoritas: [spec kohort](../specs/2026-09-24-kohort-sasaran-imunisasi-design.md),
 
 BBL = lahir 1 Februari X s.d. 31 Maret X. SELURUH = BBL + SI.
 Antigen dengan batas usia ≤59 hari memakai SELURUH, bukan kartu BBL.
-Kebijakan antigen dengan batas usia kosong atau di luar cakupan Baduta masih menunggu keputusan produk (I3).
+Keputusan I3 sudah diterapkan pada 28 September 2026: antigen dengan batas usia kosong atau
+lebih dari 730 hari dikeluarkan dari blok cakupan, disertai catatan berisi namanya di halaman.
+Kartu WUS dipulihkan sebagai penanda N/A sesuai keputusan I5.
 
 Perubahan ini mengganti populasi penyebut **dan** populasi pembilang. Populasi baru tidak selalu
 merupakan subset populasi lama: SI bisa memasukkan anak yang belum berumur 12 bulan pada hari

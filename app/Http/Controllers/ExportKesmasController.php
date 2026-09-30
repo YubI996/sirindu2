@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Exports\KesmasExport;
 use App\Models\Kecamatan;
+use App\Models\Kelurahan;
+use App\Models\Posyandu;
+use App\Models\Puskesmas;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -27,16 +30,28 @@ class ExportKesmasController extends Controller
         });
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $filter = $this->filter($request);
         $kec = Kecamatan::orderBy('name')->get();
+        $kel = Kelurahan::orderBy('name')->get();
+        $puskesmas = Puskesmas::orderBy('name')->get();
+        $posyandu = Posyandu::orderBy('name')->get();
 
-        return view('admin.export.kesmas', compact('kec'));
+        // Muat opsi di server agar tautan dengan filter anak saja juga tetap terpilih.
+        return view('admin.export.kesmas', compact('kec', 'kel', 'puskesmas', 'posyandu', 'filter'));
     }
 
     public function download(Request $request)
     {
-        $filter = $request->validate([
+        $export = new KesmasExport($this->filter($request));
+
+        return Excel::download($export, $export->filename());
+    }
+
+    private function filter(Request $request): array
+    {
+        return $request->validate([
             'id_kec'       => 'nullable|integer|exists:kecamatan,id',
             'id_kel'       => 'nullable|integer|exists:kelurahan,id',
             'id_puskesmas' => 'nullable|integer|exists:puskesmas,id',
@@ -44,9 +59,5 @@ class ExportKesmasController extends Controller
             'dari'         => 'nullable|date',
             'sampai'       => 'nullable|date|after_or_equal:dari',
         ]);
-
-        $export = new KesmasExport($filter);
-
-        return Excel::download($export, $export->filename());
     }
 }

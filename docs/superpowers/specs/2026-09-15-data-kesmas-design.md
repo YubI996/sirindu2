@@ -158,7 +158,7 @@ bisa difokus browser dan submit mati senyap (lihat CLAUDE.md). Dikunci oleh tes 
   `skrining_shk/shak/g6pd`, `pemeriksaan_hepatitis_b`, `pemeriksaan_gigi`, `rujukan`. Semua punya
   opsi kosong "— pilih —" → `null`.
 - **Teks/angka**: `no_id_epus`, `fktp_bpjs`, `penyakit_penyerta`, `pjb` (placeholder "Tidak Ada"),
-  `tempat_bersalin`, `mt_pangan_lokal`, `bbl` (gram), `pbl`/`lk_lahir` (cm), `usia_kehamilan_lahir`
+  `tempat_bersalin`, `mt_pangan_lokal`, `bbl` (kg, dua desimal), `pbl`/`lk_lahir` (cm), `usia_kehamilan_lahir`
   (minggu), `tgl_penanda_ckg` (`type="date"`); textarea untuk `komplikasi_persalinan`,
   `komplikasi_neonatal`, `catatan_pengukuran`, `pemeriksaan_lainnya`, `pola_makan`, `pola_asuh`,
   `intervensi`.

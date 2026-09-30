@@ -63,7 +63,7 @@
                 @endforeach
             </ul>
         @endif
-        <div class="km-foot"><a href="{{ route('admin.imunisasiDashboard', $filters) }}" class="im-card__link">Lihat dasbor imunisasi &rarr;</a></div>
+        <div class="km-foot"><a href="{{ route('admin.imunisasiDashboard', array_merge($filters, ['tahun' => $periode->tahun()])) }}" class="im-card__link">Lihat dasbor imunisasi &rarr;</a></div>
     </article><!-- /idl -->
 
 </section>

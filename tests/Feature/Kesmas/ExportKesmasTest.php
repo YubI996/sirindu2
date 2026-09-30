@@ -10,6 +10,8 @@ use App\Models\Kelurahan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Tests\TestCase;
@@ -57,6 +59,7 @@ class ExportKesmasTest extends TestCase
         $path = tempnam(sys_get_temp_dir(), 'kesmas');
         try {
             file_put_contents($path, Excel::raw(new KesmasExport($filter), \Maatwebsite\Excel\Excel::XLSX));
+            Cell::setValueBinder(new DefaultValueBinder);
             $book = IOFactory::load($path);
 
             return [$book->getSheetByName('Per Anak'), $book->getSheetByName('Per Kunjungan')];

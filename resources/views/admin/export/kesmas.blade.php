@@ -30,7 +30,7 @@
                         <select id="kec" name="id_kec" class="form-control">
                             <option value="">Semua kecamatan</option>
                             @foreach ($kec as $k)
-                            <option value="{{ $k->id }}" @selected((string) old('id_kec') === (string) $k->id)>{{ $k->name }}</option>
+                            <option value="{{ $k->id }}" @selected((string) old('id_kec', $filter['id_kec'] ?? '') === (string) $k->id)>{{ $k->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -40,6 +40,9 @@
                         <label for="kel">Kelurahan</label>
                         <select id="kel" name="id_kel" class="form-control">
                             <option value="">Semua kelurahan</option>
+                            @foreach ($kel as $k)
+                            <option value="{{ $k->id }}" @selected((string) old('id_kel', $filter['id_kel'] ?? '') === (string) $k->id)>{{ $k->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -48,6 +51,9 @@
                         <label for="puskesmas">Puskesmas</label>
                         <select id="puskesmas" name="id_puskesmas" class="form-control">
                             <option value="">Semua puskesmas</option>
+                            @foreach ($puskesmas as $p)
+                            <option value="{{ $p->id }}" @selected((string) old('id_puskesmas', $filter['id_puskesmas'] ?? '') === (string) $p->id)>{{ $p->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -56,20 +62,23 @@
                         <label for="posyandu">Posyandu</label>
                         <select id="posyandu" name="id_posyandu" class="form-control">
                             <option value="">Semua posyandu</option>
+                            @foreach ($posyandu as $p)
+                            <option value="{{ $p->id }}" @selected((string) old('id_posyandu', $filter['id_posyandu'] ?? '') === (string) $p->id)>{{ $p->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
                 <div class="col-md-3 col-sm-12">
                     <div class="form-group">
                         <label for="dari">Kunjungan dari tanggal</label>
-                        <input type="date" name="dari" id="dari" class="form-control" value="{{ old('dari') }}">
+                        <input type="date" name="dari" id="dari" class="form-control" value="{{ old('dari', $filter['dari'] ?? '') }}">
                         <small class="form-text text-muted">Hanya menyaring sheet Per Kunjungan.</small>
                     </div>
                 </div>
                 <div class="col-md-3 col-sm-12">
                     <div class="form-group">
                         <label for="sampai">Sampai tanggal</label>
-                        <input type="date" name="sampai" id="sampai" class="form-control" value="{{ old('sampai') }}">
+                        <input type="date" name="sampai" id="sampai" class="form-control" value="{{ old('sampai', $filter['sampai'] ?? '') }}">
                     </div>
                 </div>
                 <div class="col-12">
@@ -85,43 +94,59 @@
 @section('custom_scripts')
 <script type="text/javascript">
     $(function() {
+        var kecVersion = 0, posVersion = 0;
         $('#kec').on('change', function() {
             var id = $(this).val();
+            var version = ++kecVersion;
+            ++posVersion;
             $('#kel').html('<option value="">Semua kelurahan</option>');
             $('#puskesmas').html('<option value="">Semua puskesmas</option>');
             $('#posyandu').html('<option value="">Semua posyandu</option>');
+            $('#kel, #puskesmas').prop('disabled', !!id);
+            $('#posyandu').prop('disabled', false);
             if (!id) return;
 
             $.ajax({
                 url: '{{ url("admin/get-kel-dasar-anak") }}' + '/' + id,
                 success: function(response) {
+                    if (version !== kecVersion) return;
                     $.each(response, function(id, name) {
                         $('#kel').append(new Option(name, id));
                     });
                 }
+            }).always(function() {
+                if (version === kecVersion) $('#kel').prop('disabled', false);
             });
             $.ajax({
                 url: '{{ url("admin/get-puskesmas-dasar-anak") }}' + '/' + id,
                 success: function(response) {
+                    if (version !== kecVersion) return;
                     $.each(response, function(id, name) {
                         $('#puskesmas').append(new Option(name, id));
                     });
                 }
+            }).always(function() {
+                if (version === kecVersion) $('#puskesmas').prop('disabled', false);
             });
         });
 
         $('#puskesmas').on('change', function() {
             var id = $(this).val();
+            var version = ++posVersion;
             $('#posyandu').html('<option value="">Semua posyandu</option>');
+            $('#posyandu').prop('disabled', !!id);
             if (!id) return;
 
             $.ajax({
                 url: '{{ url("admin/get-posyandu-dasar-anak") }}' + '/' + id,
                 success: function(response) {
+                    if (version !== posVersion) return;
                     $.each(response, function(id, name) {
                         $('#posyandu').append(new Option(name, id));
                     });
                 }
+            }).always(function() {
+                if (version === posVersion) $('#posyandu').prop('disabled', false);
             });
         });
     });

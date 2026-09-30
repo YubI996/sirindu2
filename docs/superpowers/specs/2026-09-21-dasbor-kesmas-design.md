@@ -114,6 +114,9 @@ Per baris: `id`, `nama`, `nik`, `jk`, `umur_bln`, `tgl_lahir`, `nama_ibu`, `nama
 (`lengkap` / `belum` / `belum_usia` via `isIdlLengkap()` / `isIblLengkap()` — 20 model per halaman),
 `catatan` (`catatan_pengukuran` kunjungan terakhir, dipotong 80 karakter), `url_detail`.
 
+Kunjungan terakhir pada K4 dan registri memakai tanggal terbesar **di dalam periode**;
+jika ada beberapa entri pada tanggal itu, **ID terbesar** dianggap entri koreksi terakhir.
+
 `status_gizi = perhatian` = definisi "perlu perhatian" K4. Kategori lain dari `enumEppgbm` pada
 kunjungan terakhir: `stunted` = `tb_u` ∈ {stunted, severely_stunted}; `underweight` = `bb_u` ∈
 {underweight, severely_underweight}; `wasted` = `bb_tb` ∈ {wasted, severely_wasted}; `normal` = ketiganya

@@ -9,13 +9,14 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
 /** Sheet "Per Kunjungan" — satu baris per data_anak (filter wilayah anak + rentang tgl_kunjungan). */
-final class KesmasKunjunganSheet extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder
+final class KesmasKunjunganSheet extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder, WithStrictNullComparison
 {
     public function __construct(private array $filter) {}
 
@@ -71,10 +72,10 @@ final class KesmasKunjunganSheet extends DefaultValueBinder implements FromQuery
         ]);
     }
 
-    /** NIK 16 digit harus tetap teks. */
+    /** Kolom teks tetap literal; usia, BB, dan TB tetap numerik, termasuk angka nol. */
     public function bindValue(Cell $cell, $value)
     {
-        if ($cell->getColumn() === 'A') {
+        if ($value !== null && !in_array($cell->getColumn(), ['D', 'E', 'F'], true)) {
             $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
 
             return true;

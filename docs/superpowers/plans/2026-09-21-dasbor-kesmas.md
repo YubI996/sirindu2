@@ -1,5 +1,12 @@
 # Dasbor Kesmas Implementation Plan
 
+> Pembaruan 30 September 2026: implementasi Task 1–12 tersedia; perbaikan delapan temuan
+> swarm masuk di working tree. Status dan bukti terbaru berada pada
+> [handover Dasbor Kesmas](2026-09-30-handover-dasbor-kesmas.md).
+> Checklist dan contoh kode di bawah adalah rencana awal. Ada migrasi tambahan
+> `2026_09_30_000001_preserve_birth_weight_precision_on_anak` untuk presisi berat lahir;
+> catatan awal “tidak ada migrasi baru” tidak berlaku lagi.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Halaman `admin/kesmas-dashboard` — dasbor tumbuh kembang balita (4 kartu SPM prorata, SDIDTK, CKG, IDL/IBL, Layanan & Lingkungan, registri per anak) di atas data `anak`/`data_anak`/imunisasi yang sudah ada.

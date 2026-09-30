@@ -34,7 +34,7 @@
                 <div class="row">
                     <div class="col-md-4 col-sm-12">
                         <div class="form-group">
-                            <label for="{{ $p }}tgl_penanda_ckg">Tanggal penanda CKG (cek kesehatan gigi)</label>
+                            <label for="{{ $p }}tgl_penanda_ckg">Tanggal penanda CKG (Cek Kesehatan Gratis)</label>
                             <input type="date" name="tgl_penanda_ckg" id="{{ $p }}tgl_penanda_ckg" class="form-control" value="{{ $nilai('tgl_penanda_ckg') }}">
                         </div>
                     </div>

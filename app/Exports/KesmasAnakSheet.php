@@ -10,13 +10,14 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
 /** Sheet "Per Anak" — satu baris per anak yang lolos filter wilayah (spec §5). */
-final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder
+final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder, WithStrictNullComparison
 {
     public function __construct(private array $filter) {}
 
@@ -71,10 +72,10 @@ final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, Wit
         ];
     }
 
-    /** NIK 16 digit harus tetap teks — Excel memotong presisi angka >15 digit. */
+    /** Kolom teks tetap literal (termasuk NIK dan awalan '='); pengukuran tetap numerik. */
     public function bindValue(Cell $cell, $value)
     {
-        if ($cell->getColumn() === 'A') {
+        if ($value !== null && !in_array($cell->getColumn(), ['R', 'S', 'T', 'U'], true)) {
             $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
 
             return true;

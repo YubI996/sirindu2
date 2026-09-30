@@ -347,12 +347,8 @@ class KesmasDashboardServiceTest extends TestCase
     }
 
     /**
-     * `kunjunganTerakhirSub()` mengembalikan (id_anak, max_tgl); join ke
-     * `data_anak` atas kedua kolom itu memulangkan DUA baris untuk anak yang
-     * dua kali ditimbang di hari yang sama — nyata terjadi saat posyandu
-     * menginput ulang. Tanpa `distinct()` anak itu dihitung dua kali dan
-     * `perhatian` bisa melebihi `sasaran`, tanpa error apa pun. Task 6 memakai
-     * ulang subquery yang sama, jadi jaminan ini dikunci di sini.
+     * Penginputan ulang pada tanggal sama tidak boleh menggandakan sasaran
+     * maupun jumlah perhatian. K4 dan registri memakai satu entri dengan ID terbesar.
      */
     public function test_dua_kunjungan_di_hari_sama_tidak_menghitung_anak_dua_kali(): void
     {
@@ -367,10 +363,8 @@ class KesmasDashboardServiceTest extends TestCase
     }
 
     /**
-     * Varian yang lebih jahat: dua baris di hari yang sama saling bertentangan.
-     * Anak tetap dihitung sekali; "perhatian" menang karena satu baris pun
-     * yang bertanda T sudah cukup untuk ditengok petugas. Spec diam soal ini,
-     * jadi perilakunya dikunci di sini supaya tidak bergeser diam-diam.
+     * Dua baris setanggal saling bertentangan: entri koreksi terakhir bertanda T
+     * sehingga anak masih perlu perhatian. Arah koreksi T ke N diuji suite swarm.
      */
     public function test_dua_kunjungan_hari_sama_yang_bertentangan_tetap_satu_anak(): void
     {

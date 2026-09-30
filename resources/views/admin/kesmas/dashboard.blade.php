@@ -62,6 +62,7 @@
 .km-alasan li b{ color:var(--ink); }
 @media(max-width:700px){ .km-head h1{ font-size:1.35rem; } }
 </style>
+<link rel="stylesheet" href="{{ asset('css/kesmas-dashboard.css') }}">
 @endpush
 
 @section('content')
@@ -106,6 +107,10 @@
 
     @include('admin.kesmas.partials._sdidtk-ckg-idl')
 
+    @include('admin.kesmas.partials._layanan')
+
+    @include('admin.kesmas.partials._registri')
+
 </div>
 @endsection
 
@@ -130,10 +135,10 @@
 @endif
 <script>
 (function () {
-    var URL_KEL_BY_KEC = '{{ url("admin/get-kel-dasar-anak") }}';
     var URL_RT_BY_KEL  = '{{ url("admin/get-rt-by-kel-anak") }}';
     var SELECTED_RT    = '{{ $filters['id_rt'] ?? '' }}';
     var $kec = $('#filterKec'), $kel = $('#filterKel'), $rt = $('#filterRt');
+    var rtRequest = null, rtVersion = 0;
 
     function fillSelect($sel, data, placeholder, selected) {
         $sel.empty().append($('<option>', { value: '', text: placeholder }));
@@ -143,8 +148,14 @@
     }
 
     function loadRt(kelId, selected) {
-        if (!kelId) { fillSelect($rt, {}, 'Semua RT'); return; }
-        $.getJSON(URL_RT_BY_KEL + '/' + kelId, function (d) { fillSelect($rt, d, 'Semua RT', selected); });
+        var version = ++rtVersion;
+        if (rtRequest) { rtRequest.abort(); rtRequest = null; }
+        fillSelect($rt, {}, 'Semua RT');
+        if (!kelId) return;
+        rtRequest = $.getJSON(URL_RT_BY_KEL + '/' + kelId, function (d) {
+            if (version !== rtVersion || String($kel.val()) !== String(kelId)) return;
+            fillSelect($rt, d, 'Semua RT', selected);
+        });
     }
 
     // Validitas pilihan kelurahan dicek dari data-kec, BUKAN jQuery :hidden — <option> tak punya
@@ -160,11 +171,12 @@
         if (currentVal && !stillValid) { $kel.val(''); }
     }
 
-    $kec.on('change', function () { filterKelOptionsByKec(this.value); $kel.val(''); fillSelect($rt, {}, 'Semua RT'); });
+    $kec.on('change', function () { filterKelOptionsByKec(this.value); $kel.val(''); loadRt('', ''); });
     $kel.on('change', function () { loadRt(this.value, ''); });
 
     if ($kec.val()) { filterKelOptionsByKec($kec.val()); }
     if ($kel.val()) { loadRt($kel.val(), SELECTED_RT); }
 })();
 </script>
+<script src="{{ asset('js/kesmas-registri.js') }}" defer></script>
 @endpush

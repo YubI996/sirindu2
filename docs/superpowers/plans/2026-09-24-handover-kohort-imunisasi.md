@@ -35,8 +35,10 @@ Permintaan pemilik produk: lanjutkan pekerjaan. Pembaruan ini menjadi status ter
   Prosedur yang telah dikoreksi berada di `2026-09-24-verifikasi-angka-kohort.md`; jalankan sebelum
   deploy, dengan snapshot, filter, akses, dan tanggal PHP/MySQL yang sama pada kedua versi.
 
-Langkah selanjutnya: terapkan keputusan I3/I5 setelah jawaban diterima, lengkapi tes kebijakannya,
-jalankan kembali suite terkait, lakukan reviu atas seluruh perbaikan, lalu ukur data salinan produksi.
+Langkah selanjutnya untuk kohort: ukur data salinan produksi sesuai prosedur verifikasi; keputusan
+I3/I5 beserta tes dan reviunya sudah selesai. Pada 30 September pekerjaan aktif Claude berada di
+branch `feat/dasbor-kesmas`; kelanjutannya dicatat di
+[handover Dasbor Kesmas](2026-09-30-handover-dasbor-kesmas.md).
 
 Dokumen ini untuk siapa pun (orang atau sesi lain) yang melanjutkan pekerjaan ini. Ia menjelaskan di
 mana semuanya berada, apa yang sudah beres, apa yang belum, dan keputusan apa yang diambil tanpa
