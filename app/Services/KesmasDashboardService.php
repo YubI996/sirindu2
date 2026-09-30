@@ -577,8 +577,13 @@ class KesmasDashboardService
             'perhatian'   => $q->where($perhatian),
             // normal = punya kunjungan dengan ≥ 1 z-score terisi dan tidak masuk kategori mana pun.
             // Kunjungan tanpa z-score sama sekali = "belum diisi" (badge null), bukan normal.
+            // "Terisi" untuk TB/U berarti > -6.01, bukan sekadar NOT NULL: eppgbmTb()
+            // memulangkan null untuk z <= -6.01 (outlier implausibel), jadi anak yang
+            // SATU-SATUNYA z-score terisinya outlier punya badge kosong. Memakai
+            // NOT NULL di sini membuatnya muncul di filter "Normal" tanpa badge —
+            // filter dan badge bercerita beda tentang anak yang sama.
             'normal'      => $q->whereNotNull('da.id')
-                ->where(fn ($w) => $w->whereNotNull('da.zscore_pb_u')->orWhereNotNull('da.zscore_bb_u')->orWhereNotNull('da.zscore_bb_pb'))
+                ->where(fn ($w) => $w->where('da.zscore_pb_u', '>', -6.01)->orWhereNotNull('da.zscore_bb_u')->orWhereNotNull('da.zscore_bb_pb'))
                 ->where(fn ($w) => $w->whereNull('da.zscore_pb_u')->orWhere('da.zscore_pb_u', '<=', -6.01)->orWhere('da.zscore_pb_u', '>', -2.01))
                 ->where(fn ($w) => $w->whereNull('da.zscore_bb_u')->orWhere('da.zscore_bb_u', '>', -2.01))
                 ->where(fn ($w) => $w->whereNull('da.zscore_bb_pb')->orWhere('da.zscore_bb_pb', '>', -2.01))

@@ -698,7 +698,73 @@ class KesmasDashboardServiceTest extends TestCase
         $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', $injeksi)['total']);
         $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', '%')['total'], '% bukan wildcard');
         $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', '_')['total'], '_ bukan wildcard');
+        $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', '\\')['total'], 'backslash = karakter escape LIKE, harus ikut di-escape');
+        $this->assertSame(0, $this->svc->registri($this->tahun2025(), [], 'semua', '\\%')['total'], 'backslash+% tetap harfiah');
         $this->assertSame(1, $this->svc->registri($this->tahun2025(), [], 'semua', 'Aman')['total'], 'tabel & data utuh');
+    }
+
+    /**
+     * Nama yang sama persis adalah hal biasa di data ini. `ORDER BY a.nama`
+     * saja bukan urutan total: MySQL boleh memulangkan baris seri dalam urutan
+     * berbeda untuk jendela LIMIT/OFFSET yang berbeda, sehingga satu anak bisa
+     * muncul di dua halaman sementara anak lain tak pernah muncul sama sekali.
+     * Tidak ada error, tidak ada angka yang mencurigakan — cuma anak yang
+     * terlewat. Pemecah seri `a.id` sudah ada; tes ini yang menjaganya.
+     */
+    public function test_registri_nama_kembar_tidak_ada_anak_hilang_atau_ganda_antar_halaman(): void
+    {
+        $this->seedVaksin();
+        $idSeharusnya = [];
+        for ($i = 0; $i < 13; $i++) {
+            $idSeharusnya[] = $this->anakRegistri('Nama Kembar', 30)->id;
+        }
+        sort($idSeharusnya);
+
+        foreach ([1, 2, 5, 13] as $perPage) {
+            $terkumpul = [];
+            $lastPage = $this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', 1, $perPage)['last_page'];
+            for ($hal = 1; $hal <= $lastPage; $hal++) {
+                foreach ($this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', $hal, $perPage)['data'] as $baris) {
+                    $terkumpul[] = $baris['id'];
+                }
+            }
+            sort($terkumpul);
+
+            $this->assertSame($idSeharusnya, $terkumpul, "perPage {$perPage}: tiap anak muncul tepat sekali");
+            $this->assertSame(13, count(array_unique($terkumpul)), "perPage {$perPage}: tak ada id ganda");
+        }
+
+        // Kontrak pemecah seri yang terlihat dari luar: di antara nama yang sama,
+        // urutannya menaik menurut id. Catatan jujur — tes ini MENJAGA akibatnya
+        // (tak ada anak hilang/ganda), bukan MEMBUKTIKAN pemecah serinya masih
+        // ada: tanpa ORDER BY kedua, urutannya jadi tak terdefinisi, dan MySQL
+        // masih boleh memulangkan urutan yang kebetulan sama untuk tabel sekecil
+        // ini. Yang pasti tertangkap adalah kerusakan yang benar-benar merugikan.
+        $urut = array_column($this->svc->registri($this->tahun2025(), [], 'semua', '', 'semua', 1, 13)['data'], 'id');
+        $this->assertSame($idSeharusnya, $urut, 'nama seri diurutkan menaik menurut id');
+    }
+
+    /**
+     * `eppgbmTb()` memulangkan null untuk z <= -6.01 (outlier implausibel),
+     * jadi anak yang satu-satunya z-score terisinya outlier punya badge KOSONG.
+     * Ia tidak boleh ikut filter "Normal" — kalau ikut, filter dan badge
+     * bercerita beda tentang anak yang sama: barisnya muncul di daftar "gizi
+     * normal" tanpa satu pun penanda gizi.
+     */
+    public function test_registri_z_score_outlier_bukan_normal(): void
+    {
+        $this->seedVaksin();
+        $outlier = $this->anakRegistri('Outlier', 30);
+        $this->kunjungan($outlier, '2025-05-01', ['zscore_pb_u' => -7.5]); // di luar batas plausibel
+        $normal = $this->anakRegistri('Sungguh Normal', 30);
+        $this->kunjungan($normal, '2025-05-01', ['zscore_pb_u' => 0]);
+
+        $r = $this->svc->registri($this->tahun2025(), [], 'semua', '', 'normal');
+
+        $this->assertSame(['Sungguh Normal'], collect($r['data'])->pluck('nama')->all());
+
+        $baris = collect($this->svc->registri($this->tahun2025(), [])['data'])->firstWhere('nama', 'Outlier');
+        $this->assertNull($baris['kunjungan']['gizi'], 'badge kosong — konsisten dengan tidak masuk filter normal');
     }
 
     public function test_registri_filter_usia_dan_wilayah(): void
