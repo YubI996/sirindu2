@@ -56,6 +56,16 @@ final class KesmasRules
         ];
     }
 
+    /**
+     * Tanda Sasaran Balita Kesmas (spec 2026-10-02 §5.2). SENGAJA di luar anak(): kunci anak()
+     * dibaca kolomKesmas() sebagai daftar kolom, sedangkan tanda ini punya aturan simpan sendiri
+     * (anak NULL + tak dicentang di form Edit tetap NULL) — lihat AnakRepository::sasaranEdit().
+     */
+    public static function sasaran(): array
+    {
+        return ['sasaran_balita_kesmas' => 'nullable|boolean'];
+    }
+
     /** Layanan Kesmas per kunjungan (data_anak). Checkbox = nullable|boolean. */
     public static function kunjungan(): array
     {

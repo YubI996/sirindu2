@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\Anak\KesmasRules;
 use App\Models\Anak;
 use App\Models\User;
 use App\Models\DataAnak;
+use App\Models\SasaranKesmasLog;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Services\ImunisasiStatusService;
@@ -28,6 +29,13 @@ class AnakRepository implements AnakRepositoryInterface
 
     public function storeAnak($request)
     {
+        // Anak, kunjungan pertama, dan log tanda sasaran ditulis sebagai satu kesatuan
+        // (spec 2026-10-02 §5.2): log yang gagal tidak boleh meninggalkan anak tanpa jejak.
+        return DB::transaction(fn () => $this->simpanAnakBaru($request));
+    }
+
+    private function simpanAnakBaru($request)
+    {
         $lahir = strtotime($request->tgl_lahir);
         $now = strtotime(date('Y-m-d H:i:s'));
         $y1 = date('Y', $lahir);
@@ -35,6 +43,8 @@ class AnakRepository implements AnakRepositoryInterface
         $m1 = date('m', $lahir);
         $m2 = date('m', $now);
         $umur = (($y2 - $y1) * 12) + ($m2 - $m1);
+
+        $sasaran = $this->sasaranTambah($request);
 
         $anak_baru = Anak::create(array_merge([
             'no_kk' => $request->no_kk,
@@ -59,7 +69,7 @@ class AnakRepository implements AnakRepositoryInterface
             'alamat_ktp' => $request->alamat_ktp,
             'catatan' => $request->catatan ?? '',
             'sumber' => 'manual',
-        ], $this->kesmasAnakAttributes($request)));
+        ], $this->kesmasAnakAttributes($request), ['sasaran_balita_kesmas' => $sasaran]));
 
         DataAnak::create([
             'id_anak' => $anak_baru->id,
@@ -77,9 +87,18 @@ class AnakRepository implements AnakRepositoryInterface
             'id_user' => Auth::user()->id,
             'sumber' => 'manual',
         ]);
+
+        $this->catatSasaran($anak_baru->id, null, $sasaran, 'form_tambah');
+
+        return $anak_baru;
     }
 
     public function updateAnak($request, $id)
+    {
+        DB::transaction(fn () => $this->ubahAnak($request, $id));
+    }
+
+    private function ubahAnak($request, $id)
     {
         $lahir = strtotime($request->tgl_lahir);
         $now = strtotime(date('Y-m-d H:i:s'));
@@ -89,6 +108,8 @@ class AnakRepository implements AnakRepositoryInterface
         $m2 = date('m', $now);
         $umur = (($y2 - $y1) * 12) + ($m2 - $m1);
         $anak = Anak::find($id);
+        $sasaranLama = $anak->sasaran_balita_kesmas === null ? null : (int) $anak->sasaran_balita_kesmas;
+        $sasaran = $this->sasaranEdit($request, $sasaranLama);
         // Anak hasil import bisa belum punya baris DataAnak; firstOrNew agar
         // save() membuat baris baru, bukan diam-diam gagal seperti update() pada model null.
         $dt = DataAnak::firstOrNew(['id_anak' => $id]);
@@ -115,7 +136,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'alamat' => $request->alamat,
                 'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
-            ], $this->kesmasAnakAttributes($request)));
+            ], $this->kesmasAnakAttributes($request), $sasaran));
             $dt->fill([
                 'bln' => $umur,
                 'posisi' => $request->posisi ?? 'L',
@@ -164,7 +185,7 @@ class AnakRepository implements AnakRepositoryInterface
                 'alamat' => $request->alamat,
                 'alamat_ktp' => $request->alamat_ktp,
                 'catatan' => $request->catatan ?? '',
-            ], $this->kesmasAnakAttributes($request)));
+            ], $this->kesmasAnakAttributes($request), $sasaran));
             $dt->fill([
                 'bln' => $umur,
                 'posisi' => $request->posisi ?? 'L',
@@ -191,6 +212,13 @@ class AnakRepository implements AnakRepositoryInterface
                 'id_user' => Auth::user()->id,
             ])->save();
         }
+
+        $this->catatSasaran(
+            $anak->id,
+            $sasaranLama,
+            array_key_exists('sasaran_balita_kesmas', $sasaran) ? $sasaran['sasaran_balita_kesmas'] : $sasaranLama,
+            'form_edit'
+        );
     }
 
     public function destroyAnak($id)
@@ -357,5 +385,43 @@ class AnakRepository implements AnakRepositoryInterface
         }
 
         return $out;
+    }
+
+    // ==================== SASARAN BALITA KESMAS (spec 2026-10-02 §5.2) ====================
+
+    /** Tambah Anak: dikirim → 0/1 apa adanya (melepas centang default = keputusan); tak dikirim → NULL. */
+    private function sasaranTambah($request): ?int
+    {
+        return $request->has('sasaran_balita_kesmas') ? (int) $request->boolean('sasaran_balita_kesmas') : null;
+    }
+
+    /**
+     * Edit Anak: kolom yang perlu ditulis, atau [] bila tidak disentuh.
+     * Anak NULL + '0' TETAP NULL — form Edit merender NULL sebagai tak tercentang, jadi '0' di situ
+     * bukan keputusan petugas. Menulis 0 membuat anak lama diam-diam "dilepas" setiap kali namanya
+     * dibetulkan, dan perintah kesmas:tandai-sasaran (hanya NULL → 1) tak lagi menjangkaunya.
+     */
+    private function sasaranEdit($request, ?int $lama): array
+    {
+        if (!$request->has('sasaran_balita_kesmas')) {
+            return [];
+        }
+        $baru = (int) $request->boolean('sasaran_balita_kesmas');
+        if ($lama === null && $baru === 0) {
+            return [];
+        }
+
+        return ['sasaran_balita_kesmas' => $baru];
+    }
+
+    private function catatSasaran(int $idAnak, ?int $lama, ?int $baru, string $sumber): void
+    {
+        if ($lama === $baru) {
+            return;
+        }
+        SasaranKesmasLog::create([
+            'id_anak' => $idAnak, 'nilai_lama' => $lama, 'nilai_baru' => $baru,
+            'sumber' => $sumber, 'id_user' => Auth::id(),
+        ]);
     }
 }

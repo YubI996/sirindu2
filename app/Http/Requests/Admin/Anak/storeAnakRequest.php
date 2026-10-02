@@ -41,7 +41,7 @@ class storeAnakRequest extends FormRequest
             'id_posyandu' => 'required',
             'alamat' => 'nullable|string',
             'alamat_ktp' => 'nullable|string',
-        ], KesmasRules::anak()); // field Kesmas & riwayat lahir (spec 2026-09-15 §3.3), semua opsional
+        ], KesmasRules::anak(), KesmasRules::sasaran()); // field Kesmas & riwayat lahir (spec 2026-09-15 §3.3) + tanda sasaran (spec 2026-10-02 §5.2), semua opsional
     }
 
     public function messages()

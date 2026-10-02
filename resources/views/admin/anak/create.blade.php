@@ -104,6 +104,18 @@ Anak
                 <input type="number" name="no" id="no_hp" class="form-control">
             </div>
         </div>
+        {{-- Tanda Sasaran Balita Kesmas (spec 2026-10-02 §5.2): opt-in, default tercentang di Tambah Anak --}}
+        <div class="col-md-4 col-sm-12">
+            <div class="form-group">
+                <span class="d-block mb-1">Sasaran Kesmas</span>
+                <div class="form-check">
+                    <input type="hidden" name="sasaran_balita_kesmas" value="0">
+                    <input class="form-check-input" type="checkbox" id="sasaran_balita_kesmas" name="sasaran_balita_kesmas" value="1" aria-describedby="sasaran_balita_kesmas_bantuan" @checked(old('sasaran_balita_kesmas', '1') === '1')>
+                    <label class="form-check-label" for="sasaran_balita_kesmas">Sasaran Balita Kesmas</label>
+                </div>
+                <small id="sasaran_balita_kesmas_bantuan" class="form-text text-muted">Centang bila anak dihitung sebagai sasaran Dasbor Kesmas. Tidak memengaruhi dasbor imunisasi dan operasi timbang.</small>
+            </div>
+        </div>
         <div class="col-12">
             <hr class="mt-1 mb-2">
             <h6 class="text-primary mb-0">Alamat Domisili (operasional)</h6>
