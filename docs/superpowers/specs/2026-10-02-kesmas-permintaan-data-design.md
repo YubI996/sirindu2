@@ -198,7 +198,8 @@ public static function sama(float $kgA, float $kgB): bool                       
   genap 2 bulan). Setara dengan MySQL `DATE_ADD(tgl_lahir, INTERVAL 2 MONTH)` — dipakai di pengukuran
   prod (§9).
 - **Server yang memutuskan satuan** dari `anak.tgl_lahir` + `tgl_kunjungan` yang dikirim; form hanya
-  menampilkannya.
+  menampilkannya. Rule dan konversinya ada di `App\Http\Requests\Admin\Anak\AturanBeratBadan`
+  (`rentang()`, `untukDisimpan()`), dipakai `storeDataAnak` dan `updateDataAnak`.
 - Rentang gram (≥ 300) dan kg (≤ 150) **tidak beririsan**, jadi salah satuan pasti ditolak dan tidak
   pernah tersimpan diam-diam. Pesan: "Untuk umur di bawah 2 bulan, berat badan diisi dalam gram
   (300–8.000), mis. 3250." / "Berat badan diisi dalam kg (1–150), mis. 7.5."
@@ -332,7 +333,8 @@ TDD. Payload tes **meniru form asli**: checkbox tak dicentang mengirim `'0'`, se
 
 **Browser** (Playwright CLI — `npx.cmd playwright test … --project=chromium --no-deps --workers=1`; DB dev
 `sirindu` lebih dulu ditandai lewat `kesmas:tandai-sasaran --semua --jalankan --alasan="dev e2e"`, kalau
-tidak dasbor kosong): `e2e/kesmas-dashboard.spec.ts` diperbarui untuk tautan K4 → chip 0–59; berkas baru
+tidak dasbor kosong): `e2e/kesmas-dashboard.spec.ts` dan `e2e/kesmas-swarm.spec.ts` diperbarui untuk
+tautan K4 → chip 0–59 (`kesmas-swarm` berjalan atas data dev nyata); berkas baru
 `e2e/satuan-bb.spec.ts` — label gram/kg berganti saat tanggal kunjungan diubah, nilai ikut dikonversi,
 form per kunjungan menampilkan gram; lebar 375 px.
 
@@ -393,7 +395,8 @@ berikut. Berkas apa pun di luar daftar → berhenti dan tinjau sebelum merge.
 - `database/migrations/2026_10_02_000001_*`, `2026_10_02_000002_*` (baru)
 - `app/Models/SasaranKesmasLog.php`, `app/Support/TahunSasaranKesmas.php`,
   `app/Support/SatuanBeratBadan.php`, `app/Console/Commands/TandaiSasaranKesmas.php` (baru)
-- `app/Http/Requests/Admin/Anak/KesmasRules.php`, `app/Http/Requests/Admin/Anak/storeAnakRequest.php`
+- `app/Http/Requests/Admin/Anak/KesmasRules.php`, `app/Http/Requests/Admin/Anak/storeAnakRequest.php`,
+  `app/Http/Requests/Admin/Anak/AturanBeratBadan.php` (baru — rule & konversi BB §5.5)
 - `app/Http/Controllers/AdminController.php` — hanya `updateAnak`, `storeDataAnak`, `updateDataAnak`
 - `app/Repositories/Admin/Anak/AnakRepository.php` — hanya `storeAnak`, `updateAnak`, helper baru
 - `app/Services/KesmasDashboardService.php`, `app/Services/KesmasPresenter.php`,
@@ -403,8 +406,8 @@ berikut. Berkas apa pun di luar daftar → berhenti dan tinjau sebelum merge.
 - `resources/views/admin/kesmas/dashboard.blade.php`,
   `resources/views/admin/kesmas/partials/{_spm,_sdidtk-ckg-idl,_layanan}.blade.php`
 - `public/js/kesmas-registri.js`, `public/js/satuan-bb.js` (baru), `public/css/kesmas-dashboard.css`
-- `tests/Unit/Support/*`, `tests/Feature/Kesmas/*`, `e2e/kesmas-dashboard.spec.ts`,
-  `e2e/satuan-bb.spec.ts` (baru)
+- `tests/Unit/Support/*`, `tests/Unit/KesmasPresenterTest.php`, `tests/Feature/Kesmas/*`,
+  `e2e/kesmas-dashboard.spec.ts`, `e2e/kesmas-swarm.spec.ts`, `e2e/satuan-bb.spec.ts` (baru)
 - `CLAUDE.md`, `docs/**` (`git add -f`)
 
 **Tidak boleh muncul di diff** (contoh yang paling mungkin tersenggol): `ImunisasiStatusService`,
