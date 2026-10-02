@@ -7,10 +7,11 @@
         <div class="km-kicker"><span class="im-card__lbl">SPM Kemenkes No. 4/2019</span>
             <span class="km-pill km-pill--{{ $tone($spm['balita']['persen']) }}">{{ $pct($spm['balita']['persen']) }}</span></div>
         <div class="km-title">Pelayanan Kesehatan Balita</div>
-        <div class="im-card__sub">Usia 0–59 bulan (gabungan kohort bayi + anak balita) yang mendapat pelayanan sesuai standar</div>
+        <div class="im-card__sub">Usia 0–5 tahun (0–59 bulan): gabungan Pelayanan Kesehatan Bayi + Anak Balita yang mendapat pelayanan sesuai standar</div>
         <div class="km-big im-num"><span class="n">{{ $fmt($spm['balita']['lengkap']) }}</span><span class="d">/ {{ $fmt($spm['balita']['sasaran']) }} balita</span>
             <span class="p {{ $tone($spm['balita']['persen']) }}">{{ $pct($spm['balita']['persen']) }}</span></div>
         <div class="km-prog" role="img" aria-label="{{ $pct($spm['balita']['persen']) }}"><span class="{{ $tone($spm['balita']['persen']) }}" style="width:{{ (int) ($spm['balita']['persen'] ?? 0) }}%"></span></div>
+        <div class="km-k1-rincian im-num">{{ $fmt($spm['bayi']['lengkap']) }} bayi (0–11 bln) + {{ $fmt($spm['anak_balita']['lengkap']) }} anak balita (12–59 bln)</div>
         <div class="km-foot">Syarat periode ini: {{ $sy['timbang'] }}× timbang · {{ $sy['ddtka'] }}× DDTKA · Vit A</div>
     </article><!-- /spm-balita -->
 
@@ -27,7 +28,7 @@
                 <span class="km-sub {{ $tone($s['persen']) }}" title="{{ $fmt($s['n']) }} dari {{ $fmt($s['sasaran']) }}">{{ $lbl }}: {{ $pct($s['persen']) }}</span>
             @endforeach
             @php $idlPersen = $idl['total'] > 0 ? $idl['persen'] : null; @endphp
-            <span class="km-sub {{ $tone($idlPersen) }}" title="Kohort SI {{ $periode->tahun() }}, tidak mengikuti semester/triwulan">IDL: {{ $pct($idlPersen) }}</span>
+            <span class="km-sub {{ $tone($idlPersen) }}" title="Kohort SI {{ $periode->tahun() }}, tidak mengikuti semester/triwulan; populasi kohort imunisasi, tidak memakai tanda Sasaran Balita Kesmas">IDL: {{ $pct($idlPersen) }}</span>
         </div>
         <div class="km-foot">Sisa belum lengkap: <b>{{ $fmt($spm['bayi']['sisa']) }} bayi</b>
             @if($spm['bayi']['sasaran'] > 0)<span>({{ $pct(round($spm['bayi']['sisa'] / $spm['bayi']['sasaran'] * 100, 1)) }})</span>@endif</div>
@@ -46,17 +47,17 @@
                 <span class="km-sub {{ $tone($s['persen']) }}" title="{{ $fmt($s['n']) }} dari {{ $fmt($s['sasaran']) }}">{{ $lbl }}: {{ $pct($s['persen']) }}</span>
             @endforeach
             @php $iblPersen = $ibl['total'] > 0 ? $ibl['persen'] : null; @endphp
-            <span class="km-sub {{ $tone($iblPersen) }}" title="Kohort Baduta {{ $periode->tahun() }}, tidak mengikuti semester/triwulan">IBL: {{ $pct($iblPersen) }}</span>
+            <span class="km-sub {{ $tone($iblPersen) }}" title="Kohort Baduta {{ $periode->tahun() }}, tidak mengikuti semester/triwulan; populasi kohort imunisasi, tidak memakai tanda Sasaran Balita Kesmas">IBL: {{ $pct($iblPersen) }}</span>
         </div>
         <div class="km-foot">Kesenjangan target: <b>{{ $fmt($spm['anak_balita']['gap']) }} anak</b>
             @if($spm['anak_balita']['sasaran'] > 0)<span>({{ $pct(round($spm['anak_balita']['gap'] / $spm['anak_balita']['sasaran'] * 100, 1)) }})</span>@endif</div>
     </article><!-- /spm-anak-balita -->
 
     <article class="im-card" data-blok="spm-tk">
-        <div class="km-kicker"><span class="im-card__lbl">Pemantauan tumbuh kembang</span>
+        <div class="km-kicker"><span class="im-card__lbl">SPM Tumbuh Kembang Balita</span>
             <span class="km-pill km-pill--{{ $tone($tk['persen']) }}">{{ $pct($tk['persen']) }}</span></div>
-        <div class="km-title">Pemantauan Lengkap T&amp;K</div>
-        <div class="im-card__sub">0–72 bulan dengan min. {{ $sy['timbang'] }}× timbang + {{ $sy['ddtka'] }}× DDTKA dalam periode</div>
+        <div class="km-title">Balita Dilayani Tumbuh Kembang</div>
+        <div class="im-card__sub">0–59 bulan dengan min. {{ $sy['timbang'] }}× timbang + {{ $sy['ddtka'] }}× DDTKA dalam periode</div>
         <div class="km-big im-num"><span class="n">{{ $fmt($tk['lengkap']) }}</span><span class="d">/ {{ $fmt($tk['sasaran']) }} balita</span>
             <span class="p {{ $tone($tk['persen']) }}">{{ $pct($tk['persen']) }}</span></div>
         <div class="km-prog" role="img" aria-label="{{ $pct($tk['persen']) }}"><span class="{{ $tone($tk['persen']) }}" style="width:{{ (int) ($tk['persen'] ?? 0) }}%"></span></div>

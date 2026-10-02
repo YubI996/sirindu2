@@ -82,10 +82,11 @@ class KesmasSwarmAgregatTest extends TestCase
         $periode = PeriodeKesmas::dari(2025, 'tw3');
 
         $k4 = $this->svc->pemantauanTk($periode, []);
-        $drilldown = $this->svc->registri($periode, [], 'semua', '', 'perhatian');
+        // K4 = 0–59 bln; tautan "perlu perhatian" memilih chip balita_0_59 (spec 2026-10-02 §6.3).
+        $drilldown = $this->svc->registri($periode, [], 'balita_0_59', '', 'perhatian');
 
         $this->actingAs(User::factory()->create(['type' => 1]));
-        $this->getJson(route('admin.kesmas.registri', ['tahun' => 2025, 'periode' => 'tw3', 'status_gizi' => 'perhatian']))
+        $this->getJson(route('admin.kesmas.registri', ['tahun' => 2025, 'periode' => 'tw3', 'usia' => 'balita_0_59', 'status_gizi' => 'perhatian']))
             ->assertOk()->assertJsonPath('total', $drilldown['total']);
         $this->get(route('admin.kesmas.dashboard', ['tahun' => 2025, 'periode' => 'tw3']))
             ->assertOk()->assertViewHas('tk', fn ($v) => $v['perhatian'] === $k4['perhatian']);

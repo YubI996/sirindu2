@@ -152,13 +152,14 @@
     });
     document.querySelectorAll('[data-registri-status]').forEach((link) => {
         link.addEventListener('click', () => {
-            // K4 menghitung seluruh usia: pulihkan lingkup yang sama sebelum melihat rinciannya.
-            document.querySelector('.km-chip[data-usia="semua"]').setAttribute('aria-pressed', 'true');
-            document.querySelectorAll('.km-chip[data-usia]:not([data-usia="semua"])').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-            state.usia = 'semua';
-            usiaHidden.value = 'semua';
+            // K4 menghitung balita 0–59 bln: pilih lingkup yang sama sebelum melihat rinciannya
+            // (jumlah registri = angka kartu; dikunci KesmasSwarmAgregatTest).
+            const k4 = 'balita_0_59';
+            document.querySelectorAll('.km-chip[data-usia]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.usia === k4)));
+            state.usia = k4;
+            usiaHidden.value = k4;
             const url = new URL(window.location.href);
-            url.searchParams.set('usia', 'semua');
+            url.searchParams.set('usia', k4);
             history.replaceState(null, '', url.toString());
             document.querySelectorAll('#sdidtkRows .km-row').forEach((row) => row.classList.remove('hl'));
             cari.value = '';

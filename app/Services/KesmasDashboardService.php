@@ -39,7 +39,7 @@ class KesmasDashboardService
     /** Kolom anak yang dibawa subquery sasaran (dipakai skrining neonatal & sanitasi). */
     private const KOLOM_KESMAS_ANAK = [
         'skrining_shk', 'skrining_shak', 'skrining_g6pd', 'pemeriksaan_hepatitis_b',
-        'air_bersih', 'jamban_sehat', 'merokok_keluarga', 'sasaran_balita_kesmas',
+        'air_bersih', 'jamban_sehat', 'merokok_keluarga', 'sasaran_balita_kesmas', 'tgl_hbig',
     ];
 
     /** Persen 1 desimal; pembagi 0 → null (tampil "—", bukan 0 %). */
@@ -211,14 +211,20 @@ class KesmasDashboardService
             ->groupBy('d2.id_anak');
     }
 
-    /** Kartu K4: 0–72 bln dengan ≥T8 timbang & ≥T2 DDTKA; "perlu perhatian" dari kunjungan terakhir. */
+    /**
+     * Kartu K4 "Balita Dilayani Tumbuh Kembang": 0–59 bln (lembar klien "0–60 bln", dibaca < 60 —
+     * spec 2026-10-02 §6.3) dengan ≥T8 timbang & ≥T2 DDTKA; "perlu perhatian" dari kunjungan
+     * terakhir. Rentang diambil dari USIA['balita_0_59'] supaya tautan ke registri selalu
+     * menghitung populasi yang sama dengan kartu.
+     */
     public function pemantauanTk(PeriodeKesmas $p, array $filters): array
     {
+        [$min, $max] = self::USIA['balita_0_59'];
         $r = $this->dariSasaran($p, $filters)
             ->leftJoinSub($this->kunjunganSub($p), 'k', 'k.id_anak', '=', 's.id')
             ->selectRaw(
-                'SUM(umur BETWEEN 0 AND 72) as sasaran, '
-                . 'SUM(umur BETWEEN 0 AND 72 AND COALESCE(n_timbang,0) >= ? AND COALESCE(n_ddtka,0) >= ?) as lengkap',
+                "SUM(umur BETWEEN {$min} AND {$max}) as sasaran, "
+                . "SUM(umur BETWEEN {$min} AND {$max} AND COALESCE(n_timbang,0) >= ? AND COALESCE(n_ddtka,0) >= ?) as lengkap",
                 [$p->syarat(8), $p->syarat(2)]
             )->first();
         $sasaran = (int) $r->sasaran;
@@ -228,7 +234,7 @@ class KesmasDashboardService
         $perhatian = $this->dariSasaran($p, $filters)
             ->joinSub($this->kunjunganTerakhirSub($p), 't', 't.id_anak', '=', 's.id')
             ->join('data_anak as da', 'da.id', '=', 't.id_kunjungan')
-            ->where('s.umur', '<=', 72)
+            ->whereBetween('s.umur', [$min, $max])
             ->where(function ($w) {
                 $w->whereRaw("UPPER(TRIM(da.ntob)) = 'T'")->orWhere('da.zscore_bb_u', '<=', -2.01);
             })
@@ -415,7 +421,10 @@ class KesmasDashboardService
             $sel[] = "SUM({$k} IS NOT NULL) as {$k}_isi";
             $sel[] = "SUM({$k} = 1) as {$k}_ya";
         }
-        $rn = (array) $this->dariSasaran($p, $filters)->where('s.umur', '<=', 72)->selectRaw(implode(', ', $sel))->first();
+        // HBIG diberikan dalam periode (spec 2026-10-02 §6.3): jumlah, bukan cakupan — status HBsAg
+        // ibu tidak tercatat, jadi pembaginya tidak ada. Menumpang query ini agar tak ada query baru.
+        $sel[] = 'SUM(tgl_hbig BETWEEN ? AND ?) as hbig';
+        $rn = (array) $this->dariSasaran($p, $filters)->where('s.umur', '<=', 72)->selectRaw(implode(', ', $sel), [$a, $z])->first();
         $sanitasi = [];
         $adaSanitasi = false;
         foreach ($sanitasiDef as $k => [$label, $terbalik]) {
@@ -431,15 +440,20 @@ class KesmasDashboardService
         return [
             'sasaran'  => $sasaran,
             'bayi'     => $bayi,
+            'hbig'     => (int) $rn['hbig'],
             'layanan'  => ['baris' => $layanan, 'ada_data' => $adaLayanan],
             'skrining' => ['baris' => $skrining, 'ada_data' => $adaSkrining],
             'sanitasi' => ['baris' => $sanitasi, 'ada_data' => $adaSanitasi],
         ];
     }
 
-    /** Rentang umur (bulan) untuk chip usia — registri & penyorotan SDIDTK. */
+    /**
+     * Rentang umur (bulan) untuk chip usia — registri & penyorotan SDIDTK. `balita_0_59` juga
+     * rentang kartu K4 (pemantauanTk), supaya jumlah registri = angka kartu.
+     */
     public const USIA = [
-        'semua' => [0, 72], 'bayi' => [0, 11], 'baduta' => [12, 23], 'balita' => [24, 59], 'prasekolah' => [60, 72],
+        'semua' => [0, 72], 'balita_0_59' => [0, 59], 'bayi' => [0, 11], 'baduta' => [12, 23],
+        'balita' => [24, 59], 'prasekolah' => [60, 72],
     ];
 
     public const STATUS_GIZI = ['semua', 'normal', 'stunted', 'underweight', 'wasted', 'perhatian'];

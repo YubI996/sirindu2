@@ -179,6 +179,7 @@ class KesmasDashboardControllerTest extends TestCase
         $balita = $this->blok($html, 'spm-balita');
         $this->assertAngkaBesar($balita, '1', '3');
         $this->assertStringContainsString('33,3 %', $balita);
+        $this->assertStringContainsString('1 bayi (0–11 bln) + 0 anak balita (12–59 bln)', $balita);
 
         $kBayi = $this->blok($html, 'spm-bayi');
         $this->assertAngkaBesar($kBayi, '1', '2');
@@ -191,8 +192,26 @@ class KesmasDashboardControllerTest extends TestCase
         $this->assertStringContainsString('0,0 %', $kAb);
 
         $kTk = $this->blok($html, 'spm-tk');
-        $this->assertAngkaBesar($kTk, '1', '4');
+        $this->assertAngkaBesar($kTk, '1', '3'); // K4 0–59 bln: anak prasekolah 65 bln tidak ikut
         $this->assertStringContainsString('perlu perhatian', $kTk);
+    }
+
+    public function test_label_kartu_mengikuti_nama_indikator_klien_dan_chip_k4(): void
+    {
+        $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard', ['tahun' => 2025]))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Usia 0–5 tahun (0–59 bulan): gabungan Pelayanan Kesehatan Bayi + Anak Balita', $this->blok($html, 'spm-balita'));
+        $kTk = $this->blok($html, 'spm-tk');
+        $this->assertStringContainsString('SPM Tumbuh Kembang Balita', $kTk);
+        $this->assertStringContainsString('Balita Dilayani Tumbuh Kembang', $kTk);
+        $this->assertStringContainsString('0–59 bulan dengan min.', $kTk);
+        $this->assertStringContainsString('Cakupan Balita &amp; Anak Prasekolah Dilayani SDIDTK', $this->blok($html, 'sdidtk'));
+        $this->assertStringContainsString('tidak memakai tanda Sasaran Balita Kesmas', $this->blok($html, 'idl'));
+        $this->assertStringContainsString('HBIG diberikan dalam periode', $this->blok($html, 'layanan'));
+        $this->assertMatchesRegularExpression('/<button[^>]*data-usia="balita_0_59"[^>]*>Semua balita \(0–59\)<\/button>/', $html);
+
+        $this->getJson(route('admin.kesmas.registri', ['usia' => 'balita_0_59']))->assertOk();
+        $this->getJson(route('admin.kesmas.registri', ['usia' => 'balita_0_60']))->assertUnprocessable();
     }
 
     public function test_kartu_spm_tanpa_sasaran_menampilkan_strip_bukan_nol_persen(): void
@@ -323,10 +342,12 @@ class KesmasDashboardControllerTest extends TestCase
     public function test_baris_penandaan_dan_peringatan_saat_belum_ada_anak_bertanda(): void
     {
         // Review Focus #5: hari pertama setelah rilis.
-        // Lahir 2020 (66 bln pada akhir 2025): masuk 0–72 bln tetapi di luar kohort IDL/IBL 2025. Chip
-        // IDL/IBL sengaja tidak memakai tanda (spec 2026-10-02 §6.3 butir 7) dan menampilkan "0,0 %" bagi
-        // anak kohortnya; anak kohort 2023 di sini akan membuat assertion "0,0 %" di bawah gagal palsu.
-        $this->anak('Belum Ditandai', '2020-06-30', ['sasaran_balita_kesmas' => null]);
+        // Lahir 15 Mar 2023 (33 bln pada akhir 2025): masuk sasaran 0–59 dan 12–59 bln (jadi filter tanda
+        // diuji di kartu K4/anak balita juga, bukan hanya 0–72), tetapi di luar kohort Baduta 2025
+        // (2023-04-01..2024-03-31). Chip IDL/IBL sengaja tidak memakai tanda (spec 2026-10-02 §6.3 butir 7)
+        // dan menampilkan "0,0 %" bagi anak kohortnya; anak di kohort itu akan membuat assertion "0,0 %"
+        // di bawah gagal palsu.
+        $this->anak('Belum Ditandai', '2023-03-15', ['sasaran_balita_kesmas' => null]);
 
         $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard', ['tahun' => 2025]))->assertOk()->getContent();
         $blok = $this->blok($html, 'penandaan');

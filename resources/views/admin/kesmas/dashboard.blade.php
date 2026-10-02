@@ -110,7 +110,7 @@
 
     <div class="km-usia" role="group" aria-label="Kelompok usia untuk registri">
         <span class="km-lbl">Kelompok usia</span>
-        @foreach(['semua' => 'Semua (0–72 bln)', 'bayi' => 'Bayi (0–11)', 'baduta' => 'Baduta (12–23)', 'balita' => 'Balita (24–59)', 'prasekolah' => 'Prasekolah (60–72)'] as $kode => $label)
+        @foreach(['semua' => 'Semua (0–72 bln)', 'balita_0_59' => 'Semua balita (0–59)', 'bayi' => 'Bayi (0–11)', 'baduta' => 'Baduta (12–23)', 'balita' => 'Balita (24–59)', 'prasekolah' => 'Prasekolah (60–72)'] as $kode => $label)
             <button type="button" class="km-chip" data-usia="{{ $kode }}" aria-pressed="{{ $usia === $kode ? 'true' : 'false' }}">{{ $label }}</button>
         @endforeach
     </div>

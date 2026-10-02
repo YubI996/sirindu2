@@ -307,21 +307,48 @@ class KesmasDashboardServiceTest extends TestCase
 
     // ── K4 Pemantauan lengkap T&K ──────────────────────────────────────────
 
-    public function test_pemantauan_tk_mencakup_prasekolah_dan_hanya_timbang_plus_ddtka(): void
+    public function test_pemantauan_tk_hanya_0_59_bulan_dan_hanya_timbang_plus_ddtka(): void
     {
-        $pra = $this->anak(65);
+        // K4 = "Balita Dilayani Tumbuh Kembang (0–60 bln)" di lembar klien, dibaca < 60 bulan (spec 2026-10-02 §6.3).
+        $batas = $this->anak(59);
+        $this->kunjunganBulanan($batas, 6, 1);
+        $this->kunjungan($batas, '2025-07-15', ['ddtka' => 'Sesuai']);
+        $this->kunjungan($batas, '2025-08-15', ['ddtka' => 'Sesuai']); // 8 timbang, 2 ddtka, tanpa vit A → lengkap
+
+        $pra = $this->anak(60); // syarat lengkap, tetapi di luar 0–59
         $this->kunjunganBulanan($pra, 6, 1);
         $this->kunjungan($pra, '2025-07-15', ['ddtka' => 'Sesuai']);
-        $this->kunjungan($pra, '2025-08-15', ['ddtka' => 'Sesuai']); // 8 timbang, 2 ddtka, tanpa vit A → lengkap
+        $this->kunjungan($pra, '2025-08-15', ['ddtka' => 'Sesuai']);
 
         $bayi = $this->anak(8);
         $this->kunjunganBulanan($bayi, 8, 5); // 8 timbang tanpa ddtka → tidak
 
         $tk = $this->svc->pemantauanTk($this->tahun2025(), []);
 
-        $this->assertSame(2, $tk['sasaran']);
+        $this->assertSame(2, $tk['sasaran'], 'anak 59 & 8 bln; anak 60 bln tidak');
         $this->assertSame(1, $tk['lengkap']);
         $this->assertSame(50.0, $tk['persen']);
+    }
+
+    public function test_perlu_perhatian_k4_hanya_0_59_bulan_dan_sama_dengan_registri(): void
+    {
+        $this->seedVaksin();
+        $this->kunjungan($this->anak(59), '2025-06-15', ['ntob' => 'T']);
+        $this->kunjungan($this->anak(65), '2025-06-15', ['ntob' => 'T']);
+
+        $this->assertSame(1, $this->svc->pemantauanTk($this->tahun2025(), [])['perhatian']);
+        $this->assertSame(1, $this->svc->registri($this->tahun2025(), [], 'balita_0_59', '', 'perhatian')['total']);
+    }
+
+    public function test_hbig_dihitung_per_periode_hanya_anak_bertanda(): void
+    {
+        $this->anak(3, ['tgl_hbig' => '2025-09-30']);                                   // lahir 30 Sep 2025 → dalam periode
+        $this->anak(13, ['tgl_hbig' => '2024-11-30']);                                  // tahun lalu
+        $this->anak(4, ['tgl_hbig' => '2025-08-31', 'sasaran_balita_kesmas' => null]);  // belum ditandai
+        $this->anak(2);                                                                 // tanpa HBIG
+
+        $this->assertSame(1, $this->svc->layananLingkungan($this->tahun2025(), [])['hbig']);
+        $this->assertSame(0, $this->svc->layananLingkungan(PeriodeKesmas::dari(2025, 'tw1'), [])['hbig']);
     }
 
     public function test_perlu_perhatian_dari_kunjungan_terakhir_dalam_periode(): void

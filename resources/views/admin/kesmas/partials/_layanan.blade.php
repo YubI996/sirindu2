@@ -44,6 +44,8 @@
                     <div class="km-empty">Belum ada data skrining — lengkapi lewat Edit Anak (kartu Riwayat lahir &amp; skrining)</div>
                     <p class="km-belum">{{ $fmt($layanan['bayi']) }} bayi belum diisi untuk setiap skrining</p>
                 @endif
+                <p class="km-hbig" data-baris="hbig">HBIG diberikan dalam periode: <b class="im-num">{{ $fmt($layanan['hbig']) }}</b> bayi
+                    <small>(bayi dari ibu HBsAg reaktif — jumlah, bukan cakupan)</small></p>
             </div>
 
             <div class="km-panel" data-panel="sanitasi">

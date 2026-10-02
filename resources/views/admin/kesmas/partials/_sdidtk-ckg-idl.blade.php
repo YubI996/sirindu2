@@ -2,8 +2,8 @@
 <section class="im-cards im-cards--3" aria-label="SDIDTK, CKG, dan imunisasi">
 
     <article class="im-card" data-blok="sdidtk">
-        <div class="im-h" style="margin-bottom:.2rem;"><h2>Cakupan Layanan SDIDTK</h2></div>
-        <div class="im-card__sub">Stimulasi, Deteksi &amp; Intervensi Dini Tumbuh Kembang (0–72 bulan)</div>
+        <div class="im-h" style="margin-bottom:.2rem;"><h2>Cakupan Balita &amp; Anak Prasekolah Dilayani SDIDTK</h2></div>
+        <div class="im-card__sub">0–72 bulan · penjumlahan kelompok 0–11, 12–23, 24–59, 60–72 · Stimulasi, Deteksi &amp; Intervensi Dini Tumbuh Kembang</div>
         <div class="km-big im-num"><span class="n">{{ $fmt($sdidtk['total']['realisasi']) }}</span><span class="d">dari {{ $fmt($sdidtk['total']['sasaran']) }} anak</span>
             <span class="p {{ $tone($sdidtk['total']['persen']) }}">{{ $pct($sdidtk['total']['persen']) }}</span></div>
         <div id="sdidtkRows">
@@ -45,7 +45,7 @@
             $iblP = $ibl['total'] > 0 ? $ibl['persen'] : null;
         @endphp
         <div class="im-h" style="margin-bottom:.2rem;"><h2>Imunisasi Dasar &amp; Lanjut</h2></div>
-        <div class="im-card__sub">Cakupan IDL (kohort SI) &amp; IBL (kohort Baduta) {{ $periode->tahun() }} — mengikuti tahun, bukan semester/triwulan</div>
+        <div class="im-card__sub">Cakupan IDL (kohort SI) &amp; IBL (kohort Baduta) {{ $periode->tahun() }} — mengikuti tahun, bukan semester/triwulan · populasi kohort imunisasi; tidak memakai tanda Sasaran Balita Kesmas</div>
         <div class="km-donut">
             <canvas id="idlDonut" width="120" height="120" role="img" aria-label="IDL lengkap {{ $pct($idlP) }}"></canvas>
             <div class="km-legend im-num">

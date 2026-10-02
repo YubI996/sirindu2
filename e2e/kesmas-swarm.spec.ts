@@ -93,7 +93,7 @@ test('cascade Kec/Kel/RT serta Posyandu/Puskesmas bertahan setelah Terapkan', as
   await expect(page.locator('#filterPkm')).toHaveValue('');
 });
 
-test('registri nyata: paginasi, lima usia, pencarian nama/NIK/orang tua, enam status dan K4', async ({ page }) => {
+test('registri nyata: paginasi, enam usia, pencarian nama/NIK/orang tua, enam status dan K4', async ({ page }) => {
   test.setTimeout(180_000);
   const initial = await load(page);
   expect(initial.total).toBeGreaterThan(20);
@@ -103,12 +103,12 @@ test('registri nyata: paginasi, lima usia, pencarian nama/NIK/orang tua, enam st
   expect(next.result.data.some((r: { id: number }) => initial.data.some((i: { id: number }) => i.id === r.id))).toBe(false);
   await registryAction(page, () => page.getByRole('button', { name: 'Sebelumnya', exact: true }).click());
 
-  for (const [age, min, max] of [['bayi', 0, 11], ['baduta', 12, 23], ['balita', 24, 59], ['prasekolah', 60, 72], ['semua', 0, 72]] as const) {
+  for (const [age, min, max] of [['bayi', 0, 11], ['baduta', 12, 23], ['balita', 24, 59], ['prasekolah', 60, 72], ['balita_0_59', 0, 59], ['semua', 0, 72]] as const) {
     const current = await registryAction(page, () => page.locator(`.km-chip[data-usia="${age}"]`).click());
     expect(current.params.get('usia')).toBe(age);
     expect(current.result.data.every((r: { umur_bln: number }) => r.umur_bln >= min && r.umur_bln <= max)).toBe(true);
     await expect(page.locator(`.km-chip[data-usia="${age}"]`)).toHaveAttribute('aria-pressed', 'true');
-    if (age !== 'semua') await expect(page.locator(`#sdidtkRows [data-usia="${age}"]`)).toHaveClass(/hl/);
+    if (age !== 'semua' && age !== 'balita_0_59') await expect(page.locator(`#sdidtkRows [data-usia="${age}"]`)).toHaveClass(/hl/);
   }
   const sample = initial.data.find((r: { nama: string; nik: string; nama_ibu: string; nama_ayah: string }) => r.nama && r.nik && r.nama_ibu && r.nama_ayah);
   expect(Boolean(sample)).toBe(true);
@@ -130,7 +130,7 @@ test('registri nyata: paginasi, lima usia, pencarian nama/NIK/orang tua, enam st
   const attentionCount = Number((await page.locator('[data-registri-status="perhatian"]').innerText()).match(/^[\d.]+/)![0].replaceAll('.', ''));
   const attention = await registryAction(page, () => page.locator('[data-registri-status="perhatian"]').click());
   expect(attention.params.get('q')).toBe('');
-  expect(attention.params.get('usia')).toBe('semua');
+  expect(attention.params.get('usia')).toBe('balita_0_59');
   expect(attention.result.total).toBe(attentionCount);
   await expect(page.locator('body')).toHaveAttribute('data-swarm-navigation', 'unchanged');
 });

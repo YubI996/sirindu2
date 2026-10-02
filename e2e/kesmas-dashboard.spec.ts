@@ -64,7 +64,7 @@ test('filter usia, rincian K4, paginasi, dan pemulihan galat tanpa reload', asyn
   await page.locator('[data-registri-status="perhatian"]').click();
   await expect(page.locator('#registriGizi')).toHaveValue('perhatian');
   await expect.poll(() => requests.at(-1)?.get('status_gizi')).toBe('perhatian');
-  expect(requests.at(-1)?.get('usia')).toBe('semua');
+  expect(requests.at(-1)?.get('usia')).toBe('balita_0_59');
   expect(requests.at(-1)?.get('q')).toBe('');
 
   failing = true;
