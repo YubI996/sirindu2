@@ -117,4 +117,34 @@ class DetailAnakKesmasTest extends TestCase
         $this->assertStringNotContainsString('>KN1<', $b2);
         $this->assertMatchesRegularExpression('/<td[^>]*>\s*—\s*<\/td>\s*<\/tr>/s', $b2);
     }
+
+    public function test_kartu_sasaran_kesmas_status_dan_enam_tahun(): void
+    {
+        $kartu = $this->kartu($this->render($this->anak(['sasaran_balita_kesmas' => 1])), 'sasaran-info-title');
+
+        $this->assertMatchesRegularExpression('/Sasaran Balita Kesmas<\/dt>\s*<dd[^>]*>\s*Ya\s*</', $kartu);
+        $this->assertStringNotContainsString('tidak dihitung di Dasbor Kesmas', $kartu);
+        $harapan = [
+            'idl' => ['IDL', 2026], '24_bln' => ['Sasaran 24 bulan', 2027], 'ibl' => ['IBL', 2028],
+            '48_bln' => ['Sasaran 48 bulan', 2029], '60_bln' => ['Sasaran 60 bulan', 2030], '72_bln' => ['Sasaran 72 bulan', 2031],
+        ];
+        foreach ($harapan as $kode => [$label, $tahun]) {
+            $this->assertMatchesRegularExpression(
+                '/<tr data-tahap="' . $kode . '"><td>' . preg_quote($label, '/') . '<\/td><td class="text-right">' . $tahun . '<\/td><\/tr>/',
+                $kartu, $kode
+            );
+        }
+        $this->assertStringContainsString('Dasbor imunisasi memakai kohort 1 April–31 Maret', $kartu);
+    }
+
+    public function test_kartu_sasaran_belum_ditandai_dan_dilepas_tidak_dihitung(): void
+    {
+        $belum = $this->kartu($this->render($this->anak()), 'sasaran-info-title');
+        $this->assertMatchesRegularExpression('/Sasaran Balita Kesmas<\/dt>\s*<dd[^>]*>\s*Belum ditandai/', $belum);
+        $this->assertStringContainsString('tidak dihitung di Dasbor Kesmas', $belum);
+
+        $dilepas = $this->kartu($this->render($this->anak(['nik' => '6474010101250019', 'sasaran_balita_kesmas' => 0])), 'sasaran-info-title');
+        $this->assertMatchesRegularExpression('/Sasaran Balita Kesmas<\/dt>\s*<dd[^>]*>\s*Tidak \(dilepas\)/', $dilepas);
+        $this->assertStringContainsString('tidak dihitung di Dasbor Kesmas', $dilepas);
+    }
 }

@@ -37,6 +37,16 @@ final class KesmasPresenter
         return ($nilai === null || trim((string) $nilai) === '') ? $kosong : (string) $nilai;
     }
 
+    /** Status tanda Sasaran Balita Kesmas di detail anak (spec 2026-10-02 §6.1). NULL ≠ "Tidak". */
+    public static function sasaran($nilai): string
+    {
+        if ($nilai === null || $nilai === '') {
+            return 'Belum ditandai';
+        }
+
+        return ((int) $nilai) === 1 ? 'Ya' : 'Tidak (dilepas)';
+    }
+
     /**
      * Ringkasan layanan satu kunjungan untuk kolom "Layanan Kesmas" di detail anak.
      * Badge hanya untuk nilai 1 (0 dan NULL sama-sama tidak tampil); CKG ikut bila tanggalnya ada.

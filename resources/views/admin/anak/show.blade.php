@@ -657,6 +657,46 @@ Detail
                 </div>
             </article>
         </div>
+
+        {{-- Sasaran Kesmas (spec 2026-10-02 §6.1): tanda dasbor Kesmas + tahun sasaran rumus Kesmas. Selalu tampil. --}}
+        @php
+            $nilaiSasaran = $anak->sasaran_balita_kesmas === null ? null : (int) $anak->sasaran_balita_kesmas;
+            $tahunSasaran = \App\Support\TahunSasaranKesmas::coba($anak->tgl_lahir);
+        @endphp
+        <div class="col-lg-4 mb-4">
+            <article class="card info-card h-100">
+                <div class="card-header">
+                    <h2 id="sasaran-info-title">
+                        <span aria-hidden="true" class="icon-copy dw dw-checked mr-2"></span>
+                        Sasaran Kesmas
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-2">
+                        <dt class="col-sm-5 text-accessible-muted">Sasaran Balita Kesmas</dt>
+                        <dd class="col-sm-7">{{ $K::sasaran($nilaiSasaran) }}
+                            @if ($nilaiSasaran !== 1)
+                            <br><small class="text-accessible-muted">tidak dihitung di Dasbor Kesmas</small>
+                            @endif
+                        </dd>
+                    </dl>
+                    @if ($tahunSasaran)
+                    <table class="table table-sm mb-2">
+                        <caption class="sr-only">Tahun sasaran per tahap (rumus Kesmas)</caption>
+                        <thead><tr><th scope="col">Tahap</th><th scope="col" class="text-right">Tahun</th></tr></thead>
+                        <tbody>
+                            @foreach ($tahunSasaran->semua() as $kode => $t)
+                            <tr data-tahap="{{ $kode }}"><td>{{ $t['label'] }}</td><td class="text-right">{{ $t['tahun'] }}</td></tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    @else
+                    <p class="text-accessible-muted mb-2">Tahun sasaran tidak dapat dihitung — tanggal lahir tidak sah.</p>
+                    @endif
+                    <p class="small text-accessible-muted mb-0">Rumus Kesmas: tahun lahir + n. Dasbor imunisasi memakai kohort 1 April–31 Maret, jadi tahunnya bisa berbeda.</p>
+                </div>
+            </article>
+        </div>
     </section>
 
     {{-- Current Health Status --}}

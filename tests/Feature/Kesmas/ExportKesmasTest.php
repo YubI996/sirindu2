@@ -164,4 +164,33 @@ class ExportKesmasTest extends TestCase
         $this->assertSame('6474010101250005', $kunj->getCell('A2')->getValue());
         $this->assertNull($kunj->getCell('A3')->getValue());
     }
+
+    public function test_sheet_per_anak_memuat_hbig_sasaran_dan_tahun_sasaran_di_ujung_kanan(): void
+    {
+        $this->anak('6474010101250006', $this->kelA, ['tgl_lahir' => '2025-05-10', 'tgl_hbig' => '2025-05-10', 'sasaran_balita_kesmas' => 1]);
+        $this->anak('6474010101250007', $this->kelA, ['tgl_lahir' => '2024-02-01']); // belum ditandai — tetap terekspor
+
+        [$anak] = $this->sheets(['id_kel' => $this->kelA->id]);
+
+        $judul = [
+            'AF' => 'Komplikasi Neonatal', 'AG' => 'Tgl HBIG', 'AH' => 'Sasaran Balita Kesmas',
+            'AI' => 'Thn Sasaran IDL', 'AJ' => 'Thn Sasaran 24 bln', 'AK' => 'Thn Sasaran IBL',
+            'AL' => 'Thn Sasaran 48 bln', 'AM' => 'Thn Sasaran 60 bln', 'AN' => 'Thn Sasaran 72 bln',
+        ];
+        foreach ($judul as $kolom => $teks) {
+            $this->assertSame($teks, $anak->getCell($kolom . '1')->getValue(), $kolom);
+        }
+
+        // Urut nama: ...0006 lalu ...0007.
+        $this->assertSame('2025-05-10', $anak->getCell('AG2')->getValue());
+        $this->assertSame('s', $anak->getCell('AG2')->getDataType());
+        $this->assertSame('Ya', $anak->getCell('AH2')->getValue());
+        foreach (['AI' => 2026, 'AJ' => 2027, 'AK' => 2028, 'AL' => 2029, 'AM' => 2030, 'AN' => 2031] as $kolom => $tahun) {
+            $this->assertSame($tahun, (int) $anak->getCell($kolom . '2')->getValue(), $kolom);
+            $this->assertSame('n', $anak->getCell($kolom . '2')->getDataType(), "$kolom harus angka");
+        }
+        $this->assertSame('', (string) $anak->getCell('AG3')->getValue());
+        $this->assertSame('', (string) $anak->getCell('AH3')->getValue(), 'NULL = belum ditandai → kosong');
+        $this->assertSame(2025, (int) $anak->getCell('AI3')->getValue());
+    }
 }

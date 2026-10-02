@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Anak;
 use App\Services\KesmasPresenter as K;
+use App\Support\TahunSasaranKesmas;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -19,6 +20,9 @@ use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 /** Sheet "Per Anak" — satu baris per anak yang lolos filter wilayah (spec §5). */
 final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder, WithStrictNullComparison
 {
+    /** Kolom yang tetap numerik: BBL, PBL, LK lahir, usia kehamilan (R–U) + enam tahun sasaran (AI–AN). */
+    private const KOLOM_ANGKA = ['R', 'S', 'T', 'U', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN'];
+
     public function __construct(private array $filter) {}
 
     /** Filter wilayah dipakai kedua sheet; $prefix 'anak.' bila query-nya join. */
@@ -53,6 +57,9 @@ final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, Wit
             'No ID ePus', 'FKTP BPJS', 'Air Bersih', 'Jamban Sehat', 'Perokok Serumah', 'TK/PAUD', 'Penyakit Penyerta', 'PJB',
             'BBL (kg)', 'PBL (cm)', 'LK Lahir (cm)', 'Usia Kehamilan (mgg)', 'Tempat Bersalin', 'Jenis Persalinan', 'Penolong',
             'IMD', 'KEK Ibu', 'SHK', 'SHAK', 'G6PD', 'Hepatitis B', 'Komplikasi Persalinan', 'Komplikasi Neonatal',
+            // Spec 2026-10-02 §6.2 — di ujung kanan agar kolom numerik R–U tidak bergeser.
+            'Tgl HBIG', 'Sasaran Balita Kesmas', 'Thn Sasaran IDL', 'Thn Sasaran 24 bln', 'Thn Sasaran IBL',
+            'Thn Sasaran 48 bln', 'Thn Sasaran 60 bln', 'Thn Sasaran 72 bln',
         ];
     }
 
@@ -69,13 +76,23 @@ final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, Wit
             K::enumLabel('skrining', $a->skrining_shk), K::enumLabel('skrining', $a->skrining_shak),
             K::enumLabel('skrining', $a->skrining_g6pd), K::enumLabel('hepatitis_b', $a->pemeriksaan_hepatitis_b),
             $a->komplikasi_persalinan, $a->komplikasi_neonatal,
+            $a->tgl_hbig, K::yaTidak($a->sasaran_balita_kesmas),
+            ...self::tahunSasaran($a->tgl_lahir),
         ];
+    }
+
+    /** @return list<int|null> enam tahun sasaran (rumus Kesmas), kosong bila tanggal lahir tak sah. */
+    private static function tahunSasaran(?string $tglLahir): array
+    {
+        $t = TahunSasaranKesmas::coba($tglLahir);
+
+        return $t ? array_column($t->semua(), 'tahun') : array_fill(0, count(TahunSasaranKesmas::TAHAP), null);
     }
 
     /** Kolom teks tetap literal (termasuk NIK dan awalan '='); pengukuran tetap numerik. */
     public function bindValue(Cell $cell, $value)
     {
-        if ($value !== null && !in_array($cell->getColumn(), ['R', 'S', 'T', 'U'], true)) {
+        if ($value !== null && !in_array($cell->getColumn(), self::KOLOM_ANGKA, true)) {
             $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
 
             return true;

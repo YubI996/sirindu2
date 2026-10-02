@@ -70,4 +70,14 @@ class KesmasPresenterTest extends TestCase
             $this->assertArrayHasKey('kolom', $def, $kolom);
         }
     }
+
+    public function test_sasaran_membedakan_belum_ditandai_dari_dilepas(): void
+    {
+        $this->assertSame('Belum ditandai', KesmasPresenter::sasaran(null));
+        $this->assertSame('Belum ditandai', KesmasPresenter::sasaran(''));
+        $this->assertSame('Ya', KesmasPresenter::sasaran(1));
+        $this->assertSame('Ya', KesmasPresenter::sasaran('1'));
+        $this->assertSame('Tidak (dilepas)', KesmasPresenter::sasaran(0));
+        $this->assertSame('Tidak (dilepas)', KesmasPresenter::sasaran('0'));
+    }
 }
