@@ -116,6 +116,13 @@
                             </select>
                         </div>
                     </div>
+                    <div class="col-md-4 col-sm-12">
+                        <div class="form-group">
+                            <label for="tgl_hbig">Tanggal pemberian HBIG</label>
+                            <input type="date" name="tgl_hbig" id="tgl_hbig" class="form-control" value="{{ $nilai('tgl_hbig') }}">
+                            <small class="form-text text-muted">Untuk bayi dari ibu HBsAg reaktif. Bukan bagian Imunisasi Dasar Lengkap.</small>
+                        </div>
+                    </div>
                     <div class="col-md-8 col-sm-12">
                         <div class="form-group">
                             <label for="komplikasi_neonatal">Pelayanan / tindakan komplikasi neonatal</label>

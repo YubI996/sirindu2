@@ -50,6 +50,8 @@ final class KesmasRules
             'skrining_shak'           => ['nullable', $skrining],
             'skrining_g6pd'           => ['nullable', $skrining],
             'pemeriksaan_hepatitis_b' => ['nullable', Rule::in(array_keys($c['hepatitis_b']))],
+            // HBIG: field tanggal, BUKAN jenis vaksin — tak ikut IDL/jadwal/kejar (spec 2026-10-02 §5.1).
+            'tgl_hbig'                => 'nullable|date|after_or_equal:tgl_lahir|before_or_equal:today',
             'komplikasi_neonatal'     => 'nullable|string',
         ];
     }

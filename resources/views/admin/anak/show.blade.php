@@ -554,7 +554,7 @@ Detail
                 : (in_array($kode, ['tidak_normal', 'reaktif'], true) ? 'danger' : 'secondary');
             $isiKesmas = collect(['no_id_epus', 'fktp_bpjs', 'air_bersih', 'jamban_sehat', 'merokok_keluarga', 'status_tk_paud', 'penyakit_penyerta', 'pjb'])
                 ->contains(fn ($f) => $anak->$f !== null && $anak->$f !== '');
-            $isiLahir = collect(['bbl', 'pbl', 'lk_lahir', 'usia_kehamilan_lahir', 'tempat_bersalin', 'jenis_persalinan', 'penolong_lahir', 'imd', 'riwayat_kek_ibu', 'komplikasi_persalinan', 'skrining_shk', 'skrining_shak', 'skrining_g6pd', 'pemeriksaan_hepatitis_b', 'komplikasi_neonatal'])
+            $isiLahir = collect(['bbl', 'pbl', 'lk_lahir', 'usia_kehamilan_lahir', 'tempat_bersalin', 'jenis_persalinan', 'penolong_lahir', 'imd', 'riwayat_kek_ibu', 'komplikasi_persalinan', 'skrining_shk', 'skrining_shak', 'skrining_g6pd', 'pemeriksaan_hepatitis_b', 'komplikasi_neonatal', 'tgl_hbig'])
                 ->contains(fn ($f) => $anak->$f !== null && $anak->$f !== '');
         @endphp
 
@@ -643,6 +643,9 @@ Detail
                             @endif
                         </dd>
                         @endforeach
+
+                        <dt class="col-sm-5 text-accessible-muted">HBIG</dt>
+                        <dd class="col-sm-7">{{ $anak->tgl_hbig ? \Carbon\Carbon::parse($anak->tgl_hbig)->format('d/m/Y') : '—' }}</dd>
 
                         <dt class="col-sm-5 text-accessible-muted">Komplikasi persalinan</dt>
                         <dd class="col-sm-7">{{ $K::teks($anak->komplikasi_persalinan) }}</dd>
