@@ -199,7 +199,7 @@ Edit Anak
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label for="bb">Berat Badan Lahir <span class="text-danger" aria-hidden="true">*</span></label>
+                <label for="bb">Berat Badan Lahir (kg) <span class="text-danger" aria-hidden="true">*</span></label>
                 <input type="text" name="bb" id="bb" value="{{$dt->bb}}" class="form-control" required>
                 <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
             </div>
@@ -324,6 +324,11 @@ Edit Anak
     </div>
 </form>
 <div class="row">
+    @php
+        // Satu batas gram per anak untuk semua form kunjungan (spec 2026-10-02 §5.5).
+        $batasGramAnak = \App\Support\SatuanBeratBadan::batasGram($anak->tgl_lahir);
+        $batasGramTeks = $batasGramAnak !== '' ? \Carbon\Carbon::parse($batasGramAnak)->format('d/m/Y') : '—';
+    @endphp
     @foreach ($dataAnak as $data)
     <form method="post" action="{{route('admin.updateDataAnak',$data->id)}}">
         @csrf
@@ -341,9 +346,14 @@ Edit Anak
                 <label>Tinggi Badan <span class="text-danger" aria-hidden="true">*</span></label>
                 <input type="text" name="tb" value="{{$data->tb}}" class="form-control" required>
                 <small class="form-text text-muted">Gunakan titik (.) untuk desimal.</small>
-                <label>Berat Badan <span class="text-danger" aria-hidden="true">*</span></label>
-                <input type="text" name="bb" value="{{$data->bb}}" class="form-control" required>
-                <small class="form-text text-muted">Gunakan titik (.) untuk desimal.</small>
+                @php
+                    $satuanBb = \App\Support\SatuanBeratBadan::untuk($anak->tgl_lahir, $data->tgl_kunjungan);
+                    $idBb = 'k' . $data->id . '_bb';
+                @endphp
+                <label for="{{ $idBb }}">Berat Badan <span data-satuan-label="{{ $idBb }}">({{ \App\Support\SatuanBeratBadan::label($satuanBb) }})</span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="number" step="{{ $satuanBb === 'g' ? '1' : 'any' }}" name="bb" id="{{ $idBb }}" class="form-control" required value="{{ \App\Support\SatuanBeratBadan::untukTampil((float) $data->bb, $satuanBb) }}" data-batas-gram="{{ $batasGramAnak }}" data-satuan="{{ $satuanBb }}">
+                <small class="form-text text-muted">Di bawah 2 bulan (sebelum {{ $batasGramTeks }}): gram, mis. 3250. Sesudahnya kg, titik untuk desimal.</small>
+                <small class="form-text text-muted" aria-live="polite" data-satuan-info="{{ $idBb }}"></small>
                 <label>Lingkar Lengan Atas <span class="text-danger" aria-hidden="true">*</span></label>
                 <input type="text" name="lla" value="{{$data->lla}}" class="form-control" required>
                 <small class="form-text text-muted">Gunakan titik (.) untuk desimal.</small>
@@ -476,4 +486,5 @@ Edit Anak
         });
     });
 </script>
+<script src="{{ asset('js/satuan-bb.js') }}" defer></script>
 @endsection

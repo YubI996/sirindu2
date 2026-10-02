@@ -191,7 +191,7 @@ Anak
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label for="bb">Berat Badan Lahir <span class="text-danger" aria-hidden="true">*</span></label>
+                <label for="bb">Berat Badan Lahir (kg) <span class="text-danger" aria-hidden="true">*</span></label>
                 <input type="text" name="bb" id="bb" class="form-control" required>
                 <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
             </div>

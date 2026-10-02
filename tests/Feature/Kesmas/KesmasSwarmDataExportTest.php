@@ -158,7 +158,8 @@ class KesmasSwarmDataExportTest extends TestCase
     {
         $anak = $this->anak();
         $lain = $this->kunjungan($anak, '2025-03-10', ['kn1' => 1, 'catatan_pengukuran' => 'Jangan disentuh']);
-        $payload = array_merge($this->dasar(), ['id_anak_hash' => $anak->hashid], $this->layanan());
+        // Kunjungan 10 Feb 2025 pada anak lahir 10 Jan 2025 → BB dalam gram (spec 2026-10-02 §5.5).
+        $payload = array_merge($this->dasar(), ['id_anak_hash' => $anak->hashid, 'bb' => '4500'], $this->layanan());
         $this->actingAs($this->admin)->post(route('admin.storeDataAnak'), $payload)
             ->assertRedirect(route('admin.anak'))->assertSessionDoesntHaveErrors();
         $data = DataAnak::where('id_anak', $anak->id)->whereDate('tgl_kunjungan', '2025-02-10')->firstOrFail();
@@ -211,7 +212,8 @@ class KesmasSwarmDataExportTest extends TestCase
 
         $invalidLayanan = array_fill_keys(array_keys(config('kesmas.layanan')), 'yes');
         $invalidLayanan += ['tgl_penanda_ckg' => '2025-02-30', 'pemeriksaan_gigi' => 'Sehat sekali', 'rujukan' => 'Tetangga', 'mt_pangan_lokal' => str_repeat('x', 101)];
-        $this->putJson(route('admin.updateDataAnak', $data->id), $this->dasar(array_merge($invalidLayanan, ['bb' => 9])))
+        // 5000 g = perubahan BB yang SAH; tetap tak boleh tersimpan karena Kesmas tidak sah.
+        $this->putJson(route('admin.updateDataAnak', $data->id), $this->dasar(array_merge($invalidLayanan, ['bb' => '5000'])))
             ->assertUnprocessable()->assertJsonValidationErrors(array_keys($invalidLayanan));
         $this->assertSame(4.5, (float) $data->fresh()->bb);
         $this->assertDatabaseHas('data_anak', array_merge(['id' => $data->id], $this->layanan()));

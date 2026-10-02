@@ -11,6 +11,7 @@ use App\Repositories\Admin\Anak\AnakRepository as AnakInterface;
 use App\Http\Requests\Admin\User\storeUserRequest;
 use App\Http\Requests\Admin\Anak\storeAnakRequest;
 use App\Http\Requests\Admin\Anak\updateAnakRequest;
+use App\Http\Requests\Admin\Anak\AturanBeratBadan;
 use App\Http\Requests\Admin\Anak\KesmasRules;
 use App\Services\KesmasPresenter;
 use App\Models\Anak;
@@ -490,12 +491,17 @@ ANAK
 
     public function storeDataAnak(Request $request)
     {
+        // Anak dicari SEBELUM validasi: satuan BB (gram < 2 bln / kg) bergantung tanggal lahirnya
+        // (spec 2026-10-02 §5.5). Hash salah → 404.
+        $request->validate(['id_anak_hash' => 'required']);
+        $anak = Anak::findByHashIdOrFail($request->id_anak_hash);
+
         $request->validate(array_merge([
             'id_anak_hash' => 'required',
             'tgl_kunjungan' => 'required|date',
             'posisi' => 'required|in:H,L',
             'tb' => 'required|numeric',
-            'bb' => 'required|numeric',
+            'bb' => ['required', 'numeric', AturanBeratBadan::rentang($anak->tgl_lahir, $request->input('tgl_kunjungan'))],
             'lla' => 'required|numeric',
             'lk' => 'required|numeric',
         ], KesmasRules::kunjungan()), [ // layanan Kesmas per kunjungan (spec 2026-09-15 §3.3), semua opsional
@@ -513,9 +519,10 @@ ANAK
             'lk.numeric' => 'Lingkar kepala harus berupa angka.',
         ]);
 
-        try {
-            $anak = Anak::findByHashIdOrFail($request->id_anak_hash);
+        // data_anak.bb selalu kg: gram dari form dikonversi di server, bukan di JS (spec 2026-10-02 §5.5).
+        $request->merge(['bb' => AturanBeratBadan::untukDisimpan($anak->tgl_lahir, $request->tgl_kunjungan, $request->bb)]);
 
+        try {
             // Umur (bln) dihitung otomatis dari tgl lahir → tgl kunjungan,
             // tidak lagi diinput manual di form.
             $bln = usia_bulan($anak->tgl_lahir, $request->tgl_kunjungan) ?? 0;
@@ -570,9 +577,21 @@ ANAK
 
     public function updateDataAnak(Request $request, $id)
     {
-        // Hanya field Kesmas yang divalidasi (semua opsional); field lama tetap seperti
-        // sebelumnya. Harus SEBELUM try agar ValidationException tidak tertelan catch.
-        $request->validate(KesmasRules::kunjungan());
+        $dataAnak = DataAnak::findOrFail($id);
+        $tglLahir = Anak::whereKey($dataAnak->id_anak)->value('tgl_lahir');
+        $bbTersimpan = $dataAnak->getRawOriginal('bb');
+
+        // Field Kesmas (opsional) + tanggal & BB (wajib, satuan mengikuti umur — spec 2026-10-02 §5.5);
+        // field lama lain tetap seperti sebelumnya. Harus SEBELUM try agar ValidationException tidak
+        // tertelan catch. Rentang BB hanya dicek bila nilainya berubah (placeholder bb = 0 tetap bisa disimpan).
+        $request->validate(array_merge([
+            'tgl_kunjungan' => 'required|date',
+            'bb' => ['required', 'numeric', AturanBeratBadan::rentang(
+                $tglLahir, $request->input('tgl_kunjungan'), $bbTersimpan === null ? null : (float) $bbTersimpan
+            )],
+        ], KesmasRules::kunjungan()));
+
+        $request->merge(['bb' => AturanBeratBadan::untukDisimpan($tglLahir, $request->tgl_kunjungan, $request->bb, $bbTersimpan)]);
 
         try {
             $this->anakRepository->updateDataAnak($request, $id);

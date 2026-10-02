@@ -37,7 +37,8 @@ class FormPengukuranKesmasTest extends TestCase
 
         return array_merge([
             'id_anak_hash' => $this->anak->hashid, 'tgl_kunjungan' => '2025-02-10', 'posisi' => 'L',
-            'tb' => 55, 'bb' => 4.5, 'lla' => 11, 'lk' => 38, 'asi' => 1, 'vit_a' => 0, 'obat_cacing' => 0, 'ddtka' => '',
+            // Kunjungan 10 Feb 2025, lahir 10 Jan 2025 → umur < 2 bulan → BB dalam gram (spec 2026-10-02 §5.5).
+            'tb' => 55, 'bb' => '4500', 'lla' => 11, 'lk' => 38, 'asi' => 1, 'vit_a' => 0, 'obat_cacing' => 0, 'ddtka' => '',
             'tgl_penanda_ckg' => '', 'pemeriksaan_gigi' => '', 'rujukan' => '', 'mt_pangan_lokal' => '',
             'catatan_pengukuran' => '', 'pemeriksaan_lainnya' => '', 'pola_makan' => '', 'pola_asuh' => '', 'intervensi' => '',
         ], $checkbox, $extra);
@@ -122,7 +123,7 @@ class FormPengukuranKesmasTest extends TestCase
         $d = $this->kunjunganTersimpan(['kn1' => 1, 'pemeriksaan_gigi' => 'Karies']);
 
         $this->actingAs($this->admin)->put(route('admin.updateDataAnak', $d->id), [
-            'tgl_kunjungan' => '2025-02-10', 'posisi' => 'L', 'tb' => 56, 'bb' => 4.6, 'lla' => 11, 'lk' => 38,
+            'tgl_kunjungan' => '2025-02-10', 'posisi' => 'L', 'tb' => 56, 'bb' => '4600', 'lla' => 11, 'lk' => 38,
             'asi' => 1, 'vit_a' => 0, 'obat_cacing' => 0, 'ddtka' => '',
         ])->assertRedirect(route('admin.anak'));
 

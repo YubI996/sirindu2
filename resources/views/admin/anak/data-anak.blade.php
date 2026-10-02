@@ -28,7 +28,7 @@ Data Anak
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label for="tgl_kunjungan">Tanggal Kunjungan <span class="text-danger" aria-hidden="true">*</span></label>
-                <input type="date" name="tgl_kunjungan" id="tgl_kunjungan" class="form-control" required>
+                <input type="date" name="tgl_kunjungan" id="tgl_kunjungan" class="form-control" required value="{{ old('tgl_kunjungan') }}">
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
@@ -54,11 +54,26 @@ Data Anak
                 <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
             </div>
         </div>
+        @php
+            // Satuan BB (spec 2026-10-02 §5.5): gram bila kunjungan sebelum batas, selain itu kg.
+            // Server tetap yang memutuskan; satuan-bb.js hanya menyelaraskan label & nilai.
+            $batasGram = \App\Support\SatuanBeratBadan::batasGram($anak->tgl_lahir);
+            $satuanBb  = \App\Support\SatuanBeratBadan::untuk($anak->tgl_lahir, old('tgl_kunjungan') ?: now()->toDateString());
+            $batasTeks = $batasGram !== '' ? \Carbon\Carbon::parse($batasGram)->format('d/m/Y') : null;
+        @endphp
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
-                <label for="bb">Berat Badan <span class="text-danger" aria-hidden="true">*</span></label>
-                <input type="number" step="any" name="bb" id="bb" class="form-control" required>
-                <small class="form-text text-muted">Gunakan titik (.) untuk angka desimal.</small>
+                <label for="bb">Berat Badan <span data-satuan-label="bb">({{ \App\Support\SatuanBeratBadan::label($satuanBb) }})</span> <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="number" step="{{ $satuanBb === 'g' ? '1' : 'any' }}" name="bb" id="bb" class="form-control" required value="{{ old('bb') }}" data-batas-gram="{{ $batasGram }}" data-satuan="{{ $satuanBb }}" placeholder="{{ $satuanBb === 'g' ? 'mis. 3250' : 'mis. 7.5' }}" aria-describedby="bb_bantuan">
+                <small id="bb_bantuan" class="form-text text-muted">
+                    @if ($batasTeks)
+                    Kunjungan sebelum {{ $batasTeks }} (umur di bawah 2 bulan): isi dalam <strong>gram</strong>, mis. 3250.
+                    Sesudahnya dalam <strong>kg</strong>, titik untuk desimal, mis. 7.5.
+                    @else
+                    Isi dalam kg, titik untuk desimal, mis. 7.5.
+                    @endif
+                </small>
+                <small class="form-text text-muted" aria-live="polite" data-satuan-info="bb"></small>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
@@ -239,6 +254,7 @@ Data Anak
 
 @endsection
 @section('custom_scripts')
+<script src="{{ asset('js/satuan-bb.js') }}" defer></script>
 <script>
 (function() {
     var imunisasiIndex = 1;
