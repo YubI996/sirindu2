@@ -56,6 +56,7 @@ class KesmasDashboardMemoriTest extends TestCase
         $sdidtk  = $svc->sdidtk($p, []);
         $ckg     = $svc->ckg($p, []);
         $layanan = $svc->layananLingkungan($p, []);
+        $penandaan = $svc->penandaanSasaran($p, []);
 
         $jumlahQuery = count(DB::getQueryLog());
         DB::disableQueryLog();
@@ -71,11 +72,12 @@ class KesmasDashboardMemoriTest extends TestCase
         $this->assertSame(self::JUMLAH_ANAK, $ckg['kelompok']['t2']['sasaran']);
         $this->assertSame(self::JUMLAH_ANAK, $layanan['sasaran']);
         $this->assertSame(self::JUMLAH_ANAK, $layanan['layanan']['baris']['kn1']['terisi']);
+        $this->assertSame(self::JUMLAH_ANAK, $penandaan['bertanda']);
 
         $this->assertLessThan(self::BATAS_MB, $kenaikanMb,
             sprintf('Memori puncak naik %.1f MB untuk %d anak — agregat memuat populasi ke PHP.', $kenaikanMb, self::JUMLAH_ANAK));
         $this->assertLessThanOrEqual(self::BATAS_QUERY, $jumlahQuery,
-            sprintf('%d query untuk enam agregat — ada query per anak/per kelompok yang seharusnya digabung.', $jumlahQuery));
+            sprintf('%d query untuk tujuh agregat — ada query per anak/per kelompok yang seharusnya digabung.', $jumlahQuery));
     }
 
     public function test_registri_hanya_memuat_satu_halaman(): void
@@ -137,6 +139,7 @@ class KesmasDashboardMemoriTest extends TestCase
                     'nik' => '3' . str_pad((string) $i, 15, '0', STR_PAD_LEFT), 'jk' => 1, 'tempat_lahir' => 'Bontang',
                     'tgl_lahir' => '2023-06-30', 'status' => 1, 'no' => '1', 'sumber' => 'manual',
                     'id_kec' => $idKec, 'id_kel' => $idKel, 'created_at' => $now, 'updated_at' => $now,
+                    'sasaran_balita_kesmas' => 1,
                 ];
             }
             DB::table('anak')->insert($anak);
@@ -159,5 +162,8 @@ class KesmasDashboardMemoriTest extends TestCase
         }
         $this->assertDatabaseCount('anak', self::JUMLAH_ANAK);
         $this->assertDatabaseCount('data_anak', self::JUMLAH_ANAK * self::KUNJUNGAN_PER_ANAK);
+        // Dasbor opt-in: tanpa tanda, populasi kosong dan tes memori/kueri LOLOS PALSU.
+        $this->assertSame($jumlah, DB::table('anak')->where('sasaran_balita_kesmas', 1)->count(),
+            'Fixture memori harus bertanda Sasaran Balita Kesmas');
     }
 }

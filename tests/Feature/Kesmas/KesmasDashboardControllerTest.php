@@ -45,7 +45,7 @@ class KesmasDashboardControllerTest extends TestCase
         return Anak::create(array_merge([
             'nama' => $nama, 'nik' => str_pad((string) $n, 16, '5', STR_PAD_LEFT), 'jk' => 1, 'tempat_lahir' => 'Bontang',
             'tgl_lahir' => $tglLahir, 'status' => 1, 'no' => '1', 'sumber' => 'manual',
-            'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id,
+            'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id, 'sasaran_balita_kesmas' => 1,
         ], $extra));
     }
 
@@ -318,5 +318,36 @@ class KesmasDashboardControllerTest extends TestCase
         $this->assertStringContainsString('1 anak belum diisi untuk setiap layanan', $blok);
         $this->assertStringContainsString('0 bayi belum diisi untuk setiap skrining', $blok);
         $this->assertStringContainsString('1 anak belum diisi untuk setiap indikator sanitasi', $blok);
+    }
+
+    public function test_baris_penandaan_dan_peringatan_saat_belum_ada_anak_bertanda(): void
+    {
+        // Review Focus #5: hari pertama setelah rilis.
+        // Lahir 2020 (66 bln pada akhir 2025): masuk 0–72 bln tetapi di luar kohort IDL/IBL 2025. Chip
+        // IDL/IBL sengaja tidak memakai tanda (spec 2026-10-02 §6.3 butir 7) dan menampilkan "0,0 %" bagi
+        // anak kohortnya; anak kohort 2023 di sini akan membuat assertion "0,0 %" di bawah gagal palsu.
+        $this->anak('Belum Ditandai', '2020-06-30', ['sasaran_balita_kesmas' => null]);
+
+        $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard', ['tahun' => 2025]))->assertOk()->getContent();
+        $blok = $this->blok($html, 'penandaan');
+
+        $this->assertStringContainsString('km-penandaan--kosong', $blok);
+        $this->assertStringContainsString('Belum ada anak bertanda Sasaran Balita Kesmas', $blok);
+        $this->assertStringContainsString('1 belum ditandai', $blok);
+        foreach (['spm-balita', 'spm-bayi', 'spm-anak-balita', 'spm-tk'] as $nama) {
+            $this->assertStringNotContainsString('0,0 %', $this->blok($html, $nama), "{$nama}: pembagi 0 harus '—'");
+        }
+    }
+
+    public function test_baris_penandaan_menyebut_jumlah_bertanda(): void
+    {
+        $this->anak('Bertanda', '2023-06-30');
+        $this->anak('Belum', '2023-06-30', ['sasaran_balita_kesmas' => null]);
+
+        $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard', ['tahun' => 2025]))->assertOk()->getContent();
+        $blok = $this->blok($html, 'penandaan');
+
+        $this->assertStringNotContainsString('km-penandaan--kosong', $blok);
+        $this->assertMatchesRegularExpression('/<b class="im-num">1<\/b> dari 2 anak 0–72 bln sudah ditandai/', $blok);
     }
 }

@@ -94,6 +94,18 @@
         </a>
     </header>
 
+    {{-- Penandaan Sasaran Balita Kesmas (spec 2026-10-02 §6.3): populasi dasbor = anak bertanda 1 --}}
+    <section class="km-penandaan {{ $penandaan['bertanda'] === 0 ? 'km-penandaan--kosong' : '' }}" data-blok="penandaan" role="status" aria-label="Penandaan sasaran">
+        @if($penandaan['bertanda'] === 0)
+            <b>Belum ada anak bertanda Sasaran Balita Kesmas di wilayah ini</b>, jadi kartu menampilkan "—".
+            Centang "Sasaran Balita Kesmas" di Edit Anak, atau minta admin menjalankan penandaan massal.
+            <span class="km-penandaan__angka">({{ $fmt($penandaan['total']) }} anak 0–72 bln: {{ $fmt($penandaan['belum']) }} belum ditandai · {{ $fmt($penandaan['dilepas']) }} dilepas)</span>
+        @else
+            Sasaran Balita Kesmas: <b class="im-num">{{ $fmt($penandaan['bertanda']) }}</b> dari {{ $fmt($penandaan['total']) }} anak 0–72 bln sudah ditandai
+            · {{ $fmt($penandaan['belum']) }} belum ditandai · {{ $fmt($penandaan['dilepas']) }} dilepas
+        @endif
+    </section><!-- /penandaan -->
+
     @include('admin.kesmas.partials._filter')
 
     <div class="km-usia" role="group" aria-label="Kelompok usia untuk registri">

@@ -49,6 +49,7 @@ class KesmasDashboardController extends Controller
             'filters' => $filters,
             'usia'    => $usia,
             'sasaran' => $svc->sasaran($periode, $filters),
+            'penandaan' => $svc->penandaanSasaran($periode, $filters),
             'spm'     => $svc->spmKohort($periode, $filters),
             'tk'      => $svc->pemantauanTk($periode, $filters),
             'sdidtk'  => $svc->sdidtk($periode, $filters),

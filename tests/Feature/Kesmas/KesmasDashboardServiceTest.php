@@ -72,6 +72,8 @@ class KesmasDashboardServiceTest extends TestCase
             'tempat_lahir' => 'Bontang', 'tgl_lahir' => Carbon::create(2025, 12, 31)->subMonthsNoOverflow($umurBln)->toDateString(),
             'status' => 1, 'no' => '1', 'sumber' => 'manual',
             'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id,
+            // Dasbor Kesmas opt-in (spec 2026-10-02 §6.3): fixture harus bertanda, kalau tidak populasinya kosong.
+            'sasaran_balita_kesmas' => 1,
         ], $extra));
     }
 
@@ -102,7 +104,7 @@ class KesmasDashboardServiceTest extends TestCase
         $this->anak(65);   // prasekolah
         $this->anak(80);   // umur tahun 3–6 saja
         Anak::create(['nama' => 'Lahir tahun depan', 'nik' => '9999999999999999', 'jk' => 2, 'tempat_lahir' => 'Bontang',
-            'tgl_lahir' => '2026-01-15', 'status' => 1, 'no' => '1', 'sumber' => 'manual', 'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id]);
+            'tgl_lahir' => '2026-01-15', 'status' => 1, 'no' => '1', 'sumber' => 'manual', 'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id, 'sasaran_balita_kesmas' => 1]);
 
         $s = $this->svc->sasaran($this->tahun2025(), []);
 
@@ -122,7 +124,7 @@ class KesmasDashboardServiceTest extends TestCase
     {
         // Lahir 1 Jan 2024: pada 31 Des 2024 berumur 11 bln (bayi), pada 31 Des 2025 berumur 23 bln.
         Anak::create(['nama' => 'Anak 2024', 'nik' => '1111111111111111', 'jk' => 1, 'tempat_lahir' => 'Bontang',
-            'tgl_lahir' => '2024-01-01', 'status' => 1, 'no' => '1', 'sumber' => 'manual', 'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id]);
+            'tgl_lahir' => '2024-01-01', 'status' => 1, 'no' => '1', 'sumber' => 'manual', 'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id, 'sasaran_balita_kesmas' => 1]);
 
         $this->assertSame(1, $this->svc->sasaran(PeriodeKesmas::dari(2024, 'tahun'), [])['bayi']);
         $this->assertSame(0, $this->svc->sasaran($this->tahun2025(), [])['bayi']);
@@ -554,6 +556,50 @@ class KesmasDashboardServiceTest extends TestCase
         $this->assertSame('Usia 3–6 tahun', $c['kelompok']['t3']['label']);
         $this->assertSame(['terisi' => 3, 'sehat' => 1, 'persen_sehat' => 33.3], $c['gigi']);
         $this->assertSame(1, $c['rujuk_gigi']);
+    }
+
+    // ── Tanda Sasaran Balita Kesmas (spec 2026-10-02 §6.3) ─────────────────
+
+    public function test_anak_belum_ditandai_dan_dilepas_tidak_masuk_agregat_mana_pun(): void
+    {
+        $this->seedVaksin();
+        foreach ([1, null, 0] as $tanda) {
+            $a = $this->anak(30, ['sasaran_balita_kesmas' => $tanda, 'air_bersih' => 1]);
+            $this->kunjunganBulanan($a, 8, 1, ['ddtka' => 'Sesuai', 'vit_a' => 1, 'kn1' => 1, 'tgl_penanda_ckg' => '2025-01-15']);
+        }
+        $p = $this->tahun2025();
+
+        $this->assertSame(1, $this->svc->sasaran($p, [])['semua']);
+        $this->assertSame(1, $this->svc->spmKohort($p, [])['anak_balita']['sasaran']);
+        $this->assertSame(1, $this->svc->pemantauanTk($p, [])['sasaran']);
+        $this->assertSame(1, $this->svc->sdidtk($p, [])['total']['sasaran']);
+        $this->assertSame(1, $this->svc->ckg($p, [])['kelompok']['t2']['sasaran']);
+        $l = $this->svc->layananLingkungan($p, []);
+        $this->assertSame(1, $l['sasaran']);
+        $this->assertSame(1, $l['layanan']['baris']['kn1']['terisi']);
+        $this->assertSame(1, $l['sanitasi']['baris']['air_bersih']['terisi']);
+        $this->assertSame(1, $this->svc->registri($p, [])['total']);
+    }
+
+    public function test_penandaan_sasaran_dihitung_tanpa_filter_tanda(): void
+    {
+        $this->anak(5);                                                             // bertanda (bawaan helper)
+        $this->anak(30, ['sasaran_balita_kesmas' => null]);
+        $this->anak(40, ['sasaran_balita_kesmas' => null]);
+        $this->anak(60, ['sasaran_balita_kesmas' => 0]);
+        $this->anak(80, ['sasaran_balita_kesmas' => null]);                         // > 72 bln — di luar dasbor
+        $this->anak(20, ['sasaran_balita_kesmas' => null, 'id_kel' => $this->kelLain->id]);
+
+        $this->assertSame(['total' => 5, 'bertanda' => 1, 'dilepas' => 1, 'belum' => 3],
+            $this->svc->penandaanSasaran($this->tahun2025(), []));
+        $this->assertSame(['total' => 4, 'bertanda' => 1, 'dilepas' => 1, 'belum' => 2],
+            $this->svc->penandaanSasaran($this->tahun2025(), ['id_kelurahan' => $this->kel->id]));
+    }
+
+    public function test_penandaan_tanpa_anak_semua_nol(): void
+    {
+        $this->assertSame(['total' => 0, 'bertanda' => 0, 'dilepas' => 0, 'belum' => 0],
+            $this->svc->penandaanSasaran($this->tahun2025(), []));
     }
 
     // ── Registri per anak (spec §3.1) ─────────────────────────────────────

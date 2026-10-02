@@ -39,7 +39,7 @@ class KesmasDashboardService
     /** Kolom anak yang dibawa subquery sasaran (dipakai skrining neonatal & sanitasi). */
     private const KOLOM_KESMAS_ANAK = [
         'skrining_shk', 'skrining_shak', 'skrining_g6pd', 'pemeriksaan_hepatitis_b',
-        'air_bersih', 'jamban_sehat', 'merokok_keluarga',
+        'air_bersih', 'jamban_sehat', 'merokok_keluarga', 'sasaran_balita_kesmas',
     ];
 
     /** Persen 1 desimal; pembagi 0 → null (tampil "—", bukan 0 %). */
@@ -48,8 +48,13 @@ class KesmasDashboardService
         return $sasaran > 0 ? round($n / $sasaran * 100, 1) : null;
     }
 
-    /** Subquery `s`: anak terfilter wilayah dengan umur (bulan) pada akhir periode. */
-    private function sasaranSub(PeriodeKesmas $p, array $filters): Builder
+    /**
+     * Subquery `s`: anak terfilter wilayah dengan umur (bulan) pada akhir periode.
+     * Bawaan hanya anak bertanda Sasaran Balita Kesmas = 1 (opt-in, spec 2026-10-02 §6.3) —
+     * NULL (belum ditandai) dan 0 (dilepas) tidak dihitung. $hanyaBertanda = false khusus
+     * penandaanSasaran(), yang justru menghitung ketiganya.
+     */
+    private function sasaranSub(PeriodeKesmas $p, array $filters, bool $hanyaBertanda = true): Builder
     {
         $akhir = $p->akhir()->toDateString();
         $q = DB::table('anak as a')
@@ -59,8 +64,28 @@ class KesmasDashboardService
             )
             ->whereNotNull('a.tgl_lahir')
             ->where('a.tgl_lahir', '<=', $akhir);
+        if ($hanyaBertanda) {
+            $q->where('a.sasaran_balita_kesmas', 1);
+        }
 
         return $this->applyWilayahFilters($q, $filters, 'a');
+    }
+
+    /**
+     * Cakupan penandaan Sasaran Balita Kesmas (spec 2026-10-02 §6.3): anak 0–72 bln (umur akhir
+     * periode) di wilayah terfilter, TANPA filter tanda — menjelaskan kenapa kartu kecil atau kosong.
+     *
+     * @return array{total: int, bertanda: int, dilepas: int, belum: int}
+     */
+    public function penandaanSasaran(PeriodeKesmas $p, array $filters): array
+    {
+        $r = DB::query()->fromSub($this->sasaranSub($p, $filters, false), 's')
+            ->where('s.umur', '<=', 72)
+            ->selectRaw('COUNT(*) as total, SUM(sasaran_balita_kesmas = 1) as bertanda, '
+                . 'SUM(sasaran_balita_kesmas = 0) as dilepas, SUM(sasaran_balita_kesmas IS NULL) as belum')
+            ->first();
+
+        return array_map('intval', (array) $r);
     }
 
     private function dariSasaran(PeriodeKesmas $p, array $filters): Builder
@@ -478,7 +503,8 @@ class KesmasDashboardService
             ->leftJoin('data_anak as da', 'da.id', '=', 't.id_kunjungan')
             ->whereNotNull('a.tgl_lahir')
             ->where('a.tgl_lahir', '<=', $akhir)
-            ->whereRaw('TIMESTAMPDIFF(MONTH, a.tgl_lahir, ?) BETWEEN ? AND ?', [$akhir, $min, $max]);
+            ->whereRaw('TIMESTAMPDIFF(MONTH, a.tgl_lahir, ?) BETWEEN ? AND ?', [$akhir, $min, $max])
+            ->where('a.sasaran_balita_kesmas', 1); // populasi sama dengan kartu (opt-in, spec 2026-10-02 §6.3)
         $this->applyWilayahFilters($base, $filters, 'a');
         if ($q !== '') {
             // Terikat sebagai parameter; % _ \ dari pengguna dibaca harfiah, bukan wildcard.

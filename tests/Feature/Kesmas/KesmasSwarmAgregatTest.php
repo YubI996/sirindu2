@@ -53,7 +53,7 @@ class KesmasSwarmAgregatTest extends TestCase
             'nik' => str_pad((string) $this->nomor, 16, '7', STR_PAD_LEFT),
             'jk' => 1, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => $lahir,
             'status' => 1, 'no' => '1', 'sumber' => 'manual',
-            'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id,
+            'id_kec' => $this->kec->id, 'id_kel' => $this->kel->id, 'sasaran_balita_kesmas' => 1,
         ], $extra));
     }
 

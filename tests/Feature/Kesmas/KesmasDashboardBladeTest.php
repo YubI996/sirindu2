@@ -62,7 +62,7 @@ class KesmasDashboardBladeTest extends TestCase
     public function test_blok_ditutup_komentar_penanda(): void
     {
         $html = $this->semua();
-        foreach (['spm-balita', 'spm-bayi', 'spm-anak-balita', 'spm-tk', 'sdidtk', 'ckg', 'idl', 'layanan', 'registri'] as $nama) {
+        foreach (['penandaan', 'spm-balita', 'spm-bayi', 'spm-anak-balita', 'spm-tk', 'sdidtk', 'ckg', 'idl', 'layanan', 'registri'] as $nama) {
             $this->assertStringContainsString('data-blok="' . $nama . '"', $html);
             $this->assertStringContainsString('<!-- /' . $nama . ' -->', $html, "Blok {$nama} harus ditutup komentar penanda (dipakai tes blok())");
         }
