@@ -67,6 +67,16 @@ class TandaiSasaranKesmas extends Command
         }
 
         if ($this->option('batalkan') !== null) {
+            // --batalkan selalu membatalkan SELURUH batch; opsi cakupan tidak akan dibaca, jadi tolak
+            // daripada diabaikan diam-diam (petugas mengira hanya satu kelurahan yang dibatalkan).
+            $cakupan = $this->opsiCakupanDipakai();
+            if ($cakupan !== []) {
+                $this->error('--batalkan selalu membatalkan seluruh batch dan tidak bisa dibatasi cakupannya. '
+                    . 'Opsi berikut tidak boleh dipakai bersama --batalkan: ' . implode(', ', $cakupan) . '.');
+
+                return self::FAILURE;
+            }
+
             return $this->batalkan((string) $this->option('batalkan'), $alasan);
         }
 
@@ -113,6 +123,9 @@ class TandaiSasaranKesmas extends Command
             ->orderBy('a.id')->pluck('a.id')->all();
 
         $batch = (string) Str::uuid();
+        // Dicetak SEBELUM potongan pertama ditulis: bila proses mati di tengah, sebagian anak sudah
+        // bertanda dan kode ini satu-satunya pegangan untuk --batalkan.
+        $this->line("Kode batch: {$batch}");
         $ditandai = 0;
         foreach (array_chunk($ids, self::POTONGAN) as $potongan) {
             $ditandai += $this->tulis($potongan, null, 1, 'perintah', $batch, $alasan);
@@ -248,6 +261,20 @@ class TandaiSasaranKesmas extends Command
         }
 
         return $alasan;
+    }
+
+    /** @return list<string>  opsi cakupan/pengecualian yang diisi, mis. ['--kelurahan', '--semua']. */
+    private function opsiCakupanDipakai(): array
+    {
+        $dipakai = [];
+        foreach ([...array_keys(self::WILAYAH), 'lahir-sejak', 'lahir-sampai', 'semua', 'termasuk-pindah', 'termasuk-tidak-aktif'] as $opsi) {
+            $nilai = $this->option($opsi);
+            if ($nilai !== null && $nilai !== false) {
+                $dipakai[] = "--{$opsi}";
+            }
+        }
+
+        return $dipakai;
     }
 
     private function tanggalSah(string $tgl): bool

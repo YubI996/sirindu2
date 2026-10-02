@@ -379,7 +379,8 @@ untuk melihat label satuan.
 
 **Rollback**
 
-- Penandaan: `kesmas:tandai-sasaran --batalkan=<batch> --jalankan`.
+- Penandaan: `kesmas:tandai-sasaran --batalkan=<batch> --jalankan --alasan="…"` (`--alasan` wajib
+  bersama `--jalankan`; `--batalkan` selalu seluruh batch, tanpa opsi cakupan seperti `--kelurahan`).
 - Kode: revert commit → `php artisan migrate:rollback --step=2`. Sebelumnya ekspor
   `SELECT id, tgl_hbig, sasaran_balita_kesmas FROM anak WHERE tgl_hbig IS NOT NULL OR
   sasaran_balita_kesmas IS NOT NULL` dan `sasaran_kesmas_log`, karena kolom dan tabelnya ikut terhapus.

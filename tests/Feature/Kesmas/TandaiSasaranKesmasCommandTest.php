@@ -9,6 +9,7 @@ use App\Models\Puskesmas;
 use App\Models\SasaranKesmasLog;
 use App\Support\WilkerPuskesmas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -235,6 +236,94 @@ class TandaiSasaranKesmasCommandTest extends TestCase
         // Dibatalkan lagi: tak ada yang tersisa untuk dikembalikan.
         $this->artisan('kesmas:tandai-sasaran', ['--batalkan' => $batch, '--jalankan' => true, '--alasan' => 'ulang'])->assertSuccessful();
         $this->assertSame(1, SasaranKesmasLog::where('sumber', 'batal')->count());
+    }
+
+    public function test_batalkan_dengan_opsi_cakupan_ditolak_tanpa_menulis(): void
+    {
+        $a = $this->anak($this->tanjungLaut);
+        $b = $this->anak($this->berbas);
+        $this->artisan('kesmas:tandai-sasaran', ['--semua' => true, '--jalankan' => true, '--alasan' => 'awal'])->assertSuccessful();
+        $batch = SasaranKesmasLog::value('batch');
+        $logAwal = SasaranKesmasLog::count();
+
+        $kasus = [
+            '--kelurahan' => $this->tanjungLaut->id,
+            '--lahir-sejak' => '2020-01-01',
+            '--semua' => true,
+            '--termasuk-pindah' => true,
+        ];
+        foreach ($kasus as $opsi => $nilai) {
+            $kode = Artisan::call('kesmas:tandai-sasaran', [
+                '--batalkan' => $batch, '--jalankan' => true, '--alasan' => 'coba', $opsi => $nilai,
+            ]);
+            $keluaran = Artisan::output();
+
+            $this->assertSame(1, $kode, $opsi);
+            $this->assertStringContainsString($opsi, $keluaran);
+            $this->assertStringContainsString('seluruh batch', $keluaran);
+        }
+
+        $this->assertSame(1, $this->nilai($a));
+        $this->assertSame(1, $this->nilai($b));
+        $this->assertSame($logAwal, SasaranKesmasLog::count());
+    }
+
+    public function test_batalkan_menyebut_semua_opsi_cakupan_yang_dipakai(): void
+    {
+        $this->anak($this->tanjungLaut);
+        $this->artisan('kesmas:tandai-sasaran', ['--semua' => true, '--jalankan' => true, '--alasan' => 'awal'])->assertSuccessful();
+        $batch = SasaranKesmasLog::value('batch');
+
+        $this->artisan('kesmas:tandai-sasaran', ['--batalkan' => $batch, '--kecamatan' => 1, '--lahir-sampai' => '2024-12-31'])
+            ->expectsOutputToContain('--kecamatan')
+            ->assertFailed();
+    }
+
+    public function test_kode_batch_dicetak_sebelum_potongan_pertama_ditulis(): void
+    {
+        $this->anak($this->tanjungLaut);
+
+        $kode = Artisan::call('kesmas:tandai-sasaran', [
+            '--kelurahan' => $this->tanjungLaut->id, '--jalankan' => true, '--alasan' => 'uji',
+        ]);
+        $keluaran = Artisan::output();
+
+        $this->assertSame(0, $kode);
+        $batch = SasaranKesmasLog::value('batch');
+        $awal = strpos($keluaran, "Kode batch: {$batch}");
+        $selesai = strpos($keluaran, 'Selesai:');
+        $this->assertNotFalse($awal, 'Kode batch tidak dicetak');
+        $this->assertNotFalse($selesai);
+        $this->assertLessThan($selesai, $awal, 'Kode batch harus muncul sebelum baris Selesai');
+        $this->assertStringContainsString("Kode batch: {$batch}", substr($keluaran, $selesai), 'Baris Selesai tetap memuat kode batch');
+    }
+
+    public function test_angka_dry_run_sama_dengan_baris_yang_ditulis(): void
+    {
+        $this->anak($this->tanjungLaut);                                              // NULL
+        $this->anak($this->tanjungLaut);                                              // NULL
+        $this->anak($this->tanjungLaut, ['sasaran_balita_kesmas' => 0]);              // dilepas
+        $this->anak($this->tanjungLaut, ['sasaran_balita_kesmas' => 1]);              // sudah
+        $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah']);
+        $this->anak($this->tanjungLaut, ['verif_rt_status' => 'meninggal']);
+        $this->anak($this->tanjungLaut, ['status' => 0]);                             // Tidak Aktif
+        $this->anak($this->tanjungLaut, ['verif_rt_status' => 'berdomisili']);        // NULL, ikut
+        $this->anak($this->berbas);                                                   // kelurahan lain
+
+        $opsi = ['--kelurahan' => $this->tanjungLaut->id];
+
+        Artisan::call('kesmas:tandai-sasaran', $opsi);
+        $keluaran = Artisan::output();
+        $this->assertSame(1, preg_match('/akan ditandai (\d+)/u', $keluaran, $m), $keluaran);
+        $akan = (int) $m[1];
+        $this->assertSame(3, $akan);
+        $this->assertSame(0, SasaranKesmasLog::count(), 'dry-run tidak menulis');
+
+        $this->assertSame(0, Artisan::call('kesmas:tandai-sasaran', $opsi + ['--jalankan' => true, '--alasan' => 'uji']));
+
+        $this->assertSame($akan, SasaranKesmasLog::count());
+        $this->assertSame($akan + 1, DB::table('anak')->where('id_kel', $this->tanjungLaut->id)->where('sasaran_balita_kesmas', 1)->count(), 'yang ditulis + 1 anak yang sudah bertanda sebelumnya');
+        $this->assertSame(0, DB::table('anak')->where('id_kel', $this->berbas->id)->where('sasaran_balita_kesmas', 1)->count());
     }
 
     public function test_batch_tak_dikenal_ditolak(): void

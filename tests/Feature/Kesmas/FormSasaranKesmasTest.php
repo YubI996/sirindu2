@@ -134,7 +134,7 @@ class FormSasaranKesmasTest extends TestCase
     public function test_edit_mengikuti_matriks_di_kedua_cabang_update(): void
     {
         // [tersimpan, dikirim, hasil, jumlah log]
-        $kasus = [[null, '1', 1, 1], [1, '0', 0, 1], [0, '1', 1, 1], [1, '1', 1, 0], [0, '0', 0, 0]];
+        $kasus = [[null, '1', 1, 1], [null, '0', null, 0], [1, '0', 0, 1], [0, '1', 1, 1], [1, '1', 1, 0], [0, '0', 0, 0]];
 
         foreach ([false, true] as $gantiLokasi) {
             foreach ($kasus as [$lama, $kirim, $hasil, $jumlahLog]) {
@@ -148,7 +148,13 @@ class FormSasaranKesmasTest extends TestCase
                     ->assertRedirect(route('admin.anak'))->assertSessionDoesntHaveErrors();
 
                 $label = sprintf('tersimpan=%s dikirim=%s cabang=%s', var_export($lama, true), $kirim, $gantiLokasi ? 'ganti-lokasi' : 'tetap');
-                $this->assertSame($hasil, (int) $anak->fresh()->sasaran_balita_kesmas, $label);
+                $tersimpan = $anak->fresh()->sasaran_balita_kesmas;
+                if ($hasil === null) {
+                    $this->assertNull($tersimpan, $label);
+                } else {
+                    $this->assertNotNull($tersimpan, $label);
+                    $this->assertSame($hasil, (int) $tersimpan, $label);
+                }
                 $this->assertSame($jumlahLog, SasaranKesmasLog::where('id_anak', $anak->id)->count(), $label);
                 if ($jumlahLog === 1) {
                     $log = SasaranKesmasLog::where('id_anak', $anak->id)->first();
