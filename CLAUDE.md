@@ -299,3 +299,43 @@ aplikasi tidak tahu maknanya.
   Pola ini berlaku untuk dasbor mana pun yang memakai opsi tersebut.
 - **Yajra DataTables sudah meng-escape kolom non-`rawColumns`.** Menambah `e()` di `editColumn`
   membuat double-escape: nama kategori tercetak `&lt;script&gt;` harfiah di tabel.
+
+### Sasaran Balita Kesmas: opt-in, NULL tetap NULL saat edit, penandaan massal lewat query builder
+
+Dasbor Kesmas (spec `docs/superpowers/specs/2026-10-02-kesmas-permintaan-data-design.md`) hanya menghitung
+`anak.sasaran_balita_kesmas = 1`. NULL = belum pernah ditandai, 0 = dilepas; keduanya **tidak** dihitung.
+
+- Form **Edit Anak** merender NULL sebagai checkbox tak tercentang, jadi `'0'` dari anak NULL **bukan
+  keputusan** — `AnakRepository::sasaranEdit()` membiarkannya NULL. Kalau ditulis 0, membetulkan nama anak
+  lama diam-diam membuatnya "dilepas" dan perintah massal tak lagi menjangkaunya. Tambah Anak (default
+  tercentang) menyimpan `'0'` apa adanya.
+- **Penandaan massal hanya lewat `php artisan kesmas:tandai-sasaran`** (dry-run bawaan, `--jalankan
+  --alasan="…"`, `--batalkan=<batch>`; jejak di `sasaran_kesmas_log`). Perintah itu wajib `DB::table()`
+  tanpa `updated_at`: `AnakObserver::saved` memicu refresh prioritas gizi (OT) per anak, dan
+  `CapilDedupService::sigiziUntouched()` membaca `updated_at = created_at` sebagai "belum tersentuh Capil".
+  Jangan "menyederhanakannya" jadi `Anak::query()->update()` atau loop `save()`.
+- Anak dari import (OT, Kohort, Capil) masuk NULL → tidak terhitung sampai ditandai.
+- **Fixture tes dasbor Kesmas wajib bertanda 1.** Tanpa itu populasinya kosong dan tes — terutama
+  `KesmasDashboardMemoriTest` — lolos palsu (memori kecil karena tak ada yang dihitung).
+- Kartu/chip IDL & IBL di dasbor Kesmas tetap dari `ImunisasiStatusService` dan **tidak** memakai tanda ini.
+
+### BB < 2 bulan diinput dalam gram — hanya di form pengukuran, yang disimpan tetap kg
+
+`data_anak.bb` selalu kg (dibaca z-score, `PrioritasGiziService`, `OtGiziService`, dasbor, importer). Di
+Tambah Data Pengukuran dan form per kunjungan Edit Anak, satuan input = gram bila
+`tgl_kunjungan < tgl_lahir + 2 bulan` (`addMonthsNoOverflow` — 31 Des → 28/29 Feb; tepat di batas = kg),
+diputuskan **server** (`App\Support\SatuanBeratBadan`, `App\Http\Requests\Admin\Anak\AturanBeratBadan`).
+`public/js/satuan-bb.js` hanya membandingkan tanggal dengan `data-batas-gram` dari server — jangan menambah
+aritmetika bulan di JS.
+
+- Rentang gram 300–8.000 dan kg 1–150 sengaja **tidak beririsan** supaya salah satuan pasti ditolak.
+- Di `updateDataAnak`, rentang hanya dicek bila nilai **berubah** — baris placeholder import imunisasi
+  (`bb = 0`) dan data lama ganjil harus tetap bisa disimpan.
+- Form identitas Tambah/Edit Anak dan BBL tetap kg (keputusan pemilik produk). Importer tidak disentuh.
+
+### Tahun sasaran Kesmas ≠ kohort imunisasi
+
+`App\Support\TahunSasaranKesmas` = rumus klien: tahun lahir +1 (IDL), +2 (24 bln), +3 (IBL), +4, +5, +6 —
+kalender murni, hanya tampilan (detail anak, Export Kesmas). `KohortImunisasi` memakai cut-off
+1 Apr–31 Mar dan menilai IBL di tahun Baduta (≈ +2). Perbedaan ini disengaja dan tertulis di halaman;
+jangan "menyamakan" salah satunya tanpa keputusan pemilik produk.
