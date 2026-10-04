@@ -141,19 +141,62 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
                 // Resolve NIK -----------------------------------------------
                 $nikValid = $nikRaw !== '' && ctype_digit($nikRaw) && strlen($nikRaw) >= 15;
                 $nikKey   = $nikValid ? substr($nikRaw, 0, 16) : null;
+                $noKkRaw  = trim((string) ($this->colVal($row, $map, 'no_kk') ?? ''));
+
+                // Anak yang SUDAH ada dan dicocokkan lewat nama+tgl lahir (bukan lewat NIK):
+                // diperbarui dengan aturan "isi yang diberikan" (lihat perbaruiAnakAda).
+                $anakAda    = null;
+                $naikkanNik = false; // true = NIK dummy anakAda diganti NIK asli dari baris ini
 
                 if (!$nikValid) {
                     // Pakai jenis kelamin sebenarnya — kalau di-hardcode 'L', anak
                     // perempuan (jk=2) lolos dari dedup findExisting & NIK dummy-nya
                     // salah encode (harusnya DD+40).
-                    $noKkRaw = trim((string) ($this->colVal($row, $map, 'no_kk') ?? ''));
-                    $nikKey  = $this->nikService->findExisting($namaRaw, $tglLahir ?? date('Y-m-d'), $jkChar, $noKkRaw)
-                        ?? $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tglLahir ?? date('Y-m-d'), $jkChar);
+                    //
+                    // Anak ber-NIK ASLI dicari lebih dulu: findExisting hanya melihat NIK
+                    // dummy, jadi tanpa ini anak yang sudah ada dibuatkan dummy baru (ganda).
+                    $asli = $tglLahir
+                        ? $this->nikService->kandidat($namaRaw, $tglLahir, $jkChar, $noKkRaw, false)
+                        : collect();
 
-                    $msg = empty($nikRaw)
-                        ? "[INFO] Baris {$rowNum} ({$namaRaw}): NIK kosong — NIK dummy {$nikKey} digenerate."
-                        : "[PERINGATAN] Baris {$rowNum} ({$namaRaw}): NIK '{$nikRaw}' tidak valid — NIK dummy {$nikKey} digunakan.";
+                    if ($asli->count() > 1) {
+                        $this->laporkanAmbigu($rowNum, $namaRaw, $tglLahir, $asli->count(), 'ber-NIK asli');
+                        continue;
+                    }
+
+                    if ($asli->count() === 1) {
+                        $anakAda = $asli->first();
+                        $nikKey  = $anakAda->nik;
+                        $msg = empty($nikRaw)
+                            ? "[INFO] Baris {$rowNum} ({$namaRaw}): NIK kosong — dicocokkan dengan anak ber-NIK {$nikKey} (nama + tgl lahir + jk), tidak dibuat anak baru."
+                            : "[PERINGATAN] Baris {$rowNum} ({$namaRaw}): NIK '{$nikRaw}' tidak valid — dicocokkan dengan anak ber-NIK {$nikKey} (nama + tgl lahir + jk), tidak dibuat anak baru.";
+                    } else {
+                        $dummyAda = $this->nikService->findExisting($namaRaw, $tglLahir ?? date('Y-m-d'), $jkChar, $noKkRaw);
+                        $nikKey   = $dummyAda
+                            ?? $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tglLahir ?? date('Y-m-d'), $jkChar);
+                        $aksi = $dummyAda ? 'dipakai ulang (anak yang sama)' : 'digenerate';
+
+                        $msg = empty($nikRaw)
+                            ? "[INFO] Baris {$rowNum} ({$namaRaw}): NIK kosong — NIK dummy {$nikKey} {$aksi}."
+                            : "[PERINGATAN] Baris {$rowNum} ({$namaRaw}): NIK '{$nikRaw}' tidak valid — NIK dummy {$nikKey} {$aksi}.";
+                    }
                     $this->failures[] = $msg;
+                } elseif ($tglLahir && !Anak::where('nik', $nikKey)->exists()) {
+                    // NIK asli belum ada di DB. Bila anak yang sama sudah tercatat dengan NIK
+                    // DUMMY (berkas dulu tanpa NIK, kini dikoreksi), naikkan NIK-nya — bukan
+                    // updateOrCreate yang membuat anak kedua.
+                    $dummy = $this->nikService->kandidat($namaRaw, $tglLahir, $jkChar, $noKkRaw, true);
+
+                    if ($dummy->count() > 1) {
+                        $this->laporkanAmbigu($rowNum, $namaRaw, $tglLahir, $dummy->count(), 'ber-NIK dummy');
+                        continue;
+                    }
+
+                    if ($dummy->count() === 1) {
+                        $anakAda    = $dummy->first();
+                        $naikkanNik = true;
+                        $this->failures[] = "[INFO] Baris {$rowNum} ({$namaRaw}): NIK dummy {$anakAda->nik} diganti NIK asli {$nikKey} (anak yang sama).";
+                    }
                 }
 
                 // Resolve wilayah -------------------------------------------
@@ -212,7 +255,11 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
                     'catatan'              => $this->colVal($row, $map, 'catatan'),
                 ];
 
-                Anak::updateOrCreate(['nik' => $nikKey], $data);
+                if ($anakAda) {
+                    $this->perbaruiAnakAda($anakAda->id, $data, $naikkanNik ? $nikKey : null);
+                } else {
+                    Anak::updateOrCreate(['nik' => $nikKey], $data);
+                }
                 $this->successCount++;
 
             } catch (\Exception $e) {
@@ -228,6 +275,42 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
     protected function simplifyError(string $message): string
     {
         return ImportError::message($message);
+    }
+
+    /**
+     * Kolom yang TIDAK ditimpa saat anak yang sudah ada dicocokkan lewat nama+tgl lahir.
+     * Identitas (nama/tgl lahir/jk) sudah menjadi dasar pencocokan, dan `no`/`status`
+     * di $data hanyalah default (nomor IMP- otomatis, status 1) — bukan isi berkas.
+     */
+    private const JANGAN_TIMPA = ['nama', 'tgl_lahir', 'jk', 'no', 'status'];
+
+    /**
+     * Perbarui anak yang sudah ada dengan aturan "isi yang diberikan": hanya kolom
+     * ber-nilai di berkas yang menimpa. Baris tanpa NIK adalah sumber yang lebih lemah
+     * dari baris ber-NIK, jadi sel kosong tak boleh mengosongkan data anak yang sudah ada
+     * (mis. NIK ibu & wilayah dari Capil/Operasi Timbang).
+     *
+     * @param  string|null  $nikBaru  bila diisi, NIK anak diganti (dummy → asli)
+     */
+    private function perbaruiAnakAda(int $id, array $data, ?string $nikBaru = null): void
+    {
+        $isi = array_diff_key(
+            array_filter($data, fn ($v) => $v !== null),
+            array_flip(self::JANGAN_TIMPA)
+        );
+
+        if ($nikBaru !== null) {
+            $isi['nik'] = $nikBaru;
+        }
+
+        Anak::findOrFail($id)->update($isi);
+    }
+
+    /** Lebih dari satu anak cocok → laporkan, jangan menebak (pola ImunisasiImport). */
+    private function laporkanAmbigu(int $rowNum, string $nama, ?string $tglLahir, int $jumlah, string $jenis): void
+    {
+        $this->failures[] = "[ERROR] Baris {$rowNum} ({$nama}): Ditemukan {$jumlah} anak {$jenis} bernama '{$nama}' lahir '{$tglLahir}'. Lengkapi kolom nik.";
+        $this->errorCount++;
     }
 
     public function getResults(): array
