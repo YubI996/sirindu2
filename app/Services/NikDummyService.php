@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Anak;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -76,21 +77,60 @@ class NikDummyService
             ->get(['nik', 'nama', 'no_kk']);
 
         foreach ($kandidat as $anak) {
-            similar_text($nama, $anak->nama, $pct);
-            if ($pct < 87) {
-                continue;
+            if ($this->samaOrang($nama, $noKk, $anak)) {
+                return $anak->nik;
             }
-
-            // Keduanya punya KK tapi beda → bukan anak yang sama.
-            $kkKandidat = trim((string) ($anak->no_kk ?? ''));
-            if ($noKk !== '' && $kkKandidat !== '' && $kkKandidat !== $noKk) {
-                continue;
-            }
-
-            return $anak->nik;
         }
 
         return null;
+    }
+
+    /**
+     * SEMUA anak yang tampak sama dengan data satu baris berkas: tgl lahir & jk persis,
+     * nama ≥87%, No KK tak bertentangan (aturan yang sama dengan findExisting).
+     *
+     * Beda dengan findExisting: mengembalikan seluruh kandidat (bukan yang pertama), supaya
+     * pemanggil bisa menolak menebak bila lebih dari satu. Dan bisa mencari anak ber-NIK ASLI
+     * ($dummy = false) — findExisting hanya melihat NIK dummy, sehingga anak yang sudah ada
+     * dengan NIK asli dulu selalu lolos dan dibuatkan NIK dummy baru (anak ganda).
+     *
+     * @param  bool  $dummy  true = hanya NIK dummy, false = hanya NIK asli
+     * @return Collection<int, Anak>  hanya kolom id, nik, nama, no_kk
+     */
+    public function kandidat(string $nama, string $tanggalLahir, string $jenisKelamin, ?string $noKk, bool $dummy): Collection
+    {
+        $jkValue = strtoupper($jenisKelamin) === 'L' ? 1 : 2;
+        $noKk    = $noKk !== null ? trim($noKk) : '';
+        $penanda = "(SUBSTRING(nik, 13, 1) = '9' AND LENGTH(nik) = 16)";
+
+        return Anak::where('tgl_lahir', $tanggalLahir)
+            ->where('jk', $jkValue)
+            ->whereRaw($dummy ? $penanda : "NOT {$penanda}")
+            ->get(['id', 'nik', 'nama', 'no_kk'])
+            ->filter(fn (Anak $anak) => $this->samaOrang($nama, $noKk, $anak))
+            ->values();
+    }
+
+    /**
+     * Kemiripan nama ≥87% dan KK tak bertentangan (keduanya terisi tapi beda = keluarga beda).
+     * Nama dibandingkan TANPA membedakan huruf besar-kecil (seperti IdentitasMatcher):
+     * Capil menulis kapital, input posyandu sering huruf kecil — similar_text mentah
+     * menganggap "Ani Wijaya" dan "ANI WIJAYA" orang berbeda.
+     */
+    private function samaOrang(string $nama, string $noKk, Anak $kandidat): bool
+    {
+        similar_text(
+            trim(mb_strtolower($nama)),
+            trim(mb_strtolower((string) $kandidat->nama)),
+            $pct
+        );
+        if ($pct < 87) {
+            return false;
+        }
+
+        $kkKandidat = trim((string) ($kandidat->no_kk ?? ''));
+
+        return !($noKk !== '' && $kkKandidat !== '' && $kkKandidat !== $noKk);
     }
 
     /**

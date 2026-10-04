@@ -105,6 +105,8 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::post('verifikasi-rt/{verifikasi}/tinjau', [App\Http\Controllers\VerifikasiRtReviuController::class, 'tinjau'])->name('admin.verifikasiRt.tinjau');
     Route::post('verifikasi-rt/tautan/{tautan}/tinjau', [App\Http\Controllers\VerifikasiRtReviuController::class, 'tinjauTautan'])->name('admin.verifikasiRt.tinjauTautan');
     Route::post('verifikasi-rt/pindai', [App\Http\Controllers\VerifikasiRtReviuController::class, 'pindai'])->name('admin.verifikasiRt.pindai');
+    // Dinkes memutuskan langsung pasangan "Dicurigai sama" (tanpa tahap usulan RT)
+    Route::post('verifikasi-rt/kandidat', [App\Http\Controllers\VerifikasiRtReviuController::class, 'putuskan'])->name('admin.verifikasiRt.putuskan');
     // Tautan akses RT bertoken (scoping akses Sept 2026) — faskes: kelurahannya; superadmin: semua
     Route::get('verifikasi-rt/tautan-akses', [App\Http\Controllers\AksesTautanAdminController::class, 'index'])->name('admin.aksesTautan.index');
     Route::post('verifikasi-rt/tautan-akses/{rt}', [App\Http\Controllers\AksesTautanAdminController::class, 'buat'])->name('admin.aksesTautan.buat');

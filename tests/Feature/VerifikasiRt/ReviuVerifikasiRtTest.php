@@ -52,7 +52,7 @@ class ReviuVerifikasiRtTest extends TestCase
             ->assertDontSee('Anak 3201000000009202');
 
         $super = User::factory()->create(['type' => 0]);
-        $this->actingAs($super)->get(route('admin.verifikasiRt.index'))
+        $this->actingAs($super)->get(route('admin.verifikasiRt.index', ['tab' => 'domisili']))
             ->assertOk()
             ->assertSee('Anak 3201000000009201')
             ->assertSee('Anak 3201000000009202');
@@ -66,7 +66,7 @@ class ReviuVerifikasiRtTest extends TestCase
 
         $this->actingAs($faskes)->from(route('admin.verifikasiRt.index'))
             ->post(route('admin.verifikasiRt.tinjau', $v), ['setuju' => 1, 'catatan' => 'ok'])
-            ->assertRedirect(route('admin.verifikasiRt.index'))
+            ->assertRedirect(route('admin.verifikasiRt.index', ['tab' => 'domisili']))
             ->assertSessionHas('success');
 
         $this->assertSame($this->rt->id, (int) $anak->fresh()->id_rt);
@@ -81,7 +81,7 @@ class ReviuVerifikasiRtTest extends TestCase
 
         $this->actingAs($super)->from(route('admin.verifikasiRt.index'))
             ->post(route('admin.verifikasiRt.tinjau', $v), ['setuju' => 0, 'catatan' => 'masih hidup, cek ulang'])
-            ->assertRedirect(route('admin.verifikasiRt.index'));
+            ->assertRedirect(route('admin.verifikasiRt.index', ['tab' => 'domisili']));
 
         $this->assertSame('ditolak', $v->fresh()->reviu);
         $this->assertSame('masih hidup, cek ulang', $v->fresh()->catatan_reviu);

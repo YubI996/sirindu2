@@ -18,12 +18,12 @@
 				@if (Auth::user()->isSuperAdmin())
 
 				@php
-					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.kesmas.*', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.verifikasiRt.*', 'admin.aksesTautan.*', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.pd3i.dashboard', 'admin.timbang.*', 'admin.spm.dashboard', 'admin.home', 'super.admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.kesmas.*', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.epidemiologi.dashboard', 'admin.epidemiologi.map', 'admin.pd3i.dashboard', 'admin.timbang.*', 'admin.spm.dashboard', 'admin.home', 'super.admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$pd3i = request()->routeIs('admin.epidemiologi.index', 'admin.epidemiologi.create', 'admin.epidemiologi.show', 'admin.epidemiologi.edit');
 					$export = request()->routeIs('admin.export.*');
 					$import = request()->routeIs('admin.importCsv.*');
-					$master = request()->routeIs('admin.masterdata.*');
+					$master = request()->routeIs('admin.masterdata.*', 'admin.verifikasiRt.*', 'admin.aksesTautan.*', 'admin.gabung.*');
 					$admin = request()->routeIs('super.admin.user', 'super.admin.storeUser', 'super.admin.editUser', 'super.admin.updateUser', 'super.admin.destroyUser');
 				@endphp
 
@@ -42,7 +42,6 @@
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>
-						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*', 'admin.aksesTautan.*') ? 'active' : '' }}">Verifikasi RT</a></li>
 					</ul>
 				</li>
 
@@ -94,6 +93,7 @@
 						<li><a href="{{route('admin.masterdata.penyakit.index')}}" class="{{ request()->routeIs('admin.masterdata.penyakit.*') ? 'active' : '' }}">Surveilans PD3I</a></li>
 						<li><a href="{{route('admin.masterdata.penduduk.index')}}" class="{{ request()->routeIs('admin.masterdata.penduduk.*') ? 'active' : '' }}">Jumlah Penduduk</a></li>
 						<li><a href="{{route('admin.masterdata.spm.index')}}" class="{{ request()->routeIs('admin.masterdata.spm.*') ? 'active' : '' }}">SPM</a></li>
+						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*', 'admin.aksesTautan.*', 'admin.gabung.*') ? 'active' : '' }}">Verifikasi RT</a></li>
 					</ul>
 				</li>
 
@@ -143,9 +143,10 @@
 				@else
 
 				@php
-					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.kesmas.*', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.verifikasiRt.*', 'admin.aksesTautan.*', 'admin.spm.dashboard', 'admin.home');
+					$dashboard = request()->routeIs('admin.analytics', 'admin.imunisasiDashboard', 'admin.kesmas.*', 'admin.map', 'admin.earlyWarning', 'admin.intervensi.index', 'admin.spm.dashboard', 'admin.home');
 					$anak = request()->routeIs('admin.anak', 'admin.anak.*');
 					$export = request()->routeIs('admin.export.*');
+					$master = request()->routeIs('admin.verifikasiRt.*', 'admin.aksesTautan.*');
 				@endphp
 
 				<li class="dropdown section-group {{ $dashboard ? 'show' : '' }}">
@@ -159,7 +160,6 @@
 						<li><a href="{{route('admin.map')}}" class="{{ request()->routeIs('admin.map') ? 'active' : '' }}">Peta Statistik</a></li>
 						<li><a href="{{route('admin.earlyWarning')}}" class="{{ request()->routeIs('admin.earlyWarning') ? 'active' : '' }}">Proyeksi</a></li>
 						<li><a href="{{route('admin.intervensi.index')}}" class="{{ request()->routeIs('admin.intervensi.index') ? 'active' : '' }}">Intervensi Gizi</a></li>
-						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*', 'admin.aksesTautan.*') ? 'active' : '' }}">Verifikasi RT</a></li>
 						<li><a href="{{route('admin.spm.dashboard')}}" class="{{ request()->routeIs('admin.spm.dashboard') ? 'active' : '' }}">SPM</a></li>
 					</ul>
 				</li>
@@ -181,6 +181,15 @@
 						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
 						<li><a href="{{route('admin.export.pd3i.index')}}" class="{{ request()->routeIs('admin.export.pd3i.*') ? 'active' : '' }}">Laporan Kasus PD3I</a></li>
 						<li><a href="{{route('admin.export.kesmas.index')}}" class="{{ request()->routeIs('admin.export.kesmas.*') ? 'active' : '' }}">Export Kesmas</a></li>
+					</ul>
+				</li>
+
+				<li class="dropdown section-group {{ $master ? 'show' : '' }}">
+					<a href="javascript:;" class="dropdown-toggle section-toggle {{ $master ? 'active' : '' }}">
+						<span class="micon fa fa-cogs"></span><span class="mtext">Data Master</span>
+					</a>
+					<ul class="submenu" {!! $master ? 'style="display:block;"' : '' !!}>
+						<li><a href="{{route('admin.verifikasiRt.index')}}" class="{{ request()->routeIs('admin.verifikasiRt.*', 'admin.aksesTautan.*') ? 'active' : '' }}">Verifikasi RT</a></li>
 					</ul>
 				</li>
 				@endif

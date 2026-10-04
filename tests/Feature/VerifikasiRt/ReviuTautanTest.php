@@ -104,7 +104,7 @@ class ReviuTautanTest extends TestCase
         $super = User::factory()->create(['type' => 0]);
         $this->actingAs($super)->from(route('admin.verifikasiRt.index'))
             ->post(route('admin.verifikasiRt.pindai'))
-            ->assertRedirect(route('admin.verifikasiRt.index', ['tab' => 'tautan']))
+            ->assertRedirect(route('admin.verifikasiRt.index', ['tab' => 'dicurigai']))
             ->assertSessionHas('success');
 
         Queue::assertPushed(PindaiIdentitasJob::class, 1);
