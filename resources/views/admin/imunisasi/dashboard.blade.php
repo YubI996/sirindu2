@@ -105,6 +105,8 @@
     $bucketOf = function (float $p) { return $p >= 95 ? 'ok' : ($p >= 60 ? 'mid' : 'low'); };
 @endphp
 
+@include('admin.imunisasi.partials._kelompok-kosong')
+
 {{-- Filter wilayah --}}
 <form method="GET" action="{{ route('admin.imunisasiDashboard') }}" class="im-filter">
     <div>

@@ -57,6 +57,7 @@ class KesmasDashboardController extends Controller
             'layanan' => $svc->layananLingkungan($periode, $filters),
             'idl'     => $imun->getIdlCoverage(KohortImunisasi::dari($periode->tahun()), $filters),
             'ibl'     => $imun->getIblCoverage(KohortImunisasi::dari($periode->tahun()), $filters),
+            'kelompokKosong' => $imun->getKelompokKosong(),
             'alasan'  => array_slice($imun->getAlasanTidakImunisasi($filters), 0, 4, true),
             'kecamatanList' => Kecamatan::orderBy('name')->get(),
             'kelurahanList' => Kelurahan::orderBy('name')->get(),

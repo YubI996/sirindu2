@@ -647,7 +647,8 @@ ANAK
         $funnel           = $service->getFunnelDosis($kohort, $filters);
         $cakupanAntigen   = $service->getCakupanAntigen($kohort, $filters);
         $antigenDilewati  = $service->getAntigenTanpaPenyebut();
-        $kohortWilayah    = $service->getKohortWilayah($kohort, $filters);
+        $kelompokKosong   = $service->getKelompokKosong();
+        $kohortWilayah   = $service->getKohortWilayah($kohort, $filters);
         $rincianPuskesmas = $service->getRincianPuskesmas($kohort, $filters);
 
         // Operasional — tanggal berjalan, sengaja TIDAK mengikuti dropdown tahun.
@@ -668,7 +669,7 @@ ANAK
             'coverage', 'butuhKejar', 'filters', 'kohort', 'tahun', 'pilihanTahun',
             'kecamatanList', 'kelurahanList', 'posyanduList', 'puskesmasList', 'korelasiData',
             'alasanTidakImunisasi',
-            'sasaran', 'iblCoverage', 'funnel', 'cakupanAntigen', 'antigenDilewati', 'kohortWilayah', 'rincianPuskesmas', 'sasaranHarian'
+            'sasaran', 'iblCoverage', 'funnel', 'cakupanAntigen', 'antigenDilewati', 'kelompokKosong', 'kohortWilayah', 'rincianPuskesmas', 'sasaranHarian'
         ));
     }
 

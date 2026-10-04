@@ -579,6 +579,30 @@ class ImunisasiStatusService
     }
 
     /**
+     * Kode grup (IDL, IBL) yang tak bisa dipakai menghitung kelengkapan: barisnya
+     * tak ada di kelompok_vaksin, atau tak satu pun vaksin tertaut ke dalamnya.
+     *
+     * isKelompokLengkap() mengembalikan false untuk grup yang tak ada, jadi master
+     * yang kosong tampil sebagai capaian 0 tanpa error apa pun (insiden prod 4 Okt
+     * 2026: KelompokVaksinSeeder tak pernah dipanggil). Query master data murni —
+     * tidak memindai anak, aman dipanggil di controller.
+     *
+     * @return list<string>
+     */
+    public function getKelompokKosong(): array
+    {
+        $kosong = [];
+        foreach (['IDL', 'IBL'] as $kode) {
+            $kelompok = $this->kelompokByKode($kode);
+            if (!$kelompok || $kelompok->jenisVaksin->isEmpty()) {
+                $kosong[] = $kode;
+            }
+        }
+
+        return $kosong;
+    }
+
+    /**
      * Nama antigen aktif, non-Tambahan, yang `usia_pemberian_max`-nya tak
      * bisa diklasifikasi ke kelompok kohort mana pun (NULL atau > 730 hari)
      * — lihat kelompokPenyebutAntigen(). Query master data murni, TIDAK
