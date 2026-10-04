@@ -8,8 +8,10 @@ use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Models\Rt;
 use App\Services\NikDummyService;
+use App\Services\PenautanAnakImport;
 use App\Support\ImportError;
 use App\Traits\MembacaTanggalBerkas;
+use App\Traits\MenautkanAnakImport;
 use App\Traits\ResolvesWilayah;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -26,13 +28,15 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
  *
  * Header dideteksi dinamis (mencari baris yang mengandung 'NIK' di kolom B atau 'Tgl posy').
  * File asli (header bertingkat) maupun file values_only (header baris 1) sama-sama didukung.
- * Upsert anak by NIK; data_anak by (id_anak, tgl_kunjungan); imunisasi by (id_anak, id_jenis_vaksin).
+ * Upsert anak by NIK (NIK yang sudah ada di DB); NIK yang belum ada/kosong ditautkan ke anak yang sama
+ * lewat nama+tgl lahir+jk (PenautanAnakImport, NIK yang lebih real bertahan) sebelum membuat anak baru;
+ * data_anak by (id_anak, tgl_kunjungan); imunisasi by (id_anak, id_jenis_vaksin).
  */
 class KohortImport implements ToCollection, WithStartRow, WithChunkReading, WithCalculatedFormulas
 {
     use MembacaTanggalBerkas;
 
-    use ResolvesWilayah;
+    use ResolvesWilayah, MenautkanAnakImport;
 
     protected int $userId;
     protected int $successCount = 0;
@@ -304,22 +308,39 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
                 // =============================================================
                 // Validasi NIK: hanya digit 15-16 karakter yang diterima
                 $nikValid = $nik !== '' && ctype_digit($nik) && strlen($nik) >= 15;
+                $nikKey   = $nikValid ? substr($nik, 0, 16) : null;
 
-                if ($nikValid) {
-                    $nikKey = substr($nik, 0, 16);
-                } else {
-                    // Generate atau temukan NIK dummy terstruktur
-                    $tglLahirStr = $this->parseDate($row[3] ?? null) ?? date('Y-m-d');
-                    $jkStr       = in_array(strtoupper(trim((string) ($row[4] ?? ''))), ['L', 'LAKI', 'LAKI-LAKI']) ? 'L' : 'P';
-                    $kodeWilayah = NikDummyService::DEFAULT_KODE_WILAYAH;
+                $tglLahirStr = $this->parseDate($row[3] ?? null);
+                $jkStr       = in_array(strtoupper(trim((string) ($row[4] ?? ''))), ['L', 'LAKI', 'LAKI-LAKI']) ? 'L' : 'P';
+                $noKkStr     = trim((string) ($row[5] ?? ''));
 
-                    $nikKey = $this->nikService->findExisting($nama, $tglLahirStr, $jkStr)
-                        ?? $this->nikService->generate($kodeWilayah, $tglLahirStr, $jkStr);
+                // Anak yang SUDAH ada dan dicocokkan lewat nama+tgl lahir+jk (bukan lewat NIK).
+                $anakAda = null;
+                $nikBaru = null;   // NIK pengganti bila NIK berkas lebih real (null = pertahankan NIK di DB)
 
-                    if (empty($nik)) {
-                        $this->failures[] = "[INFO] Baris {$rowNum} (Nama: {$nama}): NIK kosong — NIK dummy {$nikKey} di-generate otomatis.";
-                    } else {
-                        $this->failures[] = "[PERINGATAN] Baris {$rowNum} (Nama: {$nama}): NIK '{$nik}' tidak valid — NIK dummy {$nikKey} di-generate sebagai pengganti.";
+                // NIK valid yang sudah ada di DB -> jalur NIK. Selain itu tautkan ke anak yang sama bila
+                // ada (dulu findExisting hanya melihat NIK dummy dan updateOrCreate by NIK langsung
+                // membuat anak ganda); tak ada yang cocok & NIK tak ada -> NIK dummy baru.
+                if (!($nikValid && Anak::where('nik', $nikKey)->exists())) {
+                    $tautan = $this->penautanAnak()->tautkan($nama, $tglLahirStr, $jkStr, $noKkStr, $nikValid ? $nikKey : null);
+
+                    if ($tautan['hasil'] === PenautanAnakImport::AMBIGU) {
+                        $this->laporkanAmbigu($rowNum, $nama, $tglLahirStr, $tautan['jumlah']);
+                        continue;
+                    }
+
+                    if ($tautan['hasil'] === PenautanAnakImport::SAMA) {
+                        $anakAda = $tautan['anak'];
+                        $nikBaru = $tautan['nik'];
+                        $this->catatTautan($rowNum, $nama, $tautan, $this->awalanNikTakValid($nikValid, $nik));
+                    } elseif (!$nikValid) {
+                        $nikKey = $this->nikService->generate(NikDummyService::DEFAULT_KODE_WILAYAH, $tglLahirStr ?? date('Y-m-d'), $jkStr);
+
+                        if (empty($nik)) {
+                            $this->failures[] = "[INFO] Baris {$rowNum} (Nama: {$nama}): NIK kosong — NIK dummy {$nikKey} di-generate otomatis.";
+                        } else {
+                            $this->failures[] = "[PERINGATAN] Baris {$rowNum} (Nama: {$nama}): NIK '{$nik}' tidak valid — NIK dummy {$nikKey} di-generate sebagai pengganti.";
+                        }
                     }
                 }
 
@@ -343,8 +364,7 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
                     $idRt = $this->rtCache[$cacheKey];
                 }
 
-                $anak = Anak::updateOrCreate(
-                    ['nik' => $nikKey],
+                $dataAnak =
                     [
                         'nama'                   => $nama ?: null,
                         'tgl_lahir'              => $this->parseDate($row[3] ?? null),
@@ -369,8 +389,11 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
                         'penolong_lahir'         => !empty($row[21]) ? (string) $row[21] : null,
                         'komplikasi_persalinan'  => !empty($row[22]) ? (string) $row[22] : null,
                         'status'                 => 1,
-                    ]
-                );
+                    ];
+
+                $anak = $anakAda
+                    ? $this->perbaruiAnakAda($anakAda->id, $dataAnak, $nikBaru)
+                    : Anak::updateOrCreate(['nik' => $nikKey], $dataAnak);
 
                 // =============================================================
                 // US2: Upsert DataAnak (kunjungan posyandu per bulan)

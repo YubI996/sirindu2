@@ -94,10 +94,10 @@ class NikDummyService
      * ($dummy = false) — findExisting hanya melihat NIK dummy, sehingga anak yang sudah ada
      * dengan NIK asli dulu selalu lolos dan dibuatkan NIK dummy baru (anak ganda).
      *
-     * @param  bool  $dummy  true = hanya NIK dummy, false = hanya NIK asli
-     * @return Collection<int, Anak>  hanya kolom id, nik, nama, no_kk
+     * @param  bool|null  $dummy  true = hanya NIK dummy, false = hanya NIK asli, null = semuanya
+     * @return Collection<int, Anak>  hanya kolom id, nik, nama, no_kk, sumber
      */
-    public function kandidat(string $nama, string $tanggalLahir, string $jenisKelamin, ?string $noKk, bool $dummy): Collection
+    public function kandidat(string $nama, string $tanggalLahir, string $jenisKelamin, ?string $noKk, ?bool $dummy): Collection
     {
         $jkValue = strtoupper($jenisKelamin) === 'L' ? 1 : 2;
         $noKk    = $noKk !== null ? trim($noKk) : '';
@@ -105,8 +105,8 @@ class NikDummyService
 
         return Anak::where('tgl_lahir', $tanggalLahir)
             ->where('jk', $jkValue)
-            ->whereRaw($dummy ? $penanda : "NOT {$penanda}")
-            ->get(['id', 'nik', 'nama', 'no_kk'])
+            ->when($dummy !== null, fn ($q) => $q->whereRaw($dummy ? $penanda : "NOT {$penanda}"))
+            ->get(['id', 'nik', 'nama', 'no_kk', 'sumber'])
             ->filter(fn (Anak $anak) => $this->samaOrang($nama, $noKk, $anak))
             ->values();
     }
