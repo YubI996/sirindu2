@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\DataAnak;
 use App\Support\ImportError;
+use App\Support\NamaAnak;
 use App\Traits\MembacaTanggalBerkas;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
@@ -117,7 +118,16 @@ class UkurImport implements ToCollection, WithStartRow, WithChunkReading
             $namaAnakRaw = trim((string) ($this->colVal($row, $map, 'nama_anak') ?? ''));
 
             // Skip baris tanpa identifier apapun
-            if (empty($nikRaw) && empty($namaAnakRaw)) continue;
+            if ($nikRaw === '' && $namaAnakRaw === '') continue;
+
+            // Nama anak wajib dan sah (ukuran tak boleh menempel ke anak hanya karena NIK-nya cocok).
+            if (NamaAnak::kosong($namaAnakRaw)) {
+                $this->failures[] = "[ERROR] Baris {$rowNum}: nama_anak "
+                    . ($namaAnakRaw === '' ? 'kosong' : "'{$namaAnakRaw}' bukan nama")
+                    . ' — nama anak wajib diisi (minimal satu huruf), baris dilewati.';
+                $this->errorCount++;
+                continue;
+            }
 
             $tglUkur = $this->parseDate($this->colVal($row, $map, 'tanggalukur'));
             if (!$tglUkur) {

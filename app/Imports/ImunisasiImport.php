@@ -7,6 +7,7 @@ use App\Models\DataAnak;
 use App\Models\Imunisasi;
 use App\Models\JenisVaksin;
 use App\Support\ImportError;
+use App\Support\NamaAnak;
 use App\Traits\MembacaTanggalBerkas;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
@@ -409,13 +410,26 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
     }
 
     /**
-     * Aturan 2-dari-3 (NIK, nama, tgl lahir). Bila kurang: tulis peringatan yang
-     * menyebut kolom mana yang terisi/kosong (dan tgl lahir yang tak terbaca), lalu false.
+     * Nama anak WAJIB (sah menurut NamaAnak) ditambah salah satu dari NIK / tgl lahir.
+     *
+     * Nama tak sah di baris yang berisi hal lain = [ERROR] (vaksin tak boleh menempel ke anak hanya
+     * karena NIK-nya cocok). Bila identitas masih kurang: peringatan yang menyebut kolom mana yang
+     * terisi/kosong (dan tgl lahir yang tak terbaca), lalu false.
      */
     protected function identitasCukup(string $nik, string $nama, ?string $tglLahir, $tglLahirRaw, int $rowNum): bool
     {
-        $status = ['nik_anak' => $nik !== '', 'nama_anak' => $nama !== '', 'tgl_lahir_anak' => $tglLahir !== null];
-        if (count(array_filter($status)) >= 2) return true;
+        $namaSah = NamaAnak::sah($nama);
+
+        if (!$namaSah && ($nik !== '' || $tglLahir !== null || trim($nama) !== '')) {
+            $this->failures[] = "[ERROR] Baris {$rowNum}: nama_anak "
+                . (trim($nama) === '' ? 'kosong' : "'" . trim($nama) . "' bukan nama")
+                . ' — nama anak wajib diisi (minimal satu huruf), baris dilewati.';
+            $this->errorCount++;
+            return false;
+        }
+
+        $status = ['nik_anak' => $nik !== '', 'nama_anak' => $namaSah, 'tgl_lahir_anak' => $tglLahir !== null];
+        if ($namaSah && ($status['nik_anak'] || $status['tgl_lahir_anak'])) return true;
 
         $terisi = array_keys(array_filter($status));
         $kosong = array_keys(array_filter($status, fn ($ada) => !$ada));
@@ -429,7 +443,7 @@ class ImunisasiImport implements ToCollection, WithStartRow, WithChunkReading
         if ($tglTakTerbaca) $rincian .= "; tgl_lahir_anak '" . trim((string) $tglLahirRaw) . "' tidak terbaca, pakai YYYY-MM-DD";
 
         $this->failures[] = "[PERINGATAN] Baris {$rowNum}: identitas anak kurang ({$rincian}). "
-            . 'Isi minimal 2 dari nik_anak, nama_anak, tgl_lahir_anak — baris dilewati.';
+            . 'Isi nama_anak (wajib) dan salah satu dari nik_anak atau tgl_lahir_anak — baris dilewati.';
         $this->skippedCount++;
         return false;
     }

@@ -458,8 +458,8 @@
             <p class="imp-guide__label">Data yang diimpor</p>
             <p>Pengukuran berkala: berat badan, tinggi badan, lingkar kepala, LiLA, NTOB, DDTKA, tanggal kunjungan, serta nilai z-score status gizi.</p>
             <div class="imp-guide__rule">
-                <strong>Pencocokan Anak (2 dari 3)</strong>
-                Isi minimal 2 dari 3 kolom: <strong>NIK</strong>, <strong>nama</strong>, atau <strong>tanggal lahir</strong>. Sistem mencari anak yang cocok sebelum menyimpan data.
+                <strong>Pencocokan Anak</strong>
+                <strong>Nama anak wajib diisi</strong> (minimal satu huruf; isi seperti <em>0</em>, <em>-</em>, atau <em>#N/A</em> ditolak), ditambah <strong>NIK</strong> atau <strong>tanggal lahir</strong>. Sistem mencari anak yang cocok sebelum menyimpan data.
             </div>
             <a href="{{ route('admin.importCsv.template', 'pengukuran') }}" class="imp-template-link" download>
                 <span class="material-symbols-outlined">download</span>
@@ -499,8 +499,8 @@
             <p class="imp-guide__label">Data yang diimpor</p>
             <p>Riwayat imunisasi format <strong>wide</strong>: 1 baris per anak, tiap vaksin jadi kolom berisi tanggal pemberian, plus kolom <em>alasan_tidak_imunisasi</em>. Format lama (1 baris per vaksin, kolom <em>kode_vaksin</em>) masih didukung otomatis.</p>
             <div class="imp-guide__rule">
-                <strong>Pencocokan Anak (2 dari 3)</strong>
-                Isi minimal 2 dari 3 kolom: <strong>NIK</strong>, <strong>nama</strong>, atau <strong>tanggal lahir</strong>. Sistem mencari anak yang cocok sebelum menyimpan data.
+                <strong>Pencocokan Anak</strong>
+                <strong>Nama anak wajib diisi</strong> (minimal satu huruf; isi seperti <em>0</em>, <em>-</em>, atau <em>#N/A</em> ditolak), ditambah <strong>NIK</strong> atau <strong>tanggal lahir</strong>. Sistem mencari anak yang cocok sebelum menyimpan data.
             </div>
             <div class="imp-guide__rule">
                 <strong>Format Tanggal</strong>

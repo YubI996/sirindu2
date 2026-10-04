@@ -127,7 +127,7 @@ class ImunisasiImportPesanTest extends TestCase
         $this->assertStringStartsWith('[PERINGATAN] Baris 2:', $p[0]);
         $this->assertStringContainsString('terisi: nama_anak', $p[0]);
         $this->assertStringContainsString('kosong: nik_anak, tgl_lahir_anak', $p[0]);
-        $this->assertStringContainsString('minimal 2 dari', $p[0]);
+        $this->assertStringContainsString('nama_anak (wajib)', $p[0]);
     }
 
     public function test_tgl_lahir_tak_terbaca_disebut_nilainya(): void

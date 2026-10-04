@@ -6,6 +6,7 @@ use App\Models\Anak;
 use App\Services\FaskesMatcher;
 use App\Services\NikDummyService;
 use App\Support\ImportError;
+use App\Support\NamaAnak;
 use App\Services\PenautanAnakImport;
 use App\Traits\MembacaTanggalBerkas;
 use App\Traits\MenautkanAnakImport;
@@ -139,7 +140,17 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
             $jkInt    = $this->parseJk($this->colVal($row, $map, 'jk'));
             $jkChar   = $jkInt === 1 ? 'L' : 'P';
 
-            if (empty($namaRaw)) continue;
+            // Nama anak wajib dan sah. Baris yang benar-benar kosong (tanpa NIK & tgl lahir) dilewati
+            // diam-diam; selebihnya dilaporkan, bukan hilang tanpa jejak.
+            if (NamaAnak::kosong($namaRaw)) {
+                if ($namaRaw !== '' || $nikRaw !== '' || $tglLahir !== null) {
+                    $this->failures[] = "[ERROR] Baris {$rowNum}: nama "
+                        . ($namaRaw === '' ? 'kosong' : "'{$namaRaw}' bukan nama")
+                        . ' — nama anak wajib diisi (minimal satu huruf), baris dilewati.';
+                    $this->errorCount++;
+                }
+                continue;
+            }
 
             try {
                 // Resolve NIK -----------------------------------------------

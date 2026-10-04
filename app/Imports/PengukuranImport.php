@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\DataAnak;
 use App\Support\ImportError;
+use App\Support\NamaAnak;
 use App\Traits\MembacaTanggalBerkas;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
@@ -118,12 +119,23 @@ class PengukuranImport implements ToCollection, WithStartRow, WithChunkReading
             $tglLahirAnakRaw = $this->colVal($row, $map, 'tgl_lahir_anak');
             $tglLahirAnak = $this->parseDate($tglLahirAnakRaw);
 
-            // Skip baris tanpa minimal 2 identifier
-            $idCount = (int)(!empty($nikAnakRaw)) + (int)(!empty($namaAnakRaw)) + (int)($tglLahirAnak !== null);
-            if ($idCount < 2) {
-                if ($idCount > 0) {
-                    $this->failures[] = "[PERINGATAN] Baris {$rowNum}: Kurang dari 2 identifier (nik_anak/nama_anak/tgl_lahir_anak) — dilewati.";
-                }
+            // Baris tanpa isi sama sekali (mis. sisa baris kosong) dilewati diam-diam.
+            if (trim($nikAnakRaw) === '' && trim($namaAnakRaw) === '' && $tglLahirAnak === null) {
+                continue;
+            }
+
+            // Nama anak wajib dan sah — NIK + tgl lahir saja tak cukup untuk menempelkan ukuran ke anak.
+            if (NamaAnak::kosong($namaAnakRaw)) {
+                $this->failures[] = "[ERROR] Baris {$rowNum}: nama_anak "
+                    . (trim($namaAnakRaw) === '' ? 'kosong' : "'" . trim($namaAnakRaw) . "' bukan nama")
+                    . ' — nama anak wajib diisi (minimal satu huruf), baris dilewati.';
+                $this->errorCount++;
+                continue;
+            }
+
+            // Selain nama, perlu NIK atau tgl lahir untuk mengenali anaknya.
+            if (trim($nikAnakRaw) === '' && $tglLahirAnak === null) {
+                $this->failures[] = "[PERINGATAN] Baris {$rowNum}: Selain nama_anak, isi nik_anak atau tgl_lahir_anak — dilewati.";
                 continue;
             }
 

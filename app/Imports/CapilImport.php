@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Anak;
 use App\Services\NikDummyService;
 use App\Support\ImportError;
+use App\Support\NamaAnak;
 use App\Traits\ResolvesAnakByTwoOfThree;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -223,7 +224,17 @@ class CapilImport implements ToCollection, WithStartRow, WithChunkReading, WithM
             $rowNum = $this->rowOffset + $index + 1 + ($isFirstChunk ? $baseOffset : 0);
 
             $nama = trim((string) ($this->colVal($row, $map, 'nama lengkap') ?? ''));
-            if ($nama === '') continue;
+
+            // Nama wajib dan sah. Baris tanpa nama dan tanpa NIK dilewati diam-diam (sisa baris kosong).
+            if (NamaAnak::kosong($nama)) {
+                if ($nama !== '' || trim((string) ($this->colVal($row, $map, 'nik') ?? '')) !== '') {
+                    $this->failures[] = "[ERROR] Baris {$rowNum}: nama lengkap "
+                        . ($nama === '' ? 'kosong' : "'{$nama}' bukan nama")
+                        . ' — nama anak wajib diisi (minimal satu huruf), baris dilewati.';
+                    $this->errorCount++;
+                }
+                continue;
+            }
 
             try {
                 $nikRaw   = trim((string) ($this->colVal($row, $map, 'nik') ?? ''));
