@@ -31,6 +31,9 @@ class DatabaseSeeder extends Seeder
         $this->call(JenisTabelSeeder::class);
         $this->call(ZScoreSeeder::class);
         $this->call(JenisVaksinSeeder::class);
+        // Wajib setelah JenisVaksinSeeder: tanpa grup IDL/IBL/ISL dan tautan vaksinnya,
+        // ImunisasiStatusService menganggap tak ada anak yang lengkap (capaian 0, tanpa error).
+        $this->call(KelompokVaksinSeeder::class);
         $this->call(JenisKasusEpidemiologiSeeder::class);
         $this->call(AnakSeeder::class);
         $this->call(DataAnakSeeder::class);
