@@ -97,17 +97,83 @@ class TautanIdentitasService
             return collect();
         }
 
+        return $this->kandidatBelumDiputusQuery()
+            ->where(fn ($q) => $q->whereIn('id_anak_a', $ids)->orWhereIn('id_anak_b', $ids))
+            ->orderByDesc('skor')
+            ->get();
+    }
+
+    /** Kandidat yang belum punya tautan aktif (diusulkan/disetujui/digabung); yang ditolak muncul lagi. */
+    private function kandidatBelumDiputusQuery(): Builder
+    {
         return AnakKandidat::query()
             ->with(['anakA.posyandu:id,name', 'anakA.kel:id,name', 'anakA.rt:id,name', 'anakB.posyandu:id,name', 'anakB.kel:id,name', 'anakB.rt:id,name'])
-            ->where(fn ($q) => $q->whereIn('id_anak_a', $ids)->orWhereIn('id_anak_b', $ids))
             ->whereNotExists(function ($q) {
                 $q->select(DB::raw(1))->from('anak_tautan as t')
                   ->whereColumn('t.id_anak_a', 'anak_kandidat.id_anak_a')
                   ->whereColumn('t.id_anak_b', 'anak_kandidat.id_anak_b')
                   ->where('t.status', '!=', 'ditolak');
-            })
-            ->orderByDesc('skor')
-            ->get();
+            });
+    }
+
+    /** Semua kandidat belum diputus, skor tertinggi dulu — daftar tab "Dicurigai sama" (Dinkes, tanpa batas RT). */
+    public function kandidatDicurigaiQuery(): Builder
+    {
+        return $this->kandidatBelumDiputusQuery()->orderByDesc('skor')->orderBy('id');
+    }
+
+    /**
+     * Keputusan DINKES langsung atas satu kandidat: memutus dan menyetujui sekaligus (tanpa tahap
+     * usulan RT). "sama" langsung masuk antrean Penggabungan. Hanya superadmin.
+     *
+     * @throws AuthorizationException     bukan superadmin
+     * @throws InvalidArgumentException   bukan kandidat / sudah disetujui / "sama" untuk dua baris OT
+     */
+    public function putuskanLangsung(int $idX, int $idY, User $oleh, string $keputusan, ?string $catatan = null): AnakTautan
+    {
+        if (!$oleh->isSuperAdmin()) {
+            throw new AuthorizationException('Hanya Dinkes yang bisa memutuskan langsung.');
+        }
+        if (!in_array($keputusan, AnakTautan::KEPUTUSAN, true)) {
+            throw new InvalidArgumentException("Keputusan tidak dikenal: {$keputusan}");
+        }
+        [$a, $b] = AnakTautan::urut($idX, $idY);
+
+        $kandidat = AnakKandidat::where('id_anak_a', $a)->where('id_anak_b', $b)->first();
+        if (!$kandidat) {
+            throw new InvalidArgumentException('Pasangan ini bukan kandidat hasil pindai.');
+        }
+
+        if ($keputusan === 'sama' && IdentitasMergeService::keduanyaOperasiTimbang(Anak::findOrFail($a), Anak::findOrFail($b))) {
+            throw new InvalidArgumentException('Kedua baris berasal dari Operasi Timbang — tidak bisa digabung, hanya boleh diputus "beda".');
+        }
+
+        $t = AnakTautan::where('id_anak_a', $a)->where('id_anak_b', $b)->first();
+        if ($t && in_array($t->status, ['disetujui', 'digabung'], true)) {
+            throw new InvalidArgumentException('Pasangan ini sudah diputus dan disetujui.');
+        }
+
+        $data = [
+            'keputusan'      => $keputusan,
+            'skor'           => $kandidat->skor,
+            'via'            => $kandidat->via,
+            'status'         => 'disetujui',
+            'id_rt'          => null,
+            'diusulkan_oleh' => $oleh->id,
+            'pelaksana'      => null,
+            'diusulkan_at'   => now(),
+            'ditinjau_oleh'  => $oleh->id,
+            'ditinjau_at'    => now(),
+            'catatan'        => $catatan ?: null,
+            'catatan_reviu'  => null,
+        ];
+
+        if ($t) {
+            $t->update($data);
+            return $t->fresh();
+        }
+
+        return AnakTautan::create(['id_anak_a' => $a, 'id_anak_b' => $b] + $data);
     }
 
     /** Keputusan RT atas satu kandidat. Menimpa usulan lama yang belum disetujui. */

@@ -90,7 +90,7 @@ class PelaksanaTest extends TestCase
         $this->assertSame('Pak Joko', $v->pelaksana);
 
         $super = User::factory()->create(['type' => 0]);
-        $this->actingAs($super)->get(route('admin.verifikasiRt.index'))->assertOk()->assertSee('Akun RT 05')->assertSee('Pak Joko');
+        $this->actingAs($super)->get(route('admin.verifikasiRt.index', ['tab' => 'domisili']))->assertOk()->assertSee('Akun RT 05')->assertSee('Pak Joko');
     }
 
     public function test_akun_kelurahan_wajib_pelaksana(): void

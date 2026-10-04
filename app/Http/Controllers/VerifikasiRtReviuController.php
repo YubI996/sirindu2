@@ -10,8 +10,10 @@ use App\Services\TautanIdentitasService;
 use App\Services\VerifikasiRtService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
 
 /**
@@ -42,7 +44,14 @@ class VerifikasiRtReviuController extends Controller
             ->when(!$user->isSuperAdmin(), fn ($r) => $r->where('id_kelurahan', (int) $user->id_kel))
             ->orderBy('name')->get();
 
-        $tab = $request->query('tab') === 'tautan' ? 'tautan' : 'domisili';
+        // Tab "Dicurigai sama" hanya untuk Dinkes dan menjadi tab bawaannya; peran lain tetap mulai dari domisili.
+        $dinkes = $user->isSuperAdmin();
+        $tab = match (true) {
+            $request->query('tab') === 'tautan'    => 'tautan',
+            $request->query('tab') === 'domisili'  => 'domisili',
+            $request->query('tab') === 'dicurigai' && $dinkes => 'dicurigai',
+            default                                => $dinkes ? 'dicurigai' : 'domisili',
+        };
         $antreanTautan = $this->tautan->antreanTautanQuery($user)
             ->paginate(30, ['*'], 'halaman_tautan')
             ->withQueryString();
@@ -56,6 +65,11 @@ class VerifikasiRtReviuController extends Controller
             'antreanTautan'     => $antreanTautan,
             'ringkasanKandidat' => $this->tautan->ringkasanKandidat(),
             'menungguGabung'    => $this->tautan->menungguGabung(),
+            'kandidat'          => $tab === 'dicurigai'
+                ? $this->tautan->kandidatDicurigaiQuery()->paginate(20, ['*'], 'halaman_kandidat')->withQueryString()
+                : null,
+            'jumlahDicurigai'   => $dinkes ? $this->tautan->kandidatDicurigaiQuery()->count() : 0,
+            'sedangMemindai'    => Cache::has(PindaiIdentitasJob::KUNCI),
         ]);
     }
 
@@ -74,7 +88,7 @@ class VerifikasiRtReviuController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('admin.verifikasiRt.index', $request->only('rt', 'status', 'page'))
+        return redirect()->route('admin.verifikasiRt.index', ['tab' => 'domisili'] + $request->only('rt', 'status', 'page'))
             ->with('success', $data['setuju'] ? 'Usulan disetujui.' : 'Usulan ditolak.');
     }
 
@@ -97,13 +111,50 @@ class VerifikasiRtReviuController extends Controller
             ->with('success', $data['setuju'] ? 'Tautan disetujui.' : 'Tautan ditolak.');
     }
 
-    /** Pindai ulang kandidat (antrean) — hanya Dinkes. */
+    /** Dinkes memutuskan langsung satu pasangan "Dicurigai sama": memutus + menyetujui sekaligus. */
+    public function putuskan(Request $request): RedirectResponse
+    {
+        abort_if(!$request->user()->isSuperAdmin(), 403);
+
+        $data = $request->validate([
+            'id_anak_a'  => 'required|integer',
+            'id_anak_b'  => 'required|integer',
+            'keputusan'  => 'required|in:sama,beda',
+            'catatan'    => 'nullable|string|max:1000',
+        ]);
+
+        try {
+            $this->tautan->putuskanLangsung((int) $data['id_anak_a'], (int) $data['id_anak_b'], $request->user(), $data['keputusan'], $data['catatan'] ?? null);
+        } catch (AuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (InvalidArgumentException | ModelNotFoundException $e) {
+            return back()->with('error', $e instanceof ModelNotFoundException ? 'Salah satu anak sudah tidak ada.' : $e->getMessage());
+        }
+
+        return redirect()->route('admin.verifikasiRt.index', ['tab' => 'dicurigai'] + $request->only('halaman_kandidat'))
+            ->with('success', $data['keputusan'] === 'sama'
+                ? 'Ditandai SAMA dan disetujui. Pasangan menunggu di halaman Penggabungan.'
+                : 'Ditandai BEDA orang dan disetujui. Pasangan tidak akan diusulkan lagi.');
+    }
+
+    /** Pindai ulang kandidat (antrean) — hanya Dinkes. Satu pindai pada satu waktu. */
     public function pindai(Request $request): RedirectResponse
     {
         abort_if(!$request->user()->isSuperAdmin(), 403);
-        PindaiIdentitasJob::dispatch();
 
-        return redirect()->route('admin.verifikasiRt.index', ['tab' => 'tautan'])
+        if (!Cache::add(PindaiIdentitasJob::KUNCI, now()->toDateTimeString(), PindaiIdentitasJob::KUNCI_DETIK)) {
+            return redirect()->route('admin.verifikasiRt.index', ['tab' => 'dicurigai'])
+                ->with('error', 'Pindai sebelumnya masih berjalan. Tunggu selesai, lalu muat ulang halaman.');
+        }
+
+        try {
+            PindaiIdentitasJob::dispatch();
+        } catch (\Throwable $e) {
+            Cache::forget(PindaiIdentitasJob::KUNCI); // gagal diantrekan: jangan mengunci
+            throw $e;
+        }
+
+        return redirect()->route('admin.verifikasiRt.index', ['tab' => 'dicurigai'])
             ->with('success', 'Pindai ulang dijadwalkan. Hasil muncul setelah worker antrean memprosesnya.');
     }
 }

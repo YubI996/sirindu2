@@ -28,6 +28,16 @@ class IdentitasMergeService
     }
 
     /**
+     * Dua baris OT tak pernah digabung (populasi OT tidak boleh berubah). Satu-satunya sumber
+     * aturan ini: dipakai pratinjau() dan keputusan "sama" Dinkes di tab Dicurigai sama —
+     * supaya tak ada tautan "sama" disetujui yang mustahil digabung.
+     */
+    public static function keduanyaOperasiTimbang(Anak $a, Anak $b): bool
+    {
+        return $a->sumber === 'operasi_timbang' && $b->sumber === 'operasi_timbang';
+    }
+
+    /**
      * Baris mana yang dipertahankan + nilai default per kolom, tanpa mengubah apa pun.
      *
      * @return array{tautan:AnakTautan, a:Anak, b:Anak, dipertahankan:string, kunci_dipertahankan:bool, default:array<string,string>, boleh_pilih_baris:bool}
@@ -45,7 +55,7 @@ class IdentitasMergeService
 
         $aOt = $a->sumber === 'operasi_timbang';
         $bOt = $b->sumber === 'operasi_timbang';
-        if ($aOt && $bOt) {
+        if (self::keduanyaOperasiTimbang($a, $b)) {
             throw new InvalidArgumentException('Kedua baris berasal dari Operasi Timbang — tidak digabung agar populasi OT tidak berubah.');
         }
 
