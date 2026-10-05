@@ -339,3 +339,22 @@ aritmetika bulan di JS.
 kalender murni, hanya tampilan (detail anak, Export Kesmas). `KohortImunisasi` memakai cut-off
 1 Apr–31 Mar dan menilai IBL di tahun Baduta (≈ +2). Perbedaan ini disengaja dan tertulis di halaman;
 jangan "menyamakan" salah satunya tanpa keputusan pemilik produk.
+
+### Export Kesmas: ditulis streaming (OpenSpout), JANGAN kembali ke Maatwebsite
+
+Versi pertama memakai `FromQuery` + `ShouldAutoSize`, yang menumpuk seluruh buku di memori
+(60,8 MB untuk 800 anak di tes, ±440 MB diekstrapolasi untuk 10 rb). Di prod ekspor seluruh kota mati
+dengan "This page isn't working" **tanpa satu baris pun di `laravel.log`**, sementara satu kelurahan
+berhasil — jadi di dev tak pernah ketahuan. Kini `KesmasExport` menulis lewat `OpenSpout\Writer\XLSX`
+ke berkas sementara; memori puncak ±5 MB berapa pun jumlah anaknya (`ExportKesmasMemoriTest`).
+
+- **Jangan `Row::fromValues()` / FastExcel untuk sel teks.** OpenSpout mengubah setiap string berawalan
+  `=` jadi RUMUS (`Cell::fromValue`) — nama/catatan seperti `=HYPERLINK(...)` dijalankan Excel.
+  `KesmasExport::sel()` memakai `StringCell` eksplisit; dikunci `ExportKesmasTest::test_teks_tetap_literal…`.
+- **Jangan `get()` seluruhnya, dan jangan join + `ORDER BY nama` + offset** untuk sheet Per Kunjungan:
+  pengurutan hasil join diulang di tiap halaman (18,8 dtk vs 0,6 dtk untuk 16 rb baris). Anak dibaca
+  per halaman, kunjungan satu kelompok kecil anak diambil dengan satu `whereIn`. Satu baris `data_anak`
+  ±8 KB (±80 kolom) — makanya kelompok kecil (`POTONGAN`), dan jangan menyaring kolom: kolom yang
+  terlupa dari `map()` jadi sel kosong tanpa error.
+- `openspout/openspout` hanya dependensi transitif `rap2hpoutre/fast-excel`; bila FastExcel pernah
+  dicopot, tambahkan ia ke `composer.json` langsung.

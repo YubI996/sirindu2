@@ -5,20 +5,11 @@ namespace App\Exports;
 use App\Models\Anak;
 use App\Services\KesmasPresenter as K;
 use App\Support\TahunSasaranKesmas;
+use Generator;
 use Illuminate\Database\Eloquent\Builder;
-use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
 /** Sheet "Per Anak" — satu baris per anak yang lolos filter wilayah (spec §5). */
-final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder, WithStrictNullComparison
+final class KesmasAnakSheet
 {
     /** Kolom yang tetap numerik: BBL, PBL, LK lahir, usia kehamilan (R–U) + enam tahun sasaran (AI–AN). */
     private const KOLOM_ANGKA = ['R', 'S', 'T', 'U', 'AI', 'AJ', 'AK', 'AL', 'AM', 'AN'];
@@ -37,12 +28,30 @@ final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, Wit
         return $q;
     }
 
-    public function query()
+    /** `id` sebagai pengurut kedua: nama kembar tanpa itu bisa terduplikasi/terlewat antar potongan. */
+    public function query(): Builder
     {
         return self::terapkanWilayah(
-            Anak::query()->with(['kec', 'kel', 'rt', 'puskesmas', 'posyandu'])->orderBy('nama'),
+            Anak::query()->with(['kec', 'kel', 'rt', 'puskesmas', 'posyandu'])->orderBy('nama')->orderBy('id'),
             $this->filter
         );
+    }
+
+    /**
+     * Judul lalu satu baris per anak, dibaca per 200 (eager load per potongan) — tidak pernah
+     * `get()` seluruhnya. Anak berkolom ±70, jadi potongan besar cepat menjadi puluhan MB.
+     * Judul sengaja bagian dari aliran ini agar hasil kosong tetap berjudul.
+     *
+     * @return Generator<int, list<string|int|float|null>>
+     */
+    public function baris(): Generator
+    {
+        yield $this->headings();
+
+        $angka = KesmasExport::indeksKolom(self::KOLOM_ANGKA);
+        foreach ($this->query()->lazy(200) as $anak) {
+            yield KesmasExport::rapikan($this->map($anak), $angka);
+        }
     }
 
     public function title(): string
@@ -87,17 +96,5 @@ final class KesmasAnakSheet extends DefaultValueBinder implements FromQuery, Wit
         $t = TahunSasaranKesmas::coba($tglLahir);
 
         return $t ? array_column($t->semua(), 'tahun') : array_fill(0, count(TahunSasaranKesmas::TAHAP), null);
-    }
-
-    /** Kolom teks tetap literal (termasuk NIK dan awalan '='); pengukuran tetap numerik. */
-    public function bindValue(Cell $cell, $value)
-    {
-        if ($value !== null && !in_array($cell->getColumn(), self::KOLOM_ANGKA, true)) {
-            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
-
-            return true;
-        }
-
-        return parent::bindValue($cell, $value);
     }
 }

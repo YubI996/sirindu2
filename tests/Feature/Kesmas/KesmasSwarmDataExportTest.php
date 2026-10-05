@@ -14,10 +14,7 @@ use App\Models\User;
 use App\Services\ImunisasiStatusService;
 use App\Support\WilkerPuskesmas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Maatwebsite\Excel\Facades\Excel;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use Tests\TestCase;
@@ -106,9 +103,8 @@ class KesmasSwarmDataExportTest extends TestCase
     {
         $path = tempnam(sys_get_temp_dir(), 'kesmas-swarm-');
         try {
-            file_put_contents($path, Excel::raw(new KesmasExport($filter), \Maatwebsite\Excel\Excel::XLSX));
-            // Binder export bersifat global; jangan terapkan aturan sheet terakhir saat membaca ulang XLSX.
-            Cell::setValueBinder(new DefaultValueBinder);
+            (new KesmasExport($filter))->simpan($path);
+
             return IOFactory::load($path);
         } finally {
             unlink($path);
@@ -368,7 +364,6 @@ class KesmasSwarmDataExportTest extends TestCase
 
     public function test_download_menerima_batas_tanggal_tunggal_dan_hari_yang_sama(): void
     {
-        Excel::fake();
         foreach ([['dari' => '', 'sampai' => '2025-02-10'], ['dari' => '2025-02-10', 'sampai' => ''], ['dari' => '2025-02-10', 'sampai' => '2025-02-10']] as $filter) {
             $this->actingAs($this->admin)->get(route('admin.export.kesmas.download', $filter))
                 ->assertOk()->assertSessionDoesntHaveErrors();
@@ -387,7 +382,6 @@ class KesmasSwarmDataExportTest extends TestCase
             }
         }
         // City-wide access for imunisasi_faskes is an explicit spec decision.
-        Excel::fake();
         $user = User::factory()->create(['type' => 1, 'role' => 'imunisasi_faskes', 'id_puskesmas' => $this->wilayah['id_puskesmas']]);
         $this->actingAs($user)->get(route('admin.export.kesmas.index'))->assertOk();
         $this->get(route('admin.export.kesmas.download'))->assertOk();

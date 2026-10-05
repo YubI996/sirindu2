@@ -8,17 +8,17 @@ use App\Models\DataAnak;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\User;
+use App\Exports\KesmasAnakSheet;
+use App\Exports\KesmasKunjunganSheet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Maatwebsite\Excel\Facades\Excel;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Tests\TestCase;
 
 /**
  * Export Kesmas (spec §5): dua sheet, label Ya/Tidak/kosong, filter wilayah & tanggal,
- * faskes surveilans ditolak, NIK tetap teks.
+ * faskes surveilans ditolak, NIK tetap teks. Ditulis streaming (FastExcel) — lihat
+ * ExportKesmasMemoriTest untuk alasannya.
  */
 class ExportKesmasTest extends TestCase
 {
@@ -58,14 +58,21 @@ class ExportKesmasTest extends TestCase
     {
         $path = tempnam(sys_get_temp_dir(), 'kesmas');
         try {
-            file_put_contents($path, Excel::raw(new KesmasExport($filter), \Maatwebsite\Excel\Excel::XLSX));
-            Cell::setValueBinder(new DefaultValueBinder);
-            $book = IOFactory::load($path);
+            (new KesmasExport($filter))->simpan($path);
 
-            return [$book->getSheetByName('Per Anak'), $book->getSheetByName('Per Kunjungan')];
+            return $this->bukaBerkas($path);
         } finally {
             unlink($path);
         }
+    }
+
+    /** @return array{0: Worksheet, 1: Worksheet} */
+    private function bukaBerkas(string $path): array
+    {
+        $book = IOFactory::load($path);
+        $this->assertSame(['Per Anak', 'Per Kunjungan'], $book->getSheetNames());
+
+        return [$book->getSheetByName('Per Anak'), $book->getSheetByName('Per Kunjungan')];
     }
 
     public function test_halaman_export_tampil_dengan_menu_sidebar(): void
@@ -84,22 +91,75 @@ class ExportKesmasTest extends TestCase
         $this->actingAs($faskes)->get(route('admin.export.kesmas.download'))->assertForbidden();
     }
 
-    public function test_download_memicu_export_dengan_nama_berkas(): void
+    public function test_download_mengirim_xlsx_dua_sheet_dengan_nama_berkas(): void
     {
-        Excel::fake();
+        $this->anak('6474010101250010', $this->kelA);
 
-        $this->actingAs($this->admin)->get(route('admin.export.kesmas.download', ['id_kel' => $this->kelA->id]))->assertOk();
+        $r = $this->actingAs($this->admin)->get(route('admin.export.kesmas.download', ['id_kel' => $this->kelA->id]));
+        $isi = $r->streamedContent(); // callback streaming baru jalan saat isinya dibaca
 
-        Excel::assertDownloaded('kesmas-berbas-tengah-' . now()->format('Ymd') . '.xlsx', fn (KesmasExport $e) => count($e->sheets()) === 2);
+        $r->assertOk();
+        $this->assertStringContainsString('kesmas-berbas-tengah-' . now()->format('Ymd') . '.xlsx', $r->headers->get('content-disposition') ?? '');
+        $this->assertStringStartsWith('PK', $isi, 'xlsx adalah arsip ZIP');
+
+        $path = tempnam(sys_get_temp_dir(), 'kesmas');
+        try {
+            file_put_contents($path, $isi);
+            [$anak] = $this->bukaBerkas($path);
+            $this->assertSame('6474010101250010', $anak->getCell('A2')->getValue());
+        } finally {
+            unlink($path);
+        }
     }
 
     public function test_download_tanpa_filter_bernama_semua(): void
     {
-        Excel::fake();
+        $r = $this->actingAs($this->admin)->get(route('admin.export.kesmas.download'));
+        $r->streamedContent();
 
-        $this->actingAs($this->admin)->get(route('admin.export.kesmas.download'))->assertOk();
+        $r->assertOk();
+        $this->assertStringContainsString('kesmas-semua-' . now()->format('Ymd') . '.xlsx', $r->headers->get('content-disposition') ?? '');
+    }
 
-        Excel::assertDownloaded('kesmas-semua-' . now()->format('Ymd') . '.xlsx');
+    public function test_hasil_kosong_tetap_memuat_judul_kolom_kedua_sheet(): void
+    {
+        // Streaming menulis judul dari baris pertama data; tanpa penanganan khusus sheet kosong tak berjudul.
+        [$anak, $kunj] = $this->sheets(['id_kel' => $this->kelB->id]);
+
+        $this->assertSame('NIK', $anak->getCell('A1')->getValue());
+        $this->assertSame('Thn Sasaran 72 bln', $anak->getCell('AN1')->getValue());
+        $this->assertNull($anak->getCell('A2')->getValue());
+        $this->assertSame('NIK', $kunj->getCell('A1')->getValue());
+        $this->assertNull($kunj->getCell('A2')->getValue());
+    }
+
+    public function test_judul_kolom_tidak_ada_yang_kembar(): void
+    {
+        foreach ([new KesmasAnakSheet([]), new KesmasKunjunganSheet([])] as $lembar) {
+            $judul = $lembar->headings();
+            $this->assertSame($judul, array_values(array_unique($judul)), $lembar->title() . ' memuat judul kembar');
+        }
+    }
+
+    public function test_teks_tetap_literal_dan_angka_tetap_angka(): void
+    {
+        $a = $this->anak('6474010101250011', $this->kelA, [
+            'nama' => '=1+1', 'bbl' => 3.2, 'pbl' => 50, 'lk_lahir' => 34, 'usia_kehamilan_lahir' => 38,
+        ]);
+        $this->kunjungan($a, '2026-01-15', ['bb' => 0]);
+
+        [$anak, $kunj] = $this->sheets(['id_kel' => $this->kelA->id]);
+
+        $this->assertSame('=1+1', $anak->getCell('B2')->getValue(), 'awalan = bukan rumus');
+        $this->assertSame('s', $anak->getCell('B2')->getDataType());
+        foreach (['R' => 3.2, 'S' => 50, 'T' => 34, 'U' => 38] as $kolom => $nilai) {
+            $this->assertSame('n', $anak->getCell($kolom . '2')->getDataType(), "$kolom harus angka");
+            $this->assertEquals($nilai, $anak->getCell($kolom . '2')->getValue(), $kolom);
+        }
+        foreach (['D', 'E', 'F'] as $kolom) {
+            $this->assertSame('n', $kunj->getCell($kolom . '2')->getDataType(), "$kolom harus angka");
+        }
+        $this->assertEquals(0, $kunj->getCell('E2')->getValue(), 'BB 0 tetap angka nol, bukan kosong');
     }
 
     public function test_download_menolak_filter_tidak_sah(): void
@@ -150,6 +210,24 @@ class ExportKesmasTest extends TestCase
         $this->assertSame('Tidak', $kunj->getCell('K2')->getValue());       // mtbs = 0
         $this->assertSame('Karies', $kunj->getCell('Q2')->getValue());
         $this->assertNull($kunj->getCell('A3')->getValue());                 // kunjungan Maret tak ikut
+    }
+
+    public function test_sheet_per_kunjungan_urut_nama_lalu_tanggal_dan_anak_tanpa_kunjungan_dilewati(): void
+    {
+        $zed = $this->anak('6474010101250020', $this->kelA, ['nama' => 'Zed']);
+        $abi = $this->anak('6474010101250021', $this->kelA, ['nama' => 'Abi']);
+        $this->anak('6474010101250022', $this->kelA, ['nama' => 'Mimi']); // tanpa kunjungan
+        $this->kunjungan($zed, '2026-03-15');
+        $this->kunjungan($zed, '2026-01-15');
+        $this->kunjungan($abi, '2026-02-15');
+
+        [, $kunj] = $this->sheets(['id_kel' => $this->kelA->id]);
+
+        $urutan = [];
+        for ($baris = 2; $kunj->getCell("A$baris")->getValue() !== null; $baris++) {
+            $urutan[] = $kunj->getCell("B$baris")->getValue() . ' ' . $kunj->getCell("C$baris")->getValue();
+        }
+        $this->assertSame(['Abi 2026-02-15', 'Zed 2026-01-15', 'Zed 2026-03-15'], $urutan);
     }
 
     public function test_sheet_per_kunjungan_ikut_filter_wilayah(): void

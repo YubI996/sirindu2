@@ -2,43 +2,84 @@
 
 namespace App\Exports;
 
-use App\Models\DataAnak;
+use App\Models\Anak;
 use App\Services\KesmasPresenter as K;
-use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
+use Generator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /** Sheet "Per Kunjungan" — satu baris per data_anak (filter wilayah anak + rentang tgl_kunjungan). */
-final class KesmasKunjunganSheet extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder, WithStrictNullComparison
+final class KesmasKunjunganSheet
 {
+    /** Usia (bln), BB, TB — tetap numerik, termasuk nol. */
+    private const KOLOM_ANGKA = ['D', 'E', 'F'];
+
+    /** Jumlah anak per kelompok; kunjungan seluruh kelompok dimuat sekaligus (≈ 8 KB per baris). */
+    private const POTONGAN = 100;
+
     public function __construct(private array $filter) {}
 
-    public function query()
+    /** Anak lolos filter wilayah, urut nama — kolom sempit saja; `id` pengurut kedua agar potongan stabil. */
+    private function anakQuery(): Builder
     {
-        // join, bukan whereHas('anak'): DataAnak::anak() memakai FK bawaan `anak_id` yang tidak ada.
-        $q = DataAnak::query()
-            ->join('anak', 'anak.id', '=', 'data_anak.id_anak')
-            ->select('data_anak.*', 'anak.nik', 'anak.nama')
-            ->orderBy('anak.nama')
-            ->orderBy('data_anak.tgl_kunjungan');
+        return KesmasAnakSheet::terapkanWilayah(
+            Anak::query()->select('id', 'nik', 'nama')->orderBy('nama')->orderBy('id'),
+            $this->filter
+        );
+    }
 
-        KesmasAnakSheet::terapkanWilayah($q, $this->filter, 'anak.');
+    /**
+     * Kunjungan sekelompok anak (rentang tanggal), kronologis. `DB::table()` bukan model, karena
+     * DataAnak tak punya cast/accessor (nilainya sama persis). Tetap `select *`: dengan ±80 kolom
+     * sebaris ≈ 8 KB, makanya kelompoknya kecil (POTONGAN) — jangan menyaring kolom di sini, karena
+     * kolom yang terlupa dari map() menjadi sel kosong tanpa error.
+     */
+    private function kunjunganQuery(Collection $idAnak): QueryBuilder
+    {
+        $q = DB::table('data_anak')->whereIn('id_anak', $idAnak)->orderBy('tgl_kunjungan')->orderBy('id');
 
         if (!empty($this->filter['dari'])) {
-            $q->whereDate('data_anak.tgl_kunjungan', '>=', $this->filter['dari']);
+            $q->whereDate('tgl_kunjungan', '>=', $this->filter['dari']);
         }
         if (!empty($this->filter['sampai'])) {
-            $q->whereDate('data_anak.tgl_kunjungan', '<=', $this->filter['sampai']);
+            $q->whereDate('tgl_kunjungan', '<=', $this->filter['sampai']);
         }
 
         return $q;
+    }
+
+    /**
+     * Judul lalu satu baris per kunjungan, urut nama anak lalu tanggal. Anak dibaca per kelompok
+     * (kolom sempit), lalu kunjungan satu kelompok diambil dengan SATU query — tidak pernah `get()`
+     * seluruhnya.
+     *
+     * Bukan join + `ORDER BY anak.nama` dengan offset: pengurutan hasil join itu diulang di setiap
+     * halaman (terukur 18,8 dtk untuk 16 rb kunjungan, vs 0,6 dtk tanpa pengurutan) dan membuat
+     * ekspor seluruh kota mendekati batas waktu server web.
+     *
+     * @return Generator<int, list<string|int|float|null>>
+     */
+    public function baris(): Generator
+    {
+        yield $this->headings();
+
+        $angka = KesmasExport::indeksKolom(self::KOLOM_ANGKA);
+        foreach ($this->anakQuery()->lazy(500)->chunk(self::POTONGAN) as $potongan) {
+            $kelompok = $potongan->values()->collect(); // anak berkolom sempit; dipakai dua kali di bawah
+            $kunjungan = $this->kunjunganQuery($kelompok->pluck('id'))->get()->groupBy('id_anak');
+
+            foreach ($kelompok as $anak) {
+                foreach ($kunjungan->get($anak->id, []) as $d) {
+                    // map() membaca nik & nama dari baris kunjungan (dulu kolom hasil join).
+                    $d->nik = $anak->nik;
+                    $d->nama = $anak->nama;
+
+                    yield KesmasExport::rapikan($this->map($d), $angka);
+                }
+            }
+        }
     }
 
     public function title(): string
@@ -58,7 +99,7 @@ final class KesmasKunjunganSheet extends DefaultValueBinder implements FromQuery
         ]);
     }
 
-    /** @param DataAnak $d (dengan kolom join nik, nama) */
+    /** @param object $d baris data_anak (stdClass) yang sudah diberi nik & nama anaknya */
     public function map($d): array
     {
         $r = [$d->nik, $d->nama, $d->tgl_kunjungan, $d->bln, $d->bb, $d->tb, $d->tgl_penanda_ckg];
@@ -70,17 +111,5 @@ final class KesmasKunjunganSheet extends DefaultValueBinder implements FromQuery
             $d->pemeriksaan_gigi, $d->rujukan, $d->mt_pangan_lokal, $d->catatan_pengukuran,
             $d->pemeriksaan_lainnya, $d->pola_makan, $d->pola_asuh, $d->intervensi,
         ]);
-    }
-
-    /** Kolom teks tetap literal; usia, BB, dan TB tetap numerik, termasuk angka nol. */
-    public function bindValue(Cell $cell, $value)
-    {
-        if ($value !== null && !in_array($cell->getColumn(), ['D', 'E', 'F'], true)) {
-            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
-
-            return true;
-        }
-
-        return parent::bindValue($cell, $value);
     }
 }

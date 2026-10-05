@@ -8,7 +8,6 @@ use App\Models\Kelurahan;
 use App\Models\Posyandu;
 use App\Models\Puskesmas;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Export Kesmas — Excel dua sheet (Per Anak, Per Kunjungan) sebagai bahan dasbor Kesmas.
@@ -44,9 +43,8 @@ class ExportKesmasController extends Controller
 
     public function download(Request $request)
     {
-        $export = new KesmasExport($this->filter($request));
-
-        return Excel::download($export, $export->filename());
+        // Streaming: baris dibaca & ditulis saat respons dikirim (lihat KesmasExport).
+        return (new KesmasExport($this->filter($request)))->unduh();
     }
 
     private function filter(Request $request): array
