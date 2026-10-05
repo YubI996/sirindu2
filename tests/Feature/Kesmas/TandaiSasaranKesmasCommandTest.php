@@ -95,8 +95,9 @@ class TandaiSasaranKesmasCommandTest extends TestCase
         $berdomisili = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'berdomisili']);
         $dilepas = $this->anak($this->tanjungLaut, ['sasaran_balita_kesmas' => 0]);
         $sudah = $this->anak($this->tanjungLaut, ['sasaran_balita_kesmas' => 1]);
-        $pindah = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah']);
-        $meninggal = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'meninggal']);
+        $pindah = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah', 'verif_rt_reviu' => 'disetujui']);
+        $meninggal = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'meninggal', 'verif_rt_reviu' => 'disetujui']);
+        $diusulkan = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah', 'verif_rt_reviu' => 'diusulkan']); // belum keputusan → ikut
         $tidakAktif = $this->anak($this->tanjungLaut, ['status' => 0]);
         $lain = $this->anak($this->berbas);
 
@@ -104,7 +105,7 @@ class TandaiSasaranKesmasCommandTest extends TestCase
             ->expectsOutputToContain('Kode batch')
             ->assertSuccessful();
 
-        foreach ([$baru1, $baru2, $berdomisili] as $a) {
+        foreach ([$baru1, $baru2, $berdomisili, $diusulkan] as $a) {
             $this->assertSame(1, $this->nilai($a), $a->nama);
         }
         $this->assertSame(0, $this->nilai($dilepas), 'Centang yang sengaja dilepas tidak boleh ditimpa');
@@ -114,7 +115,7 @@ class TandaiSasaranKesmasCommandTest extends TestCase
         }
 
         $log = SasaranKesmasLog::orderBy('id')->get();
-        $this->assertCount(3, $log);
+        $this->assertCount(4, $log);
         $this->assertCount(1, $log->pluck('batch')->unique());
         foreach ($log as $l) {
             $this->assertSame('perintah', $l->sumber);
@@ -127,7 +128,7 @@ class TandaiSasaranKesmasCommandTest extends TestCase
 
     public function test_opsi_termasuk_pindah_dan_tidak_aktif(): void
     {
-        $pindah = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah']);
+        $pindah = $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah', 'verif_rt_reviu' => 'disetujui']);
         $tidakAktif = $this->anak($this->tanjungLaut, ['status' => 0]);
 
         $this->artisan('kesmas:tandai-sasaran', [
@@ -304,8 +305,8 @@ class TandaiSasaranKesmasCommandTest extends TestCase
         $this->anak($this->tanjungLaut);                                              // NULL
         $this->anak($this->tanjungLaut, ['sasaran_balita_kesmas' => 0]);              // dilepas
         $this->anak($this->tanjungLaut, ['sasaran_balita_kesmas' => 1]);              // sudah
-        $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah']);
-        $this->anak($this->tanjungLaut, ['verif_rt_status' => 'meninggal']);
+        $this->anak($this->tanjungLaut, ['verif_rt_status' => 'pindah', 'verif_rt_reviu' => 'disetujui']);
+        $this->anak($this->tanjungLaut, ['verif_rt_status' => 'meninggal', 'verif_rt_reviu' => 'disetujui']);
         $this->anak($this->tanjungLaut, ['status' => 0]);                             // Tidak Aktif
         $this->anak($this->tanjungLaut, ['verif_rt_status' => 'berdomisili']);        // NULL, ikut
         $this->anak($this->berbas);                                                   // kelurahan lain

@@ -370,5 +370,19 @@ class KesmasDashboardControllerTest extends TestCase
 
         $this->assertStringNotContainsString('km-penandaan--kosong', $blok);
         $this->assertMatchesRegularExpression('/<b class="im-num">1<\/b> dari 2 anak 0–72 bln sudah ditandai/', $blok);
+        $this->assertStringNotContainsString('tidak dihitung karena', $blok, 'tanpa anak yang keluar, keterangan itu tak muncul');
+    }
+
+    public function test_baris_penandaan_menyebut_anak_bertanda_yang_dikecualikan_karena_keluar(): void
+    {
+        $this->anak('Aktif', '2023-06-30');
+        $this->anak('Pindah', '2023-06-30', ['verif_rt_status' => 'pindah', 'verif_rt_reviu' => 'disetujui']);
+        $this->anak('Tidak Aktif', '2023-06-30', ['status' => 0]);
+
+        $html = $this->actingAs($this->admin)->get(route('admin.kesmas.dashboard', ['tahun' => 2025]))->assertOk()->getContent();
+        $blok = $this->blok($html, 'penandaan');
+
+        $this->assertMatchesRegularExpression('/<b class="im-num">1<\/b> dari 1 anak 0–72 bln sudah ditandai/', $blok, 'yang keluar tak masuk pembagi');
+        $this->assertStringContainsString('2 anak bertanda tidak dihitung karena pindah/meninggal (disetujui RT) atau Tidak Aktif', $blok);
     }
 }

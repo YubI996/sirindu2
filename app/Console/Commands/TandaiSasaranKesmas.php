@@ -8,6 +8,7 @@ use App\Models\Posyandu;
 use App\Models\Puskesmas;
 use App\Models\Rt;
 use App\Support\FilterWilayahAnak;
+use App\Support\KeluarWilayah;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -40,7 +41,7 @@ class TandaiSasaranKesmas extends Command
         {--lahir-sejak= : Tanggal lahir paling awal, Y-m-d (inklusif)}
         {--lahir-sampai= : Tanggal lahir paling akhir, Y-m-d (inklusif)}
         {--semua : Izinkan tanpa filter wilayah (seluruh kota)}
-        {--termasuk-pindah : Ikut tandai anak dengan verifikasi RT pindah/meninggal}
+        {--termasuk-pindah : Ikut tandai anak dengan verifikasi RT pindah/meninggal yang sudah disetujui}
         {--termasuk-tidak-aktif : Ikut tandai anak berstatus Tidak Aktif}
         {--jalankan : Tulis ke database (tanpa ini = dry-run)}
         {--alasan= : Wajib bersama --jalankan; disimpan di sasaran_kesmas_log}
@@ -96,8 +97,9 @@ class TandaiSasaranKesmas extends Command
         }
 
         // Pengecualian bawaan; '0' = tidak ada pengecualian (opsi --termasuk-*).
-        $pindah = $this->option('termasuk-pindah') ? '0' : "COALESCE(a.verif_rt_status, '') IN ('pindah', 'meninggal')";
-        $tidakAktif = $this->option('termasuk-tidak-aktif') ? '0' : 'a.status = 0';
+        // Aturan "keluar" sama dengan dasbor (KeluarWilayah): pindah/meninggal hanya bila SUDAH DISETUJUI reviu.
+        $pindah = $this->option('termasuk-pindah') ? '0' : KeluarWilayah::pindahMeninggalSql('a');
+        $tidakAktif = $this->option('termasuk-tidak-aktif') ? '0' : KeluarWilayah::tidakAktifSql('a');
 
         $rekap = $this->dasar($filters, $sejak, $sampai)
             ->selectRaw("a.id_kel, COUNT(*) as total,

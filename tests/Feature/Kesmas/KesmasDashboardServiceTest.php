@@ -617,15 +617,15 @@ class KesmasDashboardServiceTest extends TestCase
         $this->anak(80, ['sasaran_balita_kesmas' => null]);                         // > 72 bln — di luar dasbor
         $this->anak(20, ['sasaran_balita_kesmas' => null, 'id_kel' => $this->kelLain->id]);
 
-        $this->assertSame(['total' => 5, 'bertanda' => 1, 'dilepas' => 1, 'belum' => 3],
+        $this->assertSame(['total' => 5, 'bertanda' => 1, 'dilepas' => 1, 'belum' => 3, 'dikecualikan' => 0],
             $this->svc->penandaanSasaran($this->tahun2025(), []));
-        $this->assertSame(['total' => 4, 'bertanda' => 1, 'dilepas' => 1, 'belum' => 2],
+        $this->assertSame(['total' => 4, 'bertanda' => 1, 'dilepas' => 1, 'belum' => 2, 'dikecualikan' => 0],
             $this->svc->penandaanSasaran($this->tahun2025(), ['id_kelurahan' => $this->kel->id]));
     }
 
     public function test_penandaan_tanpa_anak_semua_nol(): void
     {
-        $this->assertSame(['total' => 0, 'bertanda' => 0, 'dilepas' => 0, 'belum' => 0],
+        $this->assertSame(['total' => 0, 'bertanda' => 0, 'dilepas' => 0, 'belum' => 0, 'dikecualikan' => 0],
             $this->svc->penandaanSasaran($this->tahun2025(), []));
     }
 

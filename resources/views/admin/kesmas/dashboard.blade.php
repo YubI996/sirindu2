@@ -105,6 +105,9 @@
             Sasaran Balita Kesmas: <b class="im-num">{{ $fmt($penandaan['bertanda']) }}</b> dari {{ $fmt($penandaan['total']) }} anak 0–72 bln sudah ditandai
             · {{ $fmt($penandaan['belum']) }} belum ditandai · {{ $fmt($penandaan['dilepas']) }} dilepas
         @endif
+        @if($penandaan['dikecualikan'] > 0)
+            <span class="km-penandaan__angka km-penandaan__dikecualikan">·{{ $fmt($penandaan['dikecualikan']) }} anak bertanda tidak dihitung karena pindah/meninggal (disetujui RT) atau Tidak Aktif</span>
+        @endif
     </section><!-- /penandaan -->
 
     @include('admin.kesmas.partials._filter')

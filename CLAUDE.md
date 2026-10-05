@@ -318,6 +318,15 @@ Dasbor Kesmas (spec `docs/superpowers/specs/2026-10-02-kesmas-permintaan-data-de
 - **Fixture tes dasbor Kesmas wajib bertanda 1.** Tanpa itu populasinya kosong dan tes — terutama
   `KesmasDashboardMemoriTest` — lolos palsu (memori kecil karena tak ada yang dihitung).
 - Kartu/chip IDL & IBL di dasbor Kesmas tetap dari `ImunisasiStatusService` dan **tidak** memakai tanda ini.
+- **Anak yang keluar tidak dihitung** (`App\Support\KeluarWilayah`): `anak.status = 0`, atau verifikasi RT
+  pindah/meninggal yang **sudah disetujui** (`verif_rt_reviu = 'disetujui'`; usulan belum menjadi keputusan).
+  Tanda sasarannya tidak disentuh, jadi anak terhitung lagi bila statusnya berbalik. Aturan ini satu-satunya
+  sumber untuk `sasaranSub()`, `registri()`, banner, dan `kesmas:tandai-sasaran` — jangan menulis ulang
+  kondisinya di tempat lain. Wajib `COALESCE`: `NOT (NULL OR …)` bernilai NULL dan membuang anak yang tak
+  pernah diverifikasi secara senyap (dikunci `KesmasKeluarWilayahTest`). "Pindah" tak mencatat tujuan, jadi
+  anak yang pindah ke RT lain di Bontang baru terhitung lagi setelah RT barunya memverifikasi "berdomisili".
+- `IdentitasMergeService` membawa `sasaran_balita_kesmas` dan `tgl_hbig` ke baris yang dipertahankan dengan
+  aturan "isi bila kosong" (0 = sengaja dilepas tidak ditimpa), tercatat di `sasaran_kesmas_log` (sumber `gabung`).
 
 ### BB < 2 bulan diinput dalam gram — hanya di form pengukuran, yang disimpan tetap kg
 

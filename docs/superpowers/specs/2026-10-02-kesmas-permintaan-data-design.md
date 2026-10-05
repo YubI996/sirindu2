@@ -33,8 +33,14 @@ Temuan eksplorasi yang membentuk desain:
 6. `KohortImunisasi` memakai cut-off 1 Apr–31 Mar dan menilai IBL di tahun Baduta (≈ tahun lahir + 2).
    Rumus klien murni kalender dan menaruh IBL di tahun lahir + 3. Keduanya dibiarkan berbeda — modul
    imunisasi tidak disentuh — dan perbedaannya ditulis di halaman.
-7. Belum ada dasbor yang mengecualikan anak "Tidak Aktif" (`anak.status = 0`) atau pindah/meninggal
-   (`anak.verif_rt_status`).
+7. ~~Belum ada dasbor yang mengecualikan anak "Tidak Aktif" (`anak.status = 0`) atau pindah/meninggal
+   (`anak.verif_rt_status`).~~ **Diubah 2026-10-05 (disetujui pemilik produk):** dasbor Kesmas kini
+   mengecualikan anak yang sudah keluar — `status = 0`, atau `verif_rt_status` pindah/meninggal dengan
+   `verif_rt_reviu = 'disetujui'` (usulan yang belum disetujui TIDAK mengeluarkan anak). Satu sumber
+   aturan: `App\Support\KeluarWilayah`, dipakai kartu, registri, banner penandaan, dan
+   `kesmas:tandai-sasaran` (yang kini juga hanya melewati pindah/meninggal yang disetujui). Tanda
+   `sasaran_balita_kesmas` tidak diubah, jadi anak terhitung lagi bila statusnya berbalik. Banner menambah
+   `dikecualikan` = anak bertanda yang tak terhitung karena keluar.
 
 ## 2. Keputusan pemilik produk (jangan ditawar ulang)
 
