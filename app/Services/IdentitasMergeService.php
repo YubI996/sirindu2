@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Anak;
 use App\Models\AnakMergeLog;
 use App\Models\AnakTautan;
+use App\Models\SasaranKesmasLog;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +23,8 @@ class IdentitasMergeService
     public const KOLOM_DOMISILI  = ['alamat', 'id_kec', 'id_kel', 'id_rt', 'id_posyandu', 'id_puskesmas'];
     public const KOLOM_LAIN      = ['golda', 'anak', 'catatan'];
     public const KOLOM           = [...self::KOLOM_IDENTITAS, ...self::KOLOM_DOMISILI, ...self::KOLOM_LAIN];
+    /** Dibawa otomatis ("isi bila kosong"), tidak ditampilkan sebagai pilihan a/b di layar gabung. */
+    public const KOLOM_KESMAS    = ['sasaran_balita_kesmas', 'tgl_hbig'];
 
     public function __construct(private readonly PrioritasGiziService $prioritas)
     {
@@ -133,7 +136,7 @@ class IdentitasMergeService
                 ->all();
 
             $nilaiLama = [];
-            foreach ([...self::KOLOM, 'sumber_gabungan', 'pj_nama', 'pj_updated_by', 'pj_updated_at'] as $k) {
+            foreach ([...self::KOLOM, 'sumber_gabungan', 'pj_nama', 'pj_updated_by', 'pj_updated_at', ...self::KOLOM_KESMAS] as $k) {
                 $nilaiLama[$k] = $keep->getAttribute($k);
             }
 
@@ -190,6 +193,24 @@ class IdentitasMergeService
                 $update['pj_updated_by'] = $drop->pj_updated_by;
                 $update['pj_updated_at'] = $drop->pj_updated_at;
             }
+
+            // Tanda Sasaran Balita Kesmas & tanggal HBIG: "isi bila kosong". Nilai yang sudah ada di
+            // baris dipertahankan (termasuk 0 = sengaja dilepas) tidak ditimpa. Tidak lewat $final:
+            // keduanya bukan kolom identitas/domisili yang dipilih petugas di layar penggabungan.
+            foreach (self::KOLOM_KESMAS as $k) {
+                if ($keep->getAttribute($k) === null && $drop->getAttribute($k) !== null) {
+                    $update[$k] = $drop->getAttribute($k);
+                }
+            }
+            if (array_key_exists('sasaran_balita_kesmas', $update)) {
+                SasaranKesmasLog::create([
+                    'id_anak'    => $keep->id,
+                    'nilai_lama' => null,
+                    'nilai_baru' => (int) $update['sasaran_balita_kesmas'],
+                    'sumber'     => 'gabung',
+                    'id_user'    => $oleh->id,
+                ]);
+            }
             $keep->update($update);
 
             $t->update(['status' => 'digabung']);
@@ -230,7 +251,19 @@ class IdentitasMergeService
         return DB::transaction(function () use ($log, $oleh, $keep, $s, $anakLama) {
             // 1) Pulihkan nilai lama baris yang dipertahankan DULU — melepas NIK/KK yang tadinya
             //    diambil dari baris yang dihapus, supaya insert ulang di bawah tak bentrok unique key.
-            $keep->update($s['nilai_lama_dipertahankan']);
+            // Snapshot dari penggabungan lama (sebelum kolom Kesmas dibawa) tak memuat kuncinya → tak disentuh.
+            $tandaLama = $s['nilai_lama_dipertahankan'];
+            if (array_key_exists('sasaran_balita_kesmas', $tandaLama)) {
+                $sekarang = $keep->sasaran_balita_kesmas === null ? null : (int) $keep->sasaran_balita_kesmas;
+                $pulih    = $tandaLama['sasaran_balita_kesmas'] === null ? null : (int) $tandaLama['sasaran_balita_kesmas'];
+                if ($sekarang !== $pulih) {
+                    SasaranKesmasLog::create([
+                        'id_anak' => $keep->id, 'nilai_lama' => $sekarang, 'nilai_baru' => $pulih,
+                        'sumber' => 'batal', 'id_user' => $oleh->id,
+                    ]);
+                }
+            }
+            $keep->update($tandaLama);
 
             // 2) Hidupkan kembali baris lama dengan id aslinya (kolom yang sudah tak ada di skema diabaikan).
             $kolomValid = array_flip(Schema::getColumnListing('anak'));

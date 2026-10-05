@@ -42,7 +42,8 @@ class MigrasiSasaranHbigTest extends TestCase
             $this->assertTrue($k->has($nama), "sasaran_kesmas_log.$nama tidak ada");
         }
         $this->assertFalse($k->has('updated_at'), 'Log audit hanya ditambah, tidak pernah diubah');
-        $this->assertSame("enum('form_tambah','form_edit','perintah','batal')", $k['sumber']->COLUMN_TYPE);
+        // 'gabung' ditambah migrasi 2026_10_05_000001 (penggabungan anak membawa tanda ke baris yang dipertahankan).
+        $this->assertSame("enum('form_tambah','form_edit','perintah','batal','gabung')", $k['sumber']->COLUMN_TYPE);
     }
 
     public function test_model_log_mengisi_created_at_tanpa_updated_at(): void
