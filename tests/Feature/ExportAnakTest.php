@@ -1,0 +1,150 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Exports\AnakExport;
+use App\Models\Anak;
+use App\Models\DataAnak;
+use App\Models\Kecamatan;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Excel as ExcelType;
+use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use Tests\TestCase;
+
+/**
+ * Export Data Anak (view `alldata`, satu baris per KUNJUNGAN) vs data hasil import.
+ *
+ * Dua sebab export tak sama dengan berkas import:
+ *  1. NIK/No KK 16 digit diekspor sebagai ANGKA. Excel hanya presisi 15 digit: tampil 6,47401E+15 dan
+ *     digit ke-16 menjadi 0 bila disimpan ulang, lalu berkas itu dibaca import sebagai NIK tak valid.
+ *  2. Anak tanpa kunjungan — termasuk semua anak hasil AnakImport (identitas saja) — tak ada di view
+ *     `alldata` (FROM data_anak INNER JOIN anak), jadi tak pernah muncul di export.
+ */
+class ExportAnakTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function anak(string $nama, string $nik, array $extra = []): Anak
+    {
+        return Anak::create(array_merge([
+            'nama' => $nama, 'nik' => $nik, 'no_kk' => '6474011205100007', 'nik_ortu' => '6474015501850002',
+            'jk' => 1, 'tempat_lahir' => 'Bontang', 'tgl_lahir' => '2024-01-01', 'status' => 1, 'sumber' => 'manual',
+        ], $extra));
+    }
+
+    private function kunjungan(Anak $anak, string $tgl): DataAnak
+    {
+        return DataAnak::create(['id_anak' => $anak->id, 'tgl_kunjungan' => $tgl, 'bln' => 12, 'posisi' => 'L',
+            'tb' => 70, 'bb' => 8, 'lla' => 13, 'lk' => 44, 'id_user' => 1]);
+    }
+
+    /** @return list<list<mixed>> baris (tanpa judul) hasil export yang dibuka kembali dari berkas xlsx */
+    private function barisXlsx(AnakExport $export): array
+    {
+        $path = tempnam(sys_get_temp_dir(), 'anak') . '.xlsx';
+        try {
+            file_put_contents($path, Excel::raw($export, ExcelType::XLSX));
+
+            return array_slice(IOFactory::load($path)->getActiveSheet()->toArray(null, true, false, false), 1);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    private function sel(AnakExport $export, string $alamat): \PhpOffice\PhpSpreadsheet\Cell\Cell
+    {
+        $path = tempnam(sys_get_temp_dir(), 'anak') . '.xlsx';
+        try {
+            file_put_contents($path, Excel::raw($export, ExcelType::XLSX));
+
+            return IOFactory::load($path)->getActiveSheet()->getCell($alamat);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function test_nik_no_kk_dan_nik_ortu_tersimpan_sebagai_teks_bukan_angka(): void
+    {
+        $a = $this->anak('Anak Panjang', '6474010101230001');
+        $this->kunjungan($a, '2025-05-05');
+
+        foreach (['A2' => '6474011205100007', 'B2' => '6474010101230001', 'D2' => '6474015501850002'] as $alamat => $nilai) {
+            $sel = $this->sel(new AnakExport(new Request()), $alamat);
+            $this->assertSame('s', $sel->getDataType(), "$alamat tersimpan sebagai angka — Excel akan memotongnya ke 15 digit");
+            $this->assertSame($nilai, $sel->getValue());
+        }
+    }
+
+    public function test_kolom_lain_tetap_angka_dan_teks_sebagaimana_semula(): void
+    {
+        $a = $this->anak('Anak Biasa', '6474010101230001');
+        $this->kunjungan($a, '2025-05-05');
+
+        $this->assertSame('n', $this->sel(new AnakExport(new Request()), 'U2')->getDataType()); // Tinggi Badan
+        $this->assertSame('Anak Biasa', $this->sel(new AnakExport(new Request()), 'C2')->getValue());
+    }
+
+    public function test_bawaan_hanya_anak_yang_punya_kunjungan_dan_anak_berkunjungan_ganda_muncul_per_kunjungan(): void
+    {
+        $dua = $this->anak('Dua Kunjungan', '6474010101230001');
+        $this->kunjungan($dua, '2025-01-05');
+        $this->kunjungan($dua, '2025-04-05');
+        $this->anak('Tanpa Kunjungan', '6474010101230002');
+
+        $nama = array_column($this->barisXlsx(new AnakExport(new Request())), 2);
+
+        $this->assertSame(['Dua Kunjungan', 'Dua Kunjungan'], $nama, 'perilaku bawaan tak boleh berubah');
+    }
+
+    public function test_opsi_menyertakan_anak_tanpa_kunjungan_satu_baris_dengan_kolom_pengukuran_kosong(): void
+    {
+        $dua = $this->anak('Dua Kunjungan', '6474010101230001');
+        $this->kunjungan($dua, '2025-01-05');
+        $this->kunjungan($dua, '2025-04-05');
+        $this->anak('Tanpa Kunjungan', '6474010101230002');
+
+        $baris = $this->barisXlsx(new AnakExport(new Request(['sertakan_tanpa_kunjungan' => '1'])));
+
+        $this->assertSame(['Dua Kunjungan', 'Dua Kunjungan', 'Tanpa Kunjungan'], array_column($baris, 2));
+        $tanpa = $baris[2];
+        $this->assertSame('6474010101230002', (string) $tanpa[1]);
+        $this->assertNull($tanpa[17], 'Tanggal Kunjungan harus kosong');
+        $this->assertNull($tanpa[20], 'Tinggi Badan harus kosong');
+        $this->assertNull($tanpa[22], 'BMI harus kosong');
+    }
+
+    public function test_opsi_tidak_terkena_rentang_tanggal_tetapi_tetap_mengikuti_filter_wilayah(): void
+    {
+        $utara = Kecamatan::create(['name' => 'Bontang Utara']);
+        $selatan = Kecamatan::create(['name' => 'Bontang Selatan']);
+        $a = $this->anak('Berkunjung Utara', '6474010101230001', ['id_kec' => $utara->id]);
+        $this->kunjungan($a, '2025-05-05');
+        $this->anak('Tanpa Utara', '6474010101230002', ['id_kec' => $utara->id]);
+        $this->anak('Tanpa Selatan', '6474010101230003', ['id_kec' => $selatan->id]);
+
+        $req = new Request([
+            'sertakan_tanpa_kunjungan' => '1', 'from_date' => '2025-01-01', 'to_date' => '2025-12-31', 'id_kec' => (string) $utara->id,
+        ]);
+
+        // rentang tanggal hanya menyaring kunjungan; anak tanpa kunjungan tak punya tanggal untuk dibandingkan
+        $this->assertSame(['Berkunjung Utara', 'Tanpa Utara'], array_column($this->barisXlsx(new AnakExport($req)), 2));
+
+        $di_luar_rentang = new Request([
+            'sertakan_tanpa_kunjungan' => '1', 'from_date' => '2030-01-01', 'to_date' => '2030-12-31', 'id_kec' => (string) $utara->id,
+        ]);
+        $this->assertSame(['Tanpa Utara'], array_column($this->barisXlsx(new AnakExport($di_luar_rentang)), 2));
+    }
+
+    public function test_form_export_menawarkan_opsi_anak_tanpa_kunjungan_dan_menjelaskan_rentang_tanggal(): void
+    {
+        $html = $this->actingAs(User::factory()->create(['type' => 1]))
+            ->get(route('admin.exportView'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<input[^>]*type="checkbox"[^>]*name="sertakan_tanpa_kunjungan"[^>]*value="1"/', $html);
+        $this->assertStringContainsString('belum punya kunjungan', $html);
+        $this->assertStringContainsString('tidak terkena rentang tanggal', $html);
+    }
+}

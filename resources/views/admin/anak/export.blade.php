@@ -71,6 +71,17 @@ Export Data Anak
             </div>
         </div>
         <div class="col-md-12 col-sm-12">
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" name="sertakan_tanpa_kunjungan" id="sertakan_tanpa_kunjungan" value="1" aria-describedby="sertakan_tanpa_kunjungan_bantuan">
+                <label class="form-check-label" for="sertakan_tanpa_kunjungan">Sertakan anak yang belum punya kunjungan</label>
+                <small id="sertakan_tanpa_kunjungan_bantuan" class="form-text text-muted">
+                    Export ini satu baris per kunjungan, jadi anak yang belum pernah diukur (mis. baru diimpor datanya saja) tidak ikut.
+                    Bila dicentang, mereka ditambahkan satu baris per anak dengan kolom pengukuran kosong. Mereka tidak terkena rentang tanggal
+                    di atas, tetapi tetap mengikuti pilihan wilayah.
+                </small>
+            </div>
+        </div>
+        <div class="col-md-12 col-sm-12">
             <button type="submit" class="btn btn-warning">Export</button>
             <a href="{{route('admin.exportAllExcel')}}"  class="btn btn-success">Export Data All</a>
         </div>
