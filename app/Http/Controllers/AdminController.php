@@ -163,8 +163,9 @@ ANAK
                 ';
                 return $btn;
             })
+            // Hanya `edit` (menu tombol) yang HTML. JANGAN `->escapeColumns([])`: itu mematikan escape
+            // bawaan Yajra sehingga nama/NIK dari form atau import menjadi stored XSS (DaftarAnakEscapeTest).
             ->rawColumns(['edit'])
-            ->escapeColumns([])
             ->make(true);
     }
 
