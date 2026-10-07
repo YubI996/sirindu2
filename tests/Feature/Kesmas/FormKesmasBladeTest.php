@@ -44,6 +44,19 @@ class FormKesmasBladeTest extends TestCase
         $this->assertStringContainsString('type="checkbox" name="{{ $f }}" id="{{ $p }}{{ $f }}" value="1"', $src);
     }
 
+    /**
+     * `step` angka (0.01, 0.1, 1) juga validasi HTML5: 3.255 pada step 0.01 → `stepMismatch`, dan
+     * karena kartunya tertutup browser tak bisa mem-fokus kontrolnya → Simpan tidak berbuat apa-apa.
+     * `step="any"` menonaktifkan pemeriksaan itu; kebenaran angka dijaga `KesmasRules` di server.
+     */
+    public function test_partial_tanpa_step_angka_yang_memblokir_submit_senyap(): void
+    {
+        foreach (self::PARTIAL as $p) {
+            $src = preg_replace('/\{\{--.*?--\}\}/s', '', $this->sumber("partials/$p"));
+            $this->assertDoesNotMatchRegularExpression('/\bstep="(?!any")/', $src, "$p memuat step angka di dalam kartu collapse");
+        }
+    }
+
     public function test_partial_tanpa_required_dan_memakai_bootstrap4(): void
     {
         foreach (self::PARTIAL as $p) {

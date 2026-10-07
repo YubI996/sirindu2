@@ -1,6 +1,6 @@
 {{-- Kartu "Riwayat Kelahiran & Skrining Neonatal" — spec §3. Memuat 7 kolom lama yang belum pernah
      tampil di form (bbl, pbl, lk_lahir, usia_kehamilan_lahir, penolong_lahir, imd, komplikasi_persalinan)
-     + 8 kolom neonatal baru. Tertutup default; TIDAK BOLEH ada atribut validasi HTML (wajib isi, batas angka) di dalamnya.
+     + 8 kolom neonatal baru. Tertutup default; TIDAK BOLEH ada atribut validasi HTML (wajib isi, batas angka, step angka) di dalamnya.
      Nilai penolong_lahir lama dari import yang tak ada di daftar tetap ditawarkan sebagai opsi. --}}
 @php
     $anak = $anak ?? null;
@@ -11,39 +11,41 @@
     if ($penolongLama !== '' && !in_array($penolongLama, $penolongOpsi, true)) {
         $penolongOpsi[] = $penolongLama;
     }
+    // Kartu tertutup menyembunyikan field yang galat → buka otomatis supaya petugas melihat yang harus dibetulkan.
+    $adaGalat = $errors->hasAny(['bbl', 'pbl', 'lk_lahir', 'usia_kehamilan_lahir', 'tempat_bersalin', 'jenis_persalinan', 'penolong_lahir', 'imd', 'riwayat_kek_ibu', 'komplikasi_persalinan', 'skrining_shk', 'skrining_shak', 'skrining_g6pd', 'pemeriksaan_hepatitis_b', 'tgl_hbig', 'komplikasi_neonatal']);
 @endphp
 <div class="col-12 mb-3">
     <div class="card">
         <div class="card-header p-0">
-            <button type="button" class="btn btn-link btn-block text-left font-weight-bold" data-toggle="collapse" data-target="#kartuRiwayatLahir" aria-expanded="false" aria-controls="kartuRiwayatLahir">
+            <button type="button" class="btn btn-link btn-block text-left font-weight-bold" data-toggle="collapse" data-target="#kartuRiwayatLahir" aria-expanded="{{ $adaGalat ? 'true' : 'false' }}" aria-controls="kartuRiwayatLahir">
                 Riwayat Kelahiran &amp; Skrining Neonatal (opsional)
             </button>
         </div>
-        <div id="kartuRiwayatLahir" class="collapse">
+        <div id="kartuRiwayatLahir" class="collapse{{ $adaGalat ? ' show' : '' }}">
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 col-sm-12">
                         <div class="form-group">
                             <label for="bbl">Berat lahir (kg)</label>
-                            <input type="number" step="0.01" name="bbl" id="bbl" class="form-control" value="{{ $nilai('bbl') }}">
+                            <input type="number" step="any" name="bbl" id="bbl" class="form-control" value="{{ $nilai('bbl') }}">
                         </div>
                     </div>
                     <div class="col-md-3 col-sm-12">
                         <div class="form-group">
                             <label for="pbl">Panjang lahir (cm)</label>
-                            <input type="number" step="0.1" name="pbl" id="pbl" class="form-control" value="{{ $nilai('pbl') }}">
+                            <input type="number" step="any" name="pbl" id="pbl" class="form-control" value="{{ $nilai('pbl') }}">
                         </div>
                     </div>
                     <div class="col-md-3 col-sm-12">
                         <div class="form-group">
                             <label for="lk_lahir">Lingkar kepala lahir (cm)</label>
-                            <input type="number" step="0.1" name="lk_lahir" id="lk_lahir" class="form-control" value="{{ $nilai('lk_lahir') }}">
+                            <input type="number" step="any" name="lk_lahir" id="lk_lahir" class="form-control" value="{{ $nilai('lk_lahir') }}">
                         </div>
                     </div>
                     <div class="col-md-3 col-sm-12">
                         <div class="form-group">
                             <label for="usia_kehamilan_lahir">Usia kehamilan saat lahir (minggu)</label>
-                            <input type="number" step="1" name="usia_kehamilan_lahir" id="usia_kehamilan_lahir" class="form-control" placeholder="20–45" value="{{ $nilai('usia_kehamilan_lahir') }}">
+                            <input type="number" step="any" name="usia_kehamilan_lahir" id="usia_kehamilan_lahir" class="form-control" placeholder="20–45" value="{{ $nilai('usia_kehamilan_lahir') }}">
                         </div>
                     </div>
                     <div class="col-md-4 col-sm-12">

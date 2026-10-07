@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\Anak;
 
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules;
 
 /**
  * Aturan validasi field Kesmas (spec §3.3). Semua nullable — form/klien lama yang tidak
@@ -64,6 +65,92 @@ final class KesmasRules
     public static function sasaran(): array
     {
         return ['sasaran_balita_kesmas' => 'nullable|boolean'];
+    }
+
+    /** Kalimat galat per nama aturan; `:attribute` diisi label dari atribut(). */
+    private const PESAN = [
+        'boolean'         => ':attribute harus dipilih Ya atau Tidak.',
+        'date'            => ':attribute bukan tanggal yang valid.',
+        'numeric'         => ':attribute harus berupa angka.',
+        'integer'         => ':attribute harus berupa bilangan bulat.',
+        'in'              => ':attribute berisi pilihan yang tidak dikenal.',
+        'string'          => ':attribute harus berupa teks.',
+        'min'             => ':attribute tidak boleh kurang dari :min.',
+        'max'             => ':attribute maksimal :max karakter.',
+        'between'         => ':attribute harus antara :min sampai :max.',
+        'after_or_equal'  => ':attribute tidak boleh sebelum :date.',
+        'before_or_equal' => ':attribute tidak boleh setelah hari ini.',
+    ];
+
+    /**
+     * Pesan galat berbahasa Indonesia untuk field di $aturan saja (key `field.aturan`), jadi
+     * pesan field non-Kesmas dalam validasi yang sama tidak ikut berubah. Tanpa ini galatnya
+     * "The usia kehamilan lahir must be between 20 and 45." — Inggris, nama kolom mentah —
+     * padahal field-nya ada di kartu collapse yang tertutup (audit Kesmas 2026-10-06, A11Y-002).
+     *
+     * @param array<string, string|array> $aturan salah satu dari anak()/sasaran()/kunjungan()
+     */
+    public static function pesan(array $aturan): array
+    {
+        $pesan = [];
+        foreach ($aturan as $field => $rule) {
+            foreach (is_string($rule) ? explode('|', $rule) : $rule as $bagian) {
+                $nama = $bagian instanceof Rules\In ? 'in'
+                    : (is_string($bagian) ? strtolower(explode(':', $bagian, 2)[0]) : null);
+                if ($nama !== null && isset(self::PESAN[$nama])) {
+                    $pesan["$field.$nama"] = self::PESAN[$nama];
+                }
+            }
+        }
+
+        return $pesan;
+    }
+
+    /** Label field = teks label di form, supaya petugas mengenali field yang dimaksud galat. */
+    public static function atribut(): array
+    {
+        $atribut = [
+            'tgl_lahir'               => 'tanggal lahir',
+            'no_id_epus'              => 'No. ID ePuskesmas',
+            'fktp_bpjs'               => 'FKTP BPJS terdaftar',
+            'air_bersih'              => 'Akses air bersih di rumah',
+            'jamban_sehat'            => 'Jamban sehat',
+            'merokok_keluarga'        => 'Anggota keluarga serumah yang merokok',
+            'status_tk_paud'          => 'Keikutsertaan TK/PAUD',
+            'penyakit_penyerta'       => 'Riwayat penyakit penyerta',
+            'pjb'                     => 'Penyakit Jantung Bawaan (PJB)',
+            'bbl'                     => 'Berat lahir',
+            'pbl'                     => 'Panjang lahir',
+            'lk_lahir'                => 'Lingkar kepala lahir',
+            'usia_kehamilan_lahir'    => 'Usia kehamilan saat lahir',
+            'tempat_bersalin'         => 'Tempat bersalin',
+            'jenis_persalinan'        => 'Jenis persalinan',
+            'penolong_lahir'          => 'Penolong persalinan',
+            'imd'                     => 'Inisiasi Menyusu Dini (IMD)',
+            'riwayat_kek_ibu'         => 'Riwayat KEK ibu saat hamil',
+            'komplikasi_persalinan'   => 'Komplikasi persalinan',
+            'skrining_shk'            => 'Skrining Hipotiroid Kongenital (SHK)',
+            'skrining_shak'           => 'Skrining Hiperplasia Adrenal Kongenital (SHAK)',
+            'skrining_g6pd'           => 'Skrining G6PD',
+            'pemeriksaan_hepatitis_b' => 'Pemeriksaan Hepatitis B',
+            'tgl_hbig'                => 'Tanggal pemberian HBIG',
+            'komplikasi_neonatal'     => 'Pelayanan / tindakan komplikasi neonatal',
+            'sasaran_balita_kesmas'   => 'Sasaran Balita Kesmas',
+            'tgl_penanda_ckg'         => 'Tanggal penanda CKG',
+            'pemeriksaan_gigi'        => 'Hasil pemeriksaan gigi',
+            'rujukan'                 => 'Rujukan',
+            'mt_pangan_lokal'         => 'Makanan tambahan (MT) pangan lokal',
+            'catatan_pengukuran'      => 'Catatan perkembangan / hasil pemeriksaan',
+            'pemeriksaan_lainnya'     => 'Hasil pemeriksaan kesehatan lainnya',
+            'pola_makan'              => 'Pola makan anak',
+            'pola_asuh'               => 'Pola asuh',
+            'intervensi'              => 'Intervensi',
+        ];
+        foreach (config('kesmas.layanan') as $kolom => $def) {
+            $atribut[$kolom] = $def['label'];
+        }
+
+        return $atribut;
     }
 
     /** Layanan Kesmas per kunjungan (data_anak). Checkbox = nullable|boolean. */

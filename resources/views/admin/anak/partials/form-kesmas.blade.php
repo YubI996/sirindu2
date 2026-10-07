@@ -6,15 +6,17 @@
     $anak = $anak ?? null;
     $k = config('kesmas');
     $nilai = fn (string $f) => (string) old($f, $anak->$f ?? '');
+    // Kartu tertutup menyembunyikan field yang galat → buka otomatis supaya petugas melihat yang harus dibetulkan.
+    $adaGalat = $errors->hasAny(['no_id_epus', 'fktp_bpjs', 'status_tk_paud', 'air_bersih', 'jamban_sehat', 'merokok_keluarga', 'penyakit_penyerta', 'pjb']);
 @endphp
 <div class="col-12 mb-3">
     <div class="card">
         <div class="card-header p-0">
-            <button type="button" class="btn btn-link btn-block text-left font-weight-bold" data-toggle="collapse" data-target="#kartuKesmas" aria-expanded="false" aria-controls="kartuKesmas">
+            <button type="button" class="btn btn-link btn-block text-left font-weight-bold" data-toggle="collapse" data-target="#kartuKesmas" aria-expanded="{{ $adaGalat ? 'true' : 'false' }}" aria-controls="kartuKesmas">
                 Data Kesmas &amp; Lingkungan (opsional)
             </button>
         </div>
-        <div id="kartuKesmas" class="collapse">
+        <div id="kartuKesmas" class="collapse{{ $adaGalat ? ' show' : '' }}">
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-4 col-sm-12">

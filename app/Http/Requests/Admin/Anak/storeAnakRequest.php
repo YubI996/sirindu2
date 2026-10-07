@@ -46,7 +46,8 @@ class storeAnakRequest extends FormRequest
 
     public function messages()
     {
-        return [
+        // pesan Kesmas (Indonesia) dulu; pesan eksplisit di bawah menang bila ada kunci yang sama
+        return array_merge(KesmasRules::pesan(array_merge(KesmasRules::anak(), KesmasRules::sasaran())), [
             'no_kk.required' => 'No KK Tidak Boleh Kosong',
             'nik.required' => 'NIK Tidak Boleh Kosong',
             'nama.required' => 'Nama Tidak Boleh Kosong',
@@ -61,6 +62,11 @@ class storeAnakRequest extends FormRequest
             'id_kec.required' => 'Kecamatan Tidak Boleh Kosong',
             'id_kel.required' => 'Kelurahan Tidak Boleh Kosong',
             'rt.required' => 'RT Tidak Boleh Kosong',  
-        ];
+        ]);
+    }
+
+    public function attributes()
+    {
+        return KesmasRules::atribut();
     }
 }

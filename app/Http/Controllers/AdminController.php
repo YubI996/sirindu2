@@ -249,7 +249,8 @@ ANAK
         // Validasi field Kesmas saja (opsional semua); field lama tetap tanpa validasi
         // server seperti sebelumnya. Harus SEBELUM try — ValidationException tidak boleh
         // tertelan catch Throwable menjadi "Gagal Mengubah Data".
-        $request->validate(array_merge(KesmasRules::anak($anak->penolong_lahir), KesmasRules::sasaran()));
+        $aturanKesmas = array_merge(KesmasRules::anak($anak->penolong_lahir), KesmasRules::sasaran());
+        $request->validate($aturanKesmas, KesmasRules::pesan($aturanKesmas), KesmasRules::atribut());
 
         try {
             $this->anakRepository->updateAnak($request, $anak->id);
@@ -505,7 +506,7 @@ ANAK
             'bb' => ['required', 'numeric', AturanBeratBadan::rentang($anak->tgl_lahir, $request->input('tgl_kunjungan'))],
             'lla' => 'required|numeric',
             'lk' => 'required|numeric',
-        ], KesmasRules::kunjungan()), [ // layanan Kesmas per kunjungan (spec 2026-09-15 §3.3), semua opsional
+        ], KesmasRules::kunjungan()), array_merge(KesmasRules::pesan(KesmasRules::kunjungan()), [ // layanan Kesmas per kunjungan (spec 2026-09-15 §3.3), semua opsional
             'tgl_kunjungan.required' => 'Tanggal kunjungan wajib diisi.',
             'tgl_kunjungan.date' => 'Format tanggal kunjungan tidak valid.',
             'posisi.required' => 'Posisi wajib dipilih.',
@@ -518,7 +519,7 @@ ANAK
             'lla.numeric' => 'Lingkar lengan atas harus berupa angka.',
             'lk.required' => 'Lingkar kepala wajib diisi.',
             'lk.numeric' => 'Lingkar kepala harus berupa angka.',
-        ]);
+        ]), KesmasRules::atribut());
 
         // data_anak.bb selalu kg: gram dari form dikonversi di server, bukan di JS (spec 2026-10-02 §5.5).
         $request->merge(['bb' => AturanBeratBadan::untukDisimpan($anak->tgl_lahir, $request->tgl_kunjungan, $request->bb)]);
@@ -590,7 +591,7 @@ ANAK
             'bb' => ['required', 'numeric', AturanBeratBadan::rentang(
                 $tglLahir, $request->input('tgl_kunjungan'), $bbTersimpan === null ? null : (float) $bbTersimpan
             )],
-        ], KesmasRules::kunjungan()));
+        ], KesmasRules::kunjungan()), KesmasRules::pesan(KesmasRules::kunjungan()), KesmasRules::atribut());
 
         $request->merge(['bb' => AturanBeratBadan::untukDisimpan($tglLahir, $request->tgl_kunjungan, $request->bb, $bbTersimpan)]);
 
