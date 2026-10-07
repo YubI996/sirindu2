@@ -367,3 +367,18 @@ ke berkas sementara; memori puncak ±5 MB berapa pun jumlah anaknya (`ExportKesm
   terlupa dari `map()` jadi sel kosong tanpa error.
 - `openspout/openspout` hanya dependensi transitif `rap2hpoutre/fast-excel`; bila FastExcel pernah
   dicopot, tambahkan ia ke `composer.json` langsung.
+
+### AnakImport: `sumber = 'import_anak'`, dan jalur NIK tak boleh menimpa dengan NULL
+
+Anak yang **dibuat** `AnakImport` bertanda `anak.sumber = 'import_anak'` (dulu 'manual', sama dengan input tangan —
+insiden Okt 2026: 1.490 anak hasil import tak muncul di Export Data Anak dan tak ada cara membedakannya dari
+input manual selain awalan nomor `IMP-`). Anak yang sudah ada **tidak** diubah sumbernya.
+
+- Jalur "NIK valid yang sudah ada" dulu `updateOrCreate(['nik'=>…], $data)` penuh: sel kosong menimpa NULL, `no` diganti
+  `IMP-YYYYMM-nnnn`, `status` direset 1 — itu sebab ±3.000 anak Operasi Timbang ikut berawalan `IMP-`. Kini memakai
+  `perbaruiAnakAda()` (aturan "isi yang diberikan"); `no`/`status` hanya berubah bila berkas **mengisinya**, identitas
+  (nama/tgl lahir/jk) boleh dikoreksi karena NIK kunci kuat. Dikunci `ImportAnakNikAdaTest`.
+- Migrasi `2026_10_07_000001` menambah nilai enum dan mengisi ulang `manual` + `no LIKE 'IMP-%'` → `import_anak`
+  (awalan itu hanya dibuat AnakImport). Pakai `DB::table()` — jangan `Anak::update()` (menyentuh `updated_at` yang
+  dibaca `CapilDedupService::sigiziUntouched()`).
+- Nomor `IMP-` pada anak berumur lama **tidak** bisa dipulihkan dari DB; nomor registrasi aslinya hanya ada di cadangan.

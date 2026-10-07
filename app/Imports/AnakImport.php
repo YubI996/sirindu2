@@ -166,7 +166,9 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
                 // NIK valid yang sudah ada di DB -> jalur NIK (updateOrCreate). Selain itu — NIK kosong,
                 // tak valid, atau valid tapi belum ada — tautkan ke anak yang sama bila ada, supaya tidak
                 // membuat anak ganda. Jenis kelamin sebenarnya dipakai ($jkChar), bukan di-hardcode 'L'.
-                if (!($nikValid && Anak::where('nik', $nikKey)->exists())) {
+                $anakNik = $nikValid ? Anak::where('nik', $nikKey)->first() : null;
+
+                if ($anakNik === null) {
                     $tautan = $this->penautanAnak()->tautkan($namaRaw, $tglLahir, $jkChar, $noKkRaw, $nikValid ? $nikKey : null);
 
                     if ($tautan['hasil'] === PenautanAnakImport::AMBIGU) {
@@ -203,12 +205,14 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
 
                 // No registrasi (NOT NULL) -----------------------------------
                 $noReg = (string) ($this->colVal($row, $map, 'no_registrasi') ?? '');
-                if (empty($noReg)) {
+                $noDiisiBerkas = !empty($noReg);
+                if (!$noDiisiBerkas) {
                     $noReg = 'IMP-' . date('Ym') . '-' . str_pad($rowNum, 4, '0', STR_PAD_LEFT);
                 }
 
                 // Status (default 1 = aktif) ---------------------------------
-                $status = $this->parseIntVal($this->colVal($row, $map, 'status')) ?? 1;
+                $statusBerkas = $this->parseIntVal($this->colVal($row, $map, 'status'));
+                $status = $statusBerkas ?? 1;
 
                 $data = [
                     'nama'                 => $namaRaw,
@@ -245,8 +249,21 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
 
                 if ($anakAda) {
                     $this->perbaruiAnakAda($anakAda->id, $data, $nikBaru);
+                } elseif ($anakNik) {
+                    // NIK sama persis = anak yang sama. Aturan "isi yang diberikan" seperti jalur tautan: sel kosong
+                    // tak mengosongkan data lama, dan `no`/`status` hanya berubah bila berkas MENGISINYA (bukan
+                    // default IMP-/1). Identitas boleh dikoreksi berkas karena NIK adalah kunci yang kuat.
+                    $bolehTimpa = ['nama', 'tgl_lahir', 'jk'];
+                    if ($noDiisiBerkas) {
+                        $bolehTimpa[] = 'no';
+                    }
+                    if ($statusBerkas !== null) {
+                        $bolehTimpa[] = 'status';
+                    }
+                    $this->perbaruiAnakAda($anakNik->id, $data, null, $bolehTimpa);
                 } else {
-                    Anak::updateOrCreate(['nik' => $nikKey], $data);
+                    // Anak yang dibuat import ditandai, supaya terpisah dari input tangan ('manual').
+                    Anak::create($data + ['nik' => $nikKey, 'sumber' => 'import_anak']);
                 }
                 $this->successCount++;
 

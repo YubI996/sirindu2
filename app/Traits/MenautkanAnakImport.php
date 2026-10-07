@@ -26,13 +26,15 @@ trait MenautkanAnakImport
      * yang lebih lemah dari baris ber-NIK, jadi sel kosong tak boleh mengosongkan data lama
      * (mis. NIK ibu & wilayah dari Capil/Operasi Timbang).
      *
-     * @param  string|null  $nikBaru  bila diisi, NIK anak diganti (lebih real)
+     * @param  string|null  $nikBaru   bila diisi, NIK anak diganti (lebih real)
+     * @param  string[]     $bolehTimpa kolom yang biasanya dijaga (JANGAN_TIMPA) tetapi di sini boleh ditimpa
+     *                                 — mis. jalur NIK, tempat identitas boleh dikoreksi berkas
      */
-    protected function perbaruiAnakAda(int $id, array $data, ?string $nikBaru = null): Anak
+    protected function perbaruiAnakAda(int $id, array $data, ?string $nikBaru = null, array $bolehTimpa = []): Anak
     {
         $isi = array_diff_key(
             array_filter($data, fn ($v) => $v !== null),
-            array_flip(self::JANGAN_TIMPA)
+            array_flip(array_diff(self::JANGAN_TIMPA, $bolehTimpa))
         );
 
         if ($nikBaru !== null) {

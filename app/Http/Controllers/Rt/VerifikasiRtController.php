@@ -30,6 +30,7 @@ class VerifikasiRtController extends Controller
         'operasi_timbang' => 'OT',
         'capil'           => 'Capil',
         'manual'          => 'Manual',
+        'import_anak'     => 'Import',
         'dummy'           => 'Dummy',
     ];
 
