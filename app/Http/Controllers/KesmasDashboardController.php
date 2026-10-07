@@ -9,6 +9,7 @@ use App\Models\Posyandu;
 use App\Models\Puskesmas;
 use App\Services\ImunisasiStatusService;
 use App\Services\KesmasDashboardService;
+use App\Support\BatasDataPribadiKesmas;
 use App\Support\KohortImunisasi;
 use App\Support\PeriodeKesmas;
 use Illuminate\Http\JsonResponse;
@@ -64,12 +65,21 @@ class KesmasDashboardController extends Controller
             'posyanduList'  => Posyandu::orderBy('name')->get(),
             'puskesmasList' => Puskesmas::orderBy('name')->get(),
             'tahunList'     => range(now()->year + 1, 2020),
+            // Registri memuat NIK & nama orang tua → hanya bila akun boleh (BatasDataPribadiKesmas).
+            'registriBoleh' => BatasDataPribadiKesmas::untuk(auth()->user())['boleh'],
         ]);
     }
 
     public function registri(Request $request): JsonResponse
     {
+        $batas = BatasDataPribadiKesmas::untuk(auth()->user());
+        abort_unless($batas['boleh'], 403, 'Akses tidak diizinkan.');
+
         [$periode, $filters, $usia] = $this->parse($request);
+        // Batas wilayah akun menang atas pilihan klien; filter lain tetap AND, jadi hanya bisa mempersempit.
+        if ($batas['puskesmas']) {
+            $filters['id_puskesmas'] = $batas['puskesmas'];
+        }
         $v = $request->validate([
             'q'           => 'nullable|string|max:100',
             'status_gizi' => ['nullable', Rule::in(KesmasDashboardService::STATUS_GIZI)],

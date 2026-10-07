@@ -381,10 +381,16 @@ class KesmasSwarmDataExportTest extends TestCase
                 $this->actingAs($user)->get(route($route))->assertForbidden();
             }
         }
-        // City-wide access for imunisasi_faskes is an explicit spec decision.
-        $user = User::factory()->create(['type' => 1, 'role' => 'imunisasi_faskes', 'id_puskesmas' => $this->wilayah['id_puskesmas']]);
+        // imunisasi_faskes: boleh mengunduh hanya bila punya puskesmas (data dibatasi ke catchment-nya, lihat
+        // BatasDataPribadiFaskesKesmasTest); tanpa puskesmas atau akun RS ditolak. faskes_type wajib di form user.
+        $user = User::factory()->create(['type' => 1, 'role' => 'imunisasi_faskes', 'faskes_type' => 'puskesmas', 'id_puskesmas' => $this->wilayah['id_puskesmas']]);
         $this->actingAs($user)->get(route('admin.export.kesmas.index'))->assertOk();
         $this->get(route('admin.export.kesmas.download'))->assertOk();
+
+        $rs = User::factory()->create(['type' => 1, 'role' => 'imunisasi_faskes', 'faskes_type' => 'rs']);
+        foreach (['admin.export.kesmas.index', 'admin.export.kesmas.download'] as $route) {
+            $this->actingAs($rs)->get(route($route))->assertForbidden();
+        }
     }
 
     public function test_detail_mengescape_teks_kesmas_dan_atribut_catatan_kunjungan(): void

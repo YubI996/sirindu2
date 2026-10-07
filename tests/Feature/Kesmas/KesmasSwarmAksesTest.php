@@ -26,12 +26,15 @@ class KesmasSwarmAksesTest extends TestCase
 
     public function test_semua_pintu_kesmas_menerapkan_matriks_peran_yang_sama(): void
     {
-        // Akses faskes imunisasi se-kota merupakan kebijakan spec, bukan scoping otomatis.
+        // Faskes imunisasi: dasbor (angka) se-kota tetap terbuka, tetapi data pribadi (registri, Export)
+        // butuh puskesmas — tanpa itu ditolak. Batas wilayahnya dikunci BatasDataPribadiFaskesKesmasTest.
         $roles = [
             ['type' => 0, 'role' => null, 'status' => 200],
             ['type' => 1, 'role' => null, 'status' => 200],
             ['type' => 2, 'role' => 'superadmin', 'status' => 200],
-            ['type' => 0, 'role' => 'imunisasi_faskes', 'status' => 200],
+            ['type' => 0, 'role' => 'imunisasi_faskes', 'status' => 200, 'kecuali' => [
+                'admin.kesmas.registri' => 403, 'admin.export.kesmas.index' => 403, 'admin.export.kesmas.download' => 403,
+            ]],
             ['type' => 0, 'role' => 'surveilans_puskesmas', 'status' => 403],
             ['type' => 0, 'role' => 'surveilans_rs', 'status' => 403],
             ['type' => 2, 'role' => 'rt', 'status' => 403],
@@ -43,7 +46,7 @@ class KesmasSwarmAksesTest extends TestCase
             $user = User::factory()->create(['type' => $role['type'], 'role' => $role['role']]);
             $this->actingAs($user);
             foreach (['admin.kesmas.dashboard', 'admin.kesmas.registri', 'admin.export.kesmas.index', 'admin.export.kesmas.download'] as $route) {
-                $this->getJson(route($route))->assertStatus($role['status']);
+                $this->getJson(route($route))->assertStatus($role['kecuali'][$route] ?? $role['status']);
             }
         }
     }

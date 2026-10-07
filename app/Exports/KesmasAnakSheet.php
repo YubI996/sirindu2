@@ -24,6 +24,10 @@ final class KesmasAnakSheet
                 $q->where($prefix . $k, $filter[$k]);
             }
         }
+        // Batas akun (bukan pilihan form): hanya kelurahan ini, apa pun filter lain — lihat BatasDataPribadiKesmas.
+        if (isset($filter['batas_kelurahan'])) {
+            $q->whereIn($prefix . 'id_kel', $filter['batas_kelurahan']);
+        }
 
         return $q;
     }

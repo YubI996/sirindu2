@@ -125,7 +125,9 @@
 
     @include('admin.kesmas.partials._layanan')
 
+    @if ($registriBoleh)
     @include('admin.kesmas.partials._registri')
+    @endif
 
 </div>
 @endsection
