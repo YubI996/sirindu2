@@ -265,18 +265,22 @@ Edit Anak
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label for="kelas_ibu_balita">Kelas Ibu Balita</label>
+                @php $nilaikelas_ibu_balita = $dt->kelas_ibu_balita === null ? '' : (string) (int) $dt->kelas_ibu_balita; @endphp
                 <select name="kelas_ibu_balita" id="kelas_ibu_balita" class="form-control">
-                    <option value="0" @if(!$dt->kelas_ibu_balita) selected @endif>Tidak</option>
-                    <option value="1" @if($dt->kelas_ibu_balita) selected @endif>Ya</option>
+                    <option value="" @selected($nilaikelas_ibu_balita === '')>— belum diisi —</option>
+                    <option value="1" @selected($nilaikelas_ibu_balita === '1')>Ya</option>
+                    <option value="0" @selected($nilaikelas_ibu_balita === '0')>Tidak</option>
                 </select>
             </div>
         </div>
         <div class="col-md-4 col-sm-12">
             <div class="form-group">
                 <label for="mbg">Makan Bergizi Gratis (MBG)</label>
+                @php $nilaimbg = $dt->mbg === null ? '' : (string) (int) $dt->mbg; @endphp
                 <select name="mbg" id="mbg" class="form-control">
-                    <option value="0" @if(!$dt->mbg) selected @endif>Tidak</option>
-                    <option value="1" @if($dt->mbg) selected @endif>Ya</option>
+                    <option value="" @selected($nilaimbg === '')>— belum diisi —</option>
+                    <option value="1" @selected($nilaimbg === '1')>Ya</option>
+                    <option value="0" @selected($nilaimbg === '0')>Tidak</option>
                 </select>
             </div>
         </div>

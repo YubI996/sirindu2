@@ -144,24 +144,17 @@ class AnakRepository implements AnakRepositoryInterface
                 'bb' => $request->bb,
                 'lla' => $request->lla,
                 'lk' => $request->lk,
-                'ntob' => null,
                 'asi' => $request->asi,
                 'vit_a' => $request->vit_a,
                 'pitting_edema' => $request->pitting_edema,
-                'asi_bulan_0' => $request->boolean('asi_bulan_0'),
-                'asi_bulan_1' => $request->boolean('asi_bulan_1'),
-                'asi_bulan_2' => $request->boolean('asi_bulan_2'),
-                'asi_bulan_3' => $request->boolean('asi_bulan_3'),
-                'asi_bulan_4' => $request->boolean('asi_bulan_4'),
-                'asi_bulan_5' => $request->boolean('asi_bulan_5'),
-                'asi_bulan_6' => $request->boolean('asi_bulan_6'),
-                'kelas_ibu_balita' => $request->boolean('kelas_ibu_balita'),
-                'mbg' => $request->boolean('mbg'),
                 'tgl_kunjungan' => $request->tgl_kunjungan,
-                'obat_cacing' => $request->obat_cacing,
-                'ddtka' => $request->ddtka,
                 'id_user' => Auth::user()->id,
-            ])->save();
+            ])->fill(array_merge(
+                $this->kolomKunjunganTanpaInputDiEdit($request),
+                $this->layananTigaKeadaan($request, ['kelas_ibu_balita', 'mbg'])
+            ));
+            $this->kosongkanNtobBilaBbBerubah($dt);
+            $dt->save();
         } else {
             $anak->update(array_merge([
                 'no_kk' => $request->no_kk,
@@ -193,24 +186,17 @@ class AnakRepository implements AnakRepositoryInterface
                 'bb' => $request->bb,
                 'lla' => $request->lla,
                 'lk' => $request->lk,
-                'ntob' => null,
                 'asi' => $request->asi,
                 'vit_a' => $request->vit_a,
                 'pitting_edema' => $request->pitting_edema,
-                'asi_bulan_0' => $request->boolean('asi_bulan_0'),
-                'asi_bulan_1' => $request->boolean('asi_bulan_1'),
-                'asi_bulan_2' => $request->boolean('asi_bulan_2'),
-                'asi_bulan_3' => $request->boolean('asi_bulan_3'),
-                'asi_bulan_4' => $request->boolean('asi_bulan_4'),
-                'asi_bulan_5' => $request->boolean('asi_bulan_5'),
-                'asi_bulan_6' => $request->boolean('asi_bulan_6'),
-                'kelas_ibu_balita' => $request->boolean('kelas_ibu_balita'),
-                'mbg' => $request->boolean('mbg'),
                 'tgl_kunjungan' => $request->tgl_kunjungan,
-                'obat_cacing' => $request->obat_cacing,
-                'ddtka' => $request->ddtka,
                 'id_user' => Auth::user()->id,
-            ])->save();
+            ])->fill(array_merge(
+                $this->kolomKunjunganTanpaInputDiEdit($request),
+                $this->layananTigaKeadaan($request, ['kelas_ibu_balita', 'mbg'])
+            ));
+            $this->kosongkanNtobBilaBbBerubah($dt);
+            $dt->save();
         }
 
         $this->catatSasaran(
@@ -262,14 +248,13 @@ class AnakRepository implements AnakRepositoryInterface
         $anak = Anak::find($dataAnak->id_anak);
         $bln = usia_bulan($anak?->tgl_lahir, $request->tgl_kunjungan) ?? $dataAnak->bln;
 
-        $dataAnak->update(array_merge([
+        $dataAnak->fill(array_merge([
             'bln' => $bln,
             'posisi' => normalisasi_posisi($request->posisi),
             'tb' => $request->tb,
             'bb' => $request->bb,
             'lla' => $request->lla,
             'lk' => $request->lk,
-            'ntob' => null,
             'asi' => $request->asi,
             'vit_a' => $request->vit_a,
             'tgl_kunjungan' => $request->tgl_kunjungan,
@@ -279,6 +264,63 @@ class AnakRepository implements AnakRepositoryInterface
             'alasan_tidak_imunisasi' => $request->alasan_tidak_imunisasi,
             'id_user' => Auth::user()->id,
         ], $this->layananKesmasAttributes($request)));
+        $this->kosongkanNtobBilaBbBerubah($dataAnak);
+        $dataAnak->save();
+    }
+
+    /**
+     * Kolom kunjungan yang TIDAK punya input di form Edit Anak (identitas): ddtka, obat_cacing,
+     * asi_bulan_0..6. Hanya ditulis bila dikirim — kalau tidak, nilai lama (dari import/OT atau form
+     * per kunjungan) dipertahankan. Dulu ditulis ulang null/false tiap kali nama anak dibetulkan, dan
+     * dasbor Kesmas (SDIDTK, K2–K4) membacanya. `has()` di sini mendeteksi keberadaan field; nilai
+     * boolean tetap dibaca `boolean()`. (audit Kesmas 2026-10-06, REQ-002)
+     */
+    private function kolomKunjunganTanpaInputDiEdit($request): array
+    {
+        $kolom = [];
+        foreach (['obat_cacing', 'ddtka'] as $f) {
+            if ($request->has($f)) {
+                $kolom[$f] = $request->input($f);
+            }
+        }
+        foreach (range(0, 6) as $i) {
+            if ($request->has("asi_bulan_$i")) {
+                $kolom["asi_bulan_$i"] = $request->boolean("asi_bulan_$i");
+            }
+        }
+
+        return $kolom;
+    }
+
+    /**
+     * Select tiga keadaan di form Edit Anak: '' = belum diisi (NULL), 1 = Ya, 0 = Tidak. Field yang tak
+     * dikirim tidak disentuh. Dulu `boolean()` mengubah '' menjadi 0, sehingga menyimpan form apa pun
+     * mengubah "belum diisi" menjadi "Tidak" dan menggeser pembagi "terisi" di dasbor Layanan.
+     * `has()` di sini mendeteksi keberadaan field; nilainya tetap dibaca `boolean()`.
+     * (audit Kesmas 2026-10-06, UX-001/REQ-003)
+     */
+    private function layananTigaKeadaan($request, array $kolom): array
+    {
+        $nilai = [];
+        foreach ($kolom as $f) {
+            if ($request->has($f)) {
+                $nilai[$f] = $request->input($f) === null ? null : (int) $request->boolean($f);
+            }
+        }
+
+        return $nilai;
+    }
+
+    /**
+     * `ntob` ('T' = BB tidak naik) tak punya input di form mana pun — diisi import OT/Pengukuran dan
+     * dibaca dasbor Kesmas serta PrioritasGiziService. Menyimpan form tak boleh menghapusnya; ia hanya
+     * basi bila BB pada baris itu berubah. Perbandingan numerik: '8' dan '8.00' bukan perubahan.
+     */
+    private function kosongkanNtobBilaBbBerubah(DataAnak $dt): void
+    {
+        if ($dt->exists && abs((float) $dt->bb - (float) $dt->getOriginal('bb')) > 0.0001) {
+            $dt->ntob = null;
+        }
     }
 
     // ==================== ENHANCED IMUNISASI METHODS ====================

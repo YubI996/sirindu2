@@ -249,7 +249,11 @@ ANAK
         // Validasi field Kesmas saja (opsional semua); field lama tetap tanpa validasi
         // server seperti sebelumnya. Harus SEBELUM try — ValidationException tidak boleh
         // tertelan catch Throwable menjadi "Gagal Mengubah Data".
-        $aturanKesmas = array_merge(KesmasRules::anak($anak->penolong_lahir), KesmasRules::sasaran());
+        $aturanKesmas = array_merge(KesmasRules::anak($anak->penolong_lahir), KesmasRules::sasaran(), [
+            // select tiga keadaan di form Edit Anak (kolom data_anak, bukan anak) — lihat AnakRepository::layananTigaKeadaan
+            'kelas_ibu_balita' => 'nullable|boolean',
+            'mbg'              => 'nullable|boolean',
+        ]);
         $request->validate($aturanKesmas, KesmasRules::pesan($aturanKesmas), KesmasRules::atribut());
 
         try {
