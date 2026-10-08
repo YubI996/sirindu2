@@ -111,8 +111,12 @@ final class AnakExport
 
     private function terapkanTanggal(Builder $data): void
     {
-        if ($this->req->from_date != '' && $this->req->to_date != '') {
-            $data->whereBetween('tgl_kunjungan', [$this->req->from_date, $this->req->to_date]);
+        // Boleh diisi salah satu saja: tanggal yang diisi tetap berlaku, bukan diabaikan diam-diam.
+        if ($this->req->from_date != '') {
+            $data->where('tgl_kunjungan', '>=', $this->req->from_date);
+        }
+        if ($this->req->to_date != '') {
+            $data->where('tgl_kunjungan', '<=', $this->req->to_date);
         }
     }
 

@@ -388,9 +388,10 @@ input manual selain awalan nomor `IMP-`). Anak yang sudah ada **tidak** diubah s
 View `alldata` = `data_anak INNER JOIN anak`, satu baris per KUNJUNGAN. Anak tanpa kunjungan (semua anak hasil
 `AnakImport`) tak ada di sana — prod 7 Okt 2026: 11.666 anak, tetapi export cuma 10.176 baris (selisih persis 1.490).
 
-- Tombol kuning "Export" (`formViewExport`) dan tombol hijau "Export Data All" (`exportAllExcel`) kini sama-sama memakai
-  `AnakExport`. Hijau = tanpa filter + `sertakan_tanpa_kunjungan` selalu aktif. Hijau dulu FastExcel langsung dari `alldata`
-  dan **tak membaca centang** (ia link `<a href>`, bukan bagian form) — jangan kembalikan ke `DB::table('alldata')` saja.
+- Halaman export kini **satu tombol "Unduh Excel"** (`formViewExport`): tanggal & wilayah opsional (kosong = semua; tanggal
+  boleh diisi salah satu), centang anak tanpa kunjungan **tercentang bawaan**. Tombol hijau "Export Data All" dilebur karena
+  ia link `<a href>` yang tak membaca centang/filter. Rute `exportAllExcel` dipertahankan untuk bookmark lama dan memakai
+  `AnakExport` tanpa filter + anak tanpa kunjungan — jangan kembalikan ke `DB::table('alldata')` saja.
 - `AnakExport` ditulis STREAMING (OpenSpout, pola `KesmasExport`), bukan Maatwebsite `FromQuery` + `ShouldAutoSize`:
   10 rb baris × 32 kolom ≈ 182 MB di PhpSpreadsheet, sehingga di prod (memory_limit 128 MB) tombol kuning mati dengan
   "This page isn't working" tanpa satu baris pun di `laravel.log`. Dikunci `ExportAnakMemoriTest`.

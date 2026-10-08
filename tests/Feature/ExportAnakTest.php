@@ -171,4 +171,28 @@ class ExportAnakTest extends TestCase
         $this->assertStringContainsString('belum punya kunjungan', $html);
         $this->assertStringContainsString('tidak terkena rentang tanggal', $html);
     }
+
+    public function test_satu_tombol_unduh_tanggal_opsional_dan_anak_tanpa_kunjungan_tercentang(): void
+    {
+        $html = $this->actingAs(User::factory()->create(['type' => 1]))
+            ->get(route('admin.exportView'))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, '>Unduh Excel</button>'));
+        $this->assertStringNotContainsString(route('admin.exportAllExcel'), $html, 'tombol kedua "Export Data All" sudah dilebur');
+        $this->assertDoesNotMatchRegularExpression('/name="(from|to)_date"[^>]*required/', $html, 'tanggal harus opsional — kosong = semua');
+        $this->assertMatchesRegularExpression('/name="sertakan_tanpa_kunjungan"[^>]*checked/', $html);
+    }
+
+    public function test_tanggal_boleh_diisi_salah_satu_dan_tetap_berlaku(): void
+    {
+        $a = $this->anak('Anak', '6474010101230001');
+        $this->kunjungan($a, '2025-01-05');
+        $this->kunjungan($a, '2025-06-05');
+
+        $hanyaDari = $this->barisXlsx(new AnakExport(new Request(['from_date' => '2025-03-01'])));
+        $this->assertSame(['2025-06-05'], array_column($hanyaDari, 17));
+
+        $hanyaSampai = $this->barisXlsx(new AnakExport(new Request(['to_date' => '2025-03-01'])));
+        $this->assertSame(['2025-01-05'], array_column($hanyaSampai, 17));
+    }
 }
