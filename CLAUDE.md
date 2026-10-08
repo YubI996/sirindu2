@@ -382,6 +382,12 @@ input manual selain awalan nomor `IMP-`). Anak yang sudah ada **tidak** diubah s
   (awalan itu hanya dibuat AnakImport). Pakai `DB::table()` — jangan `Anak::update()` (menyentuh `updated_at` yang
   dibaca `CapilDedupService::sigiziUntouched()`).
 - Nomor `IMP-` pada anak berumur lama **tidak** bisa dipulihkan dari DB; nomor registrasi aslinya hanya ada di cadangan.
+- **Pencocok nama+tgl lahir menggabungkan anak kembar** (Zayyan/Rayyan, insiden Okt 2026: 5 anak hilang dari satu
+  berkas). `PenautanAnakImport::bukanAnakYangSama()` kini menyingkirkan kandidat bila NIK keduanya asli, 12 digit
+  awal sama, nomor urut berdekatan (≤3), nama beda — atau bila nama ibu jelas berbeda (dibandingkan utuh DAN per
+  kata; "MUHERMI / AISYA" = "AISYAH", "FEBRI / ANTI" = "FEBRIYANTI", "ADA" = kosong). Kalau melonggarkan/mengetatkan
+  aturan ini, uji dulu terhadap berkas nyata — di berkas AnakBU2 harus tepat 5 pasangan dipisah, 13 tetap digabung.
+  Dikunci `ImportAnakKembarTest`.
 
 ### Export Data Anak: dua tombol, satu `AnakExport` streaming, dan anak tanpa kunjungan
 

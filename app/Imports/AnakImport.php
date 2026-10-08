@@ -169,7 +169,10 @@ class AnakImport implements ToCollection, WithStartRow, WithChunkReading
                 $anakNik = $nikValid ? Anak::where('nik', $nikKey)->first() : null;
 
                 if ($anakNik === null) {
-                    $tautan = $this->penautanAnak()->tautkan($namaRaw, $tglLahir, $jkChar, $noKkRaw, $nikValid ? $nikKey : null);
+                    $tautan = $this->penautanAnak()->tautkan(
+                        $namaRaw, $tglLahir, $jkChar, $noKkRaw, $nikValid ? $nikKey : null,
+                        (string) ($this->colVal($row, $map, 'nama_ibu') ?? '')
+                    );
 
                     if ($tautan['hasil'] === PenautanAnakImport::AMBIGU) {
                         $this->laporkanAmbigu($rowNum, $namaRaw, $tglLahir, $tautan['jumlah']);

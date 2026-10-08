@@ -17,6 +17,10 @@ use App\Support\KeaslianNik;
  *   1 kandidat  -> SAMA   (perbarui anak itu; 'nik' = NIK pengganti, null = pertahankan NIK di DB)
  *  >1 kandidat  -> AMBIGU (dilaporkan, tidak ditebak)
  *
+ * Kandidat yang jelas ORANG LAIN disingkirkan lebih dulu (lihat bukanAnakYangSama): anak kembar
+ * (NIK berurutan, nama beda) dan anak dengan nama ibu berbeda. Tanpa ini, kembar bernama mirip
+ * (Zayyan/Rayyan) digabung jadi satu — 5 anak hilang dari satu berkas import Okt 2026.
+ *
  * Import Operasi Timbang sengaja TIDAK memakai ini: jumlah anak OT harus sama dengan baris berkas.
  */
 class PenautanAnakImport
@@ -25,15 +29,19 @@ class PenautanAnakImport
     public const SAMA   = 'sama';
     public const AMBIGU = 'ambigu';
 
+    /** Selisih nomor urut NIK (4 digit akhir) yang masih dianggap kembar — 3 menampung kembar tiga/empat. */
+    private const SELISIH_URUT_KEMBAR = 3;
+
     public function __construct(private readonly NikDummyService $nikService)
     {
     }
 
     /**
      * @param  string|null  $nikBerkas  NIK valid dari berkas (15-16 digit), null bila kosong/tak valid
+     * @param  string|null  $namaIbu    nama ibu dari berkas, null bila kolomnya tak ada/kosong
      * @return array{hasil:string, anak:?Anak, nik:?string, jumlah:int, tingkat:?string, pesan:?string}
      */
-    public function tautkan(string $nama, ?string $tglLahir, string $jkChar, ?string $noKk, ?string $nikBerkas): array
+    public function tautkan(string $nama, ?string $tglLahir, string $jkChar, ?string $noKk, ?string $nikBerkas, ?string $namaIbu = null): array
     {
         $baru = ['hasil' => self::BARU, 'anak' => null, 'nik' => null, 'jumlah' => 0, 'tingkat' => null, 'pesan' => null];
 
@@ -41,7 +49,9 @@ class PenautanAnakImport
             return $baru;
         }
 
-        $kandidat = $this->nikService->kandidat($nama, $tglLahir, $jkChar, $noKk, null);
+        $kandidat = $this->nikService->kandidat($nama, $tglLahir, $jkChar, $noKk, null)
+            ->reject(fn (Anak $ada) => self::bukanAnakYangSama($nama, $nikBerkas, $namaIbu, $ada))
+            ->values();
         if ($kandidat->isEmpty()) {
             return $baru;
         }
@@ -87,5 +97,73 @@ class PenautanAnakImport
             : "NIK berkas {$nikBerkas} kurang real daripada NIK di DB {$ada->nik}; NIK di DB dipertahankan.";
 
         return $sama;
+    }
+
+    /**
+     * Kandidat yang mirip nama + tgl lahir + jk tetapi jelas orang lain:
+     *
+     *  - Kembar: kedua NIK 16 digit asli (bukan dummy) dengan 12 digit awal sama (wilayah + tgl lahir),
+     *    nomor urut beda tapi berdekatan (≤ SELISIH_URUT_KEMBAR), dan namanya beda. Dukcapil memberi
+     *    nomor urut berurutan untuk kembar. Nomor urut berjauhan (mis. 3723/6107, buatan e-PPGBM) bukan
+     *    tanda kembar. Nama yang sama persis dengan nomor urut beda tetap dianggap salah ketik.
+     *  - Nama ibu berbeda: keduanya terisi, utuhnya tak mirip (<80%), dan TAK ADA satu kata pun yang mirip
+     *    (≥80%). Per kata karena berkas sering menulis "ayah / ibu" ("MUHERMI / AISYA" vs "AISYAH"); utuh
+     *    karena nama kadang terpotong ("FEBRI / ANTI" vs "FEBRIYANTI"). Isian asal ("ADA", "-") dianggap
+     *    kosong. Ragu -> tidak dipisahkan (perilaku lama).
+     */
+    private static function bukanAnakYangSama(string $nama, ?string $nikBerkas, ?string $namaIbu, Anak $ada): bool
+    {
+        $nikAda = (string) $ada->nik;
+
+        if (self::nikAsli($nikBerkas) && self::nikAsli($nikAda)
+            && substr($nikBerkas, 0, 12) === substr($nikAda, 0, 12)
+            && $nikBerkas !== $nikAda
+            && abs((int) substr($nikBerkas, 12) - (int) substr($nikAda, 12)) <= self::SELISIH_URUT_KEMBAR
+            && self::huruf($nama) !== self::huruf((string) $ada->nama)) {
+            return true;
+        }
+
+        $kataBerkas = self::kataNama((string) $namaIbu);
+        $kataAda    = self::kataNama((string) $ada->nama_ibu);
+        if ($kataBerkas === [] || $kataAda === []) {
+            return false;
+        }
+        // Utuh tanpa spasi dulu: nama yang ditulis terpotong ("FEBRI / ANTI" = "FEBRIYANTI").
+        similar_text(implode('', $kataBerkas), implode('', $kataAda), $pct);
+        if ($pct >= 80) {
+            return false;
+        }
+        foreach ($kataBerkas as $a) {
+            foreach ($kataAda as $b) {
+                similar_text($a, $b, $pct);
+                if ($pct >= 80) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /** Isian nama ibu yang bukan nama — dianggap kosong. */
+    private const BUKAN_NAMA = ['ada', 'tidak', 'tdk', 'belum', 'nn', 'na', 'null', 'kosong'];
+
+    /** Kata-kata nama (huruf kecil, ≥3 huruf), tanpa isian asal. */
+    private static function kataNama(string $teks): array
+    {
+        $kata = preg_split('/[^a-z]+/', mb_strtolower($teks), -1, PREG_SPLIT_NO_EMPTY);
+
+        return array_values(array_filter($kata, fn ($k) => strlen($k) >= 3 && !in_array($k, self::BUKAN_NAMA, true)));
+    }
+
+    private static function nikAsli(?string $nik): bool
+    {
+        return $nik !== null && strlen($nik) === 16 && ctype_digit($nik) && !NikDummyService::isDummy($nik);
+    }
+
+    /** Huruf kecil saja — spasi, tanda baca, dan besar-kecil huruf tidak membedakan nama. */
+    private static function huruf(string $teks): string
+    {
+        return preg_replace('/[^a-z]/', '', mb_strtolower($teks));
     }
 }

@@ -322,7 +322,10 @@ class KohortImport implements ToCollection, WithStartRow, WithChunkReading, With
                 // ada (dulu findExisting hanya melihat NIK dummy dan updateOrCreate by NIK langsung
                 // membuat anak ganda); tak ada yang cocok & NIK tak ada -> NIK dummy baru.
                 if (!($nikValid && Anak::where('nik', $nikKey)->exists())) {
-                    $tautan = $this->penautanAnak()->tautkan($nama, $tglLahirStr, $jkStr, $noKkStr, $nikValid ? $nikKey : null);
+                    $tautan = $this->penautanAnak()->tautkan(
+                        $nama, $tglLahirStr, $jkStr, $noKkStr, $nikValid ? $nikKey : null,
+                        !empty($row[9]) ? (string) $row[9] : null
+                    );
 
                     if ($tautan['hasil'] === PenautanAnakImport::AMBIGU) {
                         $this->laporkanAmbigu($rowNum, $nama, $tglLahirStr, $tautan['jumlah']);
