@@ -2,18 +2,15 @@
 
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\Exportable;
-use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
-use Maatwebsite\Excel\DefaultValueBinder;
 use App\Models\VerifikasiAnak;
+use Generator;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Options;
+use OpenSpout\Writer\XLSX\Writer;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Export Data Anak — satu baris per KUNJUNGAN (view `alldata` = data_anak INNER JOIN anak).
@@ -21,54 +18,95 @@ use PhpOffice\PhpSpreadsheet\Cell\DataType;
  * Opsi `sertakan_tanpa_kunjungan`: tambahkan juga anak yang belum punya kunjungan (mis. hasil AnakImport,
  * yang hanya membuat identitas), satu baris per anak dengan kolom pengukuran kosong. Tanpa opsi ini mereka
  * tak pernah muncul di export, sehingga jumlah baris tak cocok dengan berkas import.
+ *
+ * Ditulis STREAMING (OpenSpout), bukan Maatwebsite FromQuery + ShouldAutoSize: yang terakhir menumpuk
+ * seluruh buku di PhpSpreadsheet (±182 MB untuk 10 rb baris × 32 kolom, belum termasuk penulisan berkas),
+ * sehingga di prod (memory_limit 128 MB) tombol Export mati dengan "This page isn't working" tanpa satu
+ * baris pun di laravel.log. Baris dibaca per 500 lewat generator (keyset, bukan offset) dan ditulis
+ * langsung ke berkas sementara; memori puncak tak bergantung jumlah baris. Dikunci ExportAnakMemoriTest.
+ * Jangan kembalikan ke FromQuery/ShouldAutoSize. Pola sama dengan KesmasExport.
  */
-class AnakExport extends DefaultValueBinder implements FromQuery, WithMapping, WithHeadings, ShouldAutoSize, WithCustomValueBinder
+final class AnakExport
 {
-    use Exportable;
+    private const POTONGAN = 500;
+
+    private const LEBAR_BAWAAN = 18;
+    private const LEBAR_NAMA = 32;
 
     /**
-     * Kolom identitas panjang: No KK (A), NIK (B), NIK Orang Tua (D). Wajib teks eksplisit — string 16
-     * digit lolos sebagai ANGKA di binder bawaan, dan Excel (presisi 15 digit) menampilkannya 6,47401E+15
-     * lalu mengganti digit ke-16 dengan 0 saat berkas disimpan ulang. Berkas itu kemudian dibaca import
-     * sebagai NIK tak valid → NIK dummy. Pola sama dengan KesmasExport::sel().
+     * Kolom yang tetap ANGKA: Jenis Kelamin (G), Anak Ke- (K), Bulan (S), TB, BB, BMI, LLA, LK (U–Y),
+     * ASI (AA), Vitamin A (AB). Selain itu teks literal — terutama No KK (A), NIK (B), NIK Orang Tua (D):
+     * 16 digit sebagai ANGKA tampil 6,47401E+15 di Excel (presisi 15 digit) dan digit ke-16 menjadi 0
+     * bila berkas disimpan ulang, lalu dibaca import sebagai NIK tak valid.
      */
-    private const KOLOM_TEKS = ['A', 'B', 'D'];
+    private const KOLOM_ANGKA = ['G', 'K', 'S', 'U', 'V', 'W', 'X', 'Y', 'AA', 'AB'];
 
-    public function bindValue(Cell $cell, $value)
+    /** @var array<int, true> */
+    private array $kolomAngka;
+
+    public function __construct(private Request $req)
     {
-        if (in_array($cell->getColumn(), self::KOLOM_TEKS, true) && is_string($value) && $value !== '') {
-            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+        $this->kolomAngka = KesmasExport::indeksKolom(self::KOLOM_ANGKA);
+    }
 
-            return true;
+    /**
+     * Unduhan: berkas ditulis bertahap ke berkas sementara saat respons dikirim, lalu dialirkan dan dihapus.
+     */
+    public function unduh(string $namaBerkas): StreamedResponse
+    {
+        return response()->streamDownload(function () {
+            $sementara = tempnam(sys_get_temp_dir(), 'anak');
+            try {
+                $this->simpan($sementara);
+                readfile($sementara);
+            } finally {
+                @unlink($sementara);
+            }
+        }, $namaBerkas, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
+    /** Tulis ke berkas (tes, atau pemakaian dari artisan). Jalur penulisannya sama dengan unduh(). */
+    public function simpan(string $path): string
+    {
+        $opsi = new Options();
+        // Shared string (bukan inline): teks terbaca sebagai string biasa oleh pembaca xlsx mana pun.
+        $opsi->SHOULD_USE_INLINE_STRINGS = false;
+        $opsi->DEFAULT_COLUMN_WIDTH = self::LEBAR_BAWAAN;
+        $opsi->setColumnWidth(self::LEBAR_NAMA, 3); // Nama
+
+        $penulis = new Writer($opsi);
+        $penulis->openToFile($path);
+        $penulis->addRow(new Row(array_map([KesmasExport::class, 'sel'], $this->headings())));
+        foreach ($this->baris() as $baris) {
+            $penulis->addRow(new Row(array_map([KesmasExport::class, 'sel'], $baris)));
         }
+        $penulis->close();
 
-        return parent::bindValue($cell, $value);
+        return $path;
     }
 
-    protected $req;
-
-    function __construct($req)
-    {
-        $this->req = $req;
-    }
-
-    public function query()
+    /** @return Generator<int, list<string|int|float|null>> */
+    public function baris(): Generator
     {
         $data = DB::table('alldata');
         $this->terapkanTanggal($data);
-        $this->terapkanWilayah($data);
+        $this->terapkanWilayah($data, ['kec' => 'idKec', 'puskes' => 'idPuskes', 'pos' => 'idPos', 'kel' => 'idKel', 'rt' => 'idRt']);
 
-        if (!$this->req->boolean('sertakan_tanpa_kunjungan')) {
-            return $data->orderBy('id');
+        foreach ($data->lazyById(self::POTONGAN, 'id') as $baris) {
+            yield KesmasExport::rapikan($this->map($baris), $this->kolomAngka);
         }
 
-        // `urut` unik per baris (kunjungan atau anak): `id` kunjungan dan `id` anak bisa kembar, dan
-        // pengurut yang tak unik membuat halaman query (FromQuery) menggandakan/melewatkan baris.
-        $data->select('alldata.*')->selectRaw("CONCAT('1', LPAD(alldata.id, 12, '0')) as urut");
-        $tanpa = DB::query()->fromSub($this->anakTanpaKunjungan(), 't')->select('t.*');
-        $this->terapkanWilayah($tanpa); // rentang tanggal sengaja tidak: anak ini tak punya tanggal kunjungan
+        if (!$this->req->boolean('sertakan_tanpa_kunjungan')) {
+            return;
+        }
 
-        return $data->unionAll($tanpa)->orderBy('urut');
+        // Rentang tanggal sengaja tidak diterapkan: anak ini tak punya tanggal kunjungan.
+        $tanpa = $this->anakTanpaKunjungan();
+        $this->terapkanWilayah($tanpa, ['kec' => 'a.id_kec', 'puskes' => 'a.id_puskesmas', 'pos' => 'a.id_posyandu', 'kel' => 'a.id_kel', 'rt' => 'a.id_rt']);
+
+        foreach ($tanpa->lazyById(self::POTONGAN, 'a.id', 'id') as $baris) {
+            yield KesmasExport::rapikan($this->map($baris), $this->kolomAngka);
+        }
     }
 
     private function terapkanTanggal(Builder $data): void
@@ -78,49 +116,36 @@ class AnakExport extends DefaultValueBinder implements FromQuery, WithMapping, W
         }
     }
 
-    private function terapkanWilayah(Builder $data): void
+    /** @param array{kec:string,puskes:string,pos:string,kel:string,rt:string} $kolom nama kolom per tingkat wilayah */
+    private function terapkanWilayah(Builder $data, array $kolom): void
     {
-        if ($this->req->id_kec !== "0" && $this->req->id_kec !== null && $this->req->id_kec !== '') {
-            $data->where('idKec', $this->req->id_kec);
+        $ada = fn ($nilai) => $nilai !== "0" && $nilai !== null && $nilai !== '';
 
-            if ($this->req->id_puskesmas !== "0" && $this->req->id_puskesmas !== null && $this->req->id_puskesmas !== '') {
-                $data->where('idPuskes', $this->req->id_puskesmas);
+        if ($ada($this->req->id_kec)) {
+            $data->where($kolom['kec'], $this->req->id_kec);
 
-                if ($this->req->id_posyandu !== "0" && $this->req->id_posyandu !== null && $this->req->id_posyandu !== '') {
-                    $data->where('idPos', $this->req->id_posyandu);
+            if ($ada($this->req->id_puskesmas)) {
+                $data->where($kolom['puskes'], $this->req->id_puskesmas);
+
+                if ($ada($this->req->id_posyandu)) {
+                    $data->where($kolom['pos'], $this->req->id_posyandu);
                 }
-            } elseif ($this->req->id_kelurahan !== "0" && $this->req->id_kelurahan !== null && $this->req->id_kelurahan !== '') {
-                $data->where('idKel', $this->req->id_kelurahan);
+            } elseif ($ada($this->req->id_kelurahan)) {
+                $data->where($kolom['kel'], $this->req->id_kelurahan);
 
-                if ($this->req->id_rt !== "0" && $this->req->id_rt !== null && $this->req->id_rt !== '') {
-                    $data->where('idRt', $this->req->id_rt);
+                if ($ada($this->req->id_rt)) {
+                    $data->where($kolom['rt'], $this->req->id_rt);
                 }
             }
         }
     }
 
     /**
-     * Anak yang belum punya satu pun kunjungan, dengan kolom PERSIS view `alldata` (urutan sama, wajib
-     * untuk UNION). Kolom dibaca dari view-nya, jadi kolom baru di view tidak merusak UNION — isinya
-     * NULL di baris ini sampai dipetakan di bawah.
+     * Anak yang belum punya satu pun kunjungan, dengan nama kolom yang sama dengan view `alldata`
+     * (map() membaca properti itu). Kolom pengukuran NULL → sel kosong.
      */
     private function anakTanpaKunjungan(): Builder
     {
-        $ekspresi = [
-            'id' => 'a.id', 'no_kk' => 'a.no_kk', 'nik' => 'a.nik', 'nama' => 'a.nama', 'nik_ortu' => 'a.nik_ortu',
-            'nama_ibu' => 'a.nama_ibu', 'nama_ayah' => 'a.nama_ayah', 'jk' => 'a.jk', 'tempat_lahir' => 'a.tempat_lahir',
-            'tgl_lahir' => 'a.tgl_lahir', 'golda' => 'a.golda', 'anak' => 'a.anak', 'catatan' => 'a.catatan',
-            'sumber' => 'a.sumber', 'sumber_gabungan' => 'a.sumber_gabungan',
-            'verifRtStatus' => 'a.verif_rt_status', 'verifRtReviu' => 'a.verif_rt_reviu',
-            'idKec' => 'a.id_kec', 'idKel' => 'a.id_kel', 'idPuskes' => 'a.id_puskesmas', 'idPos' => 'a.id_posyandu', 'idRt' => 'a.id_rt',
-            'nameKec' => 'kec.name', 'nameKel' => 'kel.name', 'namePuskes' => 'pus.name', 'namePos' => 'pos.name', 'nameRt' => 'rt.name',
-        ];
-        // SHOW COLUMNS urut menurut posisi kolom (UNION mencocokkan per posisi); getColumnListing tak menjaminnya.
-        $kolom = array_map(
-            fn ($baris) => ($ekspresi[$baris->Field] ?? 'NULL') . ' as `' . $baris->Field . '`',
-            DB::select('SHOW COLUMNS FROM `alldata`')
-        );
-
         return DB::table('anak as a')
             ->leftJoin('kecamatan as kec', 'kec.id', '=', 'a.id_kec')
             ->leftJoin('kelurahan as kel', 'kel.id', '=', 'a.id_kel')
@@ -128,8 +153,14 @@ class AnakExport extends DefaultValueBinder implements FromQuery, WithMapping, W
             ->leftJoin('posyandu as pos', 'pos.id', '=', 'a.id_posyandu')
             ->leftJoin('rt', 'rt.id', '=', 'a.id_rt')
             ->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('data_anak as d')->whereColumn('d.id_anak', 'a.id'))
-            ->selectRaw(implode(', ', $kolom))
-            ->selectRaw("CONCAT('2', LPAD(a.id, 12, '0')) as urut");
+            ->select([
+                'a.id', 'a.no_kk', 'a.nik', 'a.nama', 'a.nik_ortu', 'a.nama_ibu', 'a.nama_ayah', 'a.jk', 'a.tempat_lahir',
+                'a.tgl_lahir', 'a.golda', 'a.anak', 'a.catatan', 'a.sumber', 'a.sumber_gabungan',
+                'a.verif_rt_status as verifRtStatus', 'a.verif_rt_reviu as verifRtReviu',
+                'kec.name as nameKec', 'kel.name as nameKel', 'pus.name as namePuskes', 'pos.name as namePos', 'rt.name as nameRt',
+            ])
+            ->selectRaw('NULL as tgl_kunjungan, NULL as bln, NULL as posisi, NULL as tb, NULL as bb, NULL as lla, NULL as lk')
+            ->selectRaw('NULL as ntob, NULL as asi, NULL as vit_a, NULL as namaPetugas');
     }
 
     public function headings(): array
@@ -171,7 +202,8 @@ class AnakExport extends DefaultValueBinder implements FromQuery, WithMapping, W
         ];
     }
 
-    public function map($data): array
+    /** @return list<mixed> */
+    private function map(object $data): array
     {
         return [
             $data->no_kk,
@@ -210,9 +242,10 @@ class AnakExport extends DefaultValueBinder implements FromQuery, WithMapping, W
     }
 
     /** "operasi_timbang (+capil)" — sumber utama + sumber lain yang pernah dilebur (verifikasi RT §3.2). */
-    private function labelSumber($data): string
+    private function labelSumber(object $data): string
     {
         $lain = array_values(array_diff((array) (json_decode((string) $data->sumber_gabungan, true) ?: []), [$data->sumber]));
-        return (string) $data->sumber . ($lain ? ' (+'.implode(', ', $lain).')' : '');
+
+        return (string) $data->sumber . ($lain ? ' (+' . implode(', ', $lain) . ')' : '');
     }
 }

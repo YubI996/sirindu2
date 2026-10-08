@@ -382,3 +382,19 @@ input manual selain awalan nomor `IMP-`). Anak yang sudah ada **tidak** diubah s
   (awalan itu hanya dibuat AnakImport). Pakai `DB::table()` — jangan `Anak::update()` (menyentuh `updated_at` yang
   dibaca `CapilDedupService::sigiziUntouched()`).
 - Nomor `IMP-` pada anak berumur lama **tidak** bisa dipulihkan dari DB; nomor registrasi aslinya hanya ada di cadangan.
+
+### Export Data Anak: dua tombol, satu `AnakExport` streaming, dan anak tanpa kunjungan
+
+View `alldata` = `data_anak INNER JOIN anak`, satu baris per KUNJUNGAN. Anak tanpa kunjungan (semua anak hasil
+`AnakImport`) tak ada di sana — prod 7 Okt 2026: 11.666 anak, tetapi export cuma 10.176 baris (selisih persis 1.490).
+
+- Tombol kuning "Export" (`formViewExport`) dan tombol hijau "Export Data All" (`exportAllExcel`) kini sama-sama memakai
+  `AnakExport`. Hijau = tanpa filter + `sertakan_tanpa_kunjungan` selalu aktif. Hijau dulu FastExcel langsung dari `alldata`
+  dan **tak membaca centang** (ia link `<a href>`, bukan bagian form) — jangan kembalikan ke `DB::table('alldata')` saja.
+- `AnakExport` ditulis STREAMING (OpenSpout, pola `KesmasExport`), bukan Maatwebsite `FromQuery` + `ShouldAutoSize`:
+  10 rb baris × 32 kolom ≈ 182 MB di PhpSpreadsheet, sehingga di prod (memory_limit 128 MB) tombol kuning mati dengan
+  "This page isn't working" tanpa satu baris pun di `laravel.log`. Dikunci `ExportAnakMemoriTest`.
+- Anak tanpa kunjungan dibaca sebagai fase kedua (`lazyById` pada `a.id`), bukan `UNION` — tak ada `SHOW COLUMNS` / kolom
+  `urut`. Rentang tanggal hanya menyaring kunjungan; filter wilayah berlaku untuk keduanya.
+- Kolom angka didaftar di `KOLOM_ANGKA` (huruf kolom Excel); selain itu **teks literal** (No KK/NIK 16 digit, dan nilai
+  berawalan `=` tidak jadi rumus). Kolom baru yang harus numerik wajib ditambahkan ke daftar itu.

@@ -97,7 +97,7 @@ final class KesmasExport
      * setiap string berawalan '=' menjadi RUMUS (Cell::fromValue), sehingga nama atau catatan seperti
      * "=HYPERLINK(...)" dijalankan Excel. StringCell menjaganya tetap teks literal.
      */
-    private static function sel(string|int|float|null $nilai): Cell
+    public static function sel(string|int|float|null $nilai): Cell
     {
         return match (true) {
             $nilai === null => new EmptyCell(null, null),

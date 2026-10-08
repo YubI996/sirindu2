@@ -9,8 +9,6 @@ use App\Models\Kecamatan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Excel as ExcelType;
-use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
@@ -41,29 +39,27 @@ class ExportAnakTest extends TestCase
             'tb' => 70, 'bb' => 8, 'lla' => 13, 'lk' => 44, 'id_user' => 1]);
     }
 
-    /** @return list<list<mixed>> baris (tanpa judul) hasil export yang dibuka kembali dari berkas xlsx */
-    private function barisXlsx(AnakExport $export): array
+    private function buka(AnakExport $export): \PhpOffice\PhpSpreadsheet\Spreadsheet
     {
         $path = tempnam(sys_get_temp_dir(), 'anak') . '.xlsx';
         try {
-            file_put_contents($path, Excel::raw($export, ExcelType::XLSX));
+            $export->simpan($path);
 
-            return array_slice(IOFactory::load($path)->getActiveSheet()->toArray(null, true, false, false), 1);
+            return IOFactory::load($path);
         } finally {
             @unlink($path);
         }
     }
 
+    /** @return list<list<mixed>> baris (tanpa judul) hasil export yang dibuka kembali dari berkas xlsx */
+    private function barisXlsx(AnakExport $export): array
+    {
+        return array_slice($this->buka($export)->getActiveSheet()->toArray(null, true, false, false), 1);
+    }
+
     private function sel(AnakExport $export, string $alamat): \PhpOffice\PhpSpreadsheet\Cell\Cell
     {
-        $path = tempnam(sys_get_temp_dir(), 'anak') . '.xlsx';
-        try {
-            file_put_contents($path, Excel::raw($export, ExcelType::XLSX));
-
-            return IOFactory::load($path)->getActiveSheet()->getCell($alamat);
-        } finally {
-            @unlink($path);
-        }
+        return $this->buka($export)->getActiveSheet()->getCell($alamat);
     }
 
     public function test_nik_no_kk_dan_nik_ortu_tersimpan_sebagai_teks_bukan_angka(): void
@@ -136,6 +132,34 @@ class ExportAnakTest extends TestCase
             'sertakan_tanpa_kunjungan' => '1', 'from_date' => '2030-01-01', 'to_date' => '2030-12-31', 'id_kec' => (string) $utara->id,
         ]);
         $this->assertSame(['Tanpa Utara'], array_column($this->barisXlsx(new AnakExport($di_luar_rentang)), 2));
+    }
+
+    public function test_nilai_berawalan_sama_dengan_tetap_teks_bukan_rumus(): void
+    {
+        $a = $this->anak('=HYPERLINK("http://x")', '6474010101230001', ['catatan' => '=1+1']);
+        $this->kunjungan($a, '2025-05-05');
+
+        $this->assertSame('s', $this->sel(new AnakExport(new Request()), 'C2')->getDataType());
+        $this->assertSame('=HYPERLINK("http://x")', $this->sel(new AnakExport(new Request()), 'C2')->getValue());
+        $this->assertSame('s', $this->sel(new AnakExport(new Request()), 'L2')->getDataType());
+    }
+
+    public function test_tombol_export_data_all_menyertakan_anak_tanpa_kunjungan(): void
+    {
+        $this->kunjungan($this->anak('Berkunjung', '6474010101230001'), '2025-05-05');
+        $this->anak('Tanpa Kunjungan', '6474010101230002');
+
+        $response = $this->actingAs(User::factory()->create(['type' => 1]))->get(route('admin.exportAllExcel'));
+        $path = tempnam(sys_get_temp_dir(), 'anak') . '.xlsx';
+        try {
+            file_put_contents($path, $response->streamedContent());
+            $baris = array_slice(IOFactory::load($path)->getActiveSheet()->toArray(null, true, false, false), 1);
+        } finally {
+            @unlink($path);
+        }
+
+        $this->assertStringContainsString('all-data-anak.xlsx', $response->headers->get('content-disposition') ?? '');
+        $this->assertSame(['Berkunjung', 'Tanpa Kunjungan'], array_column($baris, 2));
     }
 
     public function test_form_export_menawarkan_opsi_anak_tanpa_kunjungan_dan_menjelaskan_rentang_tanggal(): void

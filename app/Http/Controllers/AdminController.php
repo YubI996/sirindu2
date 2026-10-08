@@ -793,7 +793,7 @@ ANAK
 
     public function formViewExport(Request $request)
     {
-        return Excel::download(new AnakExport($request), 'data-anak.xlsx');
+        return (new AnakExport($request))->unduh('data-anak.xlsx');
         // $from_date = $request->from_date;
         // $to_date = $request->to_date;
         // $kec = $request->id_kec;
@@ -1097,75 +1097,17 @@ ANAK
     }
 
     /**
-     * Export seluruh data anak + kunjungan.
+     * Export seluruh data anak + kunjungan, TERMASUK anak yang belum punya kunjungan
+     * (mis. hasil AnakImport) — satu baris per anak dengan kolom pengukuran kosong.
      *
-     * Barisnya dialirkan lewat generator, BUKAN `AllData::all()`. VIEW `alldata`
-     * berisi satu baris per kunjungan (anak × data_anak), jadi di produksi
-     * jumlahnya berkali lipat jumlah anak — sementara `all()` menghidrasi
-     * semuanya sekaligus jadi model Eloquent 38 kolom. Di dev (ratusan baris,
-     * memory_limit 512 MB) itu selalu lolos; di prod ia menabrak batas memori,
-     * persis seperti insiden dasbor imunisasi 16 Sep 2026. `lazyById()` memecah
-     * bacaan jadi potongan 1.000 baris dan FastExcel menulisnya satu per satu,
-     * sehingga memori puncak sebatas satu potongan berapa pun besar datanya.
-     *
-     * `da.id` (primary key data_anak) dipakai sebagai kunci potongan karena ia
-     * unik di view ini — `lazyById` pada kolom tak unik diam-diam melewati atau
-     * mengulang baris.
+     * Memakai AnakExport yang sama dengan tombol "Export" (streaming OpenSpout, tanpa filter),
+     * jadi kolom, NIK-sebagai-teks, dan batas memorinya seragam. VIEW `alldata` saja tidak
+     * cukup: ia data_anak INNER JOIN anak, sehingga anak tanpa kunjungan tak pernah ikut
+     * (prod 7 Okt 2026: 10.176 baris dari 11.666 anak). Dikunci ExportAllDataMemoriTest.
      */
     public function exportAllExcel()
     {
-        return (new FastExcel($this->barisAllData()))->download(
-            'all-data-anak.xlsx',
-            function ($data) {
-                return [
-                    'No KK' => $data->no_kk,
-                    'NIK' => $data->nik,
-                    'Nama' => $data->nama,
-                    'Nik Orang Tua' => $data->nik_ortu,
-                    'Nama Ibu' => $data->nama_ibu,
-                    'Nama Ayah' => $data->nama_ayah,
-                    'Jenis Kelamin' => $data->jk,
-                    'Tempat Lahir' => $data->tempat_lahir,
-                    'Tanggal Lahir' => $data->tgl_lahir,
-                    'Golongan Darah' => $data->golda,
-                    'Anak Ke-' => $data->anak,
-                    'Catatan' => $data->catatan,
-                    'Kecamatan' => $data->nameKec,
-                    'Kelurahan' => $data->nameKel,
-                    'Puskesmas' => $data->namePuskes,
-                    'Posyandu' => $data->namePos,
-                    'RT' => $data->nameRt,
-                    'Tanggal Kunjungan' => $data->tgl_kunjungan,
-                    'Bulan' => $data->bln,
-                    'Posisi' => $data->posisi,
-                    'Tinggi Badan' => $data->tb,
-                    'Berat Badan' => $data->bb,
-                    'BMI' => ($data->tb > 0) ? round(10000 * $data->bb / pow($data->tb, 2), 2) : null,
-                    // 'BB/U' => z_score($data->bb, $data->tb, $data->bln, $data->posisi, $data->jk),
-                    'Lingkar Lengan Atas' => $data->lla,
-                    'Lingkar Kepala' => $data->lk,
-                    'NTOB' => $data->ntob,
-                    'ASI' => $data->asi,
-                    'Vitamin A' => $data->vit_a,
-                    'Nama Petugas' => $data->namaPetugas,
-                ];
-            },
-        );
-    }
-
-    /**
-     * Baris VIEW `alldata` sebagai generator, dibaca per 1.000 baris.
-     *
-     * Sengaja `DB::table()` dan bukan model: stdClass ±0,5 KB/baris, sedangkan
-     * model Eloquent puluhan KB. FastExcel menerima array|Generator|Collection
-     * (LazyCollection TIDAK termasuk), jadi LazyCollection dari lazyById()
-     * dibungkus ulang jadi generator di sini.
-     */
-    private function barisAllData(): \Generator
-    {
-        foreach (DB::table('alldata')->lazyById(1000, 'id') as $baris) {
-            yield $baris;
-        }
+        return (new AnakExport(new Request(['sertakan_tanpa_kunjungan' => '1'])))->unduh('all-data-anak.xlsx');
     }
 
     /*------------------------------------------
