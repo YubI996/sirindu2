@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
 class ImportLog extends Model
@@ -21,10 +22,34 @@ class ImportLog extends Model
     ];
 
     protected $casts = [
-        'failures'     => 'array',
         'started_at'   => 'datetime',
         'completed_at' => 'datetime',
     ];
+
+    /** Urutan tampil pesan; baris tanpa tanda (ringkasan, "Import gagal: …") tetap paling atas. */
+    private const URUTAN_TINGKAT = ['ERROR' => 1, 'PERINGATAN' => 2, 'INFO' => 3];
+
+    /**
+     * Pesan dibaca terurut ERROR → PERINGATAN → INFO, urutan baris di dalam tiap tingkat tetap.
+     * Diurutkan saat dibaca, bukan saat ditulis, supaya log lama ikut terurut.
+     */
+    protected function failures(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value === null ? null : self::urutkanPesan(json_decode($value, true) ?? []),
+            set: fn (?array $value) => $value === null ? null : json_encode($value),
+        );
+    }
+
+    public static function urutkanPesan(array $pesan): array
+    {
+        $tingkat = fn (string $p) => preg_match('/^\[([A-Z]+)\]/', $p, $m) ? (self::URUTAN_TINGKAT[$m[1]] ?? 0) : 0;
+
+        // usort stabil sejak PHP 8, jadi urutan baris di dalam satu tingkat tidak berubah.
+        usort($pesan, fn ($a, $b) => $tingkat((string) $a) <=> $tingkat((string) $b));
+
+        return $pesan;
+    }
 
     public function user()
     {
