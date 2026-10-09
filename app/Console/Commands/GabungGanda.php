@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Anak;
 use App\Models\AnakKandidat;
 use App\Models\AnakTautan;
+use App\Models\User;
 use App\Services\IdentitasMergeService;
 use App\Services\NikDummyService;
 use App\Services\PenautanAnakImport;
@@ -17,7 +18,8 @@ use InvalidArgumentException;
 /**
  * DRY-RUN penggabungan anak ganda: memilah kandidat hasil pindai (anak_kandidat) menjadi
  * AMAN (boleh digabung massal) dan TINJAU (wajib diputuskan manual di tab "Dicurigai sama"),
- * lalu menulis CSV untuk diperiksa klien. TIDAK mengubah data apa pun.
+ * lalu menulis CSV untuk diperiksa klien. Default dry-run; --jalankan menggabungkan
+ * AMAN dan TINJAU dengan audit superadmin, tanpa menggabungkan dua baris OT.
  *
  * AMAN hanya bila SEMUA terpenuhi: tgl lahir & jk sama, nama sama persis (abaikan spasi/tanda
  * baca/besar-kecil), No KK sama dan terisi, tidak ada dua NIK asli yang berbeda, nama ibu tidak
@@ -28,14 +30,25 @@ use InvalidArgumentException;
 class GabungGanda extends Command
 {
     protected $signature = 'anak:gabung-ganda
-        {--pindai : Jalankan identitas:pindai lebih dulu (isi ulang anak_kandidat)}';
+        {--pindai : Jalankan identitas:pindai lebih dulu (isi ulang anak_kandidat)}
+        {--jalankan : Gabungkan AMAN dan TINJAU, tetap kecualikan dua baris Operasi Timbang}
+        {--oleh= : ID user superadmin untuk pencatatan eksekusi}';
 
-    protected $description = 'DRY-RUN: pilah anak ganda jadi AMAN digabung massal vs TINJAU manual, tulis CSV (tanpa mengubah data)';
+    protected $description = 'Pilah anak ganda dan tulis CSV; --jalankan menggabungkan AMAN serta TINJAU dengan audit';
 
     private const KOLOM_ANAK = ['id', 'sumber', 'nik', 'no_kk', 'nama', 'jk', 'tgl_lahir', 'nama_ibu', 'nama_ayah', 'kelurahan', 'posyandu', 'kunjungan', 'imunisasi', 'dibuat'];
 
     public function handle(TautanIdentitasService $tautan, IdentitasMergeService $merge): int
     {
+        $oleh = null;
+        if ($this->option('jalankan')) {
+            $id = (string) $this->option('oleh');
+            $oleh = ctype_digit($id) ? User::find($id) : null;
+            if (!$oleh || !$oleh->isSuperAdmin()) {
+                $this->error('--jalankan membutuhkan --oleh=ID user superadmin yang aktif.');
+                return self::FAILURE;
+            }
+        }
         if ($this->option('pindai')) {
             $r = $tautan->pindai();
             $this->info("Pindai: {$r['pasangan']} pasangan kandidat ({$r['dipindai_at']}).");
@@ -137,8 +150,87 @@ class GabungGanda extends Command
             );
         }
         $this->line("CSV: storage/app/{$path}");
+        if ($oleh) {
+            return $this->jalankan($merge, $oleh, $baris);
+        }
         $this->line('DRY-RUN: tidak ada data yang diubah.');
 
+        return self::SUCCESS;
+    }
+
+    private function jalankan(IdentitasMergeService $merge, User $oleh, array $baris): int
+    {
+        $this->warn('EKSEKUSI: AMAN dan TINJAU digabung memakai pilihan kolom default layanan.');
+        $hasil = [];
+        try {
+            DB::transaction(function () use ($merge, $oleh, $baris, &$hasil) {
+                $ids = collect($baris)->flatMap(fn ($r) => [$r['id_a'], $r['id_b']])->unique()->sort()->values();
+                Anak::whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
+                $peta = [];
+                $akar = function (int $id) use (&$peta): int {
+                    while (isset($peta[$id])) {
+                        $id = $peta[$id];
+                    }
+                    return $id;
+                };
+                foreach ($baris as $r) {
+                    [$a, $b] = AnakTautan::urut($akar((int) $r['id_a']), $akar((int) $r['id_b']));
+                    $catat = ['id_a_awal' => $r['id_a'], 'id_b_awal' => $r['id_b'], 'kelas_awal' => $r['kelas'],
+                        'alasan_awal' => $r['alasan'], 'id_dipertahankan' => '', 'id_dilebur' => '', 'id_log' => ''];
+                    if ($a === $b) {
+                        $hasil[] = $catat + ['hasil' => 'sudah tergabung dalam kelompok'];
+                        continue;
+                    }
+                    $anakA = Anak::findOrFail($a);
+                    $anakB = Anak::findOrFail($b);
+                    if (IdentitasMergeService::keduanyaOperasiTimbang($anakA, $anakB)) {
+                        $hasil[] = $catat + ['hasil' => 'dilewati: dua baris Operasi Timbang'];
+                        continue;
+                    }
+                    $t = AnakTautan::where('id_anak_a', $a)->where('id_anak_b', $b)->lockForUpdate()->first();
+                    if ($t && $t->keputusan === 'beda') {
+                        throw new InvalidArgumentException("Pasangan #{$a}-#{$b} sudah diputus berbeda; seluruh batch dibatalkan.");
+                    }
+                    $data = ['keputusan' => 'sama', 'status' => 'disetujui', 'skor' => $r['skor'], 'via' => $r['via'],
+                        'diusulkan_oleh' => $oleh->id, 'diusulkan_at' => now(), 'ditinjau_oleh' => $oleh->id,
+                        'ditinjau_at' => now(), 'catatan_reviu' => 'CLI anak:gabung-ganda --jalankan; '.$r['kelas'].'; '.$r['alasan']];
+                    if ($t) {
+                        $t->update($data);
+                    } else {
+                        $t = AnakTautan::create(['id_anak_a' => $a, 'id_anak_b' => $b] + $data);
+                    }
+                    $log = $merge->gabung($t, $oleh, []);
+                    $peta[$log->id_dihapus] = $log->id_dipertahankan;
+                    $catat['id_dipertahankan'] = $log->id_dipertahankan;
+                    $catat['id_dilebur'] = $log->id_dihapus;
+                    $catat['id_log'] = $log->id;
+                    $hasil[] = $catat + ['hasil' => 'digabung'];
+                }
+                // Laporan wajib berhasil ditulis sebelum transaksi dikomit.
+                $path = 'gabung-ganda/jalankan-'.now()->format('Ymd-His-u').'.csv';
+                $stream = fopen('php://temp', 'w+');
+                fwrite($stream, "\xEF\xBB\xBF");
+                if ($hasil) {
+                    fputcsv($stream, array_keys($hasil[0]), ',', '"', '');
+                    foreach ($hasil as $row) {
+                        fputcsv($stream, array_values($row), ',', '"', '');
+                    }
+                }
+                rewind($stream);
+                $isi = stream_get_contents($stream);
+                fclose($stream);
+                if (!Storage::disk('local')->put($path, $isi)) {
+                    throw new \RuntimeException('Gagal menulis laporan eksekusi.');
+                }
+                $this->line("Laporan eksekusi: storage/app/{$path}");
+            });
+        } catch (\Throwable $e) {
+            $this->error('Eksekusi gagal; perubahan database batch dibatalkan: '.$e->getMessage());
+            return self::FAILURE;
+        }
+        $jumlah = count(array_filter($hasil, fn ($r) => $r['hasil'] === 'digabung'));
+        $this->info("Selesai: {$jumlah} penggabungan; ".(count($hasil) - $jumlah).' pasangan dilewati.');
+        $this->line('Pembatalan kelompok dilakukan dari log terbaru ke log paling awal.');
         return self::SUCCESS;
     }
 
@@ -255,7 +347,9 @@ class GabungGanda extends Command
         }
 
         // BOM supaya Excel membaca UTF-8 dengan benar.
-        Storage::disk('local')->put($path, "\xEF\xBB\xBF" . implode("\n", $lines));
+        if (!Storage::disk('local')->put($path, "\xEF\xBB\xBF" . implode("\n", $lines))) {
+            throw new \RuntimeException('Gagal menulis CSV dry-run; eksekusi tidak dimulai.');
+        }
     }
 
     /** NIK/KK 16 digit sebagai teks Excel (="…"), selain itu apa adanya. Hanya angka → tak bisa jadi rumus lain. */

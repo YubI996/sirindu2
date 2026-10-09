@@ -4,6 +4,9 @@ namespace Tests\Feature\VerifikasiRt;
 
 use App\Models\Anak;
 use App\Models\AnakTautan;
+use App\Models\AnakMergeLog;
+use App\Models\User;
+use App\Services\IdentitasMergeService;
 use App\Services\TautanIdentitasService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -185,5 +188,62 @@ class GabungGandaDryRunTest extends TestCase
         $r = $this->jalankan()["{$a->id}-{$b->id}"];
 
         $this->assertSame('="6474010101240091"', $r['nik_a']);
+    }
+
+    public function test_jalankan_memerlukan_user_audit_sebelum_pindai(): void
+    {
+        $this->artisan('anak:gabung-ganda', ['--jalankan' => true, '--pindai' => true])->assertExitCode(1);
+        $this->assertSame(0, AnakMergeLog::count());
+        $user = User::factory()->create(['type' => 2, 'role' => 'imunisasi_faskes']);
+        $this->artisan('anak:gabung-ganda', ['--jalankan' => true, '--oleh' => $user->id])->assertExitCode(1);
+    }
+
+    public function test_jalankan_menggabungkan_tinjau_berantai_dan_bisa_dibatalkan(): void
+    {
+        $user = User::factory()->create(['type' => 0]);
+        $a = $this->anak('6474010101240201', ['nama' => 'Bima', 'sumber' => 'operasi_timbang']);
+        $b = $this->anak('6474010101240202', ['nama' => 'Bima']);
+        $c = $this->anak('6474010101240203', ['nama' => 'Bima']);
+        $this->artisan('anak:gabung-ganda', ['--jalankan' => true, '--pindai' => true, '--oleh' => $user->id])->assertExitCode(0);
+        $this->assertSame(1, Anak::whereIn('id', [$a->id, $b->id, $c->id])->count());
+        $this->assertNotNull($a->fresh());
+        $this->assertSame(2, AnakMergeLog::where('oleh', $user->id)->count());
+        $this->assertSame(2, AnakTautan::where('status', 'digabung')->count());
+        $this->assertCount(1, array_filter(Storage::disk('local')->files('gabung-ganda'), fn ($p) => str_contains($p, 'jalankan-')));
+        foreach (AnakMergeLog::orderByDesc('id')->get() as $log) {
+            app(IdentitasMergeService::class)->batalkan($log, $user);
+        }
+        $this->assertSame(3, Anak::whereIn('id', [$a->id, $b->id, $c->id])->count());
+    }
+
+    public function test_rantai_tidak_menghapus_dua_baris_operasi_timbang(): void
+    {
+        $user = User::factory()->create(['type' => 0]);
+        $a = $this->anak('6474010101240301', ['nama' => 'Bima', 'sumber' => 'operasi_timbang']);
+        $b = $this->anak('6474010101240302', ['nama' => 'Bima', 'sumber' => 'operasi_timbang']);
+        $c = $this->anak('6474010101240303', ['nama' => 'Bima']);
+        $this->artisan('anak:gabung-ganda', ['--jalankan' => true, '--pindai' => true, '--oleh' => $user->id])->assertExitCode(0);
+        $this->assertNotNull($a->fresh());
+        $this->assertNotNull($b->fresh());
+        $this->assertNull($c->fresh());
+        $this->assertSame(1, AnakMergeLog::count());
+    }
+
+    public function test_kegagalan_laporan_membatalkan_seluruh_batch(): void
+    {
+        $user = User::factory()->create(['type' => 0]);
+        $a = $this->anak('6474010101240401', ['nama' => 'Bima']);
+        $b = $this->anak('6474010101240402', ['nama' => 'Bima']);
+        $manager = Storage::getFacadeRoot();
+        $disk = Storage::disk('local');
+        $mock = \Mockery::mock($disk)->makePartial();
+        $mock->shouldReceive('put')->andReturn(false);
+        Storage::shouldReceive('disk')->with('local')->andReturn($disk, $mock);
+        $this->artisan('anak:gabung-ganda', ['--jalankan' => true, '--pindai' => true, '--oleh' => $user->id])->assertExitCode(1);
+        $this->assertNotNull($a->fresh());
+        $this->assertNotNull($b->fresh());
+        $this->assertSame(0, AnakMergeLog::count());
+        $this->assertSame(0, AnakTautan::count());
+        Storage::swap($manager);
     }
 }
