@@ -149,7 +149,7 @@
     $bucketTanda = ['ok' => ['✓', 'sesuai target'], 'mid' => ['▲', 'perlu perhatian'], 'low' => ['✕', 'kritis']];
 @endphp
 
-@include('admin.imunisasi.partials._kelompok-kosong')
+{{-- @include('admin.imunisasi.partials._kelompok-kosong') --}}
 
 {{-- Filter wilayah --}}
 <form method="GET" action="{{ route('admin.imunisasiDashboard') }}" class="im-filter" aria-label="Filter dasbor imunisasi">
