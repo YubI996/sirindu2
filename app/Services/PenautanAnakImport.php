@@ -111,7 +111,7 @@ class PenautanAnakImport
      *    karena nama kadang terpotong ("FEBRI / ANTI" vs "FEBRIYANTI"). Isian asal ("ADA", "-") dianggap
      *    kosong. Ragu -> tidak dipisahkan (perilaku lama).
      */
-    private static function bukanAnakYangSama(string $nama, ?string $nikBerkas, ?string $namaIbu, Anak $ada): bool
+    public static function bukanAnakYangSama(string $nama, ?string $nikBerkas, ?string $namaIbu, Anak $ada): bool
     {
         $nikAda = (string) $ada->nik;
 
