@@ -389,6 +389,26 @@ input manual selain awalan nomor `IMP-`). Anak yang sudah ada **tidak** diubah s
   aturan ini, uji dulu terhadap berkas nyata — di berkas AnakBU2 harus tepat 5 pasangan dipisah, 13 tetap digabung.
   Dikunci `ImportAnakKembarTest`.
 
+### Dasbor `.im-*`: aksesibilitas yang sudah diaudit (Okt 2026) — jangan dibalikkan
+
+Audit WCAG 2.1 AA dasbor imunisasi (`public/css/dasbor-base.css`, dipakai juga dasbor Kesmas) menetapkan:
+
+- **`--faint` boleh untuk teks** (sudah digelapkan ke L 0,53 → ≥4,5:1). Jangan kembali ke 0,62 (3,6:1). Batas kontrol form
+  pakai `--ctl-border` (≥3:1); warna bar status pakai `--bar-ok/mid/low/neutral` (≥3:1 thd track), bukan `--green`/amber lama.
+- **Status tidak boleh hanya warna.** Baris antigen & DO rate memakai glyph (✓ ▲ ✕) `aria-hidden` + kata `.im-sr`. Bar selalu
+  `aria-hidden` karena angkanya ada di teks sebelahnya.
+- **Keterangan panjang → `<x-im-help id label>`** (`components/im-help.blade.php`, perilaku di `public/js/dasbor-a11y.js`):
+  tombol `?` dengan `aria-expanded`, dibuka klik/Enter, ditutup Esc. **Bukan tooltip/popover hover Bootstrap** (tak ada hover di
+  HP, tak terjangkau keyboard). Catatan yang mencegah salah baca angka (mis. "bukan ukuran capaian", "tidak mengikuti tahun
+  sasaran", paragraf "penurunan angka ≠ penurunan kinerja") TETAP terlihat — dikunci `DasborImunisasiAksesibilitasTest`.
+- **Tab = pola ARIA** (`role=tablist/tab/tabpanel`, panah kiri/kanan); navigasi jenis imunisasi memakai `<nav>` + `aria-current`,
+  bukan `<button>` tanpa aksi. Wadah tabel yang bisa digulir wajib `tabindex="0" role="region" aria-label`.
+- **Kolom grid yang memuat tabel/kanvas wajib `minmax(0,1fr)` + `min-width:0`**, kalau tidak halaman melebar di HP (terbukti di 320px).
+- **Jangan menyaring `<option>` dengan `display:none`/`.toggle()`** — Safari/iOS mengabaikannya. Buang dari DOM dan pasang ulang
+  dari daftar tersimpan (`filterKelOptionsByKec()`).
+- `<h1>` kini ada di layout admin (`.page-title`); heading bagian = `<h2>`, sub-judul di dalamnya `<h3>`.
+- Yang TIDAK bisa dikunci PHPUnit (kontras, reflow 320px, urutan Tab) harus dilihat di browser.
+
 ### Export Data Anak: dua tombol, satu `AnakExport` streaming, dan anak tanpa kunjungan
 
 View `alldata` = `data_anak INNER JOIN anak`, satu baris per KUNJUNGAN. Anak tanpa kunjungan (semua anak hasil

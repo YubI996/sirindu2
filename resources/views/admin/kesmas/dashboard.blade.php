@@ -83,7 +83,7 @@
     ]);
 @endphp
 <div class="im-page km-page">
-@include('admin.imunisasi.partials._kelompok-kosong')
+{{-- @include('admin.imunisasi.partials._kelompok-kosong') --}}
 
     <header class="km-head">
         <div>

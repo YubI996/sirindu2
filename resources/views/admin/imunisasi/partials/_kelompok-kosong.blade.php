@@ -6,6 +6,6 @@
     Grup {{ implode(' dan ', $kelompokKosong) }} tidak ada atau belum memiliki vaksin di master data,
     sehingga capaian IDL/IBL di halaman ini tampil 0 untuk semua anak — bukan karena belum ada
     yang diimunisasi. Minta pengelola server menjalankan
-    <code>php artisan db:seed --class=KelompokVaksinSeeder --force</code>.
+    <code style="color:inherit; font-weight:600;">php artisan db:seed --class=KelompokVaksinSeeder --force</code>.
 </div>
 @endif

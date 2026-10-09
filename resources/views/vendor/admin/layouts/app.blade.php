@@ -154,6 +154,10 @@
         font-weight: 600;
         font-size: 1.1rem;
         margin: 0;
+        /* h1 (landmark judul halaman): samakan tampilan dengan <p> sebelumnya */
+        font-family: inherit;
+        line-height: inherit;
+        letter-spacing: normal;
     }
 
     /* ── Sidebar animation ──────────────────────────────────────── */
@@ -386,7 +390,7 @@
                     <div class="row">
                         <div class="col-md-6 col-sm-12">
                             <div class="title">
-                                <p class="page-title">@yield('title-content')</p>
+                                <h1 class="page-title">@yield('title-content')</h1>
                             </div>
                             @include('admin::layouts.partials.breadcrumb')
                         </div>

@@ -6,7 +6,9 @@
     --green:oklch(0.60 0.15 145); --green-d:oklch(0.48 0.14 145); --green-dk:oklch(0.38 0.13 145);
     --amber:oklch(0.44 0.13 70); --amber-bg:oklch(0.94 0.06 70);
     --red:oklch(0.50 0.18 25); --red-d:oklch(0.46 0.17 25); --red-bg:oklch(0.94 0.055 25);
-    --ink:oklch(0.24 0.02 145); --muted:oklch(0.50 0.015 145); --faint:oklch(0.62 0.012 145);
+    --ink:oklch(0.24 0.02 145); --muted:oklch(0.46 0.015 145); --faint:oklch(0.53 0.012 145); /* faint dipakai utk TEKS: >=4.5:1 di putih & tint .95 */
+    --bar-ok:oklch(0.48 0.14 145); --bar-mid:oklch(0.60 0.13 70); --bar-low:oklch(0.50 0.18 25); --bar-neutral:oklch(0.50 0.10 245); /* >=3:1 thd .im-bar track */
+    --ctl-border:oklch(0.62 0.02 145); /* batas kontrol form >=3:1 thd putih */
     --line:oklch(0.90 0.012 145); --bg:oklch(0.98 0.012 145); --card:#fff;
     font-family:'Barlow',system-ui,sans-serif; color:var(--ink);
 }
@@ -14,29 +16,49 @@
 .im-num{ font-family:'Barlow Condensed','Barlow',sans-serif; font-variant-numeric:tabular-nums; }
 
 /* Section heading */
-.im-h{ display:flex; align-items:baseline; gap:.6rem; margin:0 0 .85rem; }
-.im-h h2{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:1.18rem; letter-spacing:.01em; margin:0; color:var(--ink); }
-.im-h small{ color:var(--faint); font-size:.8rem; }
-.im-note{ margin:0 0 1.6rem; color:var(--muted); font-size:.85rem; font-weight:400; line-height:1.6; }
+.im-h{ display:flex; flex-wrap:wrap; align-items:baseline; gap:.3rem .6rem; margin:0 0 .85rem; }
+.im-h h2{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:1.3rem; letter-spacing:.01em; margin:0; color:var(--ink); }
+.im-h small{ color:var(--muted); font-size:.82rem; }
+/* Keterangan singkat di samping judul: satu frasa pendek, bukan kalimat. Detail panjang → <x-im-help>. */
+.im-pill{ display:inline-flex; align-items:center; padding:.12rem .6rem; border-radius:99px; background:oklch(0.95 0.015 145); color:var(--muted); font-size:.78rem; font-weight:600; white-space:nowrap; }
+.im-note{ margin:0 0 1.6rem; color:var(--muted); font-size:.88rem; font-weight:400; line-height:1.6; max-width:80ch; }
+
+/* Teks hanya untuk pembaca layar */
+.im-sr{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+/* Fokus keyboard yang terlihat di seluruh dasbor */
+.im-page :is(a,button,summary,select,input,[tabindex]):focus-visible{ outline:3px solid var(--green-dk); outline-offset:2px; }
+
+/* Tombol "?" penjelasan: pola disclosure (klik/Enter), bukan tooltip hover.
+   Area sentuh diperluas lewat ::after supaya >=44px tanpa menggemukkan ikon. */
+.im-help-btn{ position:relative; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; padding:0; border-radius:50%; border:1.5px solid var(--green-d); background:var(--card); color:var(--green-d); font:700 .8rem/1 'Barlow',system-ui,sans-serif; cursor:pointer; align-self:center; }
+.im-help-btn::after{ content:''; position:absolute; inset:-10px; }
+.im-help-btn:hover{ background:var(--green-d); color:#fff; }
+.im-help-btn[aria-expanded="true"]{ background:var(--green-d); color:#fff; }
+.im-help-body{ flex-basis:100%; margin:.25rem 0 .2rem; padding:.85rem 1.1rem; background:oklch(0.97 0.012 145); border:1px solid var(--line); border-radius:8px; font-size:.88rem; line-height:1.65; color:var(--ink); max-width:80ch; }
+.im-help-body[hidden]{ display:none; }
+.im-help-body p{ margin:0 0 .6rem; } .im-help-body p:last-child{ margin-bottom:0; }
 
 /* Filter bar */
 .im-filter{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:.75rem; margin-bottom:1.4rem; }
 .im-filter > div{ display:flex; flex-direction:column; }
-.im-filter label{ font-size:.68rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin-bottom:.28rem; }
-.im-filter select{ height:38px; padding:0 .7rem; border:1px solid oklch(0.84 0.012 145); border-radius:8px; background:var(--card); font-family:inherit; font-size:.85rem; min-width:170px; color:var(--ink); }
-.im-filter select:focus{ outline:2px solid oklch(0.60 0.15 145 / .35); outline-offset:1px; border-color:var(--green); }
+.im-filter label{ font-size:.75rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin-bottom:.28rem; }
+.im-filter select{ height:38px; padding:0 .7rem; border:1px solid var(--ctl-border); border-radius:8px; background:var(--card); font-family:inherit; font-size:.88rem; min-width:170px; color:var(--ink); }
+.im-filter select:focus{ border-color:var(--green-dk); }
+@media(max-width:600px){ .im-filter > div, .im-filter select{ width:100%; } }
 .im-btn{ display:inline-flex; align-items:center; gap:.4rem; height:38px; padding:0 1rem; border-radius:8px; font-family:inherit; font-weight:600; font-size:.85rem; border:1px solid transparent; cursor:pointer; text-decoration:none; transition:background .14s,border-color .14s,color .14s; }
 .im-btn--primary{ background:var(--green-d); color:#fff; }
 .im-btn--primary:hover{ background:var(--green-dk); color:#fff; }
-.im-btn--ghost{ background:transparent; border-color:var(--line); color:var(--muted); }
+.im-btn--ghost{ background:transparent; border-color:var(--ctl-border); color:var(--muted); }
 .im-btn--ghost:hover{ border-color:var(--faint); color:var(--ink); }
 .im-btn--sm{ height:30px; padding:0 .7rem; font-size:.78rem; }
 
-/* Tabs */
+/* Tab jenis imunisasi: navigasi, bukan tombol. aria-current menandai halaman aktif. */
 .im-tabs{ display:flex; align-items:stretch; gap:0; border-bottom:1px solid var(--line); margin-bottom:1.6rem; }
-.im-tab{ padding:0 1.1rem; height:42px; display:flex; align-items:center; border:0; border-bottom:2.5px solid transparent; background:transparent; font-family:inherit; font-weight:700; font-size:.9rem; color:var(--ink); border-bottom-color:var(--green-d); cursor:default; }
-.im-tab--off{ color:var(--faint); cursor:not-allowed; gap:.4rem; }
-.im-tab--off .im-soon{ font-size:.62rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:.1rem .4rem; border-radius:99px; background:oklch(0.95 0.012 145); color:var(--faint); }
+.im-tab{ padding:0 1.1rem; height:42px; display:flex; align-items:center; border-bottom:2.5px solid transparent; font-weight:700; font-size:.92rem; color:var(--ink); }
+.im-tab[aria-current]{ border-bottom-color:var(--green-d); }
+.im-tab--off{ color:var(--faint); gap:.4rem; }
+.im-tab--off .im-soon{ font-size:.72rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; padding:.1rem .45rem; border-radius:99px; background:oklch(0.95 0.012 145); color:var(--muted); }
 
 /* Card grid (data sasaran / data capaian) */
 .im-cards{ display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin-bottom:1.6rem; }
@@ -49,14 +71,14 @@
 .im-card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.25rem; box-shadow:0 1px 3px oklch(0 0 0 / .04); display:flex; flex-direction:column; gap:.55rem; }
 .im-card--na{ background:oklch(0.975 0.008 145); border-style:dashed; }
 .im-card--na .im-card__lbl{ color:var(--faint); }
-.im-card__lbl{ font-size:.68rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
+.im-card__lbl{ font-size:.75rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); }
 .im-card__val{ font-family:'Barlow Condensed','Barlow',sans-serif; font-weight:700; font-size:2rem; line-height:1; letter-spacing:-.01em; }
 .im-card__val.ok{ color:var(--green-dk); }
 .im-card__val.warn{ color:var(--red-d); }
-.im-card__sub{ font-size:.78rem; color:var(--muted); line-height:1.4; }
+.im-card__sub{ font-size:.82rem; color:var(--muted); line-height:1.4; }
 .im-card__foot{ margin-top:auto; display:flex; align-items:center; gap:.6rem; }
-.im-card__link{ font-weight:700; font-size:.78rem; color:var(--green-d); text-decoration:none; }
+.im-card__link{ font-weight:700; font-size:.85rem; color:var(--green-d); text-decoration:none; }
 .im-card__link:hover{ text-decoration:underline; color:var(--green-dk); }
-.im-badge{ display:inline-block; padding:.14rem .55rem; border-radius:99px; font-size:.68rem; font-weight:700; }
+.im-badge{ display:inline-block; padding:.14rem .55rem; border-radius:99px; font-size:.75rem; font-weight:700; }
 .im-badge--ok{ background:oklch(0.94 0.06 145); color:var(--green-dk); }
 .im-badge--warn{ background:var(--red-bg); color:var(--red-d); }
