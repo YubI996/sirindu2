@@ -44,7 +44,7 @@ final class SasaranImunisasiExport
         $opsi->DEFAULT_COLUMN_WIDTH = self::LEBAR_BAWAAN;
         $opsi->setColumnWidth(6, 1);   // No
         $opsi->setColumnWidth(32, 2);  // Nama
-        $opsi->setColumnWidth(40, 11); // Alamat
+        $opsi->setColumnWidth(40, 12); // Alamat
 
         $penulis = new Writer($opsi);
         $penulis->openToFile($path);
@@ -54,7 +54,7 @@ final class SasaranImunisasiExport
         $no = 0;
         foreach ($this->rows as $r) {
             $baris = [++$no];
-            foreach (['nama', 'nik', 'jk', 'tgl_lahir', 'nama_ibu', 'kecamatan', 'kelurahan', 'rt', 'posyandu', 'alamat'] as $kolom) {
+            foreach (['nama', 'nik', 'jk', 'tgl_lahir', 'nama_ibu', 'kecamatan', 'kelurahan', 'puskesmas', 'rt', 'posyandu', 'alamat'] as $kolom) {
                 $baris[] = $r[$kolom] === null ? null : (string) $r[$kolom];
             }
             $penulis->addRow(new Row(array_map([KesmasExport::class, 'sel'], $baris)));
@@ -67,6 +67,6 @@ final class SasaranImunisasiExport
     /** @return list<string> */
     public function headings(): array
     {
-        return ['No', 'Nama', 'NIK', 'L/P', 'Tanggal Lahir', 'Nama Ibu', 'Kecamatan', 'Kelurahan', 'RT', 'Posyandu', 'Alamat Domisili'];
+        return ['No', 'Nama', 'NIK', 'L/P', 'Tanggal Lahir', 'Nama Ibu', 'Kecamatan', 'Kelurahan', 'Puskesmas', 'RT', 'Posyandu', 'Alamat Domisili'];
     }
 }

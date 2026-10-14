@@ -516,7 +516,7 @@ class ImunisasiStatusService
             ->whereIn('a.id', $ids->toBase())
             ->orderBy('a.nama')->orderBy('a.id')
             ->select(
-                'a.nama', 'a.nik', 'a.jk', 'a.tgl_lahir', 'a.nama_ibu', 'a.alamat',
+                'a.nama', 'a.nik', 'a.jk', 'a.tgl_lahir', 'a.nama_ibu', 'a.alamat', 'a.id_kel',
                 'kec.name as kecamatan', 'kel.name as kelurahan', 'rt.name as rt', 'pos.name as posyandu'
             )
             ->get()
@@ -528,6 +528,8 @@ class ImunisasiStatusService
                 'nama_ibu'  => $a->nama_ibu ?: '-',
                 'kecamatan' => $a->kecamatan ?: '-',
                 'kelurahan' => $a->kelurahan ?: '-',
+                // Wilayah kerja (catchment kelurahan), sama dengan filter Puskesmas dasbor — bukan anak.id_puskesmas.
+                'puskesmas' => \App\Support\WilkerPuskesmas::wilkerForKelurahanId($a->id_kel ? (int) $a->id_kel : null) ?: '-',
                 'rt'        => $a->rt ?: '-',
                 'posyandu'  => $a->posyandu ?: '-',
                 'alamat'    => $a->alamat ?: '-',

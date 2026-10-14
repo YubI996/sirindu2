@@ -661,8 +661,8 @@
                 <select class="im-modal__filter" id="sasaran-f-kec"><option value="">Semua Kecamatan</option></select>
                 <label class="im-sr" for="sasaran-f-kel">Kelurahan</label>
                 <select class="im-modal__filter" id="sasaran-f-kel"><option value="">Semua Kelurahan</option></select>
-                <label class="im-sr" for="sasaran-f-rt">RT</label>
-                <select class="im-modal__filter" id="sasaran-f-rt"><option value="">Semua RT</option></select>
+                <label class="im-sr" for="sasaran-f-pkm">Puskesmas</label>
+                <select class="im-modal__filter" id="sasaran-f-pkm"><option value="">Semua Puskesmas</option></select>
                 <a class="im-btn im-btn--primary" id="sasaran-export" href="#">
                     <span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">download</span>Export Excel
                 </a>
@@ -755,17 +755,18 @@
         values.forEach(function (v) { sel.appendChild(new Option(v, v)); });
         sel.value = values.indexOf(lama) >= 0 ? lama : '';
     }
-    function segarkanRt() {
+    // Puskesmas = wilayah kerja (catchment kelurahan), jadi pilihannya ikut menyempit sesuai kecamatan/kelurahan.
+    function segarkanPkm() {
         var kec = $id('sasaran-f-kec').value, kel = $id('sasaran-f-kel').value;
-        isiSelect('sasaran-f-rt', uniqSorted(rows.filter(function (r) {
+        isiSelect('sasaran-f-pkm', uniqSorted(rows.filter(function (r) {
             return (!kec || r.kecamatan === kec) && (!kel || r.kelurahan === kel);
-        }).map(function (r) { return r.rt; })), 'Semua RT');
+        }).map(function (r) { return r.puskesmas; })), 'Semua Puskesmas');
     }
     function segarkanKel() {
         var kec = $id('sasaran-f-kec').value;
         isiSelect('sasaran-f-kel', uniqSorted(rows.filter(function (r) { return !kec || r.kecamatan === kec; })
             .map(function (r) { return r.kelurahan; })), 'Semua Kelurahan');
-        segarkanRt();
+        segarkanPkm();
     }
     function tglId(iso) {
         if (!iso) return '-';
@@ -774,14 +775,14 @@
     }
 
     function render() {
-        var fk = $id('sasaran-f-kec').value, fl = $id('sasaran-f-kel').value, fr = $id('sasaran-f-rt').value;
+        var fk = $id('sasaran-f-kec').value, fl = $id('sasaran-f-kel').value, fp = $id('sasaran-f-pkm').value;
         var q = $id('sasaran-cari').value.toLowerCase();
         var tampil = rows.filter(function (r) {
             if (fk && r.kecamatan !== fk) return false;
             if (fl && r.kelurahan !== fl) return false;
-            if (fr && r.rt !== fr) return false;
+            if (fp && r.puskesmas !== fp) return false;
             if (!q) return true;
-            return [r.nama, r.nik, r.nama_ibu, r.kelurahan, r.rt, r.posyandu, r.alamat].join(' ').toLowerCase().indexOf(q) >= 0;
+            return [r.nama, r.nik, r.nama_ibu, r.kelurahan, r.puskesmas, r.rt, r.posyandu, r.alamat].join(' ').toLowerCase().indexOf(q) >= 0;
         });
         $id('sasaran-jumlah').textContent = tampil.length === rows.length
             ? rows.length + ' anak'
@@ -793,12 +794,12 @@
         var h = '<table class="im-dt"><thead><tr>'
             + '<th scope="col">No</th><th scope="col">Nama</th><th scope="col">NIK</th><th scope="col">L/P</th>'
             + '<th scope="col">Tgl Lahir</th><th scope="col">Nama Ibu</th><th scope="col">Kelurahan</th>'
-            + '<th scope="col">RT</th><th scope="col">Posyandu</th><th scope="col">Alamat Domisili</th>'
+            + '<th scope="col">Puskesmas</th><th scope="col">RT</th><th scope="col">Posyandu</th><th scope="col">Alamat Domisili</th>'
             + '</tr></thead><tbody>';
         tampil.forEach(function (r, i) {
             h += '<tr><td>' + (i + 1) + '</td><td>' + esc(r.nama) + '</td><td>' + esc(r.nik) + '</td>'
                 + '<td>' + esc(r.jk) + '</td><td style="white-space:nowrap;">' + esc(tglId(r.tgl_lahir)) + '</td>'
-                + '<td>' + esc(r.nama_ibu) + '</td><td>' + esc(r.kelurahan) + '</td><td>' + esc(r.rt) + '</td>'
+                + '<td>' + esc(r.nama_ibu) + '</td><td>' + esc(r.kelurahan) + '</td><td>' + esc(r.puskesmas) + '</td><td>' + esc(r.rt) + '</td>'
                 + '<td>' + esc(r.posyandu) + '</td><td>' + esc(r.alamat) + '</td></tr>';
         });
         $id('sasaran-tabel').innerHTML = h + '</tbody></table>';
@@ -809,7 +810,7 @@
         $id('sasaran-judul').textContent = 'Memuat daftar…';
         $id('sasaran-jumlah').textContent = 'Memuat…';
         $id('sasaran-cari').value = '';
-        ['sasaran-f-kec', 'sasaran-f-kel', 'sasaran-f-rt'].forEach(function (id) { $id(id).value = ''; });
+        ['sasaran-f-kec', 'sasaran-f-kel', 'sasaran-f-pkm'].forEach(function (id) { $id(id).value = ''; });
         $id('sasaran-tabel').innerHTML = '<div class="im-dt__kosong">Memuat…</div>';
         $id('sasaran-export').href = API_EXPORT + params(kel);
         modal.classList.add('open');
@@ -844,8 +845,8 @@
     });
     $id('sasaran-cari').addEventListener('input', render);
     $id('sasaran-f-kec').addEventListener('change', function () { segarkanKel(); render(); });
-    $id('sasaran-f-kel').addEventListener('change', function () { segarkanRt(); render(); });
-    $id('sasaran-f-rt').addEventListener('change', render);
+    $id('sasaran-f-kel').addEventListener('change', function () { segarkanPkm(); render(); });
+    $id('sasaran-f-pkm').addEventListener('change', render);
 })();
 </script>
 

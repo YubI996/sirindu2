@@ -9,6 +9,7 @@ use App\Models\Kelurahan;
 use App\Models\User;
 use App\Services\ImunisasiStatusService;
 use App\Support\KohortImunisasi;
+use App\Support\WilkerPuskesmas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenSpout\Reader\XLSX\Reader;
 use Tests\TestCase;
@@ -33,6 +34,7 @@ class DaftarSasaranImunisasiTest extends TestCase
     {
         parent::setUp();
         ImunisasiStatusService::flushCache();
+        WilkerPuskesmas::flushCache();
         $this->admin = User::factory()->create(['type' => 1]);
 
         $kec = Kecamatan::create(['name' => 'Bontang Selatan']);
@@ -98,6 +100,8 @@ class DaftarSasaranImunisasiTest extends TestCase
         $this->assertSame('Ibu SI Awal', $rows[1]['nama_ibu']);
         $this->assertSame('Tanjung Laut', $rows[1]['kelurahan']);
         $this->assertSame('L', $rows[1]['jk']);
+        // Puskesmas = wilayah kerja dari kelurahan (sama dengan filter Puskesmas dasbor).
+        $this->assertSame('Bontang Selatan 1', $rows[1]['puskesmas']);
     }
 
     public function test_export_berisi_baris_sejumlah_angka_kartu_dan_nik_sebagai_teks(): void
@@ -123,6 +127,8 @@ class DaftarSasaranImunisasiTest extends TestCase
         @unlink($path);
 
         $this->assertSame('NIK', $baris[0][2]);
+        $this->assertSame('Puskesmas', $baris[0][8]);
+        $this->assertSame('Bontang Selatan 1', $baris[1][8]);
         $this->assertCount(1 + 3, $baris, 'header + 3 anak SI');
         $this->assertSame('6474010000000004', $baris[1][2], 'NIK 16 digit harus tetap teks, bukan 6,47E+15');
     }
@@ -148,6 +154,8 @@ class DaftarSasaranImunisasiTest extends TestCase
             ->assertSee('data-kelompok="si"', false)
             ->assertSee('data-kelompok="baduta"', false)
             ->assertSee('id="sasaran-modal"', false)
+            ->assertSee('id="sasaran-f-pkm"', false)
+            ->assertDontSee('id="sasaran-f-rt"', false)
             ->assertSee('Kohort 2026 mencakup kelahiran 1 April 2025 s.d. 31 Maret 2026.')
             ->assertSee('Februari 2026')
             ->assertDontSee('Ini jumlah anak, bukan ukuran capaian')
