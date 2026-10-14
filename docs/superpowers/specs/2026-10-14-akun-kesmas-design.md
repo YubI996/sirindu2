@@ -159,7 +159,7 @@ Untuk Export Kesmas, kunci diterjemahkan ke nama filter export (`id_kel`, `id_po
 |---|---|---|
 | Pimpinan | — | — |
 | Kelurahan | kelurahan | `id_kec` dari kelurahan |
-| Kader | posyandu | `id_kel`, `id_kec` dari posyandu (pola `wilayahDariRt`) |
+| Kader | posyandu | `id_puskesmas` dari posyandu (tabel `posyandu` tak punya kolom kelurahan) |
 | Puskesmas Kesmas | puskesmas | `faskes_type = puskesmas` |
 | RS Kesmas | rumah sakit | `faskes_type = rs` |
 | Sarkes | nama sarana | — |
@@ -196,7 +196,7 @@ Untuk Export Kesmas, kunci diterjemahkan ke nama filter export (`id_kel`, `id_po
   `AksesKesmas`; admin, superadmin, `imunisasi_faskes`, `surveilans_*` tidak berubah aksesnya.
 - **Form user**: akun kedua per kelurahan ditolak; akun soft-deleted tidak menghalangi; edit akun
   sendiri lolos; peran baru tersimpan `type = 2`; lingkup lama dikosongkan saat ganti peran; Kader
-  menurunkan kelurahan dari posyandu.
+  menurunkan puskesmas dari posyandu.
 - **Login/beranda**: tiap peran baru diarahkan ke beranda §5; Sarkes melihat halaman "akses belum
   diatur" dan 403 di semua dasbor.
 - Fixture dasbor Kesmas wajib `sasaran_balita_kesmas = 1` (CLAUDE.md), dan `flushCache()` service
