@@ -33,6 +33,37 @@
 .im-strip__na{ display:flex; justify-content:space-between; gap:.6rem; font-size:.9rem; font-weight:600; padding:.15rem 0; }
 .im-strip__na span:last-child{ color:var(--muted); font-weight:400; }
 
+/* Kartu sasaran yang membuka daftar nama (BNBA) — <button>, jadi terjangkau keyboard tanpa role tambahan */
+.im-strip__cell--click{ border:0; font:inherit; color:inherit; text-align:left; cursor:pointer; transition:background .14s; }
+.im-strip__cell--click:hover{ background:var(--bg); }
+.im-strip__cell--click:focus-visible{ outline:3px solid var(--green-d); outline-offset:-3px; }
+.im-strip__aksi{ display:inline-flex; align-items:center; gap:.25rem; font-size:.8rem; font-weight:600; color:var(--green-dk); margin-top:.15rem; }
+.im-strip__aksi .material-symbols-outlined{ font-size:16px; }
+
+/* Modal daftar nama — pola sama dengan modal dasbor Operasi Timbang */
+.im-modal-back{ display:none; position:fixed; inset:0; z-index:1080; background:oklch(0.20 0.02 145 / .5); padding:4vh 16px; overflow:auto; }
+.im-modal-back.open{ display:block; animation:im-fade .18s ease-out; }
+.im-modal{ background:var(--card); border-radius:16px; max-width:1100px; margin:0 auto; box-shadow:0 24px 60px oklch(0.15 0.02 145 / .34); overflow:hidden; animation:im-pop .22s cubic-bezier(.22,1,.36,1); }
+.im-modal__head{ display:flex; align-items:center; gap:.75rem; padding:1.1rem 1.35rem; border-bottom:1px solid var(--line); }
+.im-modal__head h2{ font-family:'Barlow Condensed','Barlow',sans-serif; font-size:1.25rem; font-weight:700; margin:0; color:var(--ink); }
+.im-modal__count{ font-size:.8rem; color:var(--muted); }
+.im-modal__close{ margin-left:auto; background:none; border:none; cursor:pointer; font-size:24px; line-height:1; color:var(--muted); border-radius:8px; width:36px; height:36px; }
+.im-modal__close:hover{ background:var(--bg); color:var(--ink); }
+.im-modal__body{ padding:1rem 1.35rem 1.35rem; }
+.im-modal__tools{ display:flex; gap:.6rem; margin-bottom:.85rem; flex-wrap:wrap; align-items:center; }
+.im-modal__search{ flex:1; min-width:180px; height:38px; padding:0 .75rem; border:1px solid var(--ctl-border); border-radius:9px; font-size:.85rem; font-family:inherit; background:var(--bg); color:var(--ink); }
+.im-modal__filter{ height:38px; padding:0 .6rem; border:1px solid var(--ctl-border); border-radius:9px; font-size:.82rem; font-family:inherit; background:var(--bg); color:var(--ink); min-width:130px; }
+.im-modal__search:focus, .im-modal__filter:focus{ outline:none; border-color:var(--green-d); box-shadow:0 0 0 3px oklch(0.60 0.15 145 / .2); }
+.im-modal__wrap{ max-height:62vh; overflow:auto; }
+.im-dt{ width:100%; border-collapse:collapse; font-size:.82rem; }
+.im-dt thead th{ background:oklch(0.97 0.012 145); padding:.55rem .7rem; text-align:left; font-size:.68rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); white-space:nowrap; position:sticky; top:0; }
+.im-dt tbody td{ padding:.55rem .7rem; border-top:1px solid var(--line); vertical-align:top; }
+.im-dt tbody tr:hover{ background:var(--bg); }
+.im-dt__kosong{ text-align:center; padding:28px; color:var(--muted); }
+@keyframes im-fade{ from{ opacity:0; } }
+@keyframes im-pop{ from{ opacity:0; transform:translateY(10px) scale(.99); } }
+@media(prefers-reduced-motion:reduce){ .im-modal-back.open, .im-modal{ animation:none !important; } }
+
 /* Wadah tabel yang bisa digulir: dibuat fokusable (tabindex=0) agar terjangkau keyboard */
 .im-scroll{ overflow-x:auto; }
 
@@ -212,33 +243,46 @@
 <div class="im-h">
     <h2>Data sasaran</h2>
     <span class="im-pill">Kohort {{ $tahun }}</span>
+    @php
+        // Tanggal Indonesia untuk teks bantuan formal (locale aplikasi 'en').
+        $tglId = fn (string $tgl) => \Carbon\Carbon::parse($tgl)->locale('id')->translatedFormat('j F Y');
+        $periode = $kohort->rentang('SELURUH');
+    @endphp
     <x-im-help id="bantuan-sasaran" label="Data sasaran">
-        <p><strong>Ini jumlah anak, bukan ukuran capaian.</strong> {{ $sasaran['label'] }}.</p>
-        <p>BBL: umur 0 &ndash; 1 bln 29 hr, lahir {{ $sasaran['bbl']['rentang'][0] }} s.d. {{ $sasaran['bbl']['rentang'][1] }}.<br>
-        SI: umur 2 bln &ndash; belum genap 12 bln, lahir {{ $sasaran['si']['rentang'][0] }} s.d. {{ $sasaran['si']['rentang'][1] }}.<br>
-        Baduta: kohort {{ $sasaran['tahun'] - 1 }}, lahir {{ $sasaran['baduta']['rentang'][0] }} s.d. {{ $sasaran['baduta']['rentang'][1] }}.</p>
-        <p>BBL, SI, dan Baduta tidak tumpang tindih &mdash; tiap anak masuk tepat satu kelompok, jadi BBL + SI =
-        seluruh kelahiran periode. Anak di luar ketiga kohort tidak muncul di bagian statistik mana pun, sehingga
-        jumlah di halaman ini tidak sama dengan jumlah anak terdaftar.</p>
-        <p>WUS belum tersedia karena sistem ini belum mencatat data ibu/wanita usia subur.</p>
+        <p>Data sasaran menyajikan jumlah anak sasaran imunisasi menurut kelompok umur, bukan capaian imunisasi.</p>
+        <p>Kohort {{ $tahun }} mencakup kelahiran {{ $tglId($periode[0]) }} s.d. {{ $tglId($periode[1]) }}.
+        Umur dihitung per {{ $tglId($periode[1]) }}.</p>
+        <ul>
+            <li>BBL (Bayi Baru Lahir): umur 0 bulan s.d. 1 bulan 29 hari, kelahiran {{ $tglId($sasaran['bbl']['rentang'][0]) }} s.d. {{ $tglId($sasaran['bbl']['rentang'][1]) }}.</li>
+            <li>SI (<i>Surviving Infant</i>): umur 2 bulan s.d. 11 bulan, kelahiran {{ $tglId($sasaran['si']['rentang'][0]) }} s.d. {{ $tglId($sasaran['si']['rentang'][1]) }}.</li>
+            <li>Baduta (Bawah Dua Tahun): kohort {{ $sasaran['tahun'] - 1 }}, kelahiran {{ $tglId($sasaran['baduta']['rentang'][0]) }} s.d. {{ $tglId($sasaran['baduta']['rentang'][1]) }}.</li>
+        </ul>
+        <p>Setiap anak hanya tercatat pada satu kelompok sasaran. Jumlah BBL dan SI merupakan seluruh kelahiran
+        dalam periode kohort. Anak di luar ketiga kelompok tersebut tidak diperhitungkan, sehingga jumlah sasaran
+        dapat berbeda dengan jumlah anak terdaftar.</p>
+        <p>Data Wanita Usia Subur (WUS) belum tersedia.</p>
+        <p>Pilih kartu BBL, SI, atau Baduta untuk menampilkan daftar nama dan alamat anak sasaran.</p>
     </x-im-help>
 </div>
 <div class="im-strip">
-    <div class="im-strip__cell">
-        <div class="im-strip__lbl">BBL &middot; bayi baru lahir</div>
-        <div class="im-strip__val">{{ number_format($sasaran['bbl']['jumlah']) }}</div>
-        <div class="im-strip__sub">umur 0 &ndash; 1 bln 29 hr</div>
-    </div>
-    <div class="im-strip__cell">
-        <div class="im-strip__lbl">SI &middot; Surviving Infant</div>
-        <div class="im-strip__val">{{ number_format($sasaran['si']['jumlah']) }}</div>
-        <div class="im-strip__sub">umur 2 &ndash; 11 bln</div>
-    </div>
-    <div class="im-strip__cell">
-        <div class="im-strip__lbl">Baduta &middot; bawah dua tahun</div>
-        <div class="im-strip__val">{{ number_format($sasaran['baduta']['jumlah']) }}</div>
-        <div class="im-strip__sub">kohort {{ $sasaran['tahun'] - 1 }}</div>
-    </div>
+    <button type="button" class="im-strip__cell im-strip__cell--click" data-kelompok="bbl" aria-haspopup="dialog">
+        <span class="im-strip__lbl">BBL &middot; Bayi Baru Lahir</span>
+        <span class="im-strip__val">{{ number_format($sasaran['bbl']['jumlah']) }}</span>
+        <span class="im-strip__sub">umur 0 &ndash; 1 bln 29 hr</span>
+        <span class="im-strip__aksi"><span class="material-symbols-outlined" aria-hidden="true">list_alt</span>Lihat daftar nama</span>
+    </button>
+    <button type="button" class="im-strip__cell im-strip__cell--click" data-kelompok="si" aria-haspopup="dialog">
+        <span class="im-strip__lbl">SI &middot; Surviving Infant</span>
+        <span class="im-strip__val">{{ number_format($sasaran['si']['jumlah']) }}</span>
+        <span class="im-strip__sub">umur 2 &ndash; 11 bln</span>
+        <span class="im-strip__aksi"><span class="material-symbols-outlined" aria-hidden="true">list_alt</span>Lihat daftar nama</span>
+    </button>
+    <button type="button" class="im-strip__cell im-strip__cell--click" data-kelompok="baduta" aria-haspopup="dialog">
+        <span class="im-strip__lbl">Baduta &middot; Bawah Dua Tahun</span>
+        <span class="im-strip__val">{{ number_format($sasaran['baduta']['jumlah']) }}</span>
+        <span class="im-strip__sub">kohort {{ $sasaran['tahun'] - 1 }}</span>
+        <span class="im-strip__aksi"><span class="material-symbols-outlined" aria-hidden="true">list_alt</span>Lihat daftar nama</span>
+    </button>
     <div class="im-strip__cell im-strip__cell--na">
         <div class="im-strip__lbl">WUS</div>
         <div class="im-strip__na"><span>WUS hamil</span><span>belum tersedia</span></div>
@@ -598,6 +642,35 @@
         @endif
     </div>
 </div>
+{{-- Daftar nama & alamat (BNBA) di balik kartu Data sasaran — pola modal dasbor Operasi Timbang --}}
+<div class="im-modal-back" id="sasaran-modal">
+    <div class="im-modal" role="dialog" aria-modal="true" aria-labelledby="sasaran-judul">
+        <div class="im-modal__head">
+            <span class="material-symbols-outlined" style="color:var(--green-d);" aria-hidden="true">list_alt</span>
+            <div>
+                <h2 id="sasaran-judul">Daftar Sasaran</h2>
+                <div class="im-modal__count" id="sasaran-jumlah" aria-live="polite">&mdash;</div>
+            </div>
+            <button type="button" class="im-modal__close" id="sasaran-tutup" aria-label="Tutup daftar">&times;</button>
+        </div>
+        <div class="im-modal__body">
+            <div class="im-modal__tools">
+                <label class="im-sr" for="sasaran-cari">Cari nama, NIK, nama ibu, atau wilayah</label>
+                <input type="search" class="im-modal__search" id="sasaran-cari" placeholder="Cari nama / NIK / nama ibu / wilayah…">
+                <label class="im-sr" for="sasaran-f-kec">Kecamatan</label>
+                <select class="im-modal__filter" id="sasaran-f-kec"><option value="">Semua Kecamatan</option></select>
+                <label class="im-sr" for="sasaran-f-kel">Kelurahan</label>
+                <select class="im-modal__filter" id="sasaran-f-kel"><option value="">Semua Kelurahan</option></select>
+                <label class="im-sr" for="sasaran-f-rt">RT</label>
+                <select class="im-modal__filter" id="sasaran-f-rt"><option value="">Semua RT</option></select>
+                <a class="im-btn im-btn--primary" id="sasaran-export" href="#">
+                    <span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">download</span>Export Excel
+                </a>
+            </div>
+            <div class="im-modal__wrap" id="sasaran-tabel" tabindex="0" role="region" aria-label="Tabel daftar sasaran"></div>
+        </div>
+    </div>
+</div>
 </div>{{-- /im-page --}}
 @endsection
 
@@ -650,6 +723,129 @@
     // State awal (reload dengan filter aktif dari query string).
     if ($kec.val()) { filterKelOptionsByKec($kec.val()); }
     if ($kel.val()) { loadRt($kel.val(), SELECTED_RT); }
+})();
+
+// ── Daftar nama & alamat di balik kartu Data sasaran (pola modal dasbor OT) ──
+(function () {
+    var API_DAFTAR = '{{ route("admin.imunisasiDashboard.sasaran") }}';
+    var API_EXPORT = '{{ route("admin.imunisasiDashboard.sasaranExport") }}';
+    var modal = document.getElementById('sasaran-modal');
+    var rows = [], kelompok = '', pemicu = null;
+
+    function $id(id) { return document.getElementById(id); }
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    // Tahun & wilayah persis seperti yang sedang diterapkan di dasbor (form GET → query string halaman).
+    function params(kel) {
+        var p = new URLSearchParams(window.location.search);
+        p.set('kelompok', kel);
+        return '?' + p.toString();
+    }
+    function uniqSorted(vals) {
+        return Array.from(new Set(vals)).filter(function (v) { return v && v !== '-'; })
+            .sort(function (a, b) { return String(a).localeCompare(String(b), 'id', { numeric: true }); });
+    }
+    function isiSelect(id, values, placeholder) {
+        var sel = $id(id), lama = sel.value;
+        sel.innerHTML = '';
+        sel.appendChild(new Option(placeholder, ''));
+        values.forEach(function (v) { sel.appendChild(new Option(v, v)); });
+        sel.value = values.indexOf(lama) >= 0 ? lama : '';
+    }
+    function segarkanRt() {
+        var kec = $id('sasaran-f-kec').value, kel = $id('sasaran-f-kel').value;
+        isiSelect('sasaran-f-rt', uniqSorted(rows.filter(function (r) {
+            return (!kec || r.kecamatan === kec) && (!kel || r.kelurahan === kel);
+        }).map(function (r) { return r.rt; })), 'Semua RT');
+    }
+    function segarkanKel() {
+        var kec = $id('sasaran-f-kec').value;
+        isiSelect('sasaran-f-kel', uniqSorted(rows.filter(function (r) { return !kec || r.kecamatan === kec; })
+            .map(function (r) { return r.kelurahan; })), 'Semua Kelurahan');
+        segarkanRt();
+    }
+    function tglId(iso) {
+        if (!iso) return '-';
+        var b = String(iso).substr(0, 10).split('-');
+        return b.length === 3 ? b[2] + '/' + b[1] + '/' + b[0] : iso;
+    }
+
+    function render() {
+        var fk = $id('sasaran-f-kec').value, fl = $id('sasaran-f-kel').value, fr = $id('sasaran-f-rt').value;
+        var q = $id('sasaran-cari').value.toLowerCase();
+        var tampil = rows.filter(function (r) {
+            if (fk && r.kecamatan !== fk) return false;
+            if (fl && r.kelurahan !== fl) return false;
+            if (fr && r.rt !== fr) return false;
+            if (!q) return true;
+            return [r.nama, r.nik, r.nama_ibu, r.kelurahan, r.rt, r.posyandu, r.alamat].join(' ').toLowerCase().indexOf(q) >= 0;
+        });
+        $id('sasaran-jumlah').textContent = tampil.length === rows.length
+            ? rows.length + ' anak'
+            : tampil.length + ' dari ' + rows.length + ' anak';
+        if (!tampil.length) {
+            $id('sasaran-tabel').innerHTML = '<div class="im-dt__kosong">Tidak ada data</div>';
+            return;
+        }
+        var h = '<table class="im-dt"><thead><tr>'
+            + '<th scope="col">No</th><th scope="col">Nama</th><th scope="col">NIK</th><th scope="col">L/P</th>'
+            + '<th scope="col">Tgl Lahir</th><th scope="col">Nama Ibu</th><th scope="col">Kelurahan</th>'
+            + '<th scope="col">RT</th><th scope="col">Posyandu</th><th scope="col">Alamat Domisili</th>'
+            + '</tr></thead><tbody>';
+        tampil.forEach(function (r, i) {
+            h += '<tr><td>' + (i + 1) + '</td><td>' + esc(r.nama) + '</td><td>' + esc(r.nik) + '</td>'
+                + '<td>' + esc(r.jk) + '</td><td style="white-space:nowrap;">' + esc(tglId(r.tgl_lahir)) + '</td>'
+                + '<td>' + esc(r.nama_ibu) + '</td><td>' + esc(r.kelurahan) + '</td><td>' + esc(r.rt) + '</td>'
+                + '<td>' + esc(r.posyandu) + '</td><td>' + esc(r.alamat) + '</td></tr>';
+        });
+        $id('sasaran-tabel').innerHTML = h + '</tbody></table>';
+    }
+
+    function buka(kel, tombol) {
+        kelompok = kel; pemicu = tombol; rows = [];
+        $id('sasaran-judul').textContent = 'Memuat daftar…';
+        $id('sasaran-jumlah').textContent = 'Memuat…';
+        $id('sasaran-cari').value = '';
+        ['sasaran-f-kec', 'sasaran-f-kel', 'sasaran-f-rt'].forEach(function (id) { $id(id).value = ''; });
+        $id('sasaran-tabel').innerHTML = '<div class="im-dt__kosong">Memuat…</div>';
+        $id('sasaran-export').href = API_EXPORT + params(kel);
+        modal.classList.add('open');
+        $id('sasaran-tutup').focus();
+
+        $.getJSON(API_DAFTAR + params(kel), function (d) {
+            if (kelompok !== kel) return; // modal sudah dibuka untuk kelompok lain
+            rows = d.rows || [];
+            $id('sasaran-judul').textContent = d.judul;
+            isiSelect('sasaran-f-kec', uniqSorted(rows.map(function (r) { return r.kecamatan; })), 'Semua Kecamatan');
+            segarkanKel();
+            render();
+        }).fail(function () {
+            $id('sasaran-judul').textContent = 'Daftar Sasaran';
+            $id('sasaran-jumlah').textContent = '';
+            $id('sasaran-tabel').innerHTML = '<div class="im-dt__kosong" role="alert">Daftar gagal dimuat. Silakan coba kembali.</div>';
+        });
+    }
+    function tutup() {
+        modal.classList.remove('open');
+        kelompok = '';
+        if (pemicu) pemicu.focus();
+    }
+
+    document.querySelectorAll('.im-strip__cell--click').forEach(function (btn) {
+        btn.addEventListener('click', function () { buka(btn.getAttribute('data-kelompok'), btn); });
+    });
+    $id('sasaran-tutup').addEventListener('click', tutup);
+    modal.addEventListener('click', function (e) { if (e.target === modal) tutup(); });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('open')) tutup();
+    });
+    $id('sasaran-cari').addEventListener('input', render);
+    $id('sasaran-f-kec').addEventListener('change', function () { segarkanKel(); render(); });
+    $id('sasaran-f-kel').addEventListener('change', function () { segarkanRt(); render(); });
+    $id('sasaran-f-rt').addEventListener('change', render);
 })();
 </script>
 

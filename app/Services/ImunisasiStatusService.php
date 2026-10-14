@@ -468,15 +468,10 @@ class ImunisasiStatusService
      */
     public function getRingkasanSasaran(KohortImunisasi $kohort, array $filters = []): array
     {
-        $kelompok = function (string $nama) use ($kohort, $filters): array {
-            $jumlah = $this->scopeKohort(
-                $this->applyWilayahFilters(Anak::query(), $filters),
-                $kohort,
-                $nama
-            )->count();
-
-            return ['jumlah' => $jumlah, 'rentang' => $kohort->rentang($nama)];
-        };
+        $kelompok = fn (string $nama): array => [
+            'jumlah'  => $this->querySasaran($kohort, $nama, $filters)->count(),
+            'rentang' => $kohort->rentang($nama),
+        ];
 
         return [
             'tahun'  => $kohort->tahun(),
@@ -485,6 +480,59 @@ class ImunisasiStatusService
             'si'     => $kelompok('SI'),
             'baduta' => $kelompok('BADUTA'),
         ];
+    }
+
+    /**
+     * Anak sasaran satu kelompok kohort (BBL / SI / BADUTA) setelah filter wilayah.
+     * SATU-SATUNYA sumber untuk angka kartu Data sasaran DAN daftar nama (BNBA) di
+     * baliknya — kalau keduanya dibangun terpisah, cepat atau lambat jumlah baris
+     * daftar tak lagi sama dengan angka kartu (dikunci DaftarSasaranImunisasiTest).
+     *
+     * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
+     * @return \Illuminate\Database\Eloquent\Builder<Anak>
+     */
+    public function querySasaran(KohortImunisasi $kohort, string $kelompok, array $filters = [])
+    {
+        return $this->scopeKohort($this->applyWilayahFilters(Anak::query(), $filters), $kohort, $kelompok);
+    }
+
+    /**
+     * Daftar nama dan alamat (BNBA) anak sasaran satu kelompok, urut nama.
+     * Kolom dipilih seperlunya lewat DB::table — Baduta se-kota ±2 rb baris.
+     *
+     * @param  array{id_kecamatan?: int, id_kelurahan?: int, id_rt?: int, id_posyandu?: int, id_puskesmas?: int}  $filters
+     * @return list<array{nama: ?string, nik: ?string, jk: string, tgl_lahir: ?string, nama_ibu: string,
+     *                    kecamatan: string, kelurahan: string, rt: string, posyandu: string, alamat: string}>
+     */
+    public function getDaftarSasaran(KohortImunisasi $kohort, string $kelompok, array $filters = []): array
+    {
+        $ids = $this->querySasaran($kohort, $kelompok, $filters)->select('anak.id');
+
+        return DB::table('anak as a')
+            ->leftJoin('kecamatan as kec', 'a.id_kec', '=', 'kec.id')
+            ->leftJoin('kelurahan as kel', 'a.id_kel', '=', 'kel.id')
+            ->leftJoin('rt', 'a.id_rt', '=', 'rt.id')
+            ->leftJoin('posyandu as pos', 'a.id_posyandu', '=', 'pos.id')
+            ->whereIn('a.id', $ids->toBase())
+            ->orderBy('a.nama')->orderBy('a.id')
+            ->select(
+                'a.nama', 'a.nik', 'a.jk', 'a.tgl_lahir', 'a.nama_ibu', 'a.alamat',
+                'kec.name as kecamatan', 'kel.name as kelurahan', 'rt.name as rt', 'pos.name as posyandu'
+            )
+            ->get()
+            ->map(fn ($a) => [
+                'nama'      => $a->nama,
+                'nik'       => $a->nik,
+                'jk'        => $a->jk === null ? '-' : ((int) $a->jk === 1 ? 'L' : 'P'),
+                'tgl_lahir' => $a->tgl_lahir,
+                'nama_ibu'  => $a->nama_ibu ?: '-',
+                'kecamatan' => $a->kecamatan ?: '-',
+                'kelurahan' => $a->kelurahan ?: '-',
+                'rt'        => $a->rt ?: '-',
+                'posyandu'  => $a->posyandu ?: '-',
+                'alamat'    => $a->alamat ?: '-',
+            ])
+            ->all();
     }
 
     /**

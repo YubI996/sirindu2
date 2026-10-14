@@ -180,6 +180,9 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::put('update-imunisasi-detail/{id}', [App\Http\Controllers\AdminController::class, 'updateImunisasiDetail'])->name('admin.updateImunisasiDetail');
     Route::delete('delete-imunisasi/{id}', [App\Http\Controllers\AdminController::class, 'deleteImunisasiDetail'])->name('admin.deleteImunisasiDetail');
     Route::get('imunisasi-dashboard', [App\Http\Controllers\AdminController::class, 'imunisasiDashboard'])->name('admin.imunisasiDashboard');
+    // Daftar nama & alamat (BNBA) di balik kartu Data sasaran (BBL / SI / Baduta).
+    Route::get('imunisasi-dashboard/sasaran', [App\Http\Controllers\SasaranImunisasiController::class, 'daftar'])->name('admin.imunisasiDashboard.sasaran');
+    Route::get('imunisasi-dashboard/sasaran/export', [App\Http\Controllers\SasaranImunisasiController::class, 'export'])->name('admin.imunisasiDashboard.sasaranExport');
 
     // Dasbor SPM — spec docs/superpowers/specs/2026-09-29-dasbor-spm-design.md §5
     Route::get('spm-dashboard', [App\Http\Controllers\SpmDashboardController::class, 'index'])

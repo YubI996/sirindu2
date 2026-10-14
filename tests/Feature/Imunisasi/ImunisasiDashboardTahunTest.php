@@ -89,7 +89,7 @@ class ImunisasiDashboardTahunTest extends TestCase
             ->assertSee('Tahun sasaran')
             ->assertSee('name="tahun"', false)
             ->assertSee("Kohort {$tahun}")
-            ->assertSee('potret umur');
+            ->assertSee("Kohort {$tahun} mencakup kelahiran 1 April " . ($tahun - 1) . " s.d. 31 Maret {$tahun}.");
     }
 
     public function test_kartu_sasaran_memakai_istilah_bbl_si_baduta_dan_balita_dihapus(): void

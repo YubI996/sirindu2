@@ -630,13 +630,8 @@ ANAK
 
     public function imunisasiDashboard(Request $request)
     {
-        $filters = array_filter([
-            'id_kecamatan' => $request->integer('id_kecamatan') ?: null,
-            'id_kelurahan' => $request->integer('id_kelurahan') ?: null,
-            'id_rt'        => $request->integer('id_rt') ?: null,
-            'id_puskesmas' => $request->integer('id_puskesmas') ?: null,
-            'id_posyandu'  => $request->integer('id_posyandu') ?: null,
-        ]);
+        // Satu tafsir filter untuk kartu dan daftar nama (BNBA) di balik kartu.
+        $filters = SasaranImunisasiController::filterDasbor($request);
 
         // Tahun sasaran: kohort 1 Apr X-1 s.d. 31 Mar X. Input ngawur jatuh ke
         // default, bukan 500 — lihat KohortImunisasi::tahunTervalidasi().
