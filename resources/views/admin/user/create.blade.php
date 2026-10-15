@@ -35,6 +35,14 @@
                             <option value="surveilans_puskesmas">Surveilans PD3I – Puskesmas</option>
                             <option value="surveilans_rs">Surveilans PD3I – Rumah Sakit</option>
                             <option value="rt">RT (verifikasi warga)</option>
+                            <optgroup label="Modul Kesmas">
+                                <option value="pimpinan">Pimpinan (semua dasbor, baca saja)</option>
+                                <option value="kelurahan">Kelurahan (dasbor & export Kesmas kelurahannya)</option>
+                                <option value="kader">Kader (dasbor Kesmas posyandunya)</option>
+                                <option value="kesmas_puskesmas">Puskesmas – Kesmas</option>
+                                <option value="kesmas_rs">Rumah Sakit – Kesmas</option>
+                                <option value="sarkes">Sarkes (klinik/praktik swasta)</option>
+                            </optgroup>
                         </select>
                         @error('role') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
@@ -72,6 +80,35 @@
                             @endforeach
                         </select>
                         @error('id_rs') <span class="text-danger">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="form-group d-none" id="create_kesmas_kel_group">
+                        <label for="create_kesmas_kel">Kelurahan</label>
+                        <select class="form-control" name="kesmas_id_kel" id="create_kesmas_kel">
+                            <option value="">== Pilih Kelurahan ==</option>
+                            @foreach($kelurahanList as $k)
+                            <option value="{{ $k->id }}" @selected(old('kesmas_id_kel') == $k->id)>{{ $k->name }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Satu kelurahan hanya boleh memiliki satu akun.</small>
+                        @error('kesmas_id_kel') <span class="text-danger d-block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="form-group d-none" id="create_kesmas_pos_group">
+                        <label for="create_kesmas_pos">Posyandu</label>
+                        <select class="form-control" name="kesmas_id_posyandu" id="create_kesmas_pos">
+                            <option value="">== Pilih Posyandu ==</option>
+                            @foreach($posyanduList as $p)
+                            <option value="{{ $p->id }}" @selected(old('kesmas_id_posyandu') == $p->id)>{{ $p->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('kesmas_id_posyandu') <span class="text-danger">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div class="form-group d-none" id="create_sarana_group">
+                        <label for="create_sarana">Nama sarana</label>
+                        <input class="form-control" name="nama_sarana" id="create_sarana" type="text" maxlength="150" value="{{ old('nama_sarana') }}" placeholder="mis. Klinik Pratama Sehat">
+                        @error('nama_sarana') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
 
                     <hr>
@@ -134,9 +171,22 @@
         document.getElementById('create_puskesmas_group').classList.add('d-none');
         document.getElementById('create_rs_group').classList.add('d-none');
         document.getElementById('create_rt_group').classList.add('d-none');
+        document.getElementById('create_kesmas_kel_group').classList.add('d-none');
+        document.getElementById('create_kesmas_pos_group').classList.add('d-none');
+        document.getElementById('create_sarana_group').classList.add('d-none');
 
         if (role === 'rt') {
             document.getElementById('create_rt_group').classList.remove('d-none');
+        } else if (role === 'kelurahan') {
+            document.getElementById('create_kesmas_kel_group').classList.remove('d-none');
+        } else if (role === 'kader') {
+            document.getElementById('create_kesmas_pos_group').classList.remove('d-none');
+        } else if (role === 'kesmas_puskesmas') {
+            document.getElementById('create_puskesmas_group').classList.remove('d-none');
+        } else if (role === 'kesmas_rs') {
+            document.getElementById('create_rs_group').classList.remove('d-none');
+        } else if (role === 'sarkes') {
+            document.getElementById('create_sarana_group').classList.remove('d-none');
         } else if (role === 'surveilans_puskesmas') {
             document.getElementById('create_puskesmas_group').classList.remove('d-none');
         } else if (role === 'surveilans_rs') {

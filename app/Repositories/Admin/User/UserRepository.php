@@ -4,9 +4,12 @@ namespace App\Repositories\Admin\User;
 
 use App\Repositories\Admin\Core\User\UserRepositoryInterface;
 use App\Models\Kelurahan;
+use App\Models\Posyandu;
 use App\Models\Rt;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class UserRepository implements UserRepositoryInterface
 {
@@ -69,12 +72,60 @@ class UserRepository implements UserRepositoryInterface
         ];
     }
 
+    /**
+     * Peran Kesmas: seluruh kolom lingkup ditulis ulang — yang tak relevan dikosongkan, supaya akun yang
+     * berganti peran tidak membawa lingkup lama (spec akun Kesmas §6). [] untuk peran lain.
+     */
+    private function lingkupKesmas($request): array
+    {
+        $kosong = [
+            'id_kec' => null, 'id_kel' => null, 'id_puskesmas' => null, 'id_rs' => null, 'id_posyandu' => null,
+            'id_rt' => null, 'rt_sekelurahan' => false, 'nama_sarana' => null, 'faskes_type' => null,
+        ];
+
+        switch ($request->role) {
+            case 'pimpinan':
+                return $kosong;
+            case 'kelurahan':
+                $kel = Kelurahan::findOrFail($request->kesmas_id_kel);
+                return ['id_kel' => $kel->id, 'id_kec' => $kel->id_kecamatan] + $kosong;
+            case 'kader':
+                // Tabel posyandu tak punya kolom kelurahan — yang bisa diturunkan hanya puskesmas.
+                $pos = Posyandu::findOrFail($request->kesmas_id_posyandu);
+                return ['id_posyandu' => $pos->id, 'id_puskesmas' => $pos->id_puskesmas] + $kosong;
+            case 'kesmas_puskesmas':
+                return ['id_puskesmas' => (int) $request->id_puskesmas, 'faskes_type' => 'puskesmas'] + $kosong;
+            case 'kesmas_rs':
+                return ['id_rs' => (int) $request->id_rs, 'faskes_type' => 'rs'] + $kosong;
+            case 'sarkes':
+                return ['nama_sarana' => trim((string) $request->nama_sarana)] + $kosong;
+            default:
+                return [];
+        }
+    }
+
+    /** Cek ulang di dalam transaksi: dua super-admin yang menyimpan bersamaan tak boleh lolos validasi berdua. */
+    private function pastikanKelurahanBelumPunyaAkun(array $data, ?int $kecuali): void
+    {
+        if (($data['role'] ?? null) !== 'kelurahan') {
+            return;
+        }
+        $ada = User::where('role', 'kelurahan')->where('id_kel', $data['id_kel'])
+            ->when($kecuali, fn ($q) => $q->whereKeyNot($kecuali))->lockForUpdate()->first();
+        if ($ada) {
+            $nama = Kelurahan::whereKey($data['id_kel'])->value('name');
+            throw ValidationException::withMessages([
+                'kesmas_id_kel' => "Kelurahan {$nama} sudah memiliki akun ({$ada->email}). Satu kelurahan hanya boleh memiliki satu akun.",
+            ]);
+        }
+    }
+
     public function storeUser($request): string
     {
         $role = $request->role;
         $plainPassword = Str::random(12);
 
-        User::create(array_merge([
+        $data = array_merge([
             'name'        => $request->name,
             'email'       => $request->email,
             'type'        => $this->typeFromRole($role),
@@ -86,7 +137,12 @@ class UserRepository implements UserRepositoryInterface
             'id_puskesmas'=> $request->id_puskesmas ?: null,
             'id_rs'       => $request->id_rs ?: null,
             'id_posyandu' => $request->id_posyandu ?: null,
-        ], $this->wilayahDariRt($request)));
+        ], $this->wilayahDariRt($request), $this->lingkupKesmas($request));
+
+        DB::transaction(function () use ($data) {
+            $this->pastikanKelurahanBelumPunyaAkun($data, null);
+            User::create($data);
+        });
 
         return $plainPassword;
     }
@@ -106,6 +162,7 @@ class UserRepository implements UserRepositoryInterface
             'rt_sekelurahan' => false,
             'id_puskesmas'=> $request->id_puskesmas ?: null,
             'id_rs'       => $request->id_rs ?: null,
+            'nama_sarana' => null,
         ];
 
         if ($request->filled('password')) {
@@ -118,9 +175,12 @@ class UserRepository implements UserRepositoryInterface
             $data['id_posyandu'] = $request->id_posyandux ?: null;
         }
 
-        $data = array_merge($data, $this->wilayahDariRt($request));
+        $data = array_merge($data, $this->wilayahDariRt($request), $this->lingkupKesmas($request));
 
-        $user->update($data);
+        DB::transaction(function () use ($user, $data) {
+            $this->pastikanKelurahanBelumPunyaAkun($data, $user->id);
+            $user->update($data);
+        });
     }
 
     public function destroyUser($id): void

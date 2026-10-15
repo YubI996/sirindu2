@@ -56,6 +56,8 @@ Data User
                     <span class="badge badge-warning">Surveilans – RS</span>
                     @elseif ($data->role === 'imunisasi_faskes')
                     <span class="badge badge-primary">Imunisasi Faskes</span>
+                    @elseif (in_array($data->role, \App\Support\AksesKesmas::PERAN_TERBATAS, true))
+                    <span class="badge badge-dark">{{ ['pimpinan' => 'Pimpinan', 'kelurahan' => 'Kelurahan', 'kader' => 'Kader', 'kesmas_puskesmas' => 'Puskesmas – Kesmas', 'kesmas_rs' => 'RS – Kesmas', 'sarkes' => 'Sarkes'][$data->role] }}</span>
                     @else
                     <span class="badge badge-secondary">{{ $data->role ?? 'Legacy (type='.$data->type.')' }}</span>
                     @endif

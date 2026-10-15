@@ -2595,7 +2595,9 @@ All User Controller
         $kec = Kecamatan::all();
         $puskesmas = Puskesmas::orderBy('name')->get();
         $rs = RumahSakit::orderBy('name')->get();
-        return view('admin.user.index', compact('user', 'kec', 'puskesmas', 'rs'));
+        $kelurahanList = Kelurahan::orderBy('name')->get();
+        $posyanduList = Posyandu::orderBy('name')->get();
+        return view('admin.user.index', compact('user', 'kec', 'puskesmas', 'rs', 'kelurahanList', 'posyanduList'));
     }
 
     public function storeUser(storeUserRequest $request)
@@ -2617,7 +2619,9 @@ All User Controller
         $kec = Kecamatan::all();
         $puskesmas = Puskesmas::orderBy('name')->get();
         $rs = RumahSakit::orderBy('name')->get();
-        return view('admin.user.edit', compact('user', 'kec', 'puskesmas', 'rs'));
+        $kelurahanList = Kelurahan::orderBy('name')->get();
+        $posyanduList = Posyandu::orderBy('name')->get();
+        return view('admin.user.edit', compact('user', 'kec', 'puskesmas', 'rs', 'kelurahanList', 'posyanduList'));
     }
 
     public function updateUser(storeUserRequest $request, $id)

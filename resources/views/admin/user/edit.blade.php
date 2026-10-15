@@ -56,6 +56,14 @@ Edit User
                     <option value="surveilans_puskesmas" {{$user->role === 'surveilans_puskesmas'  ? 'selected' : ''}}>Surveilans PD3I – Puskesmas</option>
                     <option value="surveilans_rs"        {{$user->role === 'surveilans_rs'         ? 'selected' : ''}}>Surveilans PD3I – Rumah Sakit</option>
                     <option value="rt"                   {{$user->role === 'rt'                    ? 'selected' : ''}}>RT (verifikasi warga)</option>
+                    <optgroup label="Modul Kesmas">
+                        <option value="pimpinan"             {{$user->role === 'pimpinan'              ? 'selected' : ''}}>Pimpinan (semua dasbor, baca saja)</option>
+                        <option value="kelurahan"            {{$user->role === 'kelurahan'             ? 'selected' : ''}}>Kelurahan (dasbor & export Kesmas kelurahannya)</option>
+                        <option value="kader"                {{$user->role === 'kader'                 ? 'selected' : ''}}>Kader (dasbor Kesmas posyandunya)</option>
+                        <option value="kesmas_puskesmas"     {{$user->role === 'kesmas_puskesmas'      ? 'selected' : ''}}>Puskesmas – Kesmas</option>
+                        <option value="kesmas_rs"            {{$user->role === 'kesmas_rs'             ? 'selected' : ''}}>Rumah Sakit – Kesmas</option>
+                        <option value="sarkes"               {{$user->role === 'sarkes'                ? 'selected' : ''}}>Sarkes (klinik/praktik swasta)</option>
+                    </optgroup>
                 </select>
                 @error('role') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
@@ -76,7 +84,7 @@ Edit User
 
         {{-- Puskesmas --}}
         @php
-            $showPuskesmas = in_array($user->role, ['surveilans_puskesmas']) ||
+            $showPuskesmas = in_array($user->role, ['surveilans_puskesmas', 'kesmas_puskesmas']) ||
                              ($user->role === 'imunisasi_faskes' && $user->faskes_type === 'puskesmas');
         @endphp
         <div class="col-md-4 col-sm-12 {{!$showPuskesmas ? 'd-none' : ''}}" id="edit_puskesmas_group">
@@ -94,7 +102,7 @@ Edit User
 
         {{-- Rumah Sakit --}}
         @php
-            $showRS = $user->role === 'surveilans_rs' ||
+            $showRS = in_array($user->role, ['surveilans_rs', 'kesmas_rs']) ||
                       ($user->role === 'imunisasi_faskes' && $user->faskes_type === 'rs');
         @endphp
         <div class="col-md-4 col-sm-12 {{!$showRS ? 'd-none' : ''}}" id="edit_rs_group">
@@ -107,6 +115,44 @@ Edit User
                     @endforeach
                 </select>
                 @error('id_rs') <span class="text-danger">{{ $message }}</span> @enderror
+            </div>
+        </div>
+
+        {{-- Kelurahan (akun kelurahan) --}}
+        <div class="col-md-4 col-sm-12 {{$user->role !== 'kelurahan' ? 'd-none' : ''}}" id="edit_kesmas_kel_group">
+            <div class="form-group">
+                <label>Kelurahan</label>
+                <select class="form-control" name="kesmas_id_kel">
+                    <option value="">== Pilih Kelurahan ==</option>
+                    @foreach($kelurahanList as $k)
+                    <option value="{{$k->id}}" {{(int) $user->id_kel === $k->id ? 'selected' : ''}}>{{$k->name}}</option>
+                    @endforeach
+                </select>
+                <small class="text-muted">Satu kelurahan hanya boleh memiliki satu akun.</small>
+                @error('kesmas_id_kel') <span class="text-danger d-block">{{ $message }}</span> @enderror
+            </div>
+        </div>
+
+        {{-- Posyandu (akun kader) --}}
+        <div class="col-md-4 col-sm-12 {{$user->role !== 'kader' ? 'd-none' : ''}}" id="edit_kesmas_pos_group">
+            <div class="form-group">
+                <label>Posyandu</label>
+                <select class="form-control" name="kesmas_id_posyandu">
+                    <option value="">== Pilih Posyandu ==</option>
+                    @foreach($posyanduList as $p)
+                    <option value="{{$p->id}}" {{(int) $user->id_posyandu === $p->id ? 'selected' : ''}}>{{$p->name}}</option>
+                    @endforeach
+                </select>
+                @error('kesmas_id_posyandu') <span class="text-danger">{{ $message }}</span> @enderror
+            </div>
+        </div>
+
+        {{-- Nama sarana (akun sarkes) --}}
+        <div class="col-md-4 col-sm-12 {{$user->role !== 'sarkes' ? 'd-none' : ''}}" id="edit_sarana_group">
+            <div class="form-group">
+                <label>Nama sarana</label>
+                <input class="form-control" name="nama_sarana" type="text" maxlength="150" value="{{ old('nama_sarana', $user->nama_sarana) }}" placeholder="mis. Klinik Pratama Sehat">
+                @error('nama_sarana') <span class="text-danger">{{ $message }}</span> @enderror
             </div>
         </div>
 
@@ -229,8 +275,21 @@ Edit User
         document.getElementById('edit_faskes_type_group').classList.add('d-none');
         document.getElementById('edit_puskesmas_group').classList.add('d-none');
         document.getElementById('edit_rs_group').classList.add('d-none');
+        document.getElementById('edit_kesmas_kel_group').classList.add('d-none');
+        document.getElementById('edit_kesmas_pos_group').classList.add('d-none');
+        document.getElementById('edit_sarana_group').classList.add('d-none');
 
-        if (role === 'surveilans_puskesmas') {
+        if (role === 'kelurahan') {
+            document.getElementById('edit_kesmas_kel_group').classList.remove('d-none');
+        } else if (role === 'kader') {
+            document.getElementById('edit_kesmas_pos_group').classList.remove('d-none');
+        } else if (role === 'kesmas_puskesmas') {
+            document.getElementById('edit_puskesmas_group').classList.remove('d-none');
+        } else if (role === 'kesmas_rs') {
+            document.getElementById('edit_rs_group').classList.remove('d-none');
+        } else if (role === 'sarkes') {
+            document.getElementById('edit_sarana_group').classList.remove('d-none');
+        } else if (role === 'surveilans_puskesmas') {
             document.getElementById('edit_puskesmas_group').classList.remove('d-none');
         } else if (role === 'surveilans_rs') {
             document.getElementById('edit_rs_group').classList.remove('d-none');
