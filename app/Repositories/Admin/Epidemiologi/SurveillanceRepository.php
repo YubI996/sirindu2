@@ -9,6 +9,7 @@ use App\Models\EpidCounter;
 use App\Models\EpidRenumberLog;
 use App\Models\JumlahPenduduk;
 use App\Models\LokasiPenularanMaster;
+use App\Support\FilterPd3i;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -573,41 +574,15 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     }
 
     /**
-     * Base query builder for PD3I dashboard — applies year/jenis_kasus/kab_kota/wilker/kelurahan filters.
-     *
-     * @param array|null $wilker      List of wilker_puskesmas values (multiselect)
-     * @param array|null $kelurahanId List of kelurahan ids (multiselect)
-     * @param array|null $kabKota     List of kab_kota values (multiselect)
+     * Base query dasbor PD3I — seluruh filter (tahun, rentang tanggal lapor, jenis,
+     * wilayah, faskes pelapor) diterapkan oleh FilterPd3i.
      */
-    private function pd3iBaseQuery(int $tahun, ?int $jenisKasusId, ?array $wilker = null, ?array $kelurahanId = null, ?array $kabKota = null): \Illuminate\Database\Eloquent\Builder
+    private function pd3iBaseQuery(FilterPd3i $f): \Illuminate\Database\Eloquent\Builder
     {
-        $query = SurveillanceCase::query()->whereYear('tanggal_lapor', $tahun);
-
-        if ($jenisKasusId) {
-            $query->where('id_jenis_kasus', $jenisKasusId);
-        }
-
-        $this->applyPd3iGeoFilters($query, $wilker, $kelurahanId, $kabKota);
+        $query = SurveillanceCase::query();
+        $f->terapkan($query);
 
         return $query;
-    }
-
-    /**
-     * Apply the multiselect geographic filters (kab_kota / wilker / kelurahan) to a query.
-     */
-    private function applyPd3iGeoFilters($query, ?array $wilker, ?array $kelurahanId, ?array $kabKota): void
-    {
-        if (!empty($kabKota)) {
-            $query->whereIn('kab_kota', $kabKota);
-        }
-
-        if (!empty($wilker)) {
-            $query->whereIn('wilker_puskesmas', $wilker);
-        }
-
-        if (!empty($kelurahanId)) {
-            $query->whereIn('id_kel', $kelurahanId);
-        }
     }
 
     /**
@@ -615,9 +590,10 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
      *
      * Disease IDs: 1=Campak-Rubella, 2=Difteri, 3=AFP, 4=Pertusis
      */
-    public function getPd3iKinerja(int $tahun, ?int $jenisKasusId, ?array $wilker = null, ?array $kelurahanId = null, ?array $kabKota = null): array
+    public function getPd3iKinerja(FilterPd3i $f): array
     {
-        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId, $kabKota);
+        $tahun = $f->tahun;
+        $base  = $this->pd3iBaseQuery($f);
 
         // Populasi Kota Bontang untuk tahun terpilih (selalu kota penuh, tanpa filter wilker/kelurahan)
         $totalPenduduk    = JumlahPenduduk::where('tahun', $tahun)->where('kategori', 'Total')->sum('jumlah_penduduk');
@@ -707,16 +683,17 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Tren data: epiweek curve, monthly trend, per faskes/kecamatan/kelurahan.
      */
-    public function getPd3iTren(int $tahun, ?int $jenisKasusId, ?array $wilker = null, ?array $kelurahanId = null, ?array $kabKota = null): array
+    public function getPd3iTren(FilterPd3i $f): array
     {
+        $tahun = $f->tahun;
         $bulanLabels = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
         // ===== Tahunan (5 tahun terakhir) =====
         $tahunBase = SurveillanceCase::query()
             ->whereNotNull('tanggal_lapor')
             ->whereRaw('YEAR(tanggal_lapor) BETWEEN ? AND ?', [$tahun - 4, $tahun]);
-        if ($jenisKasusId) $tahunBase->where('id_jenis_kasus', $jenisKasusId);
-        $this->applyPd3iGeoFilters($tahunBase, $wilker, $kelurahanId, $kabKota);
+        // Lintas tahun → rentang tanggal tidak berlaku, filter lain tetap.
+        $f->terapkanTanpaWaktu($tahunBase);
 
         $tahunanRaw = $tahunBase
             ->select(
@@ -742,8 +719,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
         $epiBase = SurveillanceCase::query()
             ->whereNotNull('tanggal_onset')
             ->whereRaw('YEAR(tanggal_onset) BETWEEN ? AND ?', [$tahun - 1, $tahun]);
-        if ($jenisKasusId) $epiBase->where('id_jenis_kasus', $jenisKasusId);
-        $this->applyPd3iGeoFilters($epiBase, $wilker, $kelurahanId, $kabKota);
+        $f->terapkanTanpaWaktu($epiBase);
 
         $epiweek = $epiBase
             ->select(
@@ -762,7 +738,7 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
             })->values()->toArray();
 
         // ===== Bulanan 12 bulan (based on tanggal_lapor) =====
-        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId, $kabKota);
+        $base = $this->pd3iBaseQuery($f);
 
         $bulananRaw = (clone $base)
             ->select(
@@ -842,9 +818,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Demografi data: kelompok umur, status vaksinasi, severity.
      */
-    public function getPd3iDemografi(int $tahun, ?int $jenisKasusId, ?array $wilker = null, ?array $kelurahanId = null, ?array $kabKota = null): array
+    public function getPd3iDemografi(FilterPd3i $f): array
     {
-        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId, $kabKota);
+        $base = $this->pd3iBaseQuery($f);
 
         // ===== Kelompok Umur =====
         $buckets = ['< 6 bulan','6-8 bulan','9-11 bulan','12-17 bulan','18-59 bulan','5-9 tahun','10-14 tahun','>= 15 tahun','Tidak Diketahui'];
@@ -966,9 +942,9 @@ class SurveillanceRepository implements SurveillanceRepositoryInterface
     /**
      * Wilayah data: per puskesmas/kecamatan/kelurahan tables + peta markers.
      */
-    public function getPd3iWilayah(int $tahun, ?int $jenisKasusId, ?array $wilker = null, ?array $kelurahanId = null, ?array $kabKota = null): array
+    public function getPd3iWilayah(FilterPd3i $f): array
     {
-        $base = $this->pd3iBaseQuery($tahun, $jenisKasusId, $wilker, $kelurahanId, $kabKota);
+        $base = $this->pd3iBaseQuery($f);
 
         // ===== Per Puskesmas =====
         $perPuskesmas = (clone $base)

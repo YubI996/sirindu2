@@ -10,6 +10,7 @@ use App\Models\Rt;
 use App\Models\SurveillanceCase;
 use App\Models\User;
 use App\Repositories\Admin\Epidemiologi\SurveillanceRepository;
+use App\Support\FilterPd3i;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -53,7 +54,7 @@ class Pd3iKinerjaAfpRateTest extends TestCase
             ]);
         }
 
-        $data = app(SurveillanceRepository::class)->getPd3iKinerja(2026, null, null, null, null);
+        $data = app(SurveillanceRepository::class)->getPd3iKinerja(new FilterPd3i(tahun: 2026));
 
         // 2 discarded / 50000 * 100000 = 4.00 (bukan 6.00 dari 3 total AFP).
         $this->assertSame(4.0, $data['afp']['npafp_rate']);

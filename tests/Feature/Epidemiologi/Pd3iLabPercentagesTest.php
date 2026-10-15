@@ -9,6 +9,7 @@ use App\Models\Rt;
 use App\Models\SurveillanceCase;
 use App\Models\User;
 use App\Repositories\Admin\Epidemiologi\SurveillanceRepository;
+use App\Support\FilterPd3i;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -56,7 +57,7 @@ class Pd3iLabPercentagesTest extends TestCase
             ]);
         }
 
-        $cr = app(SurveillanceRepository::class)->getPd3iKinerja(2026, null, null, null, null)['campak_rubella'];
+        $cr = app(SurveillanceRepository::class)->getPd3iKinerja(new FilterPd3i(tahun: 2026))['campak_rubella'];
 
         $this->assertSame(75.0, $cr['pct_sampel']);        // 3 diperiksa / 4
         $this->assertSame(75.0, $cr['pct_lab_diterima']);  // 3 resolved / 4

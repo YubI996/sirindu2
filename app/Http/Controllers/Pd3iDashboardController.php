@@ -7,6 +7,7 @@ use App\Models\JenisKasusEpidemiologi;
 use App\Models\Kelurahan;
 use App\Models\SurveillanceCase;
 use App\Repositories\Admin\Epidemiologi\SurveillanceRepository;
+use App\Support\FilterPd3i;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,82 +55,52 @@ class Pd3iDashboardController extends Controller
 
     public function kinerja(Request $request): JsonResponse
     {
-        $filters = $this->parsePd3iFilters($request);
-        $data = $this->repo->getPd3iKinerja(
-            $filters['tahun'],
-            $filters['jenis_kasus_id'],
-            $filters['wilker'],
-            $filters['kelurahan_id'],
-            $filters['kab_kota']
-        );
-        return response()->json($data);
+        return response()->json($this->repo->getPd3iKinerja(FilterPd3i::dariRequest($request)));
     }
 
     public function demografi(Request $request): JsonResponse
     {
-        $filters = $this->parsePd3iFilters($request);
-        $data = $this->repo->getPd3iDemografi(
-            $filters['tahun'],
-            $filters['jenis_kasus_id'],
-            $filters['wilker'],
-            $filters['kelurahan_id'],
-            $filters['kab_kota']
-        );
-        return response()->json($data);
+        return response()->json($this->repo->getPd3iDemografi(FilterPd3i::dariRequest($request)));
     }
 
     public function tren(Request $request): JsonResponse
     {
-        $filters = $this->parsePd3iFilters($request);
-        $data = $this->repo->getPd3iTren(
-            $filters['tahun'],
-            $filters['jenis_kasus_id'],
-            $filters['wilker'],
-            $filters['kelurahan_id'],
-            $filters['kab_kota']
-        );
-        return response()->json($data);
+        return response()->json($this->repo->getPd3iTren(FilterPd3i::dariRequest($request)));
     }
 
     public function wilayah(Request $request): JsonResponse
     {
-        $filters = $this->parsePd3iFilters($request);
-        $data = $this->repo->getPd3iWilayah(
-            $filters['tahun'],
-            $filters['jenis_kasus_id'],
-            $filters['wilker'],
-            $filters['kelurahan_id'],
-            $filters['kab_kota']
-        );
-        return response()->json($data);
+        return response()->json($this->repo->getPd3iWilayah(FilterPd3i::dariRequest($request)));
     }
 
     // ==================== EXPORT ====================
 
     public function exportPdf(Request $request): Response
     {
-        $filters = $this->parsePd3iFilters($request);
+        $f = FilterPd3i::dariRequest($request);
 
-        $kinerja  = $this->repo->getPd3iKinerja($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
-        $demografi = $this->repo->getPd3iDemografi($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
-        $tren     = $this->repo->getPd3iTren($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
-        $wilayah  = $this->repo->getPd3iWilayah($filters['tahun'], $filters['jenis_kasus_id'], $filters['wilker'], $filters['kelurahan_id'], $filters['kab_kota']);
+        $kinerja   = $this->repo->getPd3iKinerja($f);
+        $demografi = $this->repo->getPd3iDemografi($f);
+        $tren      = $this->repo->getPd3iTren($f);
+        $wilayah   = $this->repo->getPd3iWilayah($f);
 
-        $namaJenisKasus = $filters['jenis_kasus_id']
-            ? JenisKasusEpidemiologi::find($filters['jenis_kasus_id'])?->nama_penyakit
+        $namaJenisKasus = $f->jenisKasusId
+            ? JenisKasusEpidemiologi::find($f->jenisKasusId)?->nama_penyakit
             : null;
 
-        $namaKabKota = $filters['kab_kota'] ? implode(', ', $filters['kab_kota']) : null;
-        $namaWilker  = $filters['wilker'] ? implode(', ', $filters['wilker']) : null;
-        $namaKelurahan = $filters['kelurahan_id']
-            ? Kelurahan::whereIn('id', $filters['kelurahan_id'])->orderBy('name')->pluck('name')->implode(', ')
+        $namaKabKota = $f->kabKota ? implode(', ', $f->kabKota) : null;
+        $namaWilker  = $f->wilker ? implode(', ', $f->wilker) : null;
+        $namaKelurahan = $f->kelurahanId
+            ? Kelurahan::whereIn('id', $f->kelurahanId)->orderBy('name')->pluck('name')->implode(', ')
             : null;
 
         $pdf = Pdf::loadView('admin.epidemiologi.pdf.pd3i-dashboard', [
-            'tahun'          => $filters['tahun'],
+            'tahun'          => $f->tahun,
+            'periode'        => $f->labelPeriode(),
             'wilker'         => $namaWilker,
             'namaKabKota'    => $namaKabKota,
             'namaKelurahan'  => $namaKelurahan,
+            'namaFaskes'     => $f->faskesPelapor ? implode(', ', $f->faskesPelapor) : null,
             'namaJenisKasus' => $namaJenisKasus,
             'kinerja'        => $kinerja,
             'demografi'      => $demografi,
@@ -137,65 +108,22 @@ class Pd3iDashboardController extends Controller
             'wilayah'        => $wilayah,
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->download("pd3i-dashboard-{$filters['tahun']}.pdf");
+        return $pdf->download("pd3i-dashboard-{$f->tahun}.pdf");
     }
 
     public function exportExcel(Request $request)
     {
-        $filters = $this->parsePd3iFilters($request);
+        $f = FilterPd3i::dariRequest($request);
 
-        $namaFile = 'surveilans-pd3i-' . $filters['tahun'];
-        if ($filters['wilker']) {
-            $namaFile .= '-' . str_replace(' ', '_', implode('-', $filters['wilker']));
+        $namaFile = 'surveilans-pd3i-' . $f->tahun;
+        if ($f->wilker) {
+            $namaFile .= '-' . str_replace(' ', '_', implode('-', $f->wilker));
         }
         $namaFile .= '.xlsx';
 
         return Excel::download(
-            new SurveillanceExport(
-                $filters['tahun'],
-                $filters['jenis_kasus_id'],
-                $filters['wilker'],
-                $filters['kelurahan_id'],
-                $filters['kab_kota']
-            ),
+            new SurveillanceExport($f->tahun, $f->jenisKasusId, $f->wilker, $f->kelurahanId, $f->kabKota),
             $namaFile
         );
-    }
-
-    // ==================== HELPERS ====================
-
-    private function parsePd3iFilters(Request $request): array
-    {
-        return [
-            'tahun'          => (int) $request->get('tahun', now()->year),
-            'jenis_kasus_id' => $request->filled('jenis_kasus_id') ? (int) $request->jenis_kasus_id : null,
-            'wilker'         => $this->normalizeMulti($request->input('wilker')),
-            'kelurahan_id'   => $this->normalizeMulti($request->input('kelurahan_id'), true),
-            'kab_kota'       => $this->normalizeMulti($request->input('kab_kota')),
-        ];
-    }
-
-    /**
-     * Normalize a multiselect filter input into a clean array (or null when empty).
-     * Accepts either an array (name[]=…) or a single scalar value.
-     */
-    private function normalizeMulti($value, bool $asInt = false): ?array
-    {
-        if ($value === null || $value === '' || $value === []) {
-            return null;
-        }
-
-        $items = is_array($value) ? $value : [$value];
-        $items = array_filter($items, fn ($v) => $v !== null && $v !== '');
-
-        if (empty($items)) {
-            return null;
-        }
-
-        $items = $asInt
-            ? array_map('intval', $items)
-            : array_map(fn ($v) => trim((string) $v), $items);
-
-        return array_values(array_unique($items));
     }
 }
