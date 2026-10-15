@@ -409,6 +409,29 @@ Audit WCAG 2.1 AA dasbor imunisasi (`public/css/dasbor-base.css`, dipakai juga d
 - `<h1>` kini ada di layout admin (`.page-title`); heading bagian = `<h2>`, sub-judul di dalamnya `<h3>`.
 - Yang TIDAK bisa dikunci PHPUnit (kontras, reflow 320px, urutan Tab) harus dilihat di browser.
 
+### Akun peran Kesmas: `AksesKesmas` satu-satunya sumber izin, dan `IsAdmin` tak boleh meloloskannya
+
+Peran `pimpinan`, `kelurahan`, `kader`, `kesmas_puskesmas`, `kesmas_rs`, `sarkes`
+(spec `docs/superpowers/specs/2026-10-14-akun-kesmas-design.md`) hanya membuka rute baca dasbor yang
+dijaga middleware `dasbor:{nama}`. Grup `is_admin` membuka SELURUH `/admin` (Data Anak, Import, Master Data).
+
+- **Peran baru wajib masuk `AksesKesmas::PERAN_TERBATAS`** — `adminSetara()` menolaknya apa pun `type`-nya.
+  `typeFromRole()` mendaftar peran ber-`type` 1 secara eksplisit; default 2. Jangan kembali ke `default => 1`:
+  setiap peran yang ditambahkan nanti diam-diam jadi admin lewat cabang legacy `IsAdmin`.
+- **Rute baca dasbor baru** masuk grup `['auth']` + `dasbor:…`; rute ekspor/tulis tetap di `is_admin`.
+- **Kunci wilayah menang atas query string**: `$filters = $akses->kunciFilter() + $filters` (urutan operan
+  `+` penting — operan kiri menang). Registri/Export memakai `kunciDataPribadi()`, superset untuk `imunisasi_faskes`.
+- `BatasDataPribadiKesmas` sudah dilebur ke `AksesKesmas` — aturan SEC-001 (`imunisasi_faskes` RS ditolak data
+  pribadi) ada di `AksesKesmas::untuk()`.
+- Tabel `posyandu` tak punya kolom kelurahan — akun kader hanya bisa menurunkan `id_puskesmas`.
+- **Dasbor OT (timbang): akses se-kota diputuskan `TimbangDashboardController::bacaSeKota()`** (superadmin atau
+  `pimpinan`); admin non-superadmin tetap terkunci ke `id_kel`-nya. Flag `FILTER_SE_KOTA` di view OT berasal dari
+  fungsi itu, dan kartu publikasi tetap khusus superadmin — jangan menurunkan "se-kota" dari `type` atau peran lain.
+- **`ImunisasiStatusService::getAlasanTidakImunisasi()` memakai `applyWilayahFilters`.** Dulu ia mengabaikan
+  `id_puskesmas`/`id_rt`, sehingga akun terkunci Puskesmas melihat alasan se-kota. Agregat baru di service ini wajib
+  lewat `applyWilayahFilters` supaya kunci wilayah ikut berlaku (dikunci tes kartu alasan di `tests/Feature/AkunKesmas`).
+- Dikunci `tests/Feature/AkunKesmas/*` (matriks peran × rute, kunci lingkup, form akun).
+
 ### Export Data Anak: dua tombol, satu `AnakExport` streaming, dan anak tanpa kunjungan
 
 View `alldata` = `data_anak INNER JOIN anak`, satu baris per KUNJUNGAN. Anak tanpa kunjungan (semua anak hasil
