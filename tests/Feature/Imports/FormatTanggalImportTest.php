@@ -143,9 +143,9 @@ class FormatTanggalImportTest extends TestCase
     {
         $html = $this->get(route('admin.importCsv.index'))->assertOk()->getContent();
         $this->assertSame(
-            4,
+            5,
             substr_count($html, 'name="format_tanggal"'),
-            'Kartu Anak, Pengukuran, Imunisasi, dan Operasi Timbang harus punya pilihan format tanggal'
+            'Kartu Anak, Pengukuran, Imunisasi, Operasi Timbang, dan Data Kesmas harus punya pilihan format tanggal'
         );
 
         $kohort = $this->get(route('admin.anak'))->assertOk()->getContent();

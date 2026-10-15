@@ -260,6 +260,7 @@
 .imp-chip-pengukuran { background: oklch(0.92 0.08 295 / 0.35); color: oklch(0.42 0.14 295); }
 .imp-chip-imunisasi  { background: oklch(0.92 0.07 145 / 0.4);  color: oklch(0.36 0.12 145); }
 .imp-chip-ukur       { background: oklch(0.92 0.09 55 / 0.35);  color: oklch(0.42 0.14 55); }
+.imp-chip-kesmas     { background: oklch(0.92 0.07 175 / 0.35); color: oklch(0.38 0.11 175); }
 
 /* -- Action buttons -- */
 .imp-act {
@@ -358,6 +359,11 @@
         role="tab" aria-selected="false" aria-controls="panel-pj" id="tab-pj">
         <span class="material-symbols-outlined">assignment_ind</span>
         Penanggung Jawab
+    </button>
+    <button class="imp-tab-btn" data-tab="kesmas"
+        role="tab" aria-selected="false" aria-controls="panel-kesmas" id="tab-kesmas">
+        <span class="material-symbols-outlined">health_and_safety</span>
+        Data Kesmas
     </button>
 </div>
 
@@ -630,6 +636,55 @@
 </div>
 
 {{-- =====================================================================
+     PANEL: Data Kesmas
+     ===================================================================== --}}
+<div class="imp-panel" id="panel-kesmas" role="tabpanel" aria-labelledby="tab-kesmas">
+    <div class="imp-panel-grid">
+        <div class="imp-guide">
+            <p class="imp-guide__label">Data yang diimpor</p>
+            <p>Field Kesmas anak (lingkungan rumah, riwayat lahir, skrining neonatal) dan layanan per kunjungan (KN, MTBM/MTBS, CKG, MBG, rujukan, dll.). Satu baris = satu anak pada satu kunjungan; tanpa tanggal kunjungan, baris hanya mengisi data per anak.</p>
+            <div class="imp-guide__rule">
+                <strong>Hanya anak yang sudah ada</strong>
+                Anak dicari lewat <strong>NIK</strong>, lalu <strong>nama + tanggal lahir + jenis kelamin + nama ortu</strong>. Anak yang tidak ketemu atau lebih dari satu kandidat dilaporkan &mdash; tidak dibuat baru, dan NIK tidak diubah.
+            </div>
+            <div class="imp-guide__rule">
+                <strong>Yang ditimpa</strong>
+                Sel berisi menimpa data Kesmas lama; sel kosong tidak mengubah apa pun. Ukuran kunjungan yang sudah tercatat <strong>tidak diubah</strong> &mdash; perbedaannya dilaporkan.
+            </div>
+            <div class="imp-guide__rule">
+                <strong>Berat badan</strong>
+                Kunjungan baru wajib berisi BB, TB, dan posisi. BB dalam <strong>gram</strong> bila anak berumur di bawah 2 bulan pada tanggal kunjungan (mis. 3250), selain itu <strong>kg</strong>.
+            </div>
+            <a href="{{ route('admin.importCsv.template', 'kesmas') }}" class="imp-template-link" download>
+                <span class="material-symbols-outlined">download</span>
+                Unduh Template Excel
+            </a>
+        </div>
+        <div class="imp-upload-col">
+            <form method="POST" action="{{ route('admin.importCsv.kesmas') }}"
+                  enctype="multipart/form-data" class="imp-form" data-type="kesmas">
+                @csrf
+                <label class="imp-upload-zone" for="file-kesmas" id="zone-kesmas">
+                    <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
+                    <span class="imp-upload-zone__label">Klik atau seret file Excel ke sini</span>
+                    <span class="imp-upload-zone__hint">Format .xlsx/.xls &mdash; maksimal 20 MB</span>
+                    <input type="file" id="file-kesmas" name="file_kesmas" accept=".xlsx,.xls" required>
+                </label>
+                <div class="imp-fname" id="fname-kesmas">
+                    <span class="material-symbols-outlined">description</span>
+                    <span>Belum ada file dipilih</span>
+                </div>
+                @include('admin.partials.pilihan-format-tanggal', ['id' => 'format-tanggal-kesmas'])
+                <button type="submit" class="imp-btn-upload">
+                    <span class="material-symbols-outlined">upload</span>
+                    Upload &amp; Import
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- =====================================================================
      Riwayat Import
      ===================================================================== --}}
 <div>
@@ -645,6 +700,7 @@
             <button class="imp-filter-btn" data-filter="pengukuran">Pengukuran</button>
             <button class="imp-filter-btn" data-filter="imunisasi">Imunisasi</button>
             <button class="imp-filter-btn" data-filter="ukur">Op. Timbang</button>
+            <button class="imp-filter-btn" data-filter="kesmas">Kesmas</button>
             <button class="imp-refresh-btn" id="imp-btn-refresh" title="Muat ulang riwayat">
                 <span class="material-symbols-outlined">refresh</span>
             </button>
@@ -677,7 +733,7 @@
                         <td class="td-file" title="{{ $log->filename }}">{{ $log->filename }}</td>
                         <td>
                             <span class="imp-chip imp-chip-{{ $log->type }}">
-                                {{ ['anak'=>'Anak','capil'=>'Capil','pengukuran'=>'Pengukuran','imunisasi'=>'Imunisasi','ukur'=>'Op. Timbang','hasil_lab'=>'Hasil Lab'][$log->type] ?? $log->type }}
+                                {{ ['anak'=>'Anak','capil'=>'Capil','pengukuran'=>'Pengukuran','imunisasi'=>'Imunisasi','ukur'=>'Op. Timbang','hasil_lab'=>'Hasil Lab','kesmas'=>'Kesmas'][$log->type] ?? $log->type }}
                             </span>
                         </td>
                         <td>
@@ -912,8 +968,8 @@
     }
 
     /* ── Render helpers ─────────────────────────────────────────── */
-    var typeLabel  = { anak: 'Anak', capil: 'Capil', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi', ukur: 'Op. Timbang', pj: 'PJ' };
-    var typeChip   = { anak: 'imp-chip-anak', capil: 'imp-chip-capil', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi', ukur: 'imp-chip-ukur', pj: 'imp-chip-ukur' };
+    var typeLabel  = { anak: 'Anak', capil: 'Capil', pengukuran: 'Pengukuran', imunisasi: 'Imunisasi', ukur: 'Op. Timbang', pj: 'PJ', kesmas: 'Kesmas' };
+    var typeChip   = { anak: 'imp-chip-anak', capil: 'imp-chip-capil', pengukuran: 'imp-chip-pengukuran', imunisasi: 'imp-chip-imunisasi', ukur: 'imp-chip-ukur', pj: 'imp-chip-ukur', kesmas: 'imp-chip-kesmas' };
     var stLabel    = { pending: 'Menunggu', processing: 'Diproses', done: 'Selesai', failed: 'Gagal' };
     var stBadge    = { pending: 'imp-badge-pending', processing: 'imp-badge-processing', done: 'imp-badge-done', failed: 'imp-badge-failed' };
     var stIcon     = { pending: 'schedule', processing: 'sync', done: 'check_circle', failed: 'error' };

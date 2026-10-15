@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TemplateKesmas;
 use App\Jobs\ImportAnakJob;
 use App\Jobs\ImportCapilJob;
 use App\Jobs\ImportHasilLabJob;
 use App\Jobs\ImportImunisasiJob;
+use App\Jobs\ImportKesmasJob;
 use App\Jobs\ImportPengukuranJob;
 use App\Jobs\ImportPjJob;
 use App\Jobs\ImportUkurJob;
@@ -32,6 +34,7 @@ class ImportCsvController extends Controller
         'hasil_lab'  => 'Hasil Laboratorium PD3I',
         'ukur'       => 'Operasi Timbang',
         'pj'         => 'Penanggung Jawab (PJ)',
+        'kesmas'     => 'Data Kesmas',
     ];
 
     /** Nama file template per tipe. */
@@ -101,21 +104,27 @@ class ImportCsvController extends Controller
         return $this->handleUpload($request, 'pj', 'file_pj');
     }
 
+    /** Data Kesmas untuk anak yang sudah ada — Excel saja (spec 2026-10-15-import-kesmas-design.md). */
+    public function uploadKesmas(Request $request)
+    {
+        return $this->handleUpload($request, 'kesmas', 'file_kesmas');
+    }
+
     protected function handleUpload(Request $request, string $type, string $inputName)
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403, 'Hanya superadmin yang dapat mengimpor data.');
 
-        // Capil khusus Excel (multi-sheet); tipe lain menerima Excel maupun CSV —
-        // pembacanya (Maatwebsite) mengenali format dari ekstensi.
-        $isCapil = $type === 'capil';
+        // Capil (multi-sheet) dan Kesmas (template dua sheet) khusus Excel; tipe lain menerima Excel
+        // maupun CSV — pembacanya (Maatwebsite) mengenali format dari ekstensi.
+        $hanyaExcel = in_array($type, ['capil', 'kesmas'], true);
         $request->validate([
-            $inputName => $isCapil
+            $inputName => $hanyaExcel
                 ? 'required|file|mimes:xlsx,xls|max:20480'
                 : 'required|file|mimes:xlsx,xls,csv,txt|max:20480',
             'format_tanggal' => TanggalBerkas::ATURAN,
         ], [
             'format_tanggal.in'  => 'Format penanggalan tidak dikenal.',
-            "{$inputName}.mimes" => $isCapil
+            "{$inputName}.mimes" => $hanyaExcel
                 ? 'File harus berformat Excel (.xlsx/.xls).'
                 : 'File harus berformat Excel (.xlsx/.xls) atau CSV (.csv).',
             "{$inputName}.max"   => 'Ukuran file maksimal 20 MB.',
@@ -142,6 +151,7 @@ class ImportCsvController extends Controller
             'hasil_lab'  => ImportHasilLabJob::class,
             'ukur'       => ImportUkurJob::class,
             'pj'         => ImportPjJob::class,
+            'kesmas'     => ImportKesmasJob::class,
         };
 
         if ($type === 'pj') {
@@ -197,6 +207,7 @@ class ImportCsvController extends Controller
             'hasil_lab'  => ImportHasilLabJob::class,
             'ukur'       => ImportUkurJob::class,
             'pj'         => ImportPjJob::class, // ulang tanpa timpa
+            'kesmas'     => ImportKesmasJob::class,
         };
 
         $jobClass::dispatch($newLog);
@@ -269,6 +280,13 @@ class ImportCsvController extends Controller
     public function downloadTemplate(string $type)
     {
         abort_if(!auth()->user()->isSuperAdmin(), 403);
+
+        if ($type === 'kesmas') {
+            return response()->download(TemplateKesmas::buat(), 'template_import_kesmas.xlsx', [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])->deleteFileAfterSend();
+        }
+
         abort_if(!array_key_exists($type, self::TEMPLATE_FILES), 404);
 
         $filename = self::TEMPLATE_FILES[$type];
