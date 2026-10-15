@@ -35,12 +35,19 @@ class ImportKesmasJob implements ShouldQueue
             }
 
             $import  = (new KesmasImport($this->importLog->user_id))->setFormatTanggal($this->importLog->format_tanggal);
-            app(PrioritasGiziService::class)->duringMutedImport(fn () => Excel::import($import, $path));
-            app(PrioritasGiziService::class)->refreshAll();
+            $prioritas = app(PrioritasGiziService::class);
+            $prioritas->duringMutedImport(fn () => Excel::import($import, $path));
+            // Hanya anak yang mendapat kunjungan baru: field Kesmas tak memengaruhi prioritas gizi, dan
+            // refreshAll() se-kota makan 40–54 dtk walau 0 baris tersimpan — di prod (queue sync) itu
+            // ditanggung request unggah petugas (audit DYN-UX-001, 15 Okt 2026).
+            if ($ids = $import->anakBerkunjunganBaru()) {
+                $prioritas->refreshBatch($ids);
+            }
             $results = $import->getResults();
 
             $this->importLog->update([
-                'status'        => 'done',
+                // Header tanpa kolom identitas wajib = tak satu baris pun diproses: gagal, bukan "Selesai 0/0".
+                'status'        => $import->dibatalkan() ? 'failed' : 'done',
                 'success_count' => $results['success'],
                 'failure_count' => $results['error_count'],
                 'failures'      => $results['failures'] ?: null,

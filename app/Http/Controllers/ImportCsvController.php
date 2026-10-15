@@ -173,7 +173,7 @@ class ImportCsvController extends Controller
         return back()->with(
             'import_queued',
             "File \"{$filename}\" ({$label}) telah diterima dan sedang diproses di latar belakang. Cek status import di bawah."
-        );
+        )->with('import_tab', $type);   // halaman membuka kembali tab asal (audit UX-013)
     }
 
     // =========================================================================

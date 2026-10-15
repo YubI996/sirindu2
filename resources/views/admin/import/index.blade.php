@@ -13,6 +13,9 @@
    Import Data — scoped to .imp-page
    ================================================================ */
 .imp-page { font-family: 'Barlow', sans-serif; color: oklch(0.18 0.012 145); }
+/* Penanda fokus keyboard. style.css admin global memuat `a,button,input{outline:0!important}`, jadi
+   hanya !important yang bisa mengalahkannya (audit A11Y-001; pola sama dengan dasbor-base.css). */
+.imp-page :is(a, button, select, input, [tabindex]):focus-visible { outline: 3px solid oklch(0.36 0.13 145) !important; outline-offset: 2px; }
 
 /* -- Flash alerts -- */
 .imp-alert {
@@ -310,6 +313,17 @@
     {{ session('import_queued') }}
 </div>
 @endif
+@if($errors->any())
+<div class="imp-alert imp-alert-error" role="alert">
+    <span class="material-symbols-outlined" aria-hidden="true">error</span>
+    <div>
+        <strong>Berkas tidak diunggah.</strong>
+        @foreach($errors->all() as $pesan)
+            <div>{{ $pesan }}</div>
+        @endforeach
+    </div>
+</div>
+@endif
 @if(session('error'))
 <div class="imp-alert imp-alert-error" role="alert">
     <span class="material-symbols-outlined">error</span>
@@ -389,6 +403,7 @@
             <form method="POST" action="{{ route('admin.importCsv.anak') }}"
                   enctype="multipart/form-data" class="imp-form" data-type="anak">
                 @csrf
+                <input type="hidden" name="tab" value="anak">
                 <label class="imp-upload-zone" for="file-anak" id="zone-anak">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
                     <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
@@ -435,6 +450,7 @@
             <form method="POST" action="{{ route('admin.importCsv.capil') }}"
                   enctype="multipart/form-data" class="imp-form" data-type="capil">
                 @csrf
+                <input type="hidden" name="tab" value="capil">
                 <label class="imp-upload-zone" for="file-capil" id="zone-capil">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
                     <span class="imp-upload-zone__label">Klik atau seret file Excel ke sini</span>
@@ -476,6 +492,7 @@
             <form method="POST" action="{{ route('admin.importCsv.pengukuran') }}"
                   enctype="multipart/form-data" class="imp-form" data-type="pengukuran">
                 @csrf
+                <input type="hidden" name="tab" value="pengukuran">
                 <label class="imp-upload-zone" for="file-pengukuran" id="zone-pengukuran">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
                     <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
@@ -521,6 +538,7 @@
             <form method="POST" action="{{ route('admin.importCsv.imunisasi') }}"
                   enctype="multipart/form-data" class="imp-form" data-type="imunisasi">
                 @csrf
+                <input type="hidden" name="tab" value="imunisasi">
                 <label class="imp-upload-zone" for="file-imunisasi" id="zone-imunisasi">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
                     <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
@@ -566,6 +584,7 @@
             <form method="POST" action="{{ route('admin.importCsv.pj') }}"
                   enctype="multipart/form-data" class="imp-form" data-type="pj">
                 @csrf
+                <input type="hidden" name="tab" value="pj">
                 <label class="imp-upload-zone" for="file-pj" id="zone-pj">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
                     <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
@@ -615,6 +634,7 @@
             <form method="POST" action="{{ route('admin.importCsv.ukur') }}"
                   enctype="multipart/form-data" class="imp-form" data-type="ukur">
                 @csrf
+                <input type="hidden" name="tab" value="ukur">
                 <label class="imp-upload-zone" for="file-ukur" id="zone-ukur">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
                     <span class="imp-upload-zone__label">Klik atau seret file Excel atau CSV ke sini</span>
@@ -664,6 +684,7 @@
             <form method="POST" action="{{ route('admin.importCsv.kesmas') }}"
                   enctype="multipart/form-data" class="imp-form" data-type="kesmas">
                 @csrf
+                <input type="hidden" name="tab" value="kesmas">
                 <label class="imp-upload-zone" for="file-kesmas" id="zone-kesmas">
                     <span class="material-symbols-outlined imp-upload-zone__icon">cloud_upload</span>
                     <span class="imp-upload-zone__label">Klik atau seret file Excel ke sini</span>
@@ -806,6 +827,10 @@
     var REIMPORT_BASE = '{{ url("admin/import-csv/reimport") }}';
     var DEL_BASE      = '{{ url("admin/import-csv/log") }}';
 
+    /* Tab asal setelah redirect unggah (gagal validasi atau diterima) — tanpa ini halaman selalu
+       kembali ke "Data Anak" dan pesan untuk tab lain tak terlihat di dekat form-nya (audit UX-002/UX-013). */
+    var TAB_AWAL = @json(old('tab', session('import_tab')));
+
     /* ── Tab switching ──────────────────────────────────────────── */
     document.querySelectorAll('.imp-tab-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -818,6 +843,10 @@
                 p.classList.toggle('is-active', p.id === 'panel-' + tab);
             });
         });
+    });
+    // Dicocokkan dengan dataset, bukan dirakit jadi selector: TAB_AWAL berasal dari input form.
+    document.querySelectorAll('.imp-tab-btn').forEach(function (btn) {
+        if (TAB_AWAL && btn.dataset.tab === TAB_AWAL) btn.click();
     });
 
     /* ── File input: show filename + mark zone ──────────────────── */

@@ -98,10 +98,13 @@ tersimpan untuk peringatan.
 Hanya mencari, tidak pernah membuat atau mengubah identitas anak.
 
 1. Identitas wajib (`nama_anak`, `jk`, `tgl_lahir`, `nama_ortu`) kosong/tak sah → `[ERROR]`, baris dilewati.
-2. `nik_anak` valid (15–16 digit) ditemukan di `anak.nik` **dan** (tgl lahir sama **atau** nama mirip
-   ≥ 87%) → anak itu. Ditemukan tapi keduanya tak cocok → `[PERINGATAN]` "NIK <x> tercatat untuk anak
-   lain (<nama>, lahir <tgl>) — dicocokkan lewat nama", lanjut ke langkah 3. (Dasar: 72% anak ganda di
-   prod ber-NIK ibu/salah ketik.)
+2. `nik_anak` valid (15–16 digit) ditemukan di `anak.nik` → anak itu bila: nama sama persis (huruf saja);
+   **atau** nama mirip ≥ 87% dan tak ada saudara lahir sama hari yang namanya lebih cocok (kembar);
+   **atau** tgl lahir sama + jk sama + nama ibu di berkas & data sama-sama terisi dan cocok (nama panggilan,
+   `[INFO]`). Selain itu → `[PERINGATAN]` "NIK <x> … — dicocokkan lewat nama", lanjut ke langkah 3 tanpa NIK.
+   (Dasar: 72% anak ganda di prod ber-NIK ibu/salah ketik. Revisi 15 Okt 2026 setelah reviu & audit SEC-001:
+   "tgl lahir sama" saja dulu cukup, sehingga NIK salah ketik yang menunjuk anak lain lahir di hari yang sama
+   menempelkan data ke anak itu tanpa pesan.)
 3. `PenautanAnakImport::tautkan(nama, tgl_lahir, jk, null, nik, nama_ortu)` — nama ≥ 87% + tgl lahir +
    jk, nama ortu dan aturan kembar menyingkirkan orang lain:
    - SAMA → anak itu; `[INFO]` "dicocokkan lewat nama + tgl lahir (NIK di DB <y>)". Saran penggantian NIK
@@ -131,8 +134,10 @@ Per baris, satu transaksi:
    kunjungan diabaikan karena tgl_kunjungan kosong".
 4. **Field Kesmas per anak** yang diberikan → `anak`. Anak muncul di beberapa baris: baris lebih bawah
    menang; nilai berbeda dari baris sebelumnya dalam berkas yang sama → `[PERINGATAN]`.
-5. Ditulis lewat Eloquent (`save()`), jadi observer `DataAnak`/`Anak` (refresh prioritas gizi) tetap
-   berjalan. `sasaran_balita_kesmas` tidak ada di daftar kolom import.
+5. Ditulis lewat Eloquent (`save()`). Observer dibisukan selama import; sesudahnya job memanggil
+   `PrioritasGiziService::refreshBatch()` untuk anak yang mendapat kunjungan baru saja — bukan `refreshAll()`
+   se-kota (40–54 dtk walau 0 baris, audit DYN-UX-001). `sasaran_balita_kesmas` tidak ada di daftar kolom import.
+6. Header tanpa kolom identitas wajib → `import_logs.status = failed` (bukan "Selesai 0/0", audit UX-001).
 
 Baris tanpa isi sama sekali dilewati diam-diam. Pengecualian tak terduga → `[ERROR]` lewat
 `ImportError::message()` (menyebut kolom), baris dilewati, import lanjut.

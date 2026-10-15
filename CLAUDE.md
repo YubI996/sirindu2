@@ -456,8 +456,12 @@ Tipe import `kesmas` (spec `docs/superpowers/specs/2026-10-15-import-kesmas-desi
 Excel. Ini jembatan sementara — pengisian otomatis dari modul imunisasi/OT/MBG menyusul, dan import ini **bukan**
 aturan "sumber mana yang menang".
 
-- **Tidak membuat anak, tidak mengubah NIK.** Penautan di `PenautanAnakKesmas`: NIK hanya dipercaya bila tgl lahir
-  sama atau nama mirip (72% anak ganda di prod ber-NIK ibu/salah ketik), lalu `PenautanAnakImport` dengan nama ortu.
+- **Tidak membuat anak, tidak mengubah NIK.** Penautan di `PenautanAnakKesmas`: NIK dipercaya bila nama sama/mirip
+  (dan tak ada kembaran lahir sama hari yang namanya lebih cocok), atau tgl lahir + jk + nama ibu cocok. **"Tgl lahir
+  sama" saja tidak cukup** — NIK salah ketik menunjuk anak lain lahir di hari yang sama (72% anak ganda di prod ber-NIK
+  ibu/salah ketik). Gagal → `PenautanAnakImport` (nama + tgl lahir + jk, nama ortu) tanpa NIK.
+- Job hanya `refreshBatch()` anak yang mendapat kunjungan baru, bukan `refreshAll()` — di prod (queue sync) itu
+  40 dtk+ di request unggah petugas walau 0 baris tersimpan.
 - **Field Kesmas "isi yang diberikan", ukuran kunjungan yang ada tidak disentuh** (bentrok → PERINGATAN). Kunjungan
   baru wajib BB/TB/posisi; BB gram bila < 2 bulan lewat `SatuanBeratBadan` — sama dengan form.
 - Hanya sheet pertama dibaca (`WithMultipleSheets`) — sheet Petunjuk template ikut terbaca bila dilepas.

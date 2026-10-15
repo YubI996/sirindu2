@@ -52,6 +52,8 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
     private ?array $peta = null;
     private int $barisDibaca = 0;
     private bool $berhenti = false;
+    /** @var array<int,true> id anak yang mendapat kunjungan baru — hanya ini yang perlu refresh prioritas gizi */
+    private array $anakKunjunganBaru = [];
     /** @var array<string, array{anak: ?Anak, pesan: array}> hasil penautan per identitas baris */
     private array $tautan = [];
     /** @var array<int, array<string, array{0:mixed, 1:int}>> id anak => kolom => [nilai, baris] */
@@ -105,6 +107,18 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
         foreach ($rows as $i => $row) {
             $this->prosesBaris($awal + $i + 1, $row);
         }
+    }
+
+    /** Berkas dihentikan sebelum satu baris pun diproses (header tanpa kolom identitas wajib). */
+    public function dibatalkan(): bool
+    {
+        return $this->berhenti;
+    }
+
+    /** @return int[] */
+    public function anakBerkunjunganBaru(): array
+    {
+        return array_keys($this->anakKunjunganBaru);
     }
 
     public function getResults(): array
@@ -283,6 +297,7 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
                 $catat('PERINGATAN', $teks.'; kolom dilewati.');
             }
 
+            $this->anakKunjunganBaru[$anak->id] = true;
             DataAnak::create(array_merge(
                 ['lk' => 0, 'lla' => 0],
                 $ukur['nilai'],
