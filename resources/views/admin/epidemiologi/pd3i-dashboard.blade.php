@@ -935,8 +935,8 @@
         const wilker    = getMsValues('wilker');
         const kelurahan = getMsValues('kelurahan_id');
         const faskes    = getMsValues('faskes_pelapor');
-        const tglDari   = document.getElementById('filter-tgl-dari').value;
-        const tglSampai = document.getElementById('filter-tgl-sampai').value;
+        const tglDari   = nilaiTanggal('filter-tgl-dari');
+        const tglSampai = nilaiTanggal('filter-tgl-sampai');
 
         if (tahun)    params.set('tahun', tahun);
         if (penyakit) params.set('jenis_kasus_id', penyakit);
@@ -976,6 +976,17 @@
         if (excelBtn) excelBtn.href = API.excel + '?' + params.toString();
 
         return params.toString();
+    }
+
+    // min/max hanya membatasi pemilih — tahun lain masih bisa diketik. Server mengabaikan
+    // tanggal di luar Tahun, jadi nilai tak sah tidak dikirim dan inputnya ditandai,
+    // supaya layar tak terlihat tersaring padahal angkanya setahun penuh.
+    function nilaiTanggal(id) {
+        const el = document.getElementById(id);
+        const sah = !el.value || el.checkValidity();
+        el.classList.toggle('is-invalid', !sah);
+        el.setAttribute('aria-invalid', sah ? 'false' : 'true');
+        return sah ? el.value : '';
     }
 
     // ======= MULTISELECT DROPDOWNS =======

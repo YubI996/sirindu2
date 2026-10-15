@@ -55,6 +55,19 @@ class Pd3iFilterTampilanTest extends TestCase
             ->assertSee('Grafik ini tidak mengikuti rentang tanggal laporan.');
     }
 
+    /**
+     * min/max input date hanya membatasi pemilih; tahun lain masih bisa diketik.
+     * Server mengabaikannya, jadi layar tak boleh memperlakukannya sebagai filter
+     * aktif: nilai tak sah tidak dikirim dan inputnya ditandai is-invalid.
+     */
+    public function test_tanggal_yang_diketik_di_luar_tahun_ditandai_dan_tak_dikirim(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.pd3i.dashboard'))
+            ->assertOk()
+            ->assertSee('el.checkValidity()', false)
+            ->assertSee("classList.toggle('is-invalid'", false);
+    }
+
     public function test_header_pdf_mencantumkan_periode_dan_faskes(): void
     {
         $repo = app(SurveillanceRepository::class);
