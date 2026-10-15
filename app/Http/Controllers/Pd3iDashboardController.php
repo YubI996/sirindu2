@@ -43,12 +43,19 @@ class Pd3iDashboardController extends Controller
             ->orderBy('kab_kota')
             ->pluck('kab_kota');
 
+        // Faskes pelapor yang ada di data (instansi_pelapor — id_faskes_pelapor tak pernah terisi)
+        $faskesPelapors = SurveillanceCase::whereNotNull('instansi_pelapor')
+            ->where('instansi_pelapor', '!=', '')
+            ->distinct()
+            ->orderBy('instansi_pelapor')
+            ->pluck('instansi_pelapor');
+
         // Kelurahan yang ada di data surveillance (untuk filter)
         $kelurahans = Kelurahan::whereIn('id',
             SurveillanceCase::whereNotNull('id_kel')->distinct()->pluck('id_kel')
         )->orderBy('name')->get();
 
-        return view('admin.epidemiologi.pd3i-dashboard', compact('diseases', 'wilkers', 'kabKotas', 'kelurahans'));
+        return view('admin.epidemiologi.pd3i-dashboard', compact('diseases', 'wilkers', 'kabKotas', 'kelurahans', 'faskesPelapors'));
     }
 
     // ==================== API ENDPOINTS ====================

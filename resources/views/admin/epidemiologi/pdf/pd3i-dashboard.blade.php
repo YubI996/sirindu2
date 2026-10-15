@@ -201,11 +201,12 @@ tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
     <div class="doc-header-info">
         <div class="info-date">{{ now()->format('d M Y') }} &nbsp;&bull;&nbsp; {{ now()->format('H:i') }} WIB</div>
         <div class="info-grid">
-            <strong>Tahun:</strong> {{ $tahun }}<br>
+            <strong>Periode:</strong> {{ $periode ?? ('Tahun ' . $tahun) }}<br>
             <strong>Penyakit:</strong> {{ $namaJenisKasus ?? 'Semua PD3I' }}<br>
             <strong>Kab/Kota:</strong> {{ $namaKabKota ?? 'Semua Kab/Kota' }}<br>
             <strong>Wilker:</strong> {{ $wilker ?? 'Semua Puskesmas' }}<br>
-            <strong>Kelurahan:</strong> {{ $namaKelurahan ?? 'Semua Kelurahan' }}
+            <strong>Kelurahan:</strong> {{ $namaKelurahan ?? 'Semua Kelurahan' }}<br>
+            <strong>Faskes pelapor:</strong> {{ $namaFaskes ?? 'Semua Faskes' }}
         </div>
     </div>
 </div>
@@ -522,7 +523,7 @@ tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
         <strong>SIRINDU</strong> &mdash; Sistem Informasi Realtime Reporting Terpadu &nbsp;&bull;&nbsp; Dinas Kesehatan Kota Bontang
     </div>
     <div class="doc-footer-right">
-        Tahun {{ $tahun }} &bull; {{ $namaJenisKasus ?? 'Semua PD3I' }} &bull; {{ $namaKabKota ?? 'Semua Kab/Kota' }} &bull; {{ $wilker ?? 'Semua Wilker' }} &bull; {{ $namaKelurahan ?? 'Semua Kelurahan' }}
+        {{ $periode ?? ('Tahun ' . $tahun) }} &bull; {{ $namaJenisKasus ?? 'Semua PD3I' }} &bull; {{ $namaKabKota ?? 'Semua Kab/Kota' }} &bull; {{ $wilker ?? 'Semua Wilker' }} &bull; {{ $namaKelurahan ?? 'Semua Kelurahan' }}
     </div>
 </div>
 

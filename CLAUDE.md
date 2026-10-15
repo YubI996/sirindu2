@@ -470,3 +470,18 @@ aturan "sumber mana yang menang".
 - `sasaran_balita_kesmas` sengaja tidak ada di daftar kolom.
 
 Dikunci `tests/Feature/ImportKesmas/*`, `tests/Unit/Support/NilaiSelKesmasTest.php`.
+
+### Filter Dasbor PD3I: `FilterPd3i`, rentang di dalam Tahun
+
+Seluruh filter dasbor PD3I (tahun, jenis, kab/kota, wilker, kelurahan, faskes pelapor, rentang tanggal lapor) dibaca dan
+diterapkan oleh `App\Support\FilterPd3i` (spec `docs/superpowers/specs/2026-10-15-filter-pd3i-faskes-tanggal-design.md`).
+Filter baru ditambah di sana, bukan sebagai argumen berurutan ke repository/export.
+
+- Rentang tanggal **selalu di dalam Tahun**; tanggal di luar tahun/tak valid diabaikan (bukan digeser). Tren 5 tahunan &
+  epiweek memakai `terapkanTanpaWaktu()` — lintas tahun, jadi rentang tak berlaku; catatan di bawah grafiknya wajib terlihat.
+- "Faskes pelapor" = `instansi_pelapor` (teks bebas). `id_faskes_pelapor` tak pernah terisi.
+- Kolom di `terapkan*()` berprefix `surveillance_cases.` karena query tren/wilayah me-`leftJoin` tabel lain.
+- `SurveillanceExport::untukDasborPd3i()` untuk tombol Excel dasbor; konstruktor bernama lama tetap untuk halaman
+  Surveilans (`tahun: null` = semua tahun).
+
+Dikunci `tests/Unit/Support/FilterPd3iTest.php`, `tests/Feature/Epidemiologi/Pd3iFilter*Test.php`.

@@ -397,6 +397,32 @@
                     </div>
                 </div>
             </div>
+            <div class="col-6 col-md-3">
+                <label id="lbl-faskes-pelapor"><i class="fa fa-clinic-medical mr-1"></i>Faskes Pelapor</label>
+                <div class="ms-dropdown" data-ms="faskes_pelapor" data-all-label="Semua Faskes">
+                    <button type="button" class="form-control ms-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="lbl-faskes-pelapor">
+                        <span class="ms-label">Semua Faskes</span>
+                        <i class="fa fa-chevron-down ms-caret" aria-hidden="true"></i>
+                    </button>
+                    <div class="ms-menu" role="listbox" aria-multiselectable="true">
+                        @forelse($faskesPelapors as $fp)
+                            <label class="ms-option"><input type="checkbox" value="{{ $fp }}"><span>{{ $fp }}</span></label>
+                        @empty
+                            <div class="ms-empty">Tidak ada data</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="filter-tgl-dari"><i class="fa fa-calendar-day mr-1"></i>Tgl lapor dari</label>
+                <input type="date" id="filter-tgl-dari" class="form-control"
+                       min="{{ now()->year }}-01-01" max="{{ now()->year }}-12-31">
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="filter-tgl-sampai"><i class="fa fa-calendar-day mr-1"></i>Tgl lapor s/d</label>
+                <input type="date" id="filter-tgl-sampai" class="form-control"
+                       min="{{ now()->year }}-01-01" max="{{ now()->year }}-12-31">
+            </div>
         </div>
     </div>
 
@@ -683,6 +709,7 @@
                         <canvas id="chart-tahunan"></canvas>
                         <div id="skel-tahunan" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
                     </div>
+                    <p class="catatan-rentang small text-muted mb-0 mt-2" hidden>Grafik ini tidak mengikuti rentang tanggal laporan.</p>
                 </div>
             </div>
 
@@ -693,6 +720,7 @@
                         <canvas id="chart-epiweek"></canvas>
                         <div id="skel-epiweek" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
                     </div>
+                    <p class="catatan-rentang small text-muted mb-0 mt-2" hidden>Grafik ini tidak mengikuti rentang tanggal laporan.</p>
                 </div>
             </div>
 
@@ -906,12 +934,18 @@
         const kabKota   = getMsValues('kab_kota');
         const wilker    = getMsValues('wilker');
         const kelurahan = getMsValues('kelurahan_id');
+        const faskes    = getMsValues('faskes_pelapor');
+        const tglDari   = document.getElementById('filter-tgl-dari').value;
+        const tglSampai = document.getElementById('filter-tgl-sampai').value;
 
         if (tahun)    params.set('tahun', tahun);
         if (penyakit) params.set('jenis_kasus_id', penyakit);
         kabKota.forEach(v   => params.append('kab_kota[]', v));
         wilker.forEach(v    => params.append('wilker[]', v));
         kelurahan.forEach(v => params.append('kelurahan_id[]', v));
+        faskes.forEach(v    => params.append('faskes_pelapor[]', v));
+        if (tglDari)   params.set('tanggal_dari', tglDari);
+        if (tglSampai) params.set('tanggal_sampai', tglSampai);
 
         // PDF hidden inputs — scalars + one hidden field per selected multiselect value
         document.getElementById('pdf_tahun').value = tahun;
@@ -929,7 +963,13 @@
             kabKota.forEach(v   => addHidden('kab_kota[]', v));
             wilker.forEach(v    => addHidden('wilker[]', v));
             kelurahan.forEach(v => addHidden('kelurahan_id[]', v));
+            faskes.forEach(v    => addHidden('faskes_pelapor[]', v));
+            if (tglDari)   addHidden('tanggal_dari', tglDari);
+            if (tglSampai) addHidden('tanggal_sampai', tglSampai);
         }
+
+        // Tren 5 tahunan & epiweek lintas tahun — tak dipersempit rentang (catatan selalu terlihat saat aktif).
+        document.querySelectorAll('.catatan-rentang').forEach(el => { el.hidden = !(tglDari || tglSampai); });
 
         // Excel href
         const excelBtn = document.getElementById('btnExportExcel');
@@ -1650,11 +1690,27 @@
     });
 
     // ======= FILTER LISTENERS =======
-    // Multiselect dropdowns (kab_kota / wilker / kelurahan) trigger fetch via their own change handlers.
-    ['filter-tahun','filter-penyakit'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('change', fetchAllTabs);
+    // Multiselect dropdowns (kab_kota / wilker / kelurahan / faskes_pelapor) trigger fetch via their own change handlers.
+    const TGL_IDS = ['filter-tgl-dari', 'filter-tgl-sampai'];
+
+    // Rentang tanggal selalu di dalam Tahun terpilih: batasi pemilih tanggal ke tahun itu.
+    function aturBatasTanggal() {
+        const t = document.getElementById('filter-tahun').value;
+        TGL_IDS.forEach(id => {
+            const el = document.getElementById(id);
+            el.min = t + '-01-01';
+            el.max = t + '-12-31';
+        });
+    }
+
+    document.getElementById('filter-penyakit')?.addEventListener('change', fetchAllTabs);
+    // Ganti Tahun → kosongkan tanggal DULU, baru fetch (buildParams membaca nilai input).
+    document.getElementById('filter-tahun')?.addEventListener('change', function () {
+        TGL_IDS.forEach(id => { document.getElementById(id).value = ''; });
+        aturBatasTanggal();
+        fetchAllTabs();
     });
+    TGL_IDS.forEach(id => document.getElementById(id)?.addEventListener('change', fetchAllTabs));
 
     // ======= TAB SHOWN — resize charts & invalidate map =======
     // Bootstrap 4 memicu event 'shown.bs.tab' via jQuery, bukan native event,
@@ -1672,6 +1728,7 @@
         document.querySelectorAll('[data-peta-layer]').forEach(btn => {
             btn.addEventListener('click', () => petaSwitchLayer(btn.dataset.petaLayer));
         });
+        aturBatasTanggal();
         buildParams();
         fetchAllTabs();
     });
