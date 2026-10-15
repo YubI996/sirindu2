@@ -24,6 +24,11 @@
         @endif
         <form method="get" action="{{ route('admin.export.kesmas.download') }}">
             <div class="row">
+                @if ($kunciWilayah)
+                <div class="col-12">
+                    <p class="mb-3">Wilayah: <strong>{{ $kunciWilayah }}</strong> (sesuai akun)</p>
+                </div>
+                @else
                 <div class="col-md-3 col-sm-12">
                     <div class="form-group">
                         <label for="kec">Kecamatan</label>
@@ -68,6 +73,7 @@
                         </select>
                     </div>
                 </div>
+                @endif
                 <div class="col-md-3 col-sm-12">
                     <div class="form-group">
                         <label for="dari">Kunjungan dari tanggal</label>
@@ -94,6 +100,8 @@
 @section('custom_scripts')
 <script type="text/javascript">
     $(function() {
+        // Akun berlingkup kelurahan tak punya pilihan wilayah (diganti label).
+        if (!document.getElementById('kec')) return;
         var kecVersion = 0, posVersion = 0;
         $('#kec').on('change', function() {
             var id = $(this).val();

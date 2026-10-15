@@ -33,21 +33,30 @@ class ExportKesmasController extends Controller
 
     public function index(Request $request)
     {
-        $this->akses();
+        $akses = $this->akses();
         $filter = $this->filter($request);
         $kec = Kecamatan::orderBy('name')->get();
         $kel = Kelurahan::orderBy('name')->get();
         $puskesmas = Puskesmas::orderBy('name')->get();
         $posyandu = Posyandu::orderBy('name')->get();
+        // Peran Kesmas berlingkup kelurahan: pilihan wilayah diganti label (server tetap membatasi lewat batas_kelurahan).
+        $kunciWilayah = $akses->terbatas() && isset($akses->kunciDataPribadi()['id_kelurahan'])
+            ? 'Kel. ' . optional($kel->firstWhere('id', $akses->kunciDataPribadi()['id_kelurahan']))->name
+            : null;
 
         // Muat opsi di server agar tautan dengan filter anak saja juga tetap terpilih.
-        return view('admin.export.kesmas', compact('kec', 'kel', 'puskesmas', 'posyandu', 'filter'));
+        return view('admin.export.kesmas', compact('kec', 'kel', 'puskesmas', 'posyandu', 'filter', 'kunciWilayah'));
     }
 
     public function download(Request $request)
     {
         $akses = $this->akses();
         $filter = $this->filter($request);
+        // Kelurahan akun menang atas ?id_kel= (spec akun Kesmas §7: diganti diam-diam, bukan 403) — kalau tidak,
+        // id_kel lain di-AND dengan batas_kelurahan dan hasilnya kosong, bukan kelurahan akun.
+        if (isset($akses->kunciDataPribadi()['id_kelurahan'])) {
+            $filter['id_kel'] = $akses->kunciDataPribadi()['id_kelurahan'];
+        }
         // Bukan input klien: ditambahkan SETELAH validasi supaya tak bisa dilewati lewat query string.
         if (($batas = $akses->batasKelurahanExport()) !== null) {
             $filter['batas_kelurahan'] = $batas;

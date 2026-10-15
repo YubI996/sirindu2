@@ -90,9 +90,11 @@
             <h1>Dashboard Kesmas — Tumbuh Kembang Balita</h1>
             <div class="km-sub">{{ $namaWilayah }} &middot; {{ $periode->label() }}</div>
         </div>
+        @if($akses->bolehExport())
         <a href="{{ route('admin.export.kesmas.index', $exportQs) }}" class="im-btn im-btn--ghost">
             <span class="material-symbols-outlined" style="font-size:18px;">download</span>Export Data
         </a>
+        @endif
     </header>
 
     {{-- Penandaan Sasaran Balita Kesmas (spec 2026-10-02 §6.3): populasi dasbor = anak bertanda 1 --}}

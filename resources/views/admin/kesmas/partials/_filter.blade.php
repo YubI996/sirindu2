@@ -1,4 +1,6 @@
 {{-- Filter periode & wilayah — submit = reload halaman (agregat server-side). --}}
+@php($terkunci = !empty($kunci ?? []))
+{{-- Akun berlingkup (kelurahan/kader/puskesmas): pilihan wilayah ditampilkan tetapi tak bisa diubah; server menimpanya juga. --}}
 <form method="GET" action="{{ route('admin.kesmas.dashboard') }}" class="im-filter" id="kmFilter">
     <input type="hidden" name="usia" value="{{ $usia }}" id="filterUsia">
     <div>
@@ -19,7 +21,7 @@
     </div>
     <div>
         <label for="filterKec">Kecamatan</label>
-        <select name="id_kecamatan" id="filterKec">
+        <select name="id_kecamatan" id="filterKec" @disabled($terkunci)>
             <option value="">Semua kecamatan</option>
             @foreach($kecamatanList as $kec)
                 <option value="{{ $kec->id }}" {{ ($filters['id_kecamatan'] ?? null) == $kec->id ? 'selected' : '' }}>{{ $kec->name }}</option>
@@ -28,22 +30,25 @@
     </div>
     <div>
         <label for="filterKel">Kelurahan</label>
-        <select name="id_kelurahan" id="filterKel">
+        <select name="id_kelurahan" id="filterKel" @disabled($terkunci)>
             <option value="">Semua kelurahan</option>
             @foreach($kelurahanList as $kel)
                 <option value="{{ $kel->id }}" data-kec="{{ $kel->id_kecamatan }}" {{ ($filters['id_kelurahan'] ?? null) == $kel->id ? 'selected' : '' }}>{{ $kel->name }}</option>
             @endforeach
         </select>
+        @if(isset($kunci['id_kelurahan']))
+            <input type="hidden" name="id_kelurahan" value="{{ $kunci['id_kelurahan'] }}">
+        @endif
     </div>
     <div>
         <label for="filterRt">RT</label>
-        <select name="id_rt" id="filterRt">
+        <select name="id_rt" id="filterRt" @disabled($terkunci && !isset($kunci['id_kelurahan']))>
             <option value="">Semua RT</option>
         </select>
     </div>
     <div>
         <label for="filterPos">Posyandu</label>
-        <select name="id_posyandu" id="filterPos">
+        <select name="id_posyandu" id="filterPos" @disabled($terkunci)>
             <option value="">Semua posyandu</option>
             @foreach($posyanduList as $pos)
                 <option value="{{ $pos->id }}" {{ ($filters['id_posyandu'] ?? null) == $pos->id ? 'selected' : '' }}>{{ $pos->name }}</option>
@@ -52,7 +57,7 @@
     </div>
     <div>
         <label for="filterPkm">Puskesmas</label>
-        <select name="id_puskesmas" id="filterPkm">
+        <select name="id_puskesmas" id="filterPkm" @disabled($terkunci)>
             <option value="">Semua puskesmas</option>
             @foreach($puskesmasList as $pkm)
                 <option value="{{ $pkm->id }}" {{ ($filters['id_puskesmas'] ?? null) == $pkm->id ? 'selected' : '' }}>{{ $pkm->name }}</option>

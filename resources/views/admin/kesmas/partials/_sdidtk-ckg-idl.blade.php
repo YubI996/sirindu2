@@ -63,7 +63,9 @@
                 @endforeach
             </ul>
         @endif
+        @if(!isset($akses) || $akses->bolehDasbor('imunisasi'))
         <div class="km-foot"><a href="{{ route('admin.imunisasiDashboard', array_merge($filters, ['tahun' => $periode->tahun()])) }}" class="im-card__link">Lihat dasbor imunisasi &rarr;</a></div>
+        @endif
     </article><!-- /idl -->
 
 </section>

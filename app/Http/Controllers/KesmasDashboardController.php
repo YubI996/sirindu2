@@ -41,7 +41,10 @@ class KesmasDashboardController extends Controller
 
     public function index(Request $request)
     {
+        $akses = AksesKesmas::untuk(auth()->user());
         [$periode, $filters, $usia] = $this->parse($request);
+        // Kunci wilayah akun menang atas query string (spec akun Kesmas §3).
+        $filters = $akses->kunciFilter() + $filters;
         $svc  = app(KesmasDashboardService::class);
         $imun = app(ImunisasiStatusService::class);
 
@@ -66,7 +69,9 @@ class KesmasDashboardController extends Controller
             'puskesmasList' => Puskesmas::orderBy('name')->get(),
             'tahunList'     => range(now()->year + 1, 2020),
             // Registri memuat NIK & nama orang tua → hanya bila akun boleh (AksesKesmas).
-            'registriBoleh' => AksesKesmas::untuk(auth()->user())->bolehNama(),
+            'registriBoleh' => $akses->bolehNama(),
+            'akses'   => $akses,
+            'kunci'   => $akses->kunciFilter(),
         ]);
     }
 
