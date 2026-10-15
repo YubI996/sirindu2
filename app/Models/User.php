@@ -33,6 +33,7 @@ class User extends Authenticatable
         'id_kel',
         'id_puskesmas',
         'id_rs',
+        'nama_sarana', // peran sarkes: nama klinik/praktik (belum ada master)
         'id_posyandu',
         'id_rt',       // peran rt: RT yang diverifikasi (spec verifikasi RT)
         'rt_sekelurahan', // peran rt tanpa id_rt: akun lingkup kelurahan, memilih RT saat masuk
@@ -76,10 +77,15 @@ class User extends Authenticatable
         return $this->role === 'rt';
     }
 
-    /** Nama route beranda sesuai peran — dipakai login, guest-redirect, dan tombol landing. */
+    /** Nama route beranda sesuai peran — dipakai login, guest-redirect, tombol landing, dan halaman 403. */
     public function berandaRoute(): string
     {
-        return $this->isRt() ? 'rt.verifikasi' : 'admin.home';
+        return match (true) {
+            $this->isRt() => 'rt.verifikasi',
+            $this->role === 'sarkes' => 'akses.belumDiatur',
+            in_array($this->role, \App\Support\AksesKesmas::PERAN_TERBATAS, true) => 'admin.kesmas.dashboard',
+            default => 'admin.home',
+        };
     }
 
     public function rumahSakit()

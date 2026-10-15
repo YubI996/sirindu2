@@ -16,20 +16,8 @@ class IsAdmin
      */
     public function handle(Request $request, Closure $next)
     {
-        $user = auth()->user();
-
-        // New role-based system: superadmin punya akses admin penuh
-        if ($user->isSuperAdmin()) {
-            return $next($request);
-        }
-
-        // Faskes roles (puskesmas / RS) — punya akses ke rute admin/
-        if ($user->isFaskesSurveilans() || $user->isFaskesImunisasi()) {
-            return $next($request);
-        }
-
-        // Legacy type-based check (type is tinyInteger: 0=super-admin, 1=admin)
-        if (in_array($user->type, [0, 1])) {
+        // Satu sumber aturan: AksesKesmas::adminSetara() — menolak peran Kesmas apa pun `type`-nya.
+        if (\App\Support\AksesKesmas::adminSetara(auth()->user())) {
             return $next($request);
         }
 

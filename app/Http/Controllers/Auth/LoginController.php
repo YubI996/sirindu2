@@ -56,6 +56,9 @@ class LoginController extends Controller
 
             // Redirect berdasarkan role sistem baru + legacy type
             return match(true) {
+                // Peran Kesmas (pimpinan, kelurahan, kader, puskesmas/RS Kesmas, sarkes): beranda sesuai peran
+                \App\Support\AksesKesmas::untuk($user)->terbatas() => redirect()->route($user->berandaRoute()),
+
                 // RT: satu halaman verifikasi warga, tanpa akses admin
                 $user->isRt()                  => redirect()->route('rt.verifikasi'),
 

@@ -62,6 +62,10 @@ All Normal Users Routes List
 //     Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 // });
 
+// Beranda akun yang aksesnya belum diputuskan (peran sarkes) — spec akun Kesmas §5.
+Route::get('akses-belum-diatur', App\Http\Controllers\AksesBelumDiaturController::class)
+     ->middleware('auth')->name('akses.belumDiatur');
+
 /*------------------------------------------
 --------------------------------------------
 All Super Admin Routes List

@@ -31,11 +31,12 @@ class UserRepository implements UserRepositoryInterface
 
     private function typeFromRole(string $role): int
     {
-        // 0 = superadmin, 1 = admin/faskes (akses /admin), 2 = user biasa (peran rt: TIDAK boleh /admin)
+        // 0 = superadmin, 1 = admin/faskes (akses /admin), 2 = user biasa (tidak boleh /admin).
+        // Daftar 1 ditulis eksplisit: peran yang ditambahkan nanti TIDAK diam-diam menjadi admin.
         return match ($role) {
             'superadmin' => 0,
-            'rt'         => 2,
-            default      => 1,
+            'imunisasi_faskes', 'surveilans_puskesmas', 'surveilans_rs' => 1,
+            default => 2,
         };
     }
 
