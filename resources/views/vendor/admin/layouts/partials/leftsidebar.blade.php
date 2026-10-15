@@ -1,6 +1,6 @@
 <div class="left-side-bar">
 	<div class="brand-logo">
-		<a href="{{ route('admin.home') }}" aria-label="Beranda SIRINDU">
+		<a href="{{ route(Auth::user()->berandaRoute()) }}" aria-label="Beranda SIRINDU">
 			<img src="{{asset('logo/Sirindu-allblack.png')}}" alt="SIRINDU" class="dark-logo">
 			<img src="{{asset('logo/Sirindu-white.png')}}" alt="SIRINDU" class="light-logo">
 		</a>
@@ -105,6 +105,39 @@
 						<li><a href="{{route('super.admin.user')}}" class="{{ request()->routeIs('super.admin.*') ? 'active' : '' }}">Pengguna</a></li>
 					</ul>
 				</li>
+
+				{{-- ============================================
+				     PERAN KESMAS (pimpinan, kelurahan, kader, puskesmas/RS Kesmas)
+				     Hanya dasbor yang diizinkan AksesKesmas — spec akun Kesmas §5.
+				     Harus SEBELUM cabang faskes: peran terbatas tak pernah admin-setara.
+				     ============================================ --}}
+				@elseif (($aksesKesmas = \App\Support\AksesKesmas::untuk(Auth::user()))->terbatas())
+				<li class="dropdown section-group show">
+					<a href="javascript:;" class="dropdown-toggle section-toggle active">
+						<span class="micon fa fa-tachometer"></span><span class="mtext">Dashboard</span>
+					</a>
+					<ul class="submenu" style="display:block;">
+						@if ($aksesKesmas->bolehDasbor('kesmas'))
+						<li><a href="{{route('admin.kesmas.dashboard')}}" class="{{ request()->routeIs('admin.kesmas.*') ? 'active' : '' }}">Kesmas</a></li>
+						@endif
+						@if ($aksesKesmas->bolehDasbor('imunisasi'))
+						<li><a href="{{route('admin.imunisasiDashboard')}}" class="{{ request()->routeIs('admin.imunisasiDashboard') ? 'active' : '' }}">Imunisasi</a></li>
+						@endif
+						@if ($aksesKesmas->bolehDasbor('timbang'))
+						<li><a href="{{route('admin.timbang.dashboard')}}" class="{{ request()->routeIs('admin.timbang.*') ? 'active' : '' }}">Operasi Timbang</a></li>
+						@endif
+						@if ($aksesKesmas->bolehDasbor('spm'))
+						<li><a href="{{route('admin.spm.dashboard')}}" class="{{ request()->routeIs('admin.spm.dashboard') ? 'active' : '' }}">SPM</a></li>
+						@endif
+					</ul>
+				</li>
+				@if ($aksesKesmas->bolehExport())
+				<li>
+					<a href="{{route('admin.export.kesmas.index')}}" class="dropdown-toggle no-arrow {{ request()->routeIs('admin.export.kesmas.*') ? 'active' : '' }}">
+						<span class="micon fa fa-download"></span><span class="mtext">Export Kesmas</span>
+					</a>
+				</li>
+				@endif
 
 				{{-- ============================================
 				     FASKES SURVEILANS (Puskesmas / RS)
