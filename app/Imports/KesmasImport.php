@@ -218,6 +218,9 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
 
             return;
         } catch (\Throwable $e) {
+            // Model anak di-cache antarbaris: transaksi sudah di-rollback, tapi nilai fill() yang gagal
+            // masih menempel di model dan akan ikut tersimpan oleh baris berikutnya anak yang sama.
+            $tautan['anak']->refresh();
             $catat('ERROR', ImportError::message($e->getMessage()));
             $this->gagal++;
             Log::warning("KesmasImport baris {$n}: ".$e->getMessage());
@@ -395,6 +398,9 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
             return false;
         }
 
+        $anak->fill($nilai)->save();
+
+        // Dicatat SETELAH tersimpan: nilai baris yang gagal bukan "nilai berkas" pembanding baris berikutnya.
         $label = KesmasRules::atribut();
         foreach ($nilai as $kolom => $v) {
             $lama = $this->nilaiAnakBerkas[$anak->id][$kolom] ?? null;
@@ -403,8 +409,6 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
             }
             $this->nilaiAnakBerkas[$anak->id][$kolom] = [$v, $n];
         }
-
-        $anak->fill($nilai)->save();
 
         return true;
     }

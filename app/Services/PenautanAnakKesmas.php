@@ -29,15 +29,30 @@ class PenautanAnakKesmas
         $nik = substr($nik, 0, 16);
         $nikSah = strlen($nik) >= 15 && ctype_digit($nik);
 
-        if ($nikSah && ($lewatNik = Anak::where('nik', $nik)->first())) {
-            if (substr((string) $lewatNik->tgl_lahir, 0, 10) === $tglLahir || self::mirip($nama, (string) $lewatNik->nama)) {
-                return ['anak' => $lewatNik, 'pesan' => []];
+        // NIK yang ternyata milik anak lain bukan bukti apa pun — jangan diteruskan ke pencocok nama.
+        $nikUntukTautan = $nikSah ? $nik : null;
+
+        if ($nikSah) {
+            // anak.nik UNIQUE di DB — paling banyak satu anak.
+            if ($ada = Anak::where('nik', $nik)->first()) {
+                $lahirAda = substr((string) $ada->tgl_lahir, 0, 10);
+                if (self::huruf($nama) === self::huruf((string) $ada->nama)) {
+                    return ['anak' => $ada, 'pesan' => []];
+                }
+                $cocok = $lahirAda === $tglLahir || self::mirip($nama, (string) $ada->nama);
+                // Kembar lahir di hari yang sama dan namanya mirip, jadi "tgl sama atau nama mirip" lolos untuk
+                // kembaran yang salah. Saudara yang namanya lebih cocok = NIK di berkas milik kembarannya.
+                if ($cocok && ! self::adaSaudaraLebihCocok($ada, $nama)) {
+                    return ['anak' => $ada, 'pesan' => []];
+                }
+                $pesan[] = ['PERINGATAN', $cocok
+                    ? "NIK {$nik} milik {$ada->nama}, tetapi ada anak lain lahir {$lahirAda} yang namanya lebih cocok — dicocokkan lewat nama."
+                    : "NIK {$nik} tercatat untuk anak lain ({$ada->nama}, lahir {$lahirAda}) — dicocokkan lewat nama."];
+                $nikUntukTautan = null;
             }
-            $pesan[] = ['PERINGATAN', "NIK {$nik} tercatat untuk anak lain ({$lewatNik->nama}, lahir "
-                .substr((string) $lewatNik->tgl_lahir, 0, 10).') — dicocokkan lewat nama.'];
         }
 
-        $t = $this->penautan->tautkan($nama, $tglLahir, $jk, null, $nikSah ? $nik : null, $namaOrtu);
+        $t = $this->penautan->tautkan($nama, $tglLahir, $jk, null, $nikUntukTautan, $namaOrtu);
 
         if ($t['hasil'] === PenautanAnakImport::SAMA) {
             $pesan[] = ['INFO', "dicocokkan lewat nama + tgl lahir + jk dengan anak ber-NIK {$t['anak']->nik}"
@@ -55,8 +70,28 @@ class PenautanAnakKesmas
 
     private static function mirip(string $a, string $b): bool
     {
+        return self::skor($a, $b) >= self::MIRIP;
+    }
+
+    private static function skor(string $a, string $b): float
+    {
         similar_text(mb_strtolower(trim($a)), mb_strtolower(trim($b)), $pct);
 
-        return $pct >= self::MIRIP;
+        return $pct;
+    }
+
+    /** Huruf saja, kecil semua — "MUHAMMAD ZAYYAN" sama dengan "Muhammad  Zayyan". */
+    private static function huruf(string $teks): string
+    {
+        return preg_replace('/[^a-z]/', '', mb_strtolower($teks)) ?? '';
+    }
+
+    /** Ada anak lain lahir di hari yang sama yang namanya lebih mirip dengan nama di berkas? */
+    private static function adaSaudaraLebihCocok(Anak $ada, string $nama): bool
+    {
+        $skorAda = self::skor($nama, (string) $ada->nama);
+
+        return Anak::where('tgl_lahir', $ada->tgl_lahir)->where('id', '!=', $ada->id)->pluck('nama')
+            ->contains(fn ($lain) => self::skor($nama, (string) $lain) > $skorAda);
     }
 }

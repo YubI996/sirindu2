@@ -28,6 +28,12 @@ final class KolomKesmasImport
     private const TANGGAL = ['tgl_hbig', 'tgl_penanda_ckg'];
     private const ANGKA = ['bbl', 'pbl', 'lk_lahir', 'usia_kehamilan_lahir'];
 
+    /**
+     * Rentang wajar yang TIDAK dijaga KesmasRules (form berlabel "(kg)", berkas tidak). Buku KIA mencatat berat
+     * lahir dalam gram; tanpa ini '3200' tersimpan sebagai 3.200 kg tanpa pesan apa pun (kolom decimal(7,2)).
+     */
+    private const RENTANG = ['bbl' => [0.3, 8, 'kg', 'isi dalam kg (mis. 3,2), bukan gram']];
+
     /** @return string[] */
     public static function kolom(string $tingkat): array
     {
@@ -68,6 +74,10 @@ final class KolomKesmasImport
                 $pilihan = self::pilihan($kolom);
                 $salah[$kolom] = ($label[$kolom] ?? $kolom)." — nilai '".NilaiSelKesmas::teks($mentah)."' tidak dikenal"
                     .($pilihan !== null ? ' (pilihan: '.implode(', ', $pilihan).')' : '');
+            } elseif (isset(self::RENTANG[$kolom]) && ($v < self::RENTANG[$kolom][0] || $v > self::RENTANG[$kolom][1])) {
+                [$min, $maks, $satuan, $saran] = self::RENTANG[$kolom];
+                $salah[$kolom] = ($label[$kolom] ?? $kolom)." — nilai '".NilaiSelKesmas::teks($mentah)."' di luar "
+                    .str_replace('.', ',', (string) $min)."–{$maks} {$satuan}; {$saran}";
             } else {
                 $nilai[$kolom] = $v;
             }

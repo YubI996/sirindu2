@@ -48,7 +48,9 @@ final class TemplateKesmas
                     'keterangan' => $ket.' '.match (true) {
                         $pilihan !== null => 'Pilih dari daftar.',
                         in_array($kolom, ['tgl_hbig', 'tgl_penanda_ckg'], true) => 'Tanggal.',
-                        in_array($kolom, ['bbl', 'pbl', 'lk_lahir', 'usia_kehamilan_lahir'], true) => 'Angka.',
+                        $kolom === 'bbl' => 'Angka dalam kg (mis. 3,2), BUKAN gram.',
+                        in_array($kolom, ['pbl', 'lk_lahir'], true) => 'Angka dalam cm.',
+                        $kolom === 'usia_kehamilan_lahir' => 'Angka dalam minggu (20–45).',
                         default => 'Teks bebas.',
                     },
                     'pilihan' => $pilihan,
