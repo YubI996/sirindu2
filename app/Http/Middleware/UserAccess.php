@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\AksesKesmas;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,11 @@ class UserAccess
     public function handle(Request $request, Closure $next, $userType)
     {
         $user = auth()->user();
+
+        // Peran Kesmas terbatas tidak pernah lolos lewat `type` lama (type 0 = super-admin) — spec akun Kesmas §2.
+        if (in_array($user->role, AksesKesmas::PERAN_TERBATAS, true)) {
+            abort(403, 'Unauthorized action.');
+        }
 
         // New role-based system: superadmin punya akses penuh
         if ($user->isSuperAdmin() && $userType === 'super-admin') {

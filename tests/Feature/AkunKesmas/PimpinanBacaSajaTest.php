@@ -44,6 +44,10 @@ class PimpinanBacaSajaTest extends TestCase
         $html = $this->actingAs($this->pimpinan())->get(route('admin.timbang.dashboard'))->assertOk()->getContent();
 
         $this->assertStringNotContainsString('id="daftar-export"', $html);
+        // URL export & PJ tak ikut dicetak ke JS untuk akun baca-saja (sama dengan dasbor Imunisasi).
+        $this->assertStringNotContainsString(route('admin.timbang.daftar.export'), $html);
+        $this->assertStringNotContainsString(route('admin.timbang.pj', ['anak' => '__ID__']), $html);
+        $this->assertStringContainsString("var API_DAFTAR_EXPORT = '';", $html);
         $this->assertStringNotContainsString('id="btn-peta"', $html);
         $this->assertStringContainsString('var BOLEH_UBAH = false;', $html);
         $this->assertStringNotContainsString('id="tb-publikasi"', $html);
@@ -67,6 +71,7 @@ class PimpinanBacaSajaTest extends TestCase
         $admin = User::factory()->create(['type' => 1, 'role' => null]);
         $this->actingAs($admin)->get(route('admin.imunisasiDashboard'))->assertOk()->assertSee('id="sasaran-export"', false);
         $this->actingAs($admin)->get(route('admin.timbang.dashboard'))->assertOk()
-            ->assertSee('id="daftar-export"', false)->assertSee('var BOLEH_UBAH = true;', false);
+            ->assertSee('id="daftar-export"', false)->assertSee('var BOLEH_UBAH = true;', false)
+            ->assertSee(route('admin.timbang.daftar.export'), false);
     }
 }

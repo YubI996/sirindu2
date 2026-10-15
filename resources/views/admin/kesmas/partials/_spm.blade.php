@@ -62,7 +62,12 @@
             <span class="p {{ $tone($tk['persen']) }}">{{ $pct($tk['persen']) }}</span></div>
         <div class="km-prog" role="img" aria-label="{{ $pct($tk['persen']) }}"><span class="{{ $tone($tk['persen']) }}" style="width:{{ (int) ($tk['persen'] ?? 0) }}%"></span></div>
         <div class="km-foot"><span class="km-dot" aria-hidden="true"></span>
-            <a href="#registri" class="warn" data-registri-status="perhatian">{{ $fmt($tk['perhatian']) }} balita perlu perhatian</a>
+            {{-- Tautan hanya bila registri dirender (bolehNama); kesmas_rs tak punya #registri. --}}
+            @if ($registriBoleh ?? false)
+                <a href="#registri" class="warn" data-registri-status="perhatian">{{ $fmt($tk['perhatian']) }} balita perlu perhatian</a>
+            @else
+                <span class="warn">{{ $fmt($tk['perhatian']) }} balita perlu perhatian</span>
+            @endif
             <span>(BB tidak naik / BB/U &lt; −2 SD pada kunjungan terakhir)</span></div>
     </article><!-- /spm-tk -->
 

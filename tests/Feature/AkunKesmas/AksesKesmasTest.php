@@ -130,6 +130,31 @@ class AksesKesmasTest extends TestCase
         }
     }
 
+    /** Lingkup menunjuk baris yang sudah dihapus = lingkup kosong: gagal tertutup, bukan dasbor kosong. */
+    public function test_lingkup_menunjuk_baris_yang_tak_ada_gagal_tertutup(): void
+    {
+        $hilang = 9999999;
+        // Tanpa insert: untuk() hanya membaca atribut (users.id_rs ber-FK sehingga id fiktif tak bisa disimpan).
+        foreach ([['kelurahan', 'id_kel'], ['kader', 'id_posyandu'], ['kesmas_puskesmas', 'id_puskesmas'], ['kesmas_rs', 'id_rs']] as [$role, $kolom]) {
+            $a = AksesKesmas::untuk(new User(['type' => 2, 'role' => $role, $kolom => $hilang]));
+            $this->assertTrue($a->terbatas(), $role);
+            $this->assertFalse($a->bolehDasbor('kesmas'), $role);
+            $this->assertFalse($a->bolehNama(), $role);
+            $this->assertFalse($a->bolehExport(), $role);
+            $this->assertSame([], $a->kunciFilter(), $role);
+        }
+    }
+
+    public function test_kelurahan_yang_barisnya_dihapus_setelah_akun_dibuat_ditolak(): void
+    {
+        $kel = Kelurahan::factory()->create();
+        $user = $this->user(['type' => 2, 'role' => 'kelurahan', 'id_kel' => $kel->id]);
+        $this->assertTrue(AksesKesmas::untuk($user)->bolehDasbor('kesmas'));
+
+        $kel->delete();
+        $this->assertFalse(AksesKesmas::untuk($user->fresh())->bolehDasbor('kesmas'));
+    }
+
     public function test_admin_setara_tidak_pernah_untuk_peran_terbatas_walau_type_admin(): void
     {
         foreach (AksesKesmas::PERAN_TERBATAS as $role) {

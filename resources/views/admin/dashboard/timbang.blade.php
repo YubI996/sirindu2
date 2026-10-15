@@ -566,9 +566,10 @@ var API_COVERAGE  = '{{ route("admin.timbang.coverage") }}';
 var API_PROGRAM   = '{{ route("admin.timbang.program") }}';
 var API_PERINGKAT = '{{ route("admin.timbang.peringkat") }}';
 var API_DAFTAR    = '{{ route("admin.timbang.daftar") }}';
-var API_DAFTAR_EXPORT = '{{ route("admin.timbang.daftar.export") }}';
+// Akun baca-saja (Pimpinan) tak diberi URL export & PJ — kosong, seperti dasbor Imunisasi; tombolnya pun tak dirender.
+var API_DAFTAR_EXPORT = '{{ $bacaSaja ? '' : route("admin.timbang.daftar.export") }}';
 // Endpoint PJ per anak; '__ID__' diganti hashid anak saat dipanggil.
-var API_PJ = '{{ route("admin.timbang.pj", ["anak" => "__ID__"]) }}';
+var API_PJ = '{{ $bacaSaja ? '' : route("admin.timbang.pj", ["anak" => "__ID__"]) }}';
 var CSRF_TOKEN = '{{ csrf_token() }}';
 // Kategori yang menampilkan kolom Penanggung Jawab (sinkron dengan KATEGORI_PJ di controller).
 var PJ_KATEGORI = ['stunting', 'wasting', 'underweight'];

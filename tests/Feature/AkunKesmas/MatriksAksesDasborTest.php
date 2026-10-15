@@ -101,6 +101,17 @@ class MatriksAksesDasborTest extends TestCase
         }
     }
 
+    public function test_tautan_registri_hanya_bila_registri_tampil(): void
+    {
+        // RS tak boleh melihat registri → "balita perlu perhatian" jadi teks biasa, bukan tautan mati ke #registri.
+        $rs = $this->actingAs($this->akun('kesmas_rs'))->get(route('admin.kesmas.dashboard'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('href="#registri"', $rs);
+        $this->assertStringContainsString('balita perlu perhatian', $rs);
+
+        $pimpinan = $this->actingAs($this->akun('pimpinan'))->get(route('admin.kesmas.dashboard'))->assertOk()->getContent();
+        $this->assertStringContainsString('href="#registri"', $pimpinan);
+    }
+
     public function test_tulis_ot_ditolak_untuk_pimpinan(): void
     {
         $user = $this->akun('pimpinan');

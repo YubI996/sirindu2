@@ -37,6 +37,19 @@ class IsAdminMenolakPeranBaruTest extends TestCase
         }
     }
 
+    /** Cabang `type` lama di UserAccess: peran terbatas ber-type 0 tak boleh sampai ke super-admin. */
+    public function test_peran_terbatas_type_0_ditolak_dari_super_admin(): void
+    {
+        $rs = RumahSakit::create(['name' => 'RS Uji', 'jenis_rs' => 'RSUD', 'is_active' => true]);
+        foreach (AksesKesmas::PERAN_TERBATAS as $role) {
+            $user = User::factory()->create(['type' => 0, 'role' => $role, 'id_kel' => 1, 'id_posyandu' => 1, 'id_puskesmas' => 1, 'id_rs' => $rs->id]);
+            $this->actingAs($user)->get(route('super.admin.home'))->assertForbidden();
+        }
+
+        $this->actingAs(User::factory()->create(['type' => 0, 'role' => 'superadmin']))
+            ->get(route('super.admin.home'))->assertOk();
+    }
+
     public function test_admin_lama_tetap_lolos(): void
     {
         foreach ([['type' => 1, 'role' => null], ['type' => 0, 'role' => 'superadmin'], ['type' => 1, 'role' => 'imunisasi_faskes']] as $attr) {

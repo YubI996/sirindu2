@@ -2,7 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Kelurahan;
+use App\Models\Posyandu;
 use App\Models\Puskesmas;
+use App\Models\RumahSakit;
 use App\Models\User;
 
 /**
@@ -77,13 +80,21 @@ final class AksesKesmas
     {
         return match ($u->role) {
             'pimpinan'         => new self(true, self::DASBOR, true, false, [], []),
-            'kelurahan'        => $u->id_kel ? self::lokal(['id_kelurahan' => (int) $u->id_kel], true) : self::tanpaAkses(true),
-            'kader'            => $u->id_posyandu ? self::lokal(['id_posyandu' => (int) $u->id_posyandu], false) : self::tanpaAkses(true),
-            'kesmas_puskesmas' => $u->id_puskesmas ? self::lokal(['id_puskesmas' => (int) $u->id_puskesmas], false) : self::tanpaAkses(true),
+            // Lingkup yang menunjuk baris yang sudah dihapus sama dengan lingkup kosong (gagal tertutup),
+            // bukan dasbor kosong yang tampak "jalan".
+            'kelurahan'        => self::ada(Kelurahan::class, $u->id_kel) ? self::lokal(['id_kelurahan' => (int) $u->id_kel], true) : self::tanpaAkses(true),
+            'kader'            => self::ada(Posyandu::class, $u->id_posyandu) ? self::lokal(['id_posyandu' => (int) $u->id_posyandu], false) : self::tanpaAkses(true),
+            'kesmas_puskesmas' => self::ada(Puskesmas::class, $u->id_puskesmas) ? self::lokal(['id_puskesmas' => (int) $u->id_puskesmas], false) : self::tanpaAkses(true),
             // RS tak punya wilayah anak: angka se-kota, tanpa nama (SEC-001).
-            'kesmas_rs'        => $u->id_rs ? new self(true, ['kesmas'], false, false, [], []) : self::tanpaAkses(true),
+            'kesmas_rs'        => self::ada(RumahSakit::class, $u->id_rs) ? new self(true, ['kesmas'], false, false, [], []) : self::tanpaAkses(true),
             default            => self::tanpaAkses(true), // sarkes: akses belum diputuskan
         };
+    }
+
+    /** @param class-string<\Illuminate\Database\Eloquent\Model> $model */
+    private static function ada(string $model, mixed $id): bool
+    {
+        return $id && $model::whereKey($id)->exists();
     }
 
     /** @param array<string,int> $kunci */

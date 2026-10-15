@@ -423,6 +423,7 @@ dijaga middleware `dasbor:{nama}`. Grup `is_admin` membuka SELURUH `/admin` (Dat
   `+` penting — operan kiri menang). Registri/Export memakai `kunciDataPribadi()`, superset untuk `imunisasi_faskes`.
 - `BatasDataPribadiKesmas` sudah dilebur ke `AksesKesmas` — aturan SEC-001 (`imunisasi_faskes` RS ditolak data
   pribadi) ada di `AksesKesmas::untuk()`.
+- **Lingkup kosong ATAU menunjuk baris yang sudah dihapus = gagal tertutup** (`AksesKesmas::ada()`), dan `User::berandaRoute()` mengirim akunnya ke `akses.belumDiatur`, bukan ke dasbor Kesmas yang pasti 403. `UserAccess` juga menolak peran terbatas ber-`type` 0.
 - Tabel `posyandu` tak punya kolom kelurahan — akun kader hanya bisa menurunkan `id_puskesmas`.
 - **Dasbor OT (timbang): akses se-kota diputuskan `TimbangDashboardController::bacaSeKota()`** (superadmin atau
   `pimpinan`); admin non-superadmin tetap terkunci ke `id_kel`-nya. Flag `FILTER_SE_KOTA` di view OT berasal dari

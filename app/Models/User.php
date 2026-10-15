@@ -83,7 +83,10 @@ class User extends Authenticatable
         return match (true) {
             $this->isRt() => 'rt.verifikasi',
             $this->role === 'sarkes' => 'akses.belumDiatur',
-            in_array($this->role, \App\Support\AksesKesmas::PERAN_TERBATAS, true) => 'admin.kesmas.dashboard',
+            // Lingkup kosong/hilang → dasbor Kesmas pasti 403 dan tombol "Kembali"-nya buntu; arahkan ke penjelasan.
+            in_array($this->role, \App\Support\AksesKesmas::PERAN_TERBATAS, true) => \App\Support\AksesKesmas::untuk($this)->bolehDasbor('kesmas')
+                ? 'admin.kesmas.dashboard'
+                : 'akses.belumDiatur',
             default => 'admin.home',
         };
     }
