@@ -180,7 +180,7 @@
 					<ul class="submenu" {!! $export ? 'style="display:block;"' : '' !!}>
 						<li><a href="{{route('admin.export.imunisasi.index')}}" class="{{ request()->routeIs('admin.export.imunisasi.*') ? 'active' : '' }}">Export Imunisasi</a></li>
 						<li><a href="{{route('admin.export.pd3i.index')}}" class="{{ request()->routeIs('admin.export.pd3i.*') ? 'active' : '' }}">Laporan Kasus PD3I</a></li>
-						@if (\App\Support\BatasDataPribadiKesmas::untuk(Auth::user())['boleh'])
+						@if (\App\Support\AksesKesmas::untuk(Auth::user())->bolehExport())
 						<li><a href="{{route('admin.export.kesmas.index')}}" class="{{ request()->routeIs('admin.export.kesmas.*') ? 'active' : '' }}">Export Kesmas</a></li>
 						@endif
 					</ul>

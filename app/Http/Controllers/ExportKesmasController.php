@@ -7,14 +7,14 @@ use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Posyandu;
 use App\Models\Puskesmas;
-use App\Support\BatasDataPribadiKesmas;
+use App\Support\AksesKesmas;
 use Illuminate\Http\Request;
 
 /**
  * Export Kesmas — Excel dua sheet (Per Anak, Per Kunjungan) sebagai bahan dasbor Kesmas.
  * Spec: docs/superpowers/specs/2026-09-15-data-kesmas-design.md §5.
  * Pengguna modul surveilans ditolak. Akun imunisasi_faskes hanya mengunduh anak di catchment
- * puskesmas-nya, dan ditolak bila tak punya puskesmas (BatasDataPribadiKesmas) — berkas ini memuat
+ * puskesmas-nya, dan ditolak bila tak punya puskesmas (AksesKesmas) — berkas ini memuat
  * NIK, nama orang tua, penyakit penyerta, dan riwayat kunjungan.
  */
 class ExportKesmasController extends Controller
@@ -33,7 +33,7 @@ class ExportKesmasController extends Controller
 
     public function index(Request $request)
     {
-        $this->batas();
+        $this->akses();
         $filter = $this->filter($request);
         $kec = Kecamatan::orderBy('name')->get();
         $kel = Kelurahan::orderBy('name')->get();
@@ -46,24 +46,23 @@ class ExportKesmasController extends Controller
 
     public function download(Request $request)
     {
-        $batas = $this->batas();
+        $akses = $this->akses();
         $filter = $this->filter($request);
         // Bukan input klien: ditambahkan SETELAH validasi supaya tak bisa dilewati lewat query string.
-        if ($batas['puskesmas']) {
-            $filter['batas_kelurahan'] = BatasDataPribadiKesmas::kelurahanCatchment($batas['puskesmas']);
+        if (($batas = $akses->batasKelurahanExport()) !== null) {
+            $filter['batas_kelurahan'] = $batas;
         }
 
         // Streaming: baris dibaca & ditulis saat respons dikirim (lihat KesmasExport).
         return (new KesmasExport($filter))->unduh();
     }
 
-    /** @return array{boleh: bool, puskesmas: int|null} */
-    private function batas(): array
+    private function akses(): AksesKesmas
     {
-        $batas = BatasDataPribadiKesmas::untuk(auth()->user());
-        abort_unless($batas['boleh'], 403, 'Akses tidak diizinkan.');
+        $akses = AksesKesmas::untuk(auth()->user());
+        abort_unless($akses->bolehExport(), 403, 'Akses tidak diizinkan.');
 
-        return $batas;
+        return $akses;
     }
 
     private function filter(Request $request): array
