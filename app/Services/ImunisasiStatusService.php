@@ -984,9 +984,9 @@ class ImunisasiStatusService
             ->join('anak as am', 'dm.id_anak', '=', 'am.id')
             ->selectRaw('dm.id_anak, MAX(dm.tgl_kunjungan) as max_tgl')
             ->whereNotNull('dm.tgl_kunjungan');
-        if (!empty($filters['id_posyandu']))      $maxTgl->where('am.id_posyandu', $filters['id_posyandu']);
-        elseif (!empty($filters['id_kelurahan'])) $maxTgl->where('am.id_kel', $filters['id_kelurahan']);
-        elseif (!empty($filters['id_kecamatan'])) $maxTgl->where('am.id_kec', $filters['id_kecamatan']);
+        // Semantik wilayah yang sama dengan agregat lain (termasuk id_rt & id_puskesmas = catchment);
+        // dulu hanya posyandu/kelurahan/kecamatan, sehingga akun berkunci puskesmas melihat angka se-kota.
+        $this->applyWilayahFilters($maxTgl, $filters, 'am');
         $maxTgl->groupBy('dm.id_anak');
 
         $values = DB::table('data_anak as da')

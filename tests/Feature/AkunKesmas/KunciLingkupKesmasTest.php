@@ -3,6 +3,7 @@
 namespace Tests\Feature\AkunKesmas;
 
 use App\Models\Anak;
+use App\Models\DataAnak;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Posyandu;
@@ -24,6 +25,7 @@ class KunciLingkupKesmasTest extends TestCase
     private Kelurahan $kelA;
     private Kelurahan $kelB;
     private Posyandu $posA;
+    private Puskesmas $pkm;
 
     protected function setUp(): void
     {
@@ -36,8 +38,8 @@ class KunciLingkupKesmasTest extends TestCase
         $kec = Kecamatan::create(['name' => 'Bontang Utara']);
         $this->kelA = Kelurahan::create(['name' => 'Bontang Baru', 'id_kecamatan' => $kec->id]);
         $this->kelB = Kelurahan::create(['name' => 'Lok Tuan', 'id_kecamatan' => $kec->id]);
-        $pkm = Puskesmas::factory()->create(['name' => 'Bontang Utara 1']);
-        $this->posA = Posyandu::factory()->create(['id_puskesmas' => $pkm->id]);
+        $this->pkm = Puskesmas::factory()->create(['name' => 'Bontang Utara 1']);
+        $this->posA = Posyandu::factory()->create(['id_puskesmas' => $this->pkm->id]);
 
         $this->anak('Anak A1', '6474010101230001', $this->kelA, $this->posA->id);
         $this->anak('Anak A2', '6474010101230002', $this->kelA, null);
@@ -129,6 +131,29 @@ class KunciLingkupKesmasTest extends TestCase
         $this->actingAs($user)->get(route('admin.export.kesmas.index'))->assertOk()
             ->assertSee('Kel. Bontang Baru')
             ->assertDontSee('name="id_kel"', false);
+    }
+
+    private function alasan(string $nik, string $alasan): void
+    {
+        DataAnak::create([
+            'id_anak' => Anak::where('nik', $nik)->value('id'), 'tgl_kunjungan' => now()->subMonth()->toDateString(),
+            'bln' => 9, 'posisi' => 'L', 'tb' => 70, 'bb' => 8, 'lla' => 13, 'lk' => 44, 'id_user' => 1,
+            'alasan_tidak_imunisasi' => $alasan,
+        ]);
+    }
+
+    public function test_puskesmas_hanya_catchment_di_registri_dan_kartu_alasan(): void
+    {
+        $user = User::factory()->create(['type' => 2, 'role' => 'kesmas_puskesmas', 'id_puskesmas' => $this->pkm->id]);
+        $alasan = config('imunisasi.alasan_tidak_imunisasi')[0];
+        // A1 di catchment (Bontang Baru = Bontang Utara 1); B1 di Lok Tuan (Bontang Utara 2) tak boleh ikut terhitung.
+        $this->alasan('6474010101230001', $alasan);
+        $this->alasan('6474010101230003', $alasan);
+
+        $this->assertSame(['Anak A1', 'Anak A2'], $this->namaRegistri($user));
+
+        $this->actingAs($user)->get(route('admin.kesmas.dashboard'))->assertOk()
+            ->assertViewHas('alasan', fn ($a) => $a === [$alasan => 1]);
     }
 
     public function test_admin_tidak_terkunci(): void
