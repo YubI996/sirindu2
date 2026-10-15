@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\SurveillanceCase;
+use App\Support\FilterPd3i;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -33,7 +34,18 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
         protected ?string $statusKasus = null
     ) {
         // tahun null = semua tahun (dipakai export halaman Epidemiologi yang tak
-        // membatasi tahun). Dashboard PD3I selalu mengirim tahun eksplisit.
+        // membatasi tahun). Dashboard PD3I memakai untukDasborPd3i().
+    }
+
+    /** Filter Dasbor PD3I — bila ada, menggantikan filter tahun/jenis/wilayah konstruktor. */
+    private ?FilterPd3i $filterPd3i = null;
+
+    public static function untukDasborPd3i(FilterPd3i $filter): self
+    {
+        $export = new self(tahun: $filter->tahun);
+        $export->filterPd3i = $filter;
+
+        return $export;
     }
 
     /**
@@ -50,6 +62,12 @@ class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTi
     private function baseQuery()
     {
         $q = SurveillanceCase::query()->visibleTo(auth()->user());
+
+        if ($this->filterPd3i !== null) {
+            $this->filterPd3i->terapkan($q);
+
+            return $q;
+        }
 
         if ($this->tahun !== null) {
             $q->whereYear('tanggal_lapor', $this->tahun);

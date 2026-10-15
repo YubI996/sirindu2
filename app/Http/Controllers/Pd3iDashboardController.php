@@ -121,9 +121,6 @@ class Pd3iDashboardController extends Controller
         }
         $namaFile .= '.xlsx';
 
-        return Excel::download(
-            new SurveillanceExport($f->tahun, $f->jenisKasusId, $f->wilker, $f->kelurahanId, $f->kabKota),
-            $namaFile
-        );
+        return Excel::download(SurveillanceExport::untukDasborPd3i($f), $namaFile);
     }
 }
