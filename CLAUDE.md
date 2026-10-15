@@ -449,3 +449,20 @@ View `alldata` = `data_anak INNER JOIN anak`, satu baris per KUNJUNGAN. Anak tan
   `urut`. Rentang tanggal hanya menyaring kunjungan; filter wilayah berlaku untuk keduanya.
 - Kolom angka didaftar di `KOLOM_ANGKA` (huruf kolom Excel); selain itu **teks literal** (No KK/NIK 16 digit, dan nilai
   berawalan `=` tidak jadi rumus). Kolom baru yang harus numerik wajib ditambahkan ke daftar itu.
+
+### Import Data Kesmas: hanya anak yang ada, ukuran lama tidak ditimpa
+
+Tipe import `kesmas` (spec `docs/superpowers/specs/2026-10-15-import-kesmas-design.md`) mengisi field Kesmas dari
+Excel. Ini jembatan sementara — pengisian otomatis dari modul imunisasi/OT/MBG menyusul, dan import ini **bukan**
+aturan "sumber mana yang menang".
+
+- **Tidak membuat anak, tidak mengubah NIK.** Penautan di `PenautanAnakKesmas`: NIK hanya dipercaya bila tgl lahir
+  sama atau nama mirip (72% anak ganda di prod ber-NIK ibu/salah ketik), lalu `PenautanAnakImport` dengan nama ortu.
+- **Field Kesmas "isi yang diberikan", ukuran kunjungan yang ada tidak disentuh** (bentrok → PERINGATAN). Kunjungan
+  baru wajib BB/TB/posisi; BB gram bila < 2 bulan lewat `SatuanBeratBadan` — sama dengan form.
+- Hanya sheet pertama dibaca (`WithMultipleSheets`) — sheet Petunjuk template ikut terbaca bila dilepas.
+- Kolom diturunkan dari `KesmasRules`; field Kesmas baru otomatis ikut template & import. Template dibangun saat
+  diunduh (`TemplateKesmas`), bukan file statis.
+- `sasaran_balita_kesmas` sengaja tidak ada di daftar kolom.
+
+Dikunci `tests/Feature/ImportKesmas/*`, `tests/Unit/Support/NilaiSelKesmasTest.php`.
