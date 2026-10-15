@@ -124,12 +124,9 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::get('data-dasar-anak', [App\Http\Controllers\AdminController::class, 'anak'])->name('admin.anak');
     Route::get('get-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'getAnak'])->name('admin.getAnak');
     Route::get('create-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'createAnak'])->name('admin.createAnak');
-    Route::get('get-kel-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getKelAnak'])->name('admin.getKelAnak');
     Route::get('get-puskesmas-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPuskesmasAnak'])->name('admin.getPuskesmasAnak');
     Route::get('get-posyandu-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduAnak'])->name('admin.getPosyanduAnak');
     Route::get('get-rt-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtAnak'])->name('admin.getRtAnak');
-    Route::get('get-rt-by-kel-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtByKelAnak'])->name('admin.getRtByKelAnak');
-    Route::get('get-posyandu-by-kel-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduByKelAnak'])->name('admin.getPosyanduByKelAnak');
     Route::post('store-data-dasar-anak', [App\Http\Controllers\AdminController::class, 'storeAnak'])->name('admin.storeAnak');
     Route::post('import-kohort', [App\Http\Controllers\AdminController::class, 'importKohort'])->name('admin.importKohort');
     Route::get('import-kohort-status', [App\Http\Controllers\AdminController::class, 'importKohortStatus'])->name('admin.importKohortStatus');
@@ -152,14 +149,7 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
 
     // Dashboard Gizi & Operasi Timbang
     Route::prefix('timbang-dashboard')->group(function () {
-        Route::get('/',            [App\Http\Controllers\TimbangDashboardController::class, 'index'])    ->name('admin.timbang.dashboard');
-        Route::get('api/ringkasan',[App\Http\Controllers\TimbangDashboardController::class, 'ringkasan'])->name('admin.timbang.ringkasan');
-        Route::get('api/gizi',     [App\Http\Controllers\TimbangDashboardController::class, 'gizi'])     ->name('admin.timbang.gizi');
-        Route::get('api/tren',     [App\Http\Controllers\TimbangDashboardController::class, 'tren'])     ->name('admin.timbang.tren');
-        Route::get('api/coverage', [App\Http\Controllers\TimbangDashboardController::class, 'coverage']) ->name('admin.timbang.coverage');
-        Route::get('api/program',  [App\Http\Controllers\TimbangDashboardController::class, 'program'])  ->name('admin.timbang.program');
-        Route::get('api/peringkat',[App\Http\Controllers\TimbangDashboardController::class, 'peringkat'])->name('admin.timbang.peringkat');
-        Route::get('api/daftar',   [App\Http\Controllers\TimbangDashboardController::class, 'daftar'])   ->name('admin.timbang.daftar');
+        // Rute BACA dasbor (index & api/*) ada di grup `dasbor:timbang` di bawah; yang di sini admin-saja.
         Route::get('api/daftar/export', [App\Http\Controllers\TimbangDashboardController::class, 'daftarExport'])->name('admin.timbang.daftar.export');
         // Penanggung jawab per anak — diisi inline dari modal daftar (stunting/gizi buruk/underweight).
         Route::put('api/anak/{anak}/pj', [App\Http\Controllers\PjAnakController::class, 'update'])->name('admin.timbang.pj');
@@ -183,14 +173,10 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
     Route::post('store-imunisasi', [App\Http\Controllers\AdminController::class, 'storeImunisasiDetail'])->name('admin.storeImunisasiDetail');
     Route::put('update-imunisasi-detail/{id}', [App\Http\Controllers\AdminController::class, 'updateImunisasiDetail'])->name('admin.updateImunisasiDetail');
     Route::delete('delete-imunisasi/{id}', [App\Http\Controllers\AdminController::class, 'deleteImunisasiDetail'])->name('admin.deleteImunisasiDetail');
-    Route::get('imunisasi-dashboard', [App\Http\Controllers\AdminController::class, 'imunisasiDashboard'])->name('admin.imunisasiDashboard');
-    // Daftar nama & alamat (BNBA) di balik kartu Data sasaran (BBL / SI / Baduta).
-    Route::get('imunisasi-dashboard/sasaran', [App\Http\Controllers\SasaranImunisasiController::class, 'daftar'])->name('admin.imunisasiDashboard.sasaran');
+    // imunisasi-dashboard & imunisasi-dashboard/sasaran (baca) ada di grup `dasbor:imunisasi` di bawah.
+    // Ekspor daftar nama & alamat (BNBA) tetap admin-saja.
     Route::get('imunisasi-dashboard/sasaran/export', [App\Http\Controllers\SasaranImunisasiController::class, 'export'])->name('admin.imunisasiDashboard.sasaranExport');
 
-    // Dasbor SPM — spec docs/superpowers/specs/2026-09-29-dasbor-spm-design.md §5
-    Route::get('spm-dashboard', [App\Http\Controllers\SpmDashboardController::class, 'index'])
-         ->name('admin.spm.dashboard');
     //Data Export Anak
     Route::get('export', [App\Http\Controllers\AdminController::class, 'exportView'])->name('admin.exportView');
     Route::post('formViewExport', [App\Http\Controllers\AdminController::class, 'formViewExport'])->name('admin.formViewExport');
@@ -295,22 +281,6 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
              ->name('admin.export.pd3i.download');
     });
 
-    // Export Kesmas — spec docs/superpowers/specs/2026-09-15-data-kesmas-design.md §5
-    Route::prefix('export-kesmas')->group(function () {
-        Route::get('/', [App\Http\Controllers\ExportKesmasController::class, 'index'])
-             ->name('admin.export.kesmas.index');
-        Route::get('download', [App\Http\Controllers\ExportKesmasController::class, 'download'])
-             ->name('admin.export.kesmas.download');
-    });
-
-    // Dasbor Kesmas — spec docs/superpowers/specs/2026-09-21-dasbor-kesmas-design.md
-    Route::prefix('kesmas-dashboard')->group(function () {
-        Route::get('/', [App\Http\Controllers\KesmasDashboardController::class, 'index'])
-             ->name('admin.kesmas.dashboard');
-        Route::get('api/registri', [App\Http\Controllers\KesmasDashboardController::class, 'registri'])
-             ->name('admin.kesmas.registri');
-    });
-
     /*------------------------------------------
     Epidemiology Surveillance Routes
     --------------------------------------------*/
@@ -403,4 +373,57 @@ Route::middleware(['auth', 'is_admin'])->prefix('admin/')->group(function () {
                  ->name('admin.pd3i.exportExcel');
         });
     });
+});
+
+/*------------------------------------------
+Rute BACA dasbor — admin-setara + peran Kesmas (spec docs/superpowers/specs/2026-10-14-akun-kesmas-design.md §4).
+Nama & URL sama dengan saat masih di grup is_admin. Rute ekspor/tulis dasbor tetap di grup is_admin.
+--------------------------------------------*/
+Route::middleware(['auth'])->prefix('admin/')->group(function () {
+    // Dropdown wilayah yang dipanggil JS dasbor (dan form admin).
+    Route::middleware('dasbor:kesmas,imunisasi,timbang')->group(function () {
+        Route::get('get-kel-dasar-anak/{id}', [App\Http\Controllers\AdminController::class, 'getKelAnak'])->name('admin.getKelAnak');
+        Route::get('get-rt-by-kel-anak/{id}', [App\Http\Controllers\AdminController::class, 'getRtByKelAnak'])->name('admin.getRtByKelAnak');
+        Route::get('get-posyandu-by-kel-anak/{id}', [App\Http\Controllers\AdminController::class, 'getPosyanduByKelAnak'])->name('admin.getPosyanduByKelAnak');
+    });
+
+    Route::middleware('dasbor:kesmas')->group(function () {
+        // Dasbor Kesmas — spec docs/superpowers/specs/2026-09-21-dasbor-kesmas-design.md
+        Route::prefix('kesmas-dashboard')->group(function () {
+            Route::get('/', [App\Http\Controllers\KesmasDashboardController::class, 'index'])
+                 ->name('admin.kesmas.dashboard');
+            Route::get('api/registri', [App\Http\Controllers\KesmasDashboardController::class, 'registri'])
+                 ->name('admin.kesmas.registri');
+        });
+        // Export Kesmas — spec docs/superpowers/specs/2026-09-15-data-kesmas-design.md §5.
+        // Izin & batas wilayah dicek di controller (AksesKesmas::bolehExport).
+        Route::prefix('export-kesmas')->group(function () {
+            Route::get('/', [App\Http\Controllers\ExportKesmasController::class, 'index'])
+                 ->name('admin.export.kesmas.index');
+            Route::get('download', [App\Http\Controllers\ExportKesmasController::class, 'download'])
+                 ->name('admin.export.kesmas.download');
+        });
+    });
+
+    Route::middleware('dasbor:imunisasi')->group(function () {
+        Route::get('imunisasi-dashboard', [App\Http\Controllers\AdminController::class, 'imunisasiDashboard'])->name('admin.imunisasiDashboard');
+        // Daftar nama & alamat (BNBA) di balik kartu Data sasaran (BBL / SI / Baduta).
+        Route::get('imunisasi-dashboard/sasaran', [App\Http\Controllers\SasaranImunisasiController::class, 'daftar'])->name('admin.imunisasiDashboard.sasaran');
+    });
+
+    // Dashboard Gizi & Operasi Timbang (baca saja; ekspor, PJ, publikasi tetap di grup is_admin)
+    Route::middleware('dasbor:timbang')->prefix('timbang-dashboard')->group(function () {
+        Route::get('/',            [App\Http\Controllers\TimbangDashboardController::class, 'index'])    ->name('admin.timbang.dashboard');
+        Route::get('api/ringkasan',[App\Http\Controllers\TimbangDashboardController::class, 'ringkasan'])->name('admin.timbang.ringkasan');
+        Route::get('api/gizi',     [App\Http\Controllers\TimbangDashboardController::class, 'gizi'])     ->name('admin.timbang.gizi');
+        Route::get('api/tren',     [App\Http\Controllers\TimbangDashboardController::class, 'tren'])     ->name('admin.timbang.tren');
+        Route::get('api/coverage', [App\Http\Controllers\TimbangDashboardController::class, 'coverage']) ->name('admin.timbang.coverage');
+        Route::get('api/program',  [App\Http\Controllers\TimbangDashboardController::class, 'program'])  ->name('admin.timbang.program');
+        Route::get('api/peringkat',[App\Http\Controllers\TimbangDashboardController::class, 'peringkat'])->name('admin.timbang.peringkat');
+        Route::get('api/daftar',   [App\Http\Controllers\TimbangDashboardController::class, 'daftar'])   ->name('admin.timbang.daftar');
+    });
+
+    // Dasbor SPM — spec docs/superpowers/specs/2026-09-29-dasbor-spm-design.md §5
+    Route::middleware('dasbor:spm')->get('spm-dashboard', [App\Http\Controllers\SpmDashboardController::class, 'index'])
+         ->name('admin.spm.dashboard');
 });

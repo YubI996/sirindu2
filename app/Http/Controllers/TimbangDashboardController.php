@@ -58,8 +58,8 @@ class TimbangDashboardController extends Controller
     {
         $user = auth()->user();
 
-        $kecamatanList = $user->isSuperAdmin() ? Kecamatan::orderBy('name')->get() : collect();
-        $kelurahanList = $user->isSuperAdmin()
+        $kecamatanList = $this->bacaSeKota($user) ? Kecamatan::orderBy('name')->get() : collect();
+        $kelurahanList = $this->bacaSeKota($user)
             ? Kelurahan::orderBy('name')->get()
             : Kelurahan::where('id', $user->id_kel)->get();
 
@@ -471,12 +471,21 @@ class TimbangDashboardController extends Controller
 
     // ==================== HELPERS ====================
 
+    /**
+     * Superadmin dan Pimpinan membaca OT se-kota. Pimpinan tak punya id_kel; tanpa pengecualian ini
+     * parseFilters menolaknya 403 di setiap API dasbor (spec akun Kesmas §2: Pimpinan = se-kota, baca saja).
+     */
+    private function bacaSeKota($user): bool
+    {
+        return $user->isSuperAdmin() || $user->role === 'pimpinan';
+    }
+
     private function parseFilters(Request $request): array
     {
         $user  = auth()->user();
         $tahun = $request->query('tahun') ? (int) $request->query('tahun') : null;
 
-        if ($user && !$user->isSuperAdmin()) {
+        if ($user && !$this->bacaSeKota($user)) {
             abort_if(!$user->id_kel, 403);
             return [
                 'tahun'    => $tahun,
