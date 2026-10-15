@@ -58,8 +58,9 @@ class TimbangDashboardController extends Controller
     {
         $user = auth()->user();
 
-        $kecamatanList = $this->bacaSeKota($user) ? Kecamatan::orderBy('name')->get() : collect();
-        $kelurahanList = $this->bacaSeKota($user)
+        $filterSeKota = $this->bacaSeKota($user);
+        $kecamatanList = $filterSeKota ? Kecamatan::orderBy('name')->get() : collect();
+        $kelurahanList = $filterSeKota
             ? Kelurahan::orderBy('name')->get()
             : Kelurahan::where('id', $user->id_kel)->get();
 
@@ -73,7 +74,7 @@ class TimbangDashboardController extends Controller
 
         $publikasiAktif = AppSetting::timbangPublikAktif();
 
-        return view('admin.dashboard.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList', 'publikasiAktif'));
+        return view('admin.dashboard.timbang', compact('kecamatanList', 'kelurahanList', 'tahunList', 'publikasiAktif', 'filterSeKota'));
     }
 
     /** Landing publik — wajah aplikasi SIRINDU (tanpa login). */
@@ -433,6 +434,10 @@ class TimbangDashboardController extends Controller
      */
     public function daftar(Request $request): JsonResponse
     {
+        // Peran Kesmas tanpa izin daftar nama tak boleh membuka NIK (spec akun Kesmas §4). Admin-setara tidak berubah.
+        $akses = \App\Support\AksesKesmas::untuk(auth()->user());
+        abort_if($akses->terbatas() && !$akses->bolehNama(), 403, 'Akses tidak diizinkan.');
+
         $f = $this->parseFilters($request);
         $kategori = $request->query('kategori', 'sasaran');
 

@@ -172,6 +172,8 @@
 </style>
 
 @php
+    // Peran Kesmas (Pimpinan dst.) membaca saja: tanpa export dan tanpa tautan ke halaman admin.
+    $bacaSaja       = \App\Support\AksesKesmas::untuk(Auth::user())->terbatas();
     $totalAnak      = $coverage['total'];
     $idlLengkap     = $coverage['idl_lengkap'];
     $persenIdl      = $coverage['persen'];
@@ -328,9 +330,11 @@
         </div>
         <div class="im-card__val im-num {{ $butuhKejar > 0 ? 'warn' : 'ok' }}">{{ number_format($butuhKejar) }}</div>
         <div class="im-card__sub">per hari ini, bukan tahun sasaran</div>
+        @unless($bacaSaja)
         <div class="im-card__foot">
             <a href="{{ route('admin.earlyWarning') }}" class="im-card__link">Lihat daftar anaknya <span aria-hidden="true">&rarr;</span></a>
         </div>
+        @endunless
     </div>
 </div>
 {{-- Satu-satunya catatan metode yang TETAP terlihat: mencegah angka tahun berjalan dibaca sebagai penurunan kinerja. --}}
@@ -663,9 +667,11 @@
                 <select class="im-modal__filter" id="sasaran-f-kel"><option value="">Semua Kelurahan</option></select>
                 <label class="im-sr" for="sasaran-f-pkm">Puskesmas</label>
                 <select class="im-modal__filter" id="sasaran-f-pkm"><option value="">Semua Puskesmas</option></select>
+                @unless($bacaSaja)
                 <a class="im-btn im-btn--primary" id="sasaran-export" href="#">
                     <span class="material-symbols-outlined" style="font-size:18px;" aria-hidden="true">download</span>Export Excel
                 </a>
+                @endunless
             </div>
             <div class="im-modal__wrap" id="sasaran-tabel" tabindex="0" role="region" aria-label="Tabel daftar sasaran"></div>
         </div>
@@ -728,7 +734,8 @@
 // ── Daftar nama & alamat di balik kartu Data sasaran (pola modal dasbor OT) ──
 (function () {
     var API_DAFTAR = '{{ route("admin.imunisasiDashboard.sasaran") }}';
-    var API_EXPORT = '{{ route("admin.imunisasiDashboard.sasaranExport") }}';
+    // Peran baca-saja tak mendapat URL export sama sekali (tombolnya pun tak dirender).
+    var API_EXPORT = '{{ $bacaSaja ? '' : route("admin.imunisasiDashboard.sasaranExport") }}';
     var modal = document.getElementById('sasaran-modal');
     var rows = [], kelompok = '', pemicu = null;
 
@@ -812,7 +819,7 @@
         $id('sasaran-cari').value = '';
         ['sasaran-f-kec', 'sasaran-f-kel', 'sasaran-f-pkm'].forEach(function (id) { $id(id).value = ''; });
         $id('sasaran-tabel').innerHTML = '<div class="im-dt__kosong">Memuat…</div>';
-        $id('sasaran-export').href = API_EXPORT + params(kel);
+        if ($id('sasaran-export')) $id('sasaran-export').href = API_EXPORT + params(kel);
         modal.classList.add('open');
         $id('sasaran-tutup').focus();
 

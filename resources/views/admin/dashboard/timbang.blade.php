@@ -299,6 +299,7 @@
 </style>
 
 @php($isSuper = Auth::user()->isSuperAdmin())
+@php($bacaSaja = \App\Support\AksesKesmas::untuk(Auth::user())->terbatas())
 
 @if($isSuper)
 {{-- ── Publikasi publik (khusus Dinkes) ───────────────────────── --}}
@@ -332,7 +333,7 @@
         <option value="{{ $th }}">{{ $th }}</option>
         @endforeach
     </select>
-    @if($isSuper)
+    @if($filterSeKota)
     <label for="f-kec">Kecamatan</label>
     <select id="f-kec">
         <option value="">Semua Kecamatan</option>
@@ -365,9 +366,11 @@
     <button class="tb-filter-btn tb-filter-btn--ghost" id="btn-reset">
         <span class="material-symbols-outlined">restart_alt</span>Reset
     </button>
+    @unless($bacaSaja)
     <a class="tb-filter-btn tb-filter-btn--ghost" id="btn-peta" href="{{ route('admin.map') }}">
         <span class="material-symbols-outlined">map</span>Peta Sebaran
     </a>
+    @endunless
 </div>
 
 {{-- ── KPI Cards (6 kartu clickable) ─────────────────────────── --}}
@@ -533,9 +536,11 @@
                 <label class="tb-modal__check" id="daftar-murni-wrap" style="display:none;">
                     <input type="checkbox" id="daftar-murni"> <span id="daftar-murni-label"></span>
                 </label>
+                @unless($bacaSaja)
                 <a class="tb-filter-btn" id="daftar-export" style="background:oklch(0.48 0.14 145);text-decoration:none;" href="#">
                     <span class="material-symbols-outlined">download</span>Export Excel
                 </a>
+                @endunless
             </div>
             <datalist id="pj-saran"></datalist>
             <div id="daftar-table-wrap">
@@ -570,7 +575,9 @@ var PJ_KATEGORI = ['stunting', 'wasting', 'underweight'];
 var URL_KEL_BY_KEC = '{{ url("admin/get-kel-dasar-anak") }}';
 var URL_RT_BY_KEL  = '{{ url("admin/get-rt-by-kel-anak") }}';
 var URL_POS_BY_KEL = '{{ url("admin/get-posyandu-by-kel-anak") }}';
-var IS_SUPER = {{ Auth::user()->isSuperAdmin() ? 'true' : 'false' }};
+// Mode filter se-kota (dropdown kecamatan/kelurahan bebas) — superadmin dan Pimpinan; diputuskan server.
+var FILTER_SE_KOTA = {{ $filterSeKota ? 'true' : 'false' }};
+var BOLEH_UBAH = {{ $bacaSaja ? 'false' : 'true' }};
 
 var charts = {};
 
@@ -690,7 +697,7 @@ function loadRtPosyandu(kelId){
 }
 
 // Cascade (superadmin punya dropdown; faskes terkunci ke kelurahannya)
-if(IS_SUPER){
+if(FILTER_SE_KOTA){
     $('#f-kec').on('change', function(){
         var kec = this.value;
         fillSelect('f-rt', {}, 'Semua RT');
@@ -704,10 +711,10 @@ if(IS_SUPER){
 document.getElementById('btn-apply').addEventListener('click', loadAll);
 document.getElementById('btn-reset').addEventListener('click', function(){
     document.getElementById('f-tahun').value = '';
-    if(IS_SUPER){ document.getElementById('f-kec').value = ''; document.getElementById('f-kel').value = ''; }
+    if(FILTER_SE_KOTA){ document.getElementById('f-kec').value = ''; document.getElementById('f-kel').value = ''; }
     fillSelect('f-rt', {}, 'Semua RT');
     fillSelect('f-posyandu', {}, 'Semua Posyandu');
-    if(!IS_SUPER){ loadRtPosyandu(val('f-kel')); }
+    if(!FILTER_SE_KOTA){ loadRtPosyandu(val('f-kel')); }
     loadAll();
 });
 
@@ -1023,7 +1030,7 @@ function daftarExportHref(){
 function renderDaftar(filterText){
     var rows = filterMurni(daftarRows);
     document.getElementById('daftar-count').textContent = rows.length+' anak';
-    document.getElementById('daftar-export').href = daftarExportHref();
+    var ex = document.getElementById('daftar-export'); if(ex) ex.href = daftarExportHref();
     var fk = val('daftar-f-kec'), fl = val('daftar-f-kel'), fr = val('daftar-f-rt');
     if(fk) rows = rows.filter(function(r){ return r.kecamatan === fk; });
     if(fl) rows = rows.filter(function(r){ return r.kelurahan === fl; });
@@ -1066,6 +1073,10 @@ function renderDaftar(filterText){
 // Penanggung jawab per anak: cukup nama.
 var pjSaranList = [];
 function pjCell(r){
+    if(!BOLEH_UBAH){
+        return '<td class="tb-pj"><span class="tb-pj__val'+(r.pj_nama ? '' : ' tb-pj__val--kosong')+'">'
+            +(r.pj_nama ? escHtml(r.pj_nama) : '—')+'</span></td>';
+    }
     var kosong = !r.pj_nama;
     return '<td class="tb-pj" data-id="'+escHtml(r.id)+'">'
         +'<button type="button" class="tb-pj__trigger" aria-label="Ubah penanggung jawab '+escHtml(r.nama || '')+'">'
@@ -1090,6 +1101,7 @@ function pjRow(id){
     return null;
 }
 function bukaEditorPj(td){
+    if(!BOLEH_UBAH) return;
     if(td.querySelector('.tb-pj__editor') || td.classList.contains('tb-pj--simpan')) return;
     var row = pjRow(td.getAttribute('data-id'));
     if(!row) return;
@@ -1153,7 +1165,7 @@ function openDaftar(kategori){
     murniWrap.style.display = MURNI_LABEL[kategori] ? '' : 'none';
     document.getElementById('daftar-murni').checked = false;
     document.getElementById('daftar-murni-label').textContent = MURNI_LABEL[kategori] || '';
-    document.getElementById('daftar-export').href = daftarExportHref();
+    var ex = document.getElementById('daftar-export'); if(ex) ex.href = daftarExportHref();
     document.getElementById('daftar-modal').classList.add('open');
 
     $.getJSON(API_DAFTAR+params+sep+'kategori='+kategori, function(d){
@@ -1287,7 +1299,7 @@ function loadAll(){
 }
 
 // Faskes terkunci ke kelurahannya → muat opsi RT/Posyandu-nya saat awal.
-if(!IS_SUPER){ loadRtPosyandu(val('f-kel')); }
+if(!FILTER_SE_KOTA){ loadRtPosyandu(val('f-kel')); }
 
 loadAll();
 

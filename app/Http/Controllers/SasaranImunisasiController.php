@@ -46,6 +46,10 @@ class SasaranImunisasiController extends Controller
 
     public function daftar(Request $request): JsonResponse
     {
+        // Peran Kesmas tanpa izin daftar nama tak boleh membuka NIK (spec akun Kesmas §4). Admin-setara tidak berubah.
+        $akses = \App\Support\AksesKesmas::untuk(auth()->user());
+        abort_if($akses->terbatas() && !$akses->bolehNama(), 403, 'Akses tidak diizinkan.');
+
         [$kelompok, $kohort] = $this->kelompokDanKohort($request);
 
         return response()->json([
