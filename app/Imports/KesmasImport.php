@@ -5,11 +5,13 @@ namespace App\Imports;
 use App\Exceptions\BarisImportBatal;
 use App\Http\Requests\Admin\Anak\KesmasRules;
 use App\Models\Anak;
+use App\Models\DataAnak;
 use App\Services\KolomKesmasImport;
 use App\Services\PenautanAnakKesmas;
 use App\Support\ImportError;
 use App\Support\NamaAnak;
 use App\Support\NilaiSelKesmas;
+use App\Support\SatuanBeratBadan;
 use App\Traits\MembacaTanggalBerkas;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +34,15 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
     public const KOLOM_IDENTITAS = ['nama_anak', 'jk', 'tgl_lahir', 'nama_ortu'];
     public const KOLOM_UKUR = ['bb', 'tb_cm', 'posisi', 'lk_cm', 'lila_cm', 'zscore_bb_u', 'zscore_pb_u', 'zscore_bb_pb'];
     private const KOLOM_TANGGAL = ['tgl_lahir', 'tgl_kunjungan', 'tgl_hbig', 'tgl_penanda_ckg'];
+
+    /** kolom berkas => kolom data_anak */
+    private const UKUR = [
+        'bb' => 'bb', 'tb_cm' => 'tb', 'posisi' => 'posisi', 'lk_cm' => 'lk', 'lila_cm' => 'lla',
+        'zscore_bb_u' => 'zscore_bb_u', 'zscore_pb_u' => 'zscore_pb_u', 'zscore_bb_pb' => 'zscore_bb_pb',
+    ];
+
+    /** Ukuran wajib untuk kunjungan baru: kolom data_anak => kolom berkas. */
+    private const UKUR_WAJIB = ['bb' => 'bb', 'tb' => 'tb_cm', 'posisi' => 'posisi'];
 
     private int $sukses = 0;
     private int $gagal = 0;
@@ -224,15 +235,149 @@ class KesmasImport implements ToCollection, WithChunkReading, WithMultipleSheets
     /** @return bool apakah ada yang ditulis */
     private function tulis(int $n, array $row, Anak $anak, callable $catat): bool
     {
+        $tglSel = $this->sel($row, 'tgl_kunjungan');
         $kunjunganDitulis = false;
-        if (NilaiSelKesmas::kosong($this->sel($row, 'tgl_kunjungan'))) {
-            if ($this->selKolom($row, array_merge(self::KOLOM_UKUR, KolomKesmasImport::kolom('kunjungan'))) !== []) {
-                $catat('PERINGATAN', 'kolom kunjungan (ukur/layanan) diabaikan karena tgl_kunjungan kosong.');
-            }
+        if (! NilaiSelKesmas::kosong($tglSel)) {
+            $kunjunganDitulis = $this->tulisKunjungan($row, $anak, $tglSel, $catat);
+        } elseif ($this->selKolom($row, array_merge(self::KOLOM_UKUR, KolomKesmasImport::kolom('kunjungan'))) !== []) {
+            $catat('PERINGATAN', 'kolom kunjungan (ukur/layanan) diabaikan karena tgl_kunjungan kosong.');
         }
+        // Kunjungan lebih dulu: bila baris batal, field anak tidak sempat dicatat sebagai nilai berkas.
         $anakDitulis = $this->tulisAnak($n, $row, $anak, $catat);
 
         return $kunjunganDitulis || $anakDitulis;
+    }
+
+    private function tulisKunjungan(array $row, Anak $anak, mixed $tglSel, callable $catat): bool
+    {
+        $tgl = $this->bacaTanggal($tglSel);
+        if ($tgl === null) {
+            throw new BarisImportBatal("tgl_kunjungan '".NilaiSelKesmas::teks($tglSel)."' tidak terbaca — seluruh baris dilewati.");
+        }
+
+        $ukur = $this->ukurBerkas($row, $anak, $tgl);
+        $sel = $this->selKolom($row, KolomKesmasImport::kolom('kunjungan'));
+        ['nilai' => $kesmas, 'salah' => $salah] = $sel === []
+            ? ['nilai' => [], 'salah' => []]
+            : KolomKesmasImport::ubah('kunjungan', $sel, $anak, fn ($v) => $this->bacaTanggal($v));
+
+        $ada = DataAnak::where('id_anak', $anak->id)->whereDate('tgl_kunjungan', $tgl)->first();
+
+        if ($ada === null) {
+            $kurang = [];
+            foreach (self::UKUR_WAJIB as $kolom => $kolomBerkas) {
+                if (! array_key_exists($kolom, $ukur['nilai'])) {
+                    $kurang[] = $ukur['salah'][$kolom] ?? "{$kolomBerkas} wajib diisi";
+                }
+            }
+            if ($kurang !== []) {
+                throw new BarisImportBatal("kunjungan {$tgl} belum ada dan ukurannya tidak lengkap: ".implode('; ', $kurang).' — seluruh baris dilewati.');
+            }
+            foreach ($ukur['salah'] as $teks) {
+                $catat('PERINGATAN', $teks.'; kolom dilewati.');
+            }
+            foreach ($salah as $teks) {
+                $catat('PERINGATAN', $teks.'; kolom dilewati.');
+            }
+
+            DataAnak::create(array_merge(
+                ['lk' => 0, 'lla' => 0],
+                $ukur['nilai'],
+                $kesmas,
+                [
+                    'id_anak' => $anak->id, 'tgl_kunjungan' => $tgl,
+                    'bln' => usia_bulan($anak->tgl_lahir, $tgl) ?? 0, 'id_user' => $this->userId,
+                ]
+            ));
+
+            return true;
+        }
+
+        foreach ($salah as $teks) {
+            $catat('PERINGATAN', $teks.'; kolom dilewati.');
+        }
+        $beda = $this->bedaUkur($ada, $ukur['nilai']);
+        if ($beda !== []) {
+            $catat('PERINGATAN', "kunjungan {$tgl} sudah ada — ukuran tidak diubah: ".implode('; ', $beda).'.');
+        }
+        if ($kesmas === []) {
+            return false;
+        }
+        $ada->fill($kesmas)->save();
+
+        return true;
+    }
+
+    /** @return array{nilai: array<string,mixed>, salah: array<string,string>} kunci = kolom data_anak */
+    private function ukurBerkas(array $row, Anak $anak, string $tgl): array
+    {
+        $nilai = [];
+        $salah = [];
+        foreach (self::UKUR as $kolomBerkas => $kolom) {
+            $sel = $this->sel($row, $kolomBerkas);
+            if (NilaiSelKesmas::kosong($sel)) {
+                continue;
+            }
+            $teks = NilaiSelKesmas::teks($sel);
+
+            if ($kolom === 'posisi') {
+                $v = NilaiSelKesmas::posisi($sel);
+                if ($v === null) {
+                    $salah[$kolom] = "posisi '{$teks}' tidak dikenal (Berdiri/Terlentang)";
+                } else {
+                    $nilai[$kolom] = $v;
+                }
+                continue;
+            }
+
+            $v = NilaiSelKesmas::angka($sel);
+            if ($v === null) {
+                $salah[$kolom] = "{$kolomBerkas} '{$teks}' bukan angka";
+                continue;
+            }
+            if ($kolom === 'bb') {
+                $satuan = SatuanBeratBadan::untuk($anak->tgl_lahir, $tgl);
+                if (! SatuanBeratBadan::dalamRentang($v, $satuan)) {
+                    [$min, $maks] = SatuanBeratBadan::RENTANG[$satuan];
+                    $salah[$kolom] = $satuan === SatuanBeratBadan::GRAM
+                        ? "bb '{$teks}' di luar {$min}–{$maks} gram — anak berumur di bawah 2 bulan pada {$tgl}, isi berat dalam gram (mis. 3250)"
+                        : "bb '{$teks}' di luar {$min}–{$maks} kg — anak berumur 2 bulan atau lebih pada {$tgl}, isi berat dalam kg";
+                    continue;
+                }
+                $v = SatuanBeratBadan::keKg($v, $satuan);
+            } elseif (in_array($kolom, ['tb', 'lk', 'lla'], true) && $v <= 0) {
+                $salah[$kolom] = "{$kolomBerkas} '{$teks}' harus lebih dari 0";
+                continue;
+            }
+            $nilai[$kolom] = $v;
+        }
+
+        return ['nilai' => $nilai, 'salah' => $salah];
+    }
+
+    /** @return string[] kalimat "bb di berkas 10,5, tersimpan 10,2" per ukuran yang berbeda */
+    private function bedaUkur(DataAnak $ada, array $ukur): array
+    {
+        $beda = [];
+        foreach ($ukur as $kolom => $v) {
+            $lama = $ada->{$kolom};
+            $sama = match (true) {
+                $kolom === 'posisi' => normalisasi_posisi($lama) === $v,
+                $lama === null => false,
+                $kolom === 'bb' => SatuanBeratBadan::sama((float) $lama, (float) $v),
+                default => abs((float) $lama - (float) $v) < 0.005,
+            };
+            if (! $sama) {
+                $beda[] = "{$kolom} di berkas ".self::tampil($v).', tersimpan '.($lama === null ? 'kosong' : self::tampil($lama));
+            }
+        }
+
+        return $beda;
+    }
+
+    private static function tampil(mixed $v): string
+    {
+        return is_numeric($v) ? str_replace('.', ',', (string) (0 + $v)) : (string) $v;
     }
 
     private function tulisAnak(int $n, array $row, Anak $anak, callable $catat): bool
