@@ -82,6 +82,35 @@ class Pd3iFilterExportTest extends TestCase
             'tanggal_dari' => '2026-05-01', 'tanggal_sampai' => '2026-06-30',
         ]))->assertOk();
 
-        Excel::assertDownloaded('surveilans-pd3i-2026.xlsx', fn (SurveillanceExport $e) => $e->query()->count() === 2);
+        Excel::assertDownloaded('surveilans-pd3i-2026_2026-05-01_sd_2026-06-30.xlsx', fn (SurveillanceExport $e) => $e->query()->count() === 2);
+    }
+
+    /** Karakter `/` di wilker dulu membuat nama berkas tak sah → 500 (audit SEC-004). */
+    public function test_nama_berkas_excel_aman_dari_karakter_path(): void
+    {
+        Excel::fake();
+
+        $this->actingAs($this->superadmin)->get(route('admin.pd3i.exportExcel', [
+            'tahun' => 2026, 'wilker' => ['Bontang/Utara I'],
+        ]))->assertOk();
+
+        Excel::assertDownloaded('surveilans-pd3i-2026-Bontang_Utara_I.xlsx');
+    }
+
+    /**
+     * Teks bebas berawalan "=" tidak boleh menjadi rumus Excel: petugas faskes
+     * mengetik, superadmin membuka ekspor se-kota (audit SEC-001).
+     */
+    public function test_teks_berawalan_sama_dengan_tetap_literal(): void
+    {
+        $sheet = (new \PhpOffice\PhpSpreadsheet\Spreadsheet())->getActiveSheet();
+        $export = new SurveillanceExport(tahun: 2026);
+
+        $export->bindValue($sheet->getCell('A1'), '=HYPERLINK("http://contoh","klik")');
+        $export->bindValue($sheet->getCell('A2'), 42);
+
+        $this->assertSame(\PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING, $sheet->getCell('A1')->getDataType());
+        $this->assertSame('=HYPERLINK("http://contoh","klik")', $sheet->getCell('A1')->getValue());
+        $this->assertSame(\PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC, $sheet->getCell('A2')->getDataType());
     }
 }

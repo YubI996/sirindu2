@@ -126,6 +126,31 @@ class Pd3iFilterFaskesTanggalTest extends TestCase
         $this->assertSame(1, collect($data['per_kecamatan'])->sum('jumlah'));
     }
 
+    /**
+     * Pd3iImport menyimpan instansi_pelapor tanpa trim. Nama berspasi di depan dulu
+     * tampil di daftar opsi, tapi nilai yang dikirim di-trim → 0 kasus (audit REQ-001/UX-003).
+     */
+    public function test_nama_faskes_berspasi_tetap_cocok_dan_opsinya_tidak_kembar(): void
+    {
+        $this->kasus('  PKM Uji Berspasi', '2026-03-03');
+        $this->kasus('PKM Uji Berspasi', '2026-03-04');
+
+        $data = $this->api('admin.pd3i.apiKinerja', ['faskes_pelapor' => ['PKM Uji Berspasi']]);
+        $this->assertSame(2, $data['campak_rubella']['suspek']);
+
+        $this->actingAs($this->admin)->get(route('admin.pd3i.dashboard'))
+            ->assertOk()
+            ->assertViewHas('faskesPelapors', fn ($c) => $c->filter(fn ($n) => $n === 'PKM Uji Berspasi')->count() === 1
+                && !$c->contains('  PKM Uji Berspasi'));
+    }
+
+    public function test_query_string_bersarang_tidak_menyebabkan_500(): void
+    {
+        $this->actingAs($this->admin)
+            ->getJson(route('admin.pd3i.apiKinerja', ['tahun' => 2026, 'faskes_pelapor' => [['x']], 'wilker' => [['y']]]))
+            ->assertOk();
+    }
+
     public function test_demografi_dan_wilayah_ikut_filter(): void
     {
         $query = ['faskes_pelapor' => [self::FASKES_A], 'tanggal_dari' => '2026-05-01'];

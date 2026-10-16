@@ -4,6 +4,7 @@ namespace App\Support;
 
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Http\Request;
 
 /**
@@ -95,7 +96,9 @@ final class FilterPd3i
             $query->whereIn('surveillance_cases.id_kel', $this->kelurahanId);
         }
         if (!empty($this->faskesPelapor)) {
-            $query->whereIn('surveillance_cases.instansi_pelapor', $this->faskesPelapor);
+            // Pd3iImport menyimpan nama tanpa trim; opsi dropdown juga di-TRIM, jadi
+            // bandingkan nilai yang di-trim di kedua sisi.
+            $query->whereIn(new Expression('TRIM(surveillance_cases.instansi_pelapor)'), $this->faskesPelapor);
         }
     }
 
@@ -114,6 +117,17 @@ final class FilterPd3i
         return $this->formatTanggal($this->tanggalDari ?? "{$this->tahun}-01-01")
             . ' – '
             . $this->formatTanggal($this->tanggalSampai ?? "{$this->tahun}-12-31");
+    }
+
+    /** "_2026-05-01_sd_2026-06-30" untuk nama berkas ekspor, "" bila tanpa rentang. */
+    public function akhiranNamaBerkas(): string
+    {
+        if (!$this->adaRentang()) {
+            return '';
+        }
+
+        return '_' . ($this->tanggalDari ?? "{$this->tahun}-01-01")
+            . '_sd_' . ($this->tanggalSampai ?? "{$this->tahun}-12-31");
     }
 
     private function formatTanggal(string $ymd): string
@@ -147,7 +161,8 @@ final class FilterPd3i
         }
 
         $items = is_array($value) ? $value : [$value];
-        $items = array_filter($items, fn ($v) => $v !== null && $v !== '');
+        // Hanya skalar: `wilker[][]=x` dulu memicu "Array to string conversion" → 500.
+        $items = array_filter($items, fn ($v) => is_scalar($v) && trim((string) $v) !== '');
 
         if (empty($items)) {
             return null;

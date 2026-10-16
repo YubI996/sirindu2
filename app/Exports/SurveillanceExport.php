@@ -10,6 +10,10 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 
 /**
  * Export surveilans "satu sheet lebar": seluruh field kasus utama + data relasi
@@ -20,8 +24,24 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
  * Max dihitung lewat satu query agregat (withCount), jadi streaming FromQuery tetap
  * terjaga (tidak memuat seluruh baris ke memori).
  */
-class SurveillanceExport implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize
+class SurveillanceExport extends DefaultValueBinder implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithCustomValueBinder
 {
+    /**
+     * Teks bebas berawalan "=" (nama, alamat, instansi pelapor) dijadikan RUMUS oleh
+     * binder bawaan PhpSpreadsheet — diketik petugas faskes, dijalankan saat superadmin
+     * membuka ekspor se-kota. Paksa jadi teks literal; nilai lain tetap seperti dulu.
+     */
+    public function bindValue(Cell $cell, $value): bool
+    {
+        if (is_string($value) && str_starts_with($value, '=')) {
+            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
+    }
+
     /** Jumlah set kolom relasi per kasus, dihitung sekali dari data. */
     private ?array $caps = null;
 

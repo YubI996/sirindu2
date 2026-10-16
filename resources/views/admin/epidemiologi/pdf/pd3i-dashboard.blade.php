@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<title>Laporan Surveilans PD3I — {{ $tahun }}</title>
+<title>Laporan Surveilans PD3I — {{ $periode ?? $tahun }}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@400;500;600&display=swap');
 
@@ -206,7 +206,7 @@ tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
             <strong>Kab/Kota:</strong> {{ $namaKabKota ?? 'Semua Kab/Kota' }}<br>
             <strong>Wilker:</strong> {{ $wilker ?? 'Semua Puskesmas' }}<br>
             <strong>Kelurahan:</strong> {{ $namaKelurahan ?? 'Semua Kelurahan' }}<br>
-            <strong>Faskes pelapor:</strong> {{ $namaFaskes ?? 'Semua Faskes' }}
+            <strong>Faskes Pelapor:</strong> {{ $namaFaskes ?? 'Semua Faskes' }}
         </div>
     </div>
 </div>
@@ -523,7 +523,7 @@ tbody tr:last-child td { border-bottom: 2px solid #bcd8bc; }
         <strong>SIRINDU</strong> &mdash; Sistem Informasi Realtime Reporting Terpadu &nbsp;&bull;&nbsp; Dinas Kesehatan Kota Bontang
     </div>
     <div class="doc-footer-right">
-        {{ $periode ?? ('Tahun ' . $tahun) }} &bull; {{ $namaJenisKasus ?? 'Semua PD3I' }} &bull; {{ $namaKabKota ?? 'Semua Kab/Kota' }} &bull; {{ $wilker ?? 'Semua Wilker' }} &bull; {{ $namaKelurahan ?? 'Semua Kelurahan' }}
+        {{ $periode ?? ('Tahun ' . $tahun) }} &bull; {{ $namaJenisKasus ?? 'Semua PD3I' }} &bull; {{ $namaKabKota ?? 'Semua Kab/Kota' }} &bull; {{ $wilker ?? 'Semua Wilker' }} &bull; {{ $namaKelurahan ?? 'Semua Kelurahan' }} &bull; {{ $namaFaskes ?? 'Semua Faskes' }}
     </div>
 </div>
 

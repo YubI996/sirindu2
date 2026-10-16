@@ -22,7 +22,7 @@ Keputusan pemilik produk:
 
 - Komponen pilihan ganda (`ms-dropdown`), sama dengan Kab/Kota, Wilker, dan Kelurahan. Diletakkan setelah Kelurahan.
 - Opsinya adalah nilai `surveillance_cases.instansi_pelapor` yang ada di data: distinct, tidak kosong, urut abjad. Polanya sama dengan daftar Wilker di `Pd3iDashboardController::index()`.
-- Penyaringan: `whereIn('instansi_pelapor', [...])`.
+- Penyaringan: `whereIn(TRIM(instansi_pelapor), [...])`; opsi juga `DISTINCT TRIM(...)` — `Pd3iImport` menyimpan nama tanpa trim (amandemen audit 16 Okt).
 - Kolom `id_faskes_pelapor` tidak pernah terisi di data nyata, sehingga label tabel "Per Faskes" (`COALESCE(rs.name, instansi_pelapor, …)`) sama dengan `instansi_pelapor`. Nama di filter dan nama di tabel itu konsisten. `id_faskes_pelapor` tidak disentuh.
 - Penulisan nama faskes yang berbeda-beda (mis. "PKM Bontang Utara I" dan "Puskesmas Bontang Utara 1") tetap tampil sebagai opsi terpisah. Normalisasi nama tidak termasuk lingkup ini.
 
@@ -35,7 +35,7 @@ Keputusan pemilik produk:
   - Tanggal yang formatnya bukan `Y-m-d` atau tidak valid dianggap kosong.
   - Tanggal di luar Tahun terpilih dianggap kosong, tidak digeser ke batas tahun.
   - Bila "dari" lebih besar dari "s/d", keduanya ditukar.
-- Penyaringan: `whereDate('tanggal_lapor', '>=', dari)` dan/atau `'<=', sampai`, di samping `whereYear` yang tetap ada.
+- Penyaringan: `where('tanggal_lapor', '>=', dari)` (kolom DATE, ramah indeks) dan/atau `'<=', sampai`, di samping `whereYear` yang tetap ada.
 
 ### Cakupan
 
@@ -113,7 +113,7 @@ Konstruktor bernama yang ada dipertahankan, karena `EpidemiologiController::expo
 
 ### PDF `admin/epidemiologi/pdf/pd3i-dashboard.blade.php`
 
-Header menampilkan baris **Periode** (selalu ada) dan **Faskes pelapor** (bila dipilih), sejajar dengan baris Wilker/Kelurahan yang sudah ada.
+Header menampilkan baris **Periode** (selalu ada) dan **Faskes Pelapor** (selalu; "Semua Faskes" bila tak dipilih — amandemen audit 16 Okt, konsisten dengan baris lain), sejajar dengan baris Wilker/Kelurahan yang sudah ada.
 
 ## Pengujian
 

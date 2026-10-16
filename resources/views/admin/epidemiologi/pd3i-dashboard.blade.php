@@ -413,17 +413,26 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-2">
-                <label for="filter-tgl-dari"><i class="fa fa-calendar-day mr-1"></i>Tgl lapor dari</label>
+            <div class="col-6 col-md-3">
+                <label for="filter-tgl-dari"><i class="fa fa-calendar-day mr-1"></i>Tgl Lapor Dari</label>
                 <input type="date" id="filter-tgl-dari" class="form-control"
+                       aria-describedby="filter-tgl-dari-galat"
                        min="{{ now()->year }}-01-01" max="{{ now()->year }}-12-31">
             </div>
-            <div class="col-6 col-md-2">
-                <label for="filter-tgl-sampai"><i class="fa fa-calendar-day mr-1"></i>Tgl lapor s/d</label>
+            <div class="col-6 col-md-3">
+                <label for="filter-tgl-sampai"><i class="fa fa-calendar-day mr-1"></i>Tgl Lapor Sampai</label>
                 <input type="date" id="filter-tgl-sampai" class="form-control"
+                       aria-describedby="filter-tgl-sampai-galat"
                        min="{{ now()->year }}-01-01" max="{{ now()->year }}-12-31">
             </div>
         </div>
+        {{-- Periode yang benar-benar dipakai server — supaya angka Kinerja/Demografi tak disangka setahun (audit UX-004).
+             Pesan tanggal tak sah ada di baris ini (bukan di bawah input) supaya kontrol filter tetap sejajar. --}}
+        <p class="small mb-0 mt-2" role="status" aria-live="polite">
+            <span id="periode-aktif">Periode berlaku: Tahun {{ now()->year }}</span>
+            <span id="filter-tgl-dari-galat" class="text-danger" hidden></span>
+            <span id="filter-tgl-sampai-galat" class="text-danger" hidden></span>
+        </p>
     </div>
 
     {{-- ===== TABS ===== --}}
@@ -706,10 +715,10 @@
                 <div class="card-header"><i class="fa fa-chart-bar mr-1"></i> Tren Kasus Tahunan (5 Tahun Terakhir)</div>
                 <div class="card-body">
                     <div style="height:220px; position:relative;">
-                        <canvas id="chart-tahunan"></canvas>
+                        <canvas id="chart-tahunan" aria-describedby="catatan-tahunan"></canvas>
                         <div id="skel-tahunan" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
                     </div>
-                    <p class="catatan-rentang small text-muted mb-0 mt-2" hidden>Grafik ini tidak mengikuti rentang tanggal laporan.</p>
+                    <p id="catatan-tahunan" class="catatan-rentang small text-muted mb-0 mt-2" hidden>Grafik ini tidak mengikuti rentang tanggal laporan.</p>
                 </div>
             </div>
 
@@ -717,10 +726,10 @@
                 <div class="card-header"><i class="fa fa-chart-bar mr-1"></i> Kurva Epidemi (Mingguan — Epiweek)</div>
                 <div class="card-body">
                     <div style="height:260px; position:relative;">
-                        <canvas id="chart-epiweek"></canvas>
+                        <canvas id="chart-epiweek" aria-describedby="catatan-epiweek"></canvas>
                         <div id="skel-epiweek" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
                     </div>
-                    <p class="catatan-rentang small text-muted mb-0 mt-2" hidden>Grafik ini tidak mengikuti rentang tanggal laporan.</p>
+                    <p id="catatan-epiweek" class="catatan-rentang small text-muted mb-0 mt-2" hidden>Grafik ini tidak mengikuti rentang tanggal laporan.</p>
                 </div>
             </div>
 
@@ -728,9 +737,10 @@
                 <div class="card-header"><i class="fa fa-chart-line mr-1"></i> Tren Laporan Bulanan</div>
                 <div class="card-body">
                     <div style="height:220px; position:relative;">
-                        <canvas id="chart-bulanan"></canvas>
+                        <canvas id="chart-bulanan" aria-describedby="catatan-bulanan"></canvas>
                         <div id="skel-bulanan" class="skeleton" style="position:absolute;inset:0;border-radius:6px;"></div>
                     </div>
+                    <p id="catatan-bulanan" class="catatan-rentang small text-muted mb-0 mt-2" hidden>Bulan di luar rentang tanggal laporan ditampilkan 0.</p>
                 </div>
             </div>
 
@@ -970,6 +980,8 @@
 
         // Tren 5 tahunan & epiweek lintas tahun — tak dipersempit rentang (catatan selalu terlihat saat aktif).
         document.querySelectorAll('.catatan-rentang').forEach(el => { el.hidden = !(tglDari || tglSampai); });
+        const periodeEl = document.getElementById('periode-aktif');
+        if (periodeEl) periodeEl.textContent = 'Periode berlaku: ' + labelPeriode(tahun, tglDari, tglSampai);
 
         // Excel href
         const excelBtn = document.getElementById('btnExportExcel');
@@ -986,7 +998,26 @@
         const sah = !el.value || el.checkValidity();
         el.classList.toggle('is-invalid', !sah);
         el.setAttribute('aria-invalid', sah ? 'false' : 'true');
+        // Pesan teks (bukan hanya warna) — ditautkan lewat aria-describedby.
+        const galat = document.getElementById(id + '-galat');
+        if (galat) {
+            const t     = document.getElementById('filter-tahun').value;
+            const label = document.querySelector('label[for="' + id + '"]').textContent.trim();
+            galat.textContent = sah ? '' : '· ' + label + ' diabaikan: di luar ' + t + ' atau rentangnya terbalik.';
+            galat.hidden = sah;
+        }
         return sah ? el.value : '';
+    }
+
+    // Sama dengan FilterPd3i::labelPeriode() di server.
+    const BULAN_PENDEK = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    function fmtTanggal(ymd) {
+        const [y, m, d] = ymd.split('-');
+        return parseInt(d, 10) + ' ' + BULAN_PENDEK[parseInt(m, 10) - 1] + ' ' + y;
+    }
+    function labelPeriode(tahun, dari, sampai) {
+        if (!dari && !sampai) return 'Tahun ' + tahun;
+        return fmtTanggal(dari || tahun + '-01-01') + ' – ' + fmtTanggal(sampai || tahun + '-12-31');
     }
 
     // ======= MULTISELECT DROPDOWNS =======
@@ -1704,14 +1735,26 @@
     // Multiselect dropdowns (kab_kota / wilker / kelurahan / faskes_pelapor) trigger fetch via their own change handlers.
     const TGL_IDS = ['filter-tgl-dari', 'filter-tgl-sampai'];
 
-    // Rentang tanggal selalu di dalam Tahun terpilih: batasi pemilih tanggal ke tahun itu.
+    // Rentang tanggal selalu di dalam Tahun terpilih: batasi pemilih tanggal ke tahun itu,
+    // dan saling batasi supaya "dari" tak melewati "sampai" (audit UX-005).
     function aturBatasTanggal() {
-        const t = document.getElementById('filter-tahun').value;
-        TGL_IDS.forEach(id => {
-            const el = document.getElementById(id);
-            el.min = t + '-01-01';
-            el.max = t + '-12-31';
-        });
+        const t      = document.getElementById('filter-tahun').value;
+        const dari   = document.getElementById('filter-tgl-dari');
+        const sampai = document.getElementById('filter-tgl-sampai');
+        // Hanya nilai di dalam tahun itu yang boleh jadi batas silang.
+        const diTahun = v => (v && v.startsWith(t + '-')) ? v : '';
+        dari.min   = t + '-01-01';
+        dari.max   = diTahun(sampai.value) || t + '-12-31';
+        sampai.min = diTahun(dari.value) || t + '-01-01';
+        sampai.max = t + '-12-31';
+    }
+
+    // Mengetik tahun di input date memicu 'change' per digit (0002-03-01, 0020-…):
+    // tunggu sebentar supaya tak menembak 4 endpoint tiap ketukan (audit UX-002).
+    let tundaTanggal = null;
+    function tanggalBerubah() {
+        clearTimeout(tundaTanggal);
+        tundaTanggal = setTimeout(() => { aturBatasTanggal(); fetchAllTabs(); }, 600);
     }
 
     document.getElementById('filter-penyakit')?.addEventListener('change', fetchAllTabs);
@@ -1721,7 +1764,7 @@
         aturBatasTanggal();
         fetchAllTabs();
     });
-    TGL_IDS.forEach(id => document.getElementById(id)?.addEventListener('change', fetchAllTabs));
+    TGL_IDS.forEach(id => document.getElementById(id)?.addEventListener('change', tanggalBerubah));
 
     // ======= TAB SHOWN — resize charts & invalidate map =======
     // Bootstrap 4 memicu event 'shown.bs.tab' via jQuery, bukan native event,

@@ -3,6 +3,7 @@
 namespace Tests\Unit\Support;
 
 use App\Support\FilterPd3i;
+use Illuminate\Http\Request;
 use PHPUnit\Framework\TestCase;
 
 class FilterPd3iTest extends TestCase
@@ -45,6 +46,23 @@ class FilterPd3iTest extends TestCase
         $this->assertNull($f->tanggalDari);
         $this->assertNull($f->tanggalSampai);
         $this->assertFalse($f->adaRentang());
+    }
+
+    /** `wilker[][]=x` dulu memicu "Array to string conversion" → 500 (audit REQ-003/SEC-003). */
+    public function test_nilai_bersarang_di_query_string_diabaikan(): void
+    {
+        $f = FilterPd3i::dariRequest(Request::create('/', 'GET', [
+            'tahun'          => '2026',
+            'wilker'         => [['x'], 'Bontang Utara I'],
+            'kab_kota'       => [['a', 'b']],
+            'faskes_pelapor' => [' PKM A ', ['b']],
+            'kelurahan_id'   => [['1'], '7'],
+        ]));
+
+        $this->assertSame(['Bontang Utara I'], $f->wilker);
+        $this->assertNull($f->kabKota);
+        $this->assertSame(['PKM A'], $f->faskesPelapor);
+        $this->assertSame([7], $f->kelurahanId);
     }
 
     public function test_format_salah_diabaikan(): void

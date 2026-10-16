@@ -81,7 +81,10 @@ class Pd3iFilterTampilanTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('1 Mei 2026 – 30 Jun 2026', $html);
-        $this->assertStringContainsString('Faskes pelapor:</strong> PKM Uji Tampil', $html);
+        $this->assertStringContainsString('Faskes Pelapor:</strong> PKM Uji Tampil', $html);
+        // Footer tiap halaman ikut menyebut faskes (audit UX-008).
+        $this->assertGreaterThanOrEqual(2, substr_count($html, 'PKM Uji Tampil'));
+        $this->assertStringContainsString('<title>Laporan Surveilans PD3I — 1 Mei 2026 – 30 Jun 2026</title>', $html);
     }
 
     public function test_ekspor_pdf_dengan_filter_baru_berhasil(): void
@@ -89,6 +92,26 @@ class Pd3iFilterTampilanTest extends TestCase
         $this->actingAs($this->admin)->post(route('admin.pd3i.exportPdf'), [
             'tahun' => 2026, 'faskes_pelapor' => ['PKM Uji Tampil'],
             'tanggal_dari' => '2026-05-01', 'tanggal_sampai' => '2026-06-30',
-        ])->assertOk();
+        ])->assertOk()
+            ->assertDownload('pd3i-dashboard-2026_2026-05-01_sd_2026-06-30.pdf');
+    }
+
+    /**
+     * Audit A11Y-001/UX-001/UX-004: tanggal tak sah wajib punya pesan teks (bukan hanya warna),
+     * periode yang berlaku terlihat & diumumkan, catatan terhubung ke grafiknya.
+     */
+    public function test_umpan_balik_periode_dan_tanggal_tak_sah(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.pd3i.dashboard'))
+            ->assertOk()
+            ->assertSee('id="periode-aktif"', false)
+            ->assertSee('role="status"', false)
+            ->assertSee('id="filter-tgl-dari-galat"', false)
+            ->assertSee('aria-describedby="filter-tgl-dari-galat"', false)
+            ->assertSee('aria-describedby="catatan-tahunan"', false)
+            ->assertSee('aria-describedby="catatan-epiweek"', false)
+            ->assertSee('id="catatan-bulanan"', false)
+            ->assertSee('Tgl Lapor Sampai')
+            ->assertSee('tundaTanggal', false);
     }
 }

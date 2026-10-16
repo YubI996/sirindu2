@@ -479,7 +479,9 @@ Filter baru ditambah di sana, bukan sebagai argumen berurutan ke repository/expo
 
 - Rentang tanggal **selalu di dalam Tahun**; tanggal di luar tahun/tak valid diabaikan (bukan digeser). Tren 5 tahunan &
   epiweek memakai `terapkanTanpaWaktu()` — lintas tahun, jadi rentang tak berlaku; catatan di bawah grafiknya wajib terlihat.
-- "Faskes pelapor" = `instansi_pelapor` (teks bebas). `id_faskes_pelapor` tak pernah terisi.
+- "Faskes pelapor" = `instansi_pelapor` (teks bebas, `Pd3iImport` tak men-trim). Opsi dan filter sama-sama memakai
+  `TRIM(...)` — tanpa itu nama berspasi di depan muncul di dropdown tapi memilihnya memberi 0 kasus. `id_faskes_pelapor` tak pernah terisi.
+- `SurveillanceExport` memakai binder sendiri: teks berawalan `=` dipaksa jadi teks literal (anti formula injection).
 - Kolom di `terapkan*()` berprefix `surveillance_cases.` karena query tren/wilayah me-`leftJoin` tabel lain.
 - `SurveillanceExport::untukDasborPd3i()` untuk tombol Excel dasbor; konstruktor bernama lama tetap untuk halaman
   Surveilans (`tahun: null` = semua tahun).

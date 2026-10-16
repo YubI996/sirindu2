@@ -44,11 +44,12 @@ class Pd3iDashboardController extends Controller
             ->pluck('kab_kota');
 
         // Faskes pelapor yang ada di data (instansi_pelapor — id_faskes_pelapor tak pernah terisi)
-        $faskesPelapors = SurveillanceCase::whereNotNull('instansi_pelapor')
-            ->where('instansi_pelapor', '!=', '')
-            ->distinct()
-            ->orderBy('instansi_pelapor')
-            ->pluck('instansi_pelapor');
+        // TRIM: Pd3iImport menyimpan apa adanya; tanpa ini " PKM X" dan "PKM X" jadi dua opsi.
+        $faskesPelapors = SurveillanceCase::query()
+            ->selectRaw('DISTINCT TRIM(instansi_pelapor) AS nama')
+            ->whereRaw("TRIM(COALESCE(instansi_pelapor, '')) <> ''")
+            ->orderBy('nama')
+            ->pluck('nama');
 
         // Kelurahan yang ada di data surveillance (untuk filter)
         $kelurahans = Kelurahan::whereIn('id',
@@ -115,7 +116,7 @@ class Pd3iDashboardController extends Controller
             'wilayah'        => $wilayah,
         ])->setPaper('a4', 'landscape');
 
-        return $pdf->download("pd3i-dashboard-{$f->tahun}.pdf");
+        return $pdf->download("pd3i-dashboard-{$f->tahun}{$f->akhiranNamaBerkas()}.pdf");
     }
 
     public function exportExcel(Request $request)
@@ -124,9 +125,11 @@ class Pd3iDashboardController extends Controller
 
         $namaFile = 'surveilans-pd3i-' . $f->tahun;
         if ($f->wilker) {
-            $namaFile .= '-' . str_replace(' ', '_', implode('-', $f->wilker));
+            // Nilai wilker berasal dari request: buang karakter yang tak sah di nama berkas
+            // (`/` dulu membuat download gagal 500).
+            $namaFile .= '-' . trim(preg_replace('/[^A-Za-z0-9-]+/', '_', implode('-', $f->wilker)), '_');
         }
-        $namaFile .= '.xlsx';
+        $namaFile .= $f->akhiranNamaBerkas() . '.xlsx';
 
         return Excel::download(SurveillanceExport::untukDasborPd3i($f), $namaFile);
     }
